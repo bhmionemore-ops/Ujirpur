@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { UserPlus, Globe, MessageSquare, Layout, Share2 } from 'lucide-react';
+import { UserPlus, Globe, MessageSquare, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../LanguageContext';
+import { shareContent } from '../utils';
 
 interface Influencer {
   id: string;
@@ -11,22 +13,9 @@ interface Influencer {
 }
 
 export const InfluencerSection = () => {
-  const [influencers, setInfluencers] = useState<Influencer[]>([
-    {
-      id: '1',
-      name: 'Arjun Das',
-      bio: 'Travel blogger exploring the hidden gems of Nadia.',
-      socials: ['instagram.com/arjun', 'youtube.com/arjun', 'facebook.com/arjun'],
-      avatar: 'https://picsum.photos/seed/influencer1/200/200'
-    },
-    {
-      id: '2',
-      name: 'Priya Sen',
-      bio: 'Foodie and local culture enthusiast.',
-      socials: ['instagram.com/priya', 'twitter.com/priya', 'tiktok.com/priya'],
-      avatar: 'https://picsum.photos/seed/influencer2/200/200'
-    }
-  ]);
+  const { t } = useLanguage();
+  const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
+  const influencers = [...t.data.influencers, ...userInfluencers];
 
   const [showForm, setShowForm] = useState(false);
   const [newInfluencer, setNewInfluencer] = useState({
@@ -47,7 +36,15 @@ export const InfluencerSection = () => {
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3],
       avatar: `https://picsum.photos/seed/${id}/200/200`
     };
-    setInfluencers([...influencers, influencer]);
+
+    // Send notification to backend
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'influencer', data: influencer })
+    }).catch(err => console.error('Failed to send notification:', err));
+
+    setUserInfluencers([...userInfluencers, influencer]);
     setShowForm(false);
     setNewInfluencer({ name: '', bio: '', social1: '', social2: '', social3: '' });
   };
@@ -58,16 +55,16 @@ export const InfluencerSection = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
-              Influencer Network
+              {t.influencers.title}
             </h2>
-            <p className="text-zinc-500 mt-2">Connect and collaborate with local creators.</p>
+            <p className="text-zinc-500 mt-2">{t.influencers.subtitle}</p>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
             className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2 w-fit"
           >
             <UserPlus size={20} />
-            Join the Network
+            {t.influencers.join}
           </button>
         </div>
 
@@ -152,12 +149,20 @@ export const InfluencerSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {influencers.map((inf) => (
             <div key={inf.id} className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all">
-              <img
-                src={inf.avatar}
-                alt={inf.name}
-                className="w-20 h-20 rounded-full mb-4 object-cover border-2 border-emerald-100"
-                referrerPolicy="no-referrer"
-              />
+              <div className="flex justify-between items-start mb-4">
+                <img
+                  src={inf.avatar}
+                  alt={inf.name}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-emerald-100"
+                  referrerPolicy="no-referrer"
+                />
+                <button 
+                  onClick={() => shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`)}
+                  className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                >
+                  <Share2 size={18} />
+                </button>
+              </div>
               <h4 className="text-lg font-bold text-zinc-900">{inf.name}</h4>
               <p className="text-zinc-500 text-sm mb-4 line-clamp-2">{inf.bio}</p>
               <div className="flex flex-wrap gap-2 mb-6">
@@ -175,7 +180,7 @@ export const InfluencerSection = () => {
               </div>
               <button className="w-full py-2 bg-zinc-50 text-zinc-900 rounded-xl text-sm font-semibold hover:bg-zinc-900 hover:text-white transition-all flex items-center justify-center gap-2">
                 <MessageSquare size={16} />
-                Collaborate
+                {t.influencers.collab}
               </button>
             </div>
           ))}
