@@ -1,0 +1,158 @@
+import React, { useState } from 'react';
+import { MessageSquare, Calendar, Layout, Plus, Send, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+export const CollaborationTools = () => {
+  const [activeTab, setActiveTab] = useState<'messages' | 'planning' | 'projects'>('messages');
+
+  return (
+    <section className="py-16 px-4 max-w-7xl mx-auto">
+      <div className="mb-12">
+        <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Collaboration Hub</h2>
+        <p className="text-zinc-500 mt-2">Tools designed for seamless partnership between creators.</p>
+      </div>
+
+      <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
+        {/* Sidebar Tabs */}
+        <div className="w-full md:w-64 bg-zinc-50 border-r border-zinc-200 p-6 flex flex-row md:flex-col gap-2">
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'messages' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            <MessageSquare size={18} />
+            Messages
+          </button>
+          <button
+            onClick={() => setActiveTab('planning')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'planning' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            <Calendar size={18} />
+            Campaign Planning
+          </button>
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'projects' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            <Layout size={18} />
+            Shared Projects
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 p-8">
+          <AnimatePresence mode="wait">
+            {activeTab === 'messages' && (
+              <motion.div
+                key="messages"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="h-full flex flex-col"
+              >
+                <div className="flex items-center justify-between mb-8 border-bottom pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold">Chat with Arjun Das</h4>
+                      <p className="text-xs text-emerald-500 font-medium">Online</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-4 mb-6 overflow-y-auto max-h-[400px]">
+                  <div className="flex justify-start">
+                    <div className="bg-zinc-100 p-4 rounded-2xl rounded-tl-none max-w-[80%] text-sm">
+                      Hey! I saw your profile. Would you like to collaborate on a video about the Ujirpur local market?
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="bg-emerald-600 text-white p-4 rounded-2xl rounded-tr-none max-w-[80%] text-sm">
+                      That sounds amazing! I've been planning to visit that area next week.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="Type your message..."
+                    className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                  <button className="bg-emerald-600 text-white p-3 rounded-xl hover:bg-emerald-700 transition-colors">
+                    <Send size={20} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'planning' && (
+              <motion.div
+                key="planning"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <h4 className="text-xl font-bold">Campaign Planner</h4>
+                  <button className="flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    <Plus size={16} /> New Campaign
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { title: 'Nadia Heritage Tour', date: 'March 25, 2026', status: 'Planning' },
+                    { title: 'Local Artisans Spotlight', date: 'April 02, 2026', status: 'Draft' }
+                  ].map((campaign, i) => (
+                    <div key={i} className="p-6 border border-zinc-100 rounded-2xl flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <div>
+                        <h5 className="font-bold text-zinc-900">{campaign.title}</h5>
+                        <p className="text-sm text-zinc-500">{campaign.date}</p>
+                      </div>
+                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
+                        {campaign.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'projects' && (
+              <motion.div
+                key="projects"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <h4 className="text-xl font-bold">Shared Collaborative Projects</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { title: 'Village Life Documentary', partners: ['Arjun', 'Priya'], progress: 75 },
+                    { title: 'Nadia Street Food Guide', partners: ['Priya', 'Rahul'], progress: 30 }
+                  ].map((project, i) => (
+                    <div key={i} className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
+                      <h5 className="font-bold mb-2">{project.title}</h5>
+                      <p className="text-xs text-zinc-500 mb-4">Partners: {project.partners.join(', ')}</p>
+                      <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full" style={{ width: `${project.progress}%` }}></div>
+                      </div>
+                      <p className="text-right text-[10px] mt-1 font-bold text-zinc-400">{project.progress}% Complete</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </section>
+  );
+};
