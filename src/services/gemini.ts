@@ -82,45 +82,78 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
   date (the actual date of the news in YYYY-MM-DD format),
   sourceUrl (the URL to the original news source if found).`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
+  const maxRetries = 2;
+  let retryCount = 0;
+
+  async function attemptFetch(useSearch: boolean = true): Promise<NewsItem[]> {
+    try {
+      const config: any = {
         responseMimeType: "application/json",
-        tools: [{ googleSearch: {} }],
-      },
-    });
-
-    const text = response.text;
-    if (!text) return FALLBACK_NEWS[language];
-
-    const rawNews = JSON.parse(text);
-    
-    // Extract grounding metadata if available
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    
-    const items = rawNews.map((item: any, index: number) => {
-      // Try to find a relevant source URL from grounding if not provided in JSON
-      const source = item.sourceUrl || (groundingChunks?.[index]?.web?.uri);
-      
-      return {
-        ...item,
-        id: `news-${Date.now()}-${index}`,
-        imageUrl: `https://picsum.photos/seed/${encodeURIComponent(item.title)}-${index}/800/400`,
-        sourceUrl: source || '#',
       };
-    });
+      
+      if (useSearch) {
+        config.tools = [{ googleSearch: {} }];
+      }
 
-    return items.length > 0 ? items : FALLBACK_NEWS[language];
-  } catch (error: any) {
-    // Check for quota exhaustion (429)
-    if (error?.status === 'RESOURCE_EXHAUSTED' || error?.message?.includes('429') || error?.code === 429) {
-      console.warn("Gemini API quota exhausted. Using fallback news.");
-    } else {
-      console.error("Error generating news:", error);
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt + (useSearch ? "" : "\nNote: If you cannot search, use your internal knowledge to provide the most likely recent news for this region."),
+        config,
+      });
+
+      const text = response.text;
+      if (!text) throw new Error("Empty response");
+
+      const rawNews = JSON.parse(text);
+      
+      // Extract grounding metadata if available
+      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      
+      const items = rawNews.map((item: any, index: number) => {
+        const source = item.sourceUrl || (groundingChunks?.[index]?.web?.uri);
+        
+        return {
+          ...item,
+          id: `news-${Date.now()}-${index}`,
+          imageUrl: `https://picsum.photos/seed/${encodeURIComponent(item.title)}-${index}/800/400`,
+          sourceUrl: source || '#',
+          isFallback: false // Mark as live news
+        };
+      });
+
+      return items.length > 0 ? items : FALLBACK_NEWS[language];
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.error?.message || "";
+      const errorCode = error?.code || error?.error?.code || 0;
+      const errorStatus = error?.status || error?.error?.status || "";
+
+      // If search tool failed, try one last time without it before going to hardcoded fallback
+      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorStatus === 'UNKNOWN')) {
+        console.warn("Search tool failed, attempting generation without search tool...");
+        return attemptFetch(false);
+      }
+
+      const isTransient = errorMessage.includes('Rpc failed') || 
+                          errorMessage.includes('xhr error') || 
+                          errorCode === 500 || 
+                          errorStatus === 'INTERNAL' ||
+                          errorStatus === 'UNKNOWN';
+      
+      if (isTransient && retryCount < maxRetries) {
+        retryCount++;
+        console.warn(`Transient error in news generation, retrying (${retryCount}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        return attemptFetch(useSearch);
+      }
+
+      if (error?.status === 'RESOURCE_EXHAUSTED' || error?.message?.includes('429') || error?.code === 429) {
+        console.warn("Gemini API quota exhausted. Using fallback news.");
+      } else {
+        console.error("Error generating news:", error);
+      }
+      return FALLBACK_NEWS[language];
     }
-    // Return fallback news instead of an empty array to ensure the UI stays functional
-    return FALLBACK_NEWS[language];
   }
+
+  return attemptFetch(true);
 }
