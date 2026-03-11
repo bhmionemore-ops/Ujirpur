@@ -70,7 +70,7 @@ export const LiveChatWidget = () => {
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             className="bg-white w-80 h-96 rounded-2xl shadow-2xl border border-zinc-200 flex flex-col mb-4 overflow-hidden"
           >
-            <div className="bg-emerald-600 p-4 text-white flex items-center justify-between">
+            <div className="bg-orange-600 p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                   <User size={16} />
@@ -91,7 +91,7 @@ export const LiveChatWidget = () => {
                   <div className={`max-w-[80%] p-3 rounded-xl text-xs shadow-sm border ${
                     msg.isBot 
                       ? 'bg-white text-zinc-600 border-zinc-100 rounded-tl-none' 
-                      : 'bg-emerald-600 text-white border-emerald-500 rounded-tr-none'
+                      : 'bg-orange-600 text-white border-orange-500 rounded-tr-none'
                   }`}>
                     {msg.text}
                   </div>
@@ -99,7 +99,7 @@ export const LiveChatWidget = () => {
               ))}
               {sent && (
                 <div className="text-center py-2">
-                  <p className="text-[10px] text-emerald-600 font-bold">{t.data.chat.delivered}</p>
+                  <p className="text-[10px] text-orange-600 font-bold">{t.data.chat.delivered}</p>
                 </div>
               )}
             </div>
@@ -110,9 +110,9 @@ export const LiveChatWidget = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={t.collab.placeholder}
-                  className="flex-1 text-xs p-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="flex-1 text-xs p-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                 />
-                <button type="submit" className="bg-emerald-600 text-white p-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                <button type="submit" className="bg-orange-600 text-white p-2 rounded-lg hover:bg-orange-700 transition-colors">
                   <Send size={16} />
                 </button>
               </form>
@@ -122,7 +122,7 @@ export const LiveChatWidget = () => {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-emerald-600 text-white rounded-full shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center hover:scale-110 active:scale-95"
+        className="w-14 h-14 bg-orange-600 text-white rounded-full shadow-lg hover:bg-orange-700 transition-all flex items-center justify-center hover:scale-110 active:scale-95"
       >
         {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
