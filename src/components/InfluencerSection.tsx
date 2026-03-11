@@ -201,7 +201,7 @@ export const InfluencerSection = () => {
                   {requests.map((req) => (
                     <div key={req.id} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-emerald-600">{req.fromName}</h4>
+                        <h4 className="font-bold text-orange-600">{req.fromName}</h4>
                         <span className="text-[10px] text-zinc-400">{new Date(req.timestamp).toLocaleDateString()}</span>
                       </div>
                       <p className="text-sm text-zinc-600 mb-2">
@@ -231,7 +231,7 @@ export const InfluencerSection = () => {
                     type="text"
                     value={newInfluencer.name}
                     onChange={(e) => setNewInfluencer({ ...newInfluencer, name: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                     placeholder="Your Name"
                   />
                 </div>
@@ -242,14 +242,14 @@ export const InfluencerSection = () => {
                     type="text"
                     value={newInfluencer.bio}
                     onChange={(e) => setNewInfluencer({ ...newInfluencer, bio: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                     placeholder="What do you do?"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-semibold text-zinc-700">{t.influencers.avatarLabel}</label>
                   <div className="flex gap-4 items-center">
-                    <div className="w-16 h-16 rounded-full bg-zinc-100 flex-shrink-0 overflow-hidden border-2 border-emerald-100">
+                    <div className="w-16 h-16 rounded-full bg-zinc-100 flex-shrink-0 overflow-hidden border-2 border-orange-100">
                       {newInfluencer.avatarUrl ? (
                         <img 
                           src={newInfluencer.avatarUrl} 
@@ -269,7 +269,7 @@ export const InfluencerSection = () => {
                         type="text"
                         value={newInfluencer.avatarUrl}
                         onChange={(e) => setNewInfluencer({ ...newInfluencer, avatarUrl: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         placeholder={t.influencers.avatarPlaceholder}
                       />
                       <p className="text-[10px] text-zinc-400 px-1">
@@ -286,21 +286,21 @@ export const InfluencerSection = () => {
                       type="text"
                       value={newInfluencer.social1}
                       onChange={(e) => setNewInfluencer({ ...newInfluencer, social1: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
                     <input
                       type="text"
                       value={newInfluencer.social2}
                       onChange={(e) => setNewInfluencer({ ...newInfluencer, social2: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
                     <input
                       type="text"
                       value={newInfluencer.social3}
                       onChange={(e) => setNewInfluencer({ ...newInfluencer, social3: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
                   </div>
@@ -315,7 +315,7 @@ export const InfluencerSection = () => {
                   </button>
                   <button
                     type="submit"
-                    className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-colors"
+                    className="bg-orange-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-orange-700 transition-colors"
                   >
                     Publish Profile
                   </button>
@@ -332,12 +332,12 @@ export const InfluencerSection = () => {
                 <img
                   src={inf.avatar}
                   alt={inf.name}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-emerald-100"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-orange-100"
                   referrerPolicy="no-referrer"
                 />
                 <button 
                   onClick={() => shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`)}
-                  className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                  className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                 >
                   <Share2 size={18} />
                 </button>
@@ -351,7 +351,7 @@ export const InfluencerSection = () => {
                     href={social.startsWith('http') ? social : `https://${social}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 bg-zinc-50 rounded-lg hover:bg-emerald-50 text-zinc-400 hover:text-emerald-600 transition-colors"
+                    className="p-2 bg-zinc-50 rounded-lg hover:bg-orange-50 text-zinc-400 hover:text-orange-600 transition-colors"
                     title={social}
                   >
                     {getSocialIcon(social)}
@@ -361,7 +361,7 @@ export const InfluencerSection = () => {
               
               <div className="mt-auto space-y-2">
                 {requestSentId === inf.id ? (
-                  <div className="w-full py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                  <div className="w-full py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                     <CheckCircle size={16} />
                     {t.influencers.requestSent}
                   </div>
@@ -378,14 +378,14 @@ export const InfluencerSection = () => {
                       placeholder="Your Name"
                       value={collabForm.fromName}
                       onChange={(e) => setCollabForm({ ...collabForm, fromName: e.target.value })}
-                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-orange-500"
                     />
                     <textarea
                       required
                       placeholder="Message..."
                       value={collabForm.message}
                       onChange={(e) => setCollabForm({ ...collabForm, message: e.target.value })}
-                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-emerald-500 h-16 resize-none"
+                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-orange-500 h-16 resize-none"
                     />
                     <div className="flex gap-2">
                       <button 
@@ -397,7 +397,7 @@ export const InfluencerSection = () => {
                       </button>
                       <button 
                         type="submit"
-                        className="flex-1 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 bg-orange-600 text-white text-[10px] font-bold rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-1"
                       >
                         <Send size={12} />
                         Send
@@ -407,7 +407,7 @@ export const InfluencerSection = () => {
                 ) : (
                   <button 
                     onClick={() => setRequestingId(inf.id)}
-                    className="w-full py-2 bg-zinc-900 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-zinc-900 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-all flex items-center justify-center gap-2"
                   >
                     <MessageSquare size={16} />
                     {t.influencers.requestCollab}

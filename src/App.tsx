@@ -1,9 +1,9 @@
 import React from 'react';
 import { Banner } from './components/Banner';
 import { NewsFeed } from './components/NewsFeed';
+import { BarniaBazar } from './components/BarniaBazar';
 import { InfluencerSection } from './components/InfluencerSection';
 import { CollaborationTools } from './components/CollaborationTools';
-import { BarniaBazar } from './components/BarniaBazar';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { useLanguage } from './LanguageContext';
 import { MapPin, Mail, Phone, Facebook, Instagram, Languages } from 'lucide-react';
@@ -12,29 +12,29 @@ export default function App() {
   const { language, setLanguage, t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-white font-sans text-zinc-900">
+    <div className="min-h-screen bg-[#FFF9F0] font-sans text-zinc-900">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
+      <nav className="sticky top-0 z-50 bg-[#FFF9F0]/80 backdrop-blur-md border-b border-orange-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img 
               src="https://picsum.photos/seed/ujirpur-logo/200/200" 
               alt="Logo" 
-              className="w-10 h-10 rounded-lg object-cover border-2 border-emerald-600"
+              className="w-10 h-10 rounded-lg object-cover border-2 border-orange-600"
               referrerPolicy="no-referrer"
             />
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
-              <a href="#news" className="hover:text-emerald-600 transition-colors">{t.nav.news}</a>
-              <a href="#bazar" className="hover:text-emerald-600 transition-colors">{t.nav.bazar}</a>
-              <a href="#influencers" className="hover:text-emerald-600 transition-colors">{t.nav.influencers}</a>
-              <a href="#collab" className="hover:text-emerald-600 transition-colors">{t.nav.collab}</a>
+              <a href="#bazar" className="hover:text-orange-600 transition-colors">{t.nav.bazar}</a>
+              <a href="#news" className="hover:text-orange-600 transition-colors">{t.nav.news}</a>
+              <a href="#influencers" className="hover:text-orange-600 transition-colors">{t.nav.influencers}</a>
+              <a href="#collab" className="hover:text-orange-600 transition-colors">{t.nav.collab}</a>
             </div>
             <button 
               onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors text-xs font-bold"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100 hover:bg-orange-200 transition-colors text-xs font-bold text-orange-800"
             >
               <Languages size={14} />
               {language === 'bn' ? 'English' : 'বাংলা'}
@@ -74,8 +74,8 @@ export default function App() {
               {t.footer.about}
             </p>
             <div className="flex gap-4 mt-8">
-              <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Facebook size={20} /></a>
-              <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Instagram size={20} /></a>
+              <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-orange-600 transition-all"><Facebook size={20} /></a>
+              <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-orange-600 transition-all"><Instagram size={20} /></a>
             </div>
           </div>
           
@@ -83,15 +83,15 @@ export default function App() {
             <h4 className="font-bold mb-6 uppercase text-xs tracking-widest text-zinc-500">{t.footer.contact}</h4>
             <ul className="space-y-4 text-sm text-zinc-400">
               <li className="flex items-center gap-3">
-                <MapPin size={18} className="text-emerald-500" />
+                <MapPin size={18} className="text-orange-500" />
                 Ujirpur Barnia, Nadia, WB, India
               </li>
               <li className="flex items-center gap-3">
-                <Mail size={18} className="text-emerald-500" />
+                <Mail size={18} className="text-orange-500" />
                 ujirpur.barnia6@gmail.com
               </li>
               <li className="flex items-center gap-3">
-                <Phone size={18} className="text-emerald-500" />
+                <Phone size={18} className="text-orange-500" />
                 +91 12345 67890
               </li>
             </ul>
@@ -100,10 +100,10 @@ export default function App() {
           <div>
             <h4 className="font-bold mb-6 uppercase text-xs tracking-widest text-zinc-500">{t.footer.links}</h4>
             <ul className="space-y-4 text-sm text-zinc-400">
-              <li><a href="#" className="hover:text-white transition-colors">{t.nav.news}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t.nav.bazar}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t.nav.influencers}</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">{t.nav.collab}</a></li>
+              <li><a href="#bazar" className="hover:text-white transition-colors">{t.nav.bazar}</a></li>
+              <li><a href="#news" className="hover:text-white transition-colors">{t.nav.news}</a></li>
+              <li><a href="#influencers" className="hover:text-white transition-colors">{t.nav.influencers}</a></li>
+              <li><a href="#collab" className="hover:text-white transition-colors">{t.nav.collab}</a></li>
             </ul>
           </div>
         </div>

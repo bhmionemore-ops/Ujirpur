@@ -29,7 +29,7 @@ export const NewsFeed = () => {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center py-20 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
         <p className="text-zinc-500 font-medium animate-pulse text-sm">Searching for real local news...</p>
       </div>
     );
@@ -40,12 +40,12 @@ export const NewsFeed = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`flex h-2 w-2 rounded-full ${isUsingFallback ? 'bg-amber-500' : 'bg-emerald-500 animate-ping'}`}></span>
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${isUsingFallback ? 'text-amber-600' : 'text-emerald-600'}`}>
+            <span className={`flex h-2 w-2 rounded-full ${isUsingFallback ? 'bg-amber-500' : 'bg-orange-500 animate-ping'}`}></span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${isUsingFallback ? 'text-amber-600' : 'text-orange-600'}`}>
               {isUsingFallback ? (language === 'bn' ? 'আর্কাইভ' : 'ARCHIVE') : t.news.live}
             </span>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 border-l-4 border-emerald-500 pl-4">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 border-l-4 border-orange-500 pl-4">
             {t.news.title}
           </h2>
           {isUsingFallback && (
@@ -88,7 +88,7 @@ export const NewsFeed = () => {
                 referrerPolicy="no-referrer"
               />
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
                   <Tag size={12} />
                   {item.category}
                 </span>
@@ -104,7 +104,7 @@ export const NewsFeed = () => {
                 <Calendar size={14} />
                 {item.date}
               </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-3 group-hover:text-emerald-600 transition-colors">
+              <h3 className="text-xl font-bold text-zinc-900 mb-3 group-hover:text-orange-600 transition-colors">
                 {item.title}
               </h3>
               <p className="text-zinc-600 text-sm leading-relaxed mb-6 line-clamp-3">
@@ -113,13 +113,13 @@ export const NewsFeed = () => {
               <div className="flex items-center justify-between mt-6">
                 <button 
                   onClick={() => setSelectedNews(item)}
-                  className="flex items-center gap-1 text-emerald-600 font-semibold text-sm group-hover:gap-2 transition-all"
+                  className="flex items-center gap-1 text-orange-600 font-semibold text-sm group-hover:gap-2 transition-all"
                 >
                   {t.news.readMore} <ChevronRight size={16} />
                 </button>
                 <button 
                   onClick={() => shareContent(item.title, item.content, window.location.href)}
-                  className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                  className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                 >
                   <Share2 size={18} />
                 </button>
@@ -153,7 +153,7 @@ export const NewsFeed = () => {
                   <X size={20} />
                 </button>
                 <div className="absolute bottom-4 left-4">
-                  <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                     {selectedNews.category}
                   </span>
                 </div>
@@ -167,7 +167,7 @@ export const NewsFeed = () => {
                 <h2 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
                   {selectedNews.title}
                 </h2>
-                <div className="prose prose-emerald max-w-none">
+                <div className="prose prose-orange max-w-none">
                   <p className="text-zinc-700 text-lg leading-relaxed whitespace-pre-wrap">
                     {selectedNews.fullContent || selectedNews.content}
                   </p>
@@ -176,7 +176,7 @@ export const NewsFeed = () => {
                 <div className="mt-10 pt-6 border-t border-zinc-100 flex items-center justify-between">
                   <button 
                     onClick={() => shareContent(selectedNews.title, selectedNews.content, window.location.href)}
-                    className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                    className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200"
                   >
                     <Share2 size={18} />
                     {t.news.share}

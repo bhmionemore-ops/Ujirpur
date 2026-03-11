@@ -69,8 +69,8 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
   const today = new Date().toISOString().split('T')[0];
   const langName = language === 'bn' ? 'Bengali' : 'English';
   
-  const prompt = `Find the most recent real local news for ${location} (Ujirpur, Barnia, Nadia, West Bengal, India) specifically for today (${today}) or the last 24-48 hours. 
-  Focus on actual events, local developments, government announcements, or community news in the Nadia district.
+  const prompt = `Find the most recent real local news for ${location} (Ujirpur, Barnia, Nadia, West Bengal, India) or the broader Nadia district specifically for today (${today}) or the last 24-48 hours. 
+  Focus on actual events, local developments, government announcements, or community news in the Nadia district of West Bengal.
   
   IMPORTANT: Return all text content (title, content, category) in ${langName}.
   

@@ -132,8 +132,8 @@ export const BarniaBazar = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag className="text-emerald-600" size={24} />
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{t.bazar.category}</span>
+              <ShoppingBag className="text-orange-600" size={24} />
+              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">{t.bazar.category}</span>
             </div>
             <h2 className="text-4xl font-bold tracking-tight text-zinc-900">{t.bazar.title}</h2>
             <p className="text-zinc-500 mt-2">{t.bazar.subtitle}</p>
@@ -147,12 +147,12 @@ export const BarniaBazar = () => {
                 placeholder={t.bazar.search}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none w-full sm:w-64"
+                className="pl-10 pr-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none w-full sm:w-64"
               />
             </div>
             <button
               onClick={() => setShowAddShop(true)}
-              className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+              className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
             >
               <Plus size={20} />
               {t.bazar.register}
@@ -175,7 +175,7 @@ export const BarniaBazar = () => {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-4 left-4">
-                  <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-emerald-600 uppercase tracking-wider shadow-sm">
+                  <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-orange-600 uppercase tracking-wider shadow-sm">
                     {shop.category}
                   </span>
                 </div>
@@ -185,7 +185,7 @@ export const BarniaBazar = () => {
                   <h3 className="text-xl font-bold text-zinc-900 cursor-pointer" onClick={() => setSelectedShop(shop)}>{shop.name}</h3>
                   <button 
                     onClick={() => shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`)}
-                    className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                    className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                   >
                     <Share2 size={18} />
                   </button>
@@ -200,7 +200,7 @@ export const BarniaBazar = () => {
                   {shop.products.slice(0, 2).map((p, i) => (
                     <div key={i} className="flex justify-between items-center text-sm">
                       <span className="text-zinc-600">{p.name}</span>
-                      <span className="font-bold text-emerald-600">{p.price}</span>
+                      <span className="font-bold text-orange-600">{p.price}</span>
                     </div>
                   ))}
                 </div>
@@ -243,7 +243,7 @@ export const BarniaBazar = () => {
                           type="text"
                           value={newShop.name}
                           onChange={(e) => setNewShop({ ...newShop, name: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         />
                       </div>
                       <div className="space-y-1">
@@ -253,7 +253,7 @@ export const BarniaBazar = () => {
                           type="text"
                           value={newShop.owner}
                           onChange={(e) => setNewShop({ ...newShop, owner: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         />
                       </div>
                     </div>
@@ -264,7 +264,7 @@ export const BarniaBazar = () => {
                         <select
                           value={newShop.category}
                           onChange={(e) => setNewShop({ ...newShop, category: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         >
                           <option>Grocery</option>
                           <option>Stationery</option>
@@ -281,7 +281,7 @@ export const BarniaBazar = () => {
                           type="tel"
                           value={newShop.phone}
                           onChange={(e) => setNewShop({ ...newShop, phone: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         />
                       </div>
                     </div>
@@ -293,7 +293,7 @@ export const BarniaBazar = () => {
                         type="text"
                         value={newShop.location}
                         onChange={(e) => setNewShop({ ...newShop, location: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         placeholder="e.g. Near Barnia Station"
                       />
                     </div>
@@ -320,7 +320,7 @@ export const BarniaBazar = () => {
                           type="text"
                           value={newShop.imageUrl}
                           onChange={(e) => setNewShop({ ...newShop, imageUrl: e.target.value })}
-                          className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                           placeholder={t.bazar.imagePlaceholder}
                         />
                       </div>
@@ -332,7 +332,7 @@ export const BarniaBazar = () => {
                         <button 
                           type="button"
                           onClick={handleAddProduct}
-                          className="text-emerald-600 hover:text-emerald-700 p-1 rounded-lg hover:bg-emerald-50 transition-all"
+                          className="text-orange-600 hover:text-orange-700 p-1 rounded-lg hover:bg-orange-50 transition-all"
                         >
                           <Plus size={18} />
                         </button>
@@ -345,14 +345,14 @@ export const BarniaBazar = () => {
                               placeholder={t.bazar.productNamePlaceholder}
                               value={product.name}
                               onChange={(e) => handleProductChange(index, 'name', e.target.value)}
-                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
                             />
                             <input
                               type="text"
                               placeholder={t.bazar.productPricePlaceholder}
                               value={product.price}
                               onChange={(e) => handleProductChange(index, 'price', e.target.value)}
-                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
                             />
                           </div>
                         ))}
@@ -360,7 +360,7 @@ export const BarniaBazar = () => {
                       <button 
                         type="button"
                         onClick={handleAddProduct}
-                        className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 hover:border-emerald-200 hover:text-emerald-600 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 hover:border-orange-200 hover:text-orange-600 transition-all flex items-center justify-center gap-2"
                       >
                         <Plus size={14} />
                         {t.bazar.addProduct}
@@ -369,7 +369,7 @@ export const BarniaBazar = () => {
 
                     <button
                       type="submit"
-                      className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                      className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200"
                     >
                       Register Shop
                     </button>
@@ -412,17 +412,17 @@ export const BarniaBazar = () => {
                 <div className="p-8">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{selectedShop.category}</span>
+                      <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">{selectedShop.category}</span>
                       <h3 className="text-3xl font-bold text-zinc-900">{selectedShop.name}</h3>
                       <p className="text-zinc-500">Owner: {selectedShop.owner}</p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center gap-2 text-zinc-600 mb-1">
-                        <Phone size={16} className="text-emerald-600" />
+                        <Phone size={16} className="text-orange-600" />
                         <span className="font-bold">{selectedShop.phone}</span>
                       </div>
                       <div className="flex items-center gap-2 text-zinc-500 text-sm">
-                        <MapPin size={16} className="text-emerald-600" />
+                        <MapPin size={16} className="text-orange-600" />
                         <span>{selectedShop.location}</span>
                       </div>
                     </div>
@@ -430,14 +430,14 @@ export const BarniaBazar = () => {
 
                   <div className="space-y-4">
                     <h4 className="text-lg font-bold flex items-center gap-2">
-                      <Tag size={20} className="text-emerald-600" />
+                      <Tag size={20} className="text-orange-600" />
                       Product Price List
                     </h4>
                     <div className="grid grid-cols-1 gap-3">
                       {selectedShop.products.map((p, i) => (
                         <div key={i} className="flex justify-between items-center p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                           <span className="font-medium text-zinc-700">{p.name}</span>
-                          <span className="text-lg font-bold text-emerald-600">{p.price}</span>
+                          <span className="text-lg font-bold text-orange-600">{p.price}</span>
                         </div>
                       ))}
                     </div>

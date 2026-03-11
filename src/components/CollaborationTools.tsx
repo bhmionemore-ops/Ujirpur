@@ -21,7 +21,7 @@ export const CollaborationTools = () => {
           <button
             onClick={() => setActiveTab('messages')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'messages' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+              activeTab === 'messages' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
             }`}
           >
             <MessageSquare size={18} />
@@ -30,7 +30,7 @@ export const CollaborationTools = () => {
           <button
             onClick={() => setActiveTab('planning')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'planning' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+              activeTab === 'planning' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
             }`}
           >
             <Calendar size={18} />
@@ -39,7 +39,7 @@ export const CollaborationTools = () => {
           <button
             onClick={() => setActiveTab('projects')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'projects' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
+              activeTab === 'projects' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-600 hover:bg-zinc-200'
             }`}
           >
             <Layout size={18} />
@@ -60,19 +60,19 @@ export const CollaborationTools = () => {
               >
                 <div className="flex items-center justify-between mb-8 border-bottom pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                       <User size={20} />
                     </div>
                     <div>
                       <h4 className="font-bold">{t.data.collab.chatWith}</h4>
-                      <p className="text-xs text-emerald-500 font-medium">{t.data.collab.online}</p>
+                      <p className="text-xs text-orange-500 font-medium">{t.data.collab.online}</p>
                     </div>
                   </div>
                 </div>
                 <div className="flex-1 space-y-4 mb-6 overflow-y-auto max-h-[400px]">
                   {messages.map((msg: any, i: number) => (
                     <div key={i} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`${msg.isMe ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-zinc-100 rounded-tl-none'} p-4 rounded-2xl max-w-[80%] text-sm`}>
+                      <div className={`${msg.isMe ? 'bg-orange-600 text-white rounded-tr-none' : 'bg-zinc-100 rounded-tl-none'} p-4 rounded-2xl max-w-[80%] text-sm`}>
                         {msg.text}
                       </div>
                     </div>
@@ -83,7 +83,7 @@ export const CollaborationTools = () => {
                     type="text"
                     id="chat-input"
                     placeholder={t.collab.placeholder}
-                    className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         const input = e.currentTarget;
@@ -152,7 +152,7 @@ export const CollaborationTools = () => {
                         }]);
                       }, 1000);
                     }}
-                    className="bg-emerald-600 text-white p-3 rounded-xl hover:bg-emerald-700 transition-colors"
+                    className="bg-orange-600 text-white p-3 rounded-xl hover:bg-orange-700 transition-colors"
                   >
                     <Send size={20} />
                   </button>
@@ -180,7 +180,7 @@ export const CollaborationTools = () => {
                         <h5 className="font-bold text-zinc-900">{campaign.title}</h5>
                         <p className="text-sm text-zinc-500">{campaign.date}</p>
                       </div>
-                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
+                      <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
                         {campaign.status}
                       </span>
                     </div>
@@ -205,7 +205,7 @@ export const CollaborationTools = () => {
                       <h5 className="font-bold mb-2">{project.title}</h5>
                       <p className="text-xs text-zinc-500 mb-4">Partners: {project.partners.join(', ')}</p>
                       <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full" style={{ width: `${project.progress}%` }}></div>
+                        <div className="bg-orange-500 h-full" style={{ width: `${project.progress}%` }}></div>
                       </div>
                       <p className="text-right text-[10px] mt-1 font-bold text-zinc-400">{project.progress}% Complete</p>
                     </div>
