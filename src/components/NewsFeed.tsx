@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { generateLocalNews, NewsItem } from '../services/gemini';
-import { Calendar, Tag, ChevronRight, RefreshCw, Radio, Share2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Calendar, Tag, ChevronRight, RefreshCw, Share2, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { shareContent } from '../utils';
 
@@ -10,6 +10,7 @@ export const NewsFeed = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
 
   const fetchNews = async () => {
     setRefreshing(true);
@@ -35,7 +36,7 @@ export const NewsFeed = () => {
   }
 
   return (
-    <section className="py-16 px-4 max-w-7xl mx-auto">
+    <section id="news" className="py-16 px-4 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -106,20 +107,18 @@ export const NewsFeed = () => {
               <h3 className="text-xl font-bold text-zinc-900 mb-3 group-hover:text-emerald-600 transition-colors">
                 {item.title}
               </h3>
-              <p className="text-zinc-600 text-sm leading-relaxed mb-6">
+              <p className="text-zinc-600 text-sm leading-relaxed mb-6 line-clamp-3">
                 {item.content}
               </p>
               <div className="flex items-center justify-between mt-6">
-                <a 
-                  href={item.sourceUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                <button 
+                  onClick={() => setSelectedNews(item)}
                   className="flex items-center gap-1 text-emerald-600 font-semibold text-sm group-hover:gap-2 transition-all"
                 >
                   {t.news.readMore} <ChevronRight size={16} />
-                </a>
+                </button>
                 <button 
-                  onClick={() => shareContent(item.title, item.content, item.sourceUrl)}
+                  onClick={() => shareContent(item.title, item.content, window.location.href)}
                   className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                 >
                   <Share2 size={18} />
@@ -129,6 +128,71 @@ export const NewsFeed = () => {
           </motion.article>
         ))}
       </div>
+
+      {/* News Detail Modal */}
+      <AnimatePresence>
+        {selectedNews && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="relative h-64 shrink-0">
+                <img 
+                  src={selectedNews.imageUrl} 
+                  alt={selectedNews.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <button 
+                  onClick={() => setSelectedNews(null)}
+                  className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-all"
+                >
+                  <X size={20} />
+                </button>
+                <div className="absolute bottom-4 left-4">
+                  <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                    {selectedNews.category}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="p-8 overflow-y-auto">
+                <div className="flex items-center gap-2 text-zinc-400 text-sm mb-4">
+                  <Calendar size={16} />
+                  {selectedNews.date}
+                </div>
+                <h2 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
+                  {selectedNews.title}
+                </h2>
+                <div className="prose prose-emerald max-w-none">
+                  <p className="text-zinc-700 text-lg leading-relaxed whitespace-pre-wrap">
+                    {selectedNews.fullContent || selectedNews.content}
+                  </p>
+                </div>
+                
+                <div className="mt-10 pt-6 border-t border-zinc-100 flex items-center justify-between">
+                  <button 
+                    onClick={() => shareContent(selectedNews.title, selectedNews.content, window.location.href)}
+                    className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                  >
+                    <Share2 size={18} />
+                    {t.news.share}
+                  </button>
+                  <button 
+                    onClick={() => setSelectedNews(null)}
+                    className="text-zinc-500 font-medium hover:text-zinc-800 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

@@ -34,6 +34,12 @@ export const translations = {
       prices: 'পণ্যের দাম',
       contact: 'যোগাযোগ করুন',
       share: 'শেয়ার করুন',
+      imageLabel: 'দোকানের ছবির লিঙ্ক (ঐচ্ছিক)',
+      imagePlaceholder: 'আপনার দোকানের ছবির লিঙ্ক এখানে দিন',
+      productLabel: 'পণ্য এবং দাম',
+      productNamePlaceholder: 'পণ্যের নাম',
+      productPricePlaceholder: 'দাম (যেমন: ₹৫০/কেজি)',
+      addProduct: 'আরও পণ্য যোগ করুন',
     },
     influencers: {
       title: 'ইনফ্লুয়েন্সার নেটওয়ার্ক',
@@ -42,6 +48,13 @@ export const translations = {
       bio: 'বায়ো',
       collab: 'সহযোগিতা করুন',
       share: 'শেয়ার করুন',
+      requestCollab: 'সহযোগিতার অনুরোধ পাঠান',
+      requests: 'আগত অনুরোধ',
+      noRequests: 'কোন অনুরোধ নেই',
+      requestSent: 'অনুরোধ পাঠানো হয়েছে!',
+      avatarLabel: 'প্রোফাইল ছবির লিঙ্ক (ঐচ্ছিক)',
+      avatarPlaceholder: 'আপনার সোশ্যাল মিডিয়া প্রোফাইল ছবির লিঙ্ক এখানে দিন',
+      socialPlaceholder: 'সোশ্যাল মিডিয়া লিঙ্ক (যেমন: instagram.com/username)',
     },
     collab: {
       title: 'সহযোগিতা হাব',
@@ -124,10 +137,11 @@ export const translations = {
       },
       chat: {
         welcome: 'হ্যালো! আমরা আপনাকে আজ কীভাবে সাহায্য করতে পারি? এখানে পাঠানো যেকোনো বার্তা সরাসরি আমাদের অ্যাডমিনের কাছে যায়।',
-        contactInfo: 'যেকোনো জিজ্ঞাসা বা বিবরণের জন্য আপনি সরাসরি আমাদের সাথে ujirpur.barnia6@gmail.com এ যোগাযোগ করতে পারেন।',
+        contactInfo: 'আপনি সরাসরি আমাদের ইমেইল ujirpur.barnia6@gmail.com অথবা আমাদের সোশ্যাল মিডিয়া হ্যান্ডেলে যোগাযোগ করতে পারেন: ফেসবুক (https://www.facebook.com/share/r/1HbN6N3EBa/) এবং ইনস্টাগ্রাম (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5)।',
         support: 'লাইভ সাপোর্ট',
         assistant: 'স্বয়ংক্রিয় সহকারী',
         delivered: 'বার্তা অ্যাডমিনের কাছে পৌঁছেছে!',
+        genericReply: 'আপনার বার্তার জন্য ধন্যবাদ! আমাদের অ্যাডমিন শীঘ্রই আপনার সাথে যোগাযোগ করবেন। ততক্ষণ পর্যন্ত, আমাদের বাজার এবং ইনফ্লুয়েন্সার বিভাগগুলি দেখতে পারেন।',
       }
     }
   },
@@ -164,6 +178,12 @@ export const translations = {
       prices: 'Product Prices',
       contact: 'Contact Owner',
       share: 'Share',
+      imageLabel: 'Shop Image URL (Optional)',
+      imagePlaceholder: 'Paste your shop image URL here',
+      productLabel: 'Products and Prices',
+      productNamePlaceholder: 'Product Name',
+      productPricePlaceholder: 'Price (e.g. ₹50/kg)',
+      addProduct: 'Add Another Product',
     },
     influencers: {
       title: 'Influencer Network',
@@ -172,6 +192,13 @@ export const translations = {
       bio: 'Bio',
       collab: 'Collaborate',
       share: 'Share',
+      requestCollab: 'Request Collaboration',
+      requests: 'Incoming Requests',
+      noRequests: 'No requests yet',
+      requestSent: 'Request Sent!',
+      avatarLabel: 'Profile Picture URL (Optional)',
+      avatarPlaceholder: 'Paste your social media profile pic URL here',
+      socialPlaceholder: 'Social Media Link (e.g., instagram.com/username)',
     },
     collab: {
       title: 'Collaboration Hub',
@@ -254,10 +281,11 @@ export const translations = {
       },
       chat: {
         welcome: 'Hello! How can we help you today? Any messages sent here go directly to our admin.',
-        contactInfo: 'You can contact us directly at ujirpur.barnia6@gmail.com for any inquiries or details.',
+        contactInfo: 'You can contact us directly at ujirpur.barnia6@gmail.com or via our social media: Facebook (https://www.facebook.com/share/r/1HbN6N3EBa/) and Instagram (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5).',
         support: 'Live Support',
         assistant: 'Automated Assistant',
         delivered: 'Message delivered to admin!',
+        genericReply: 'Thank you for your message! Our admin will get back to you shortly. In the meantime, feel free to explore our Bazar and Influencer sections.',
       }
     }
   }

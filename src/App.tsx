@@ -6,7 +6,7 @@ import { CollaborationTools } from './components/CollaborationTools';
 import { BarniaBazar } from './components/BarniaBazar';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { useLanguage } from './LanguageContext';
-import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Languages } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages } from 'lucide-react';
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
@@ -17,7 +17,12 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold">U</div>
+            <img 
+              src="https://picsum.photos/seed/ujirpur-logo/200/200" 
+              alt="Logo" 
+              className="w-10 h-10 rounded-lg object-cover border-2 border-emerald-600"
+              referrerPolicy="no-referrer"
+            />
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>
           </div>
           <div className="flex items-center gap-6">
@@ -69,9 +74,8 @@ export default function App() {
               {t.footer.about}
             </p>
             <div className="flex gap-4 mt-8">
-              <a href="#" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Facebook size={20} /></a>
-              <a href="#" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Twitter size={20} /></a>
-              <a href="#" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Instagram size={20} /></a>
+              <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Facebook size={20} /></a>
+              <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-emerald-600 transition-all"><Instagram size={20} /></a>
             </div>
           </div>
           
@@ -84,7 +88,7 @@ export default function App() {
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="text-emerald-500" />
-                contact@ujirpurbarnia.in
+                ujirpur.barnia6@gmail.com
               </li>
               <li className="flex items-center gap-3">
                 <Phone size={18} className="text-emerald-500" />

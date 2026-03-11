@@ -21,7 +21,10 @@ export const LiveChatWidget = () => {
     setMessage('');
 
     // Check for contact keywords
-    const contactKeywords = ['contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'যোগাযোগ', 'ইমেইল'];
+    const contactKeywords = [
+      'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
+      'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
+    ];
     const needsContact = contactKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
 
     try {
@@ -44,7 +47,13 @@ export const LiveChatWidget = () => {
         }, 1000);
       } else {
         setSent(true);
-        setTimeout(() => setSent(false), 3000);
+        setTimeout(() => {
+          setMessages(prev => [...prev, { 
+            text: t.data.chat.genericReply, 
+            isBot: true 
+          }]);
+          setSent(false);
+        }, 1500);
       }
     } catch (error) {
       console.error('Failed to send message:', error);

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { shareContent } from '../utils';
@@ -35,49 +35,89 @@ export const BarniaBazar = () => {
     category: 'Grocery',
     location: '',
     phone: '',
-    productName: '',
-    productPrice: ''
+    imageUrl: '',
+    products: [{ name: '', price: '' }]
   });
 
-  const handleAddShop = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchShops();
+  }, []);
+
+  const fetchShops = async () => {
+    try {
+      const res = await fetch('/api/shops');
+      const data = await res.json();
+      setUserShops(data);
+    } catch (err) {
+      console.error('Failed to fetch shops:', err);
+    }
+  };
+
+  const handleAddProduct = () => {
+    setNewShop({
+      ...newShop,
+      products: [...newShop.products, { name: '', price: '' }]
+    });
+  };
+
+  const handleProductChange = (index: number, field: 'name' | 'price', value: string) => {
+    const updatedProducts = [...newShop.products];
+    updatedProducts[index][field] = value;
+    setNewShop({ ...newShop, products: updatedProducts });
+  };
+
+  const handleAddShop = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = Math.random().toString(36).substr(2, 9);
-    const shop: Shop = {
-      id,
+    const filteredProducts = newShop.products.filter(p => p.name.trim() !== '' && p.price.trim() !== '');
+    
+    const shopData = {
       name: newShop.name,
       owner: newShop.owner,
       category: newShop.category,
       location: newShop.location,
       phone: newShop.phone,
-      image: `https://picsum.photos/seed/${id}/400/300`,
-      products: newShop.productName ? [{ name: newShop.productName, price: newShop.productPrice }] : []
+      image: newShop.imageUrl || `https://picsum.photos/seed/${Math.random()}/400/300`,
+      products: filteredProducts
     };
 
-    setUserShops([...userShops, shop]);
-    setShowAddShop(false);
+    try {
+      const res = await fetch('/api/shops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shopData)
+      });
+      const data = await res.json();
 
-    // Notify admin
-    fetch('/api/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'chat',
-        data: { 
-          sender: 'System', 
-          message: `New Shop Registered: ${shop.name} by ${shop.owner} in Barnia Bazar.` 
-        }
-      })
-    }).catch(err => console.error('Failed to notify admin:', err));
+      if (data.success) {
+        setUserShops([...userShops, data.shop]);
+        setShowAddShop(false);
 
-    setNewShop({
-      name: '',
-      owner: '',
-      category: 'Grocery',
-      location: '',
-      phone: '',
-      productName: '',
-      productPrice: ''
-    });
+        // Notify admin
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'chat',
+            data: { 
+              sender: 'System', 
+              message: `New Shop Registered: ${data.shop.name} by ${data.shop.owner} in Barnia Bazar.` 
+            }
+          })
+        }).catch(err => console.error('Failed to notify admin:', err));
+
+        setNewShop({
+          name: '',
+          owner: '',
+          category: 'Grocery',
+          location: '',
+          phone: '',
+          imageUrl: '',
+          products: [{ name: '', price: '' }]
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save shop:', err);
+    }
   };
 
   const filteredShops = shops.filter(shop => 
@@ -258,24 +298,73 @@ export const BarniaBazar = () => {
                       />
                     </div>
 
-                    <div className="bg-zinc-50 p-4 rounded-2xl space-y-3">
-                      <p className="text-xs font-bold text-zinc-500 uppercase">Add First Product (Optional)</p>
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-zinc-500 uppercase">{t.bazar.imageLabel}</label>
+                      <div className="flex gap-4 items-center">
+                        <div className="w-16 h-12 rounded-lg bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-200">
+                          {newShop.imageUrl ? (
+                            <img 
+                              src={newShop.imageUrl} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => (e.currentTarget.src = 'https://picsum.photos/200')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-300">
+                              <Camera size={20} />
+                            </div>
+                          )}
+                        </div>
                         <input
                           type="text"
-                          placeholder="Product Name"
-                          value={newShop.productName}
-                          onChange={(e) => setNewShop({ ...newShop, productName: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Price (e.g. ₹50/kg)"
-                          value={newShop.productPrice}
-                          onChange={(e) => setNewShop({ ...newShop, productPrice: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                          value={newShop.imageUrl}
+                          onChange={(e) => setNewShop({ ...newShop, imageUrl: e.target.value })}
+                          className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          placeholder={t.bazar.imagePlaceholder}
                         />
                       </div>
+                    </div>
+
+                    <div className="bg-zinc-50 p-4 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-zinc-500 uppercase">{t.bazar.productLabel}</p>
+                        <button 
+                          type="button"
+                          onClick={handleAddProduct}
+                          className="text-emerald-600 hover:text-emerald-700 p-1 rounded-lg hover:bg-emerald-50 transition-all"
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                        {newShop.products.map((product, index) => (
+                          <div key={index} className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder={t.bazar.productNamePlaceholder}
+                              value={product.name}
+                              onChange={(e) => handleProductChange(index, 'name', e.target.value)}
+                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                            />
+                            <input
+                              type="text"
+                              placeholder={t.bazar.productPricePlaceholder}
+                              value={product.price}
+                              onChange={(e) => handleProductChange(index, 'price', e.target.value)}
+                              className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={handleAddProduct}
+                        className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 hover:border-emerald-200 hover:text-emerald-600 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus size={14} />
+                        {t.bazar.addProduct}
+                      </button>
                     </div>
 
                     <button

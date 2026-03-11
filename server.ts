@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -22,7 +23,80 @@ async function startServer() {
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
 
+  // In-memory store for collaboration requests (resets on restart)
+  const collabRequests: any[] = [];
+  // In-memory store for user-added influencers (resets on restart)
+  const userInfluencers: any[] = [];
+  // In-memory store for user-added shops (resets on restart)
+  const userShops: any[] = [];
+
   // API Routes
+  app.get("/api/influencers", (req, res) => {
+    res.json(userInfluencers);
+  });
+
+  app.post("/api/influencers", (req, res) => {
+    const influencer = {
+      ...req.body,
+      id: Math.random().toString(36).substr(2, 9)
+    };
+    userInfluencers.push(influencer);
+    res.json({ success: true, influencer });
+  });
+
+  app.get("/api/shops", (req, res) => {
+    res.json(userShops);
+  });
+
+  app.post("/api/shops", (req, res) => {
+    const shop = {
+      ...req.body,
+      id: Math.random().toString(36).substr(2, 9)
+    };
+    userShops.push(shop);
+    res.json({ success: true, shop });
+  });
+
+  app.get("/api/collab-requests", (req, res) => {
+    res.json(collabRequests);
+  });
+
+  app.post("/api/collab-request", async (req, res) => {
+    const { fromName, toInfluencerId, toInfluencerName, message } = req.body;
+    
+    const newRequest = {
+      id: Math.random().toString(36).substr(2, 9),
+      fromName,
+      toInfluencerId,
+      toInfluencerName,
+      message,
+      timestamp: new Date().toISOString()
+    };
+
+    collabRequests.push(newRequest);
+
+    // Also send an email notification
+    try {
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: RECIPIENT,
+          subject: `New Collaboration Request for ${toInfluencerName}`,
+          text: `
+            From: ${fromName}
+            To: ${toInfluencerName}
+            Message: ${message}
+            Time: ${newRequest.timestamp}
+          `,
+        });
+      }
+    } catch (error) {
+      console.error("Error sending collab email:", error);
+    }
+
+    res.json({ success: true, request: newRequest });
+  });
+
   app.post("/api/notify", async (req, res) => {
     const { type, data } = req.body;
     
@@ -79,6 +153,10 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static("dist"));
+    // Catch-all route for SPA
+    app.get("*", (req, res) => {
+      res.sendFile(path.resolve("dist", "index.html"));
+    });
   }
 
   app.listen(PORT, "0.0.0.0", () => {

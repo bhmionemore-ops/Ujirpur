@@ -6,6 +6,7 @@ import { useLanguage } from '../LanguageContext';
 export const CollaborationTools = () => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'messages' | 'planning' | 'projects'>('messages');
+  const [messages, setMessages] = useState<any[]>(t.data.collab.messages);
 
   return (
     <section className="py-16 px-4 max-w-7xl mx-auto">
@@ -69,7 +70,7 @@ export const CollaborationTools = () => {
                   </div>
                 </div>
                 <div className="flex-1 space-y-4 mb-6 overflow-y-auto max-h-[400px]">
-                  {t.data.collab.messages.map((msg: any, i: number) => (
+                  {messages.map((msg: any, i: number) => (
                     <div key={i} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`${msg.isMe ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-zinc-100 rounded-tl-none'} p-4 rounded-2xl max-w-[80%] text-sm`}>
                         {msg.text}
@@ -89,6 +90,15 @@ export const CollaborationTools = () => {
                         const message = input.value;
                         if (!message) return;
                         
+                        setMessages(prev => [...prev, { text: message, isMe: true }]);
+
+                        // Check for contact keywords
+                        const contactKeywords = [
+                          'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
+                          'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
+                        ];
+                        const needsContact = contactKeywords.some(keyword => message.toLowerCase().includes(keyword));
+
                         // Send notification to backend
                         fetch('/api/notify', {
                           method: 'POST',
@@ -100,7 +110,13 @@ export const CollaborationTools = () => {
                         }).catch(err => console.error('Failed to send notification:', err));
                         
                         input.value = '';
-                        alert('Message sent to admin!');
+                        
+                        setTimeout(() => {
+                          setMessages(prev => [...prev, { 
+                            text: needsContact ? t.data.chat.contactInfo : t.data.chat.genericReply, 
+                            isMe: false 
+                          }]);
+                        }, 1000);
                       }
                     }}
                   />
@@ -110,6 +126,14 @@ export const CollaborationTools = () => {
                       const message = input.value;
                       if (!message) return;
                       
+                      setMessages(prev => [...prev, { text: message, isMe: true }]);
+
+                      const contactKeywords = [
+                        'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
+                        'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
+                      ];
+                      const needsContact = contactKeywords.some(keyword => message.toLowerCase().includes(keyword));
+
                       fetch('/api/notify', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -120,7 +144,13 @@ export const CollaborationTools = () => {
                       }).catch(err => console.error('Failed to send notification:', err));
                       
                       input.value = '';
-                      alert('Message sent to admin!');
+                      
+                      setTimeout(() => {
+                        setMessages(prev => [...prev, { 
+                          text: needsContact ? t.data.chat.contactInfo : t.data.chat.genericReply, 
+                          isMe: false 
+                        }]);
+                      }, 1000);
                     }}
                     className="bg-emerald-600 text-white p-3 rounded-xl hover:bg-emerald-700 transition-colors"
                   >
