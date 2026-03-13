@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "influencer": {
+      "title": "Influencer",
+      "description": "A local influencer or content creator.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "followers": { "type": "string" },
+        "bio": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "socialLinks": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "uid": { "type": "string" }
+      },
+      "required": ["name", "category", "bio", "uid"]
+    },
+    "shop": {
+      "title": "Shop",
+      "description": "A local shop or business in Barnia Bazar.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "contact": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "uid": { "type": "string" }
+      },
+      "required": ["name", "category", "description", "uid"]
+    },
+    "news": {
+      "title": "News",
+      "description": "A local news item.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "fullContent": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "date", "category"]
+    },
+    "user": {
+      "title": "User",
+      "description": "A user of the application.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    },
+    "message": {
+      "title": "Message",
+      "description": "A message in the collaboration tools.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderId", "senderName"]
+    },
+    "support_message": {
+      "title": "Support Message",
+      "description": "A message in the live support chat.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "isBot": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "sessionId"]
+    }
+  },
+  "firestore": {
+    "/influencers/{influencerId}": {
+      "schema": "influencer",
+      "description": "Collection of local influencers."
+    },
+    "/shops/{shopId}": {
+      "schema": "shop",
+      "description": "Collection of local shops in Barnia Bazar."
+    },
+    "/news/{newsId}": {
+      "schema": "news",
+      "description": "Collection of local news items."
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles and roles."
+    },
+    "/messages/{messageId}": {
+      "schema": "message",
+      "description": "Collaboration messages."
+    },
+    "/support_messages/{messageId}": {
+      "schema": "support_message",
+      "description": "Support chat messages."
+    }
+  }
+}

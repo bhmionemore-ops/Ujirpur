@@ -19,9 +19,11 @@ export const translations = {
     news: {
       title: 'উজিরপুর বার্নিয়া দৈনিক',
       live: 'লাইভ আপডেট',
+      trending: 'ট্রেন্ডিং নিউজ (ভারত)',
       lastChecked: 'শেষ চেক করা হয়েছে',
       category: 'বিভাগ',
       readMore: 'আরও পড়ুন',
+      loadMore: 'আরও খবর দেখুন',
       share: 'শেয়ার করুন',
     },
     bazar: {
@@ -163,9 +165,11 @@ export const translations = {
     news: {
       title: 'Ujirpur Barnia Daily',
       live: 'Live Updates',
+      trending: 'Trending News (India)',
       lastChecked: 'Last Checked',
       category: 'Category',
       readMore: 'Read More',
+      loadMore: 'Load More News',
       share: 'Share',
     },
     bazar: {
@@ -217,52 +221,8 @@ export const translations = {
       rights: 'All rights reserved.',
     },
     data: {
-      influencers: [
-        {
-          id: '1',
-          name: 'Arjun Das',
-          bio: 'Travel blogger exploring the hidden gems of Nadia.',
-          socials: ['instagram.com/arjun', 'youtube.com/arjun', 'facebook.com/arjun'],
-          avatar: 'https://picsum.photos/seed/influencer1/200/200'
-        },
-        {
-          id: '2',
-          name: 'Priya Sen',
-          bio: 'Foodie and local culture enthusiast.',
-          socials: ['instagram.com/priya', 'twitter.com/priya', 'tiktok.com/priya'],
-          avatar: 'https://picsum.photos/seed/influencer2/200/200'
-        }
-      ],
-      shops: [
-        {
-          id: '1',
-          name: 'Mondal Grocery Store',
-          owner: 'Subhash Mondal',
-          category: 'Grocery',
-          location: 'Main Road, Barnia',
-          phone: '+91 98765 43210',
-          image: 'https://picsum.photos/seed/shop1/400/300',
-          products: [
-            { name: 'Rice (Minikit)', price: '₹52/kg' },
-            { name: 'Mustard Oil', price: '₹165/L' },
-            { name: 'Sugar', price: '₹44/kg' }
-          ]
-        },
-        {
-          id: '2',
-          name: 'Barnia Variety Store',
-          owner: 'Rajesh Saha',
-          category: 'Stationery',
-          location: 'Bazar Area, Barnia',
-          phone: '+91 98765 43211',
-          image: 'https://picsum.photos/seed/shop2/400/300',
-          products: [
-            { name: 'Notebook (A4)', price: '₹60' },
-            { name: 'Pen Set', price: '₹50' },
-            { name: 'School Bag', price: '₹450' }
-          ]
-        }
-      ],
+      influencers: [],
+      shops: [],
       collab: {
         chatWith: 'Chat with Arjun Das',
         online: 'Online',

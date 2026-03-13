@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Banner } from './components/Banner';
 import { NewsFeed } from './components/NewsFeed';
 import { BarniaBazar } from './components/BarniaBazar';
 import { InfluencerSection } from './components/InfluencerSection';
 import { CollaborationTools } from './components/CollaborationTools';
 import { LiveChatWidget } from './components/LiveChatWidget';
+import { AuthModal } from './components/AuthModal';
 import { useLanguage } from './LanguageContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages } from 'lucide-react';
+import { useFirebase } from './FirebaseContext';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut } from 'lucide-react';
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
+  const { user, signOut, isAuthModalOpen, setAuthModalOpen } = useFirebase();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#FFF9F0] font-sans text-zinc-900">
@@ -25,20 +29,70 @@ export default function App() {
             />
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-600">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="hidden lg:flex items-center gap-6 text-sm font-medium text-zinc-600">
               <a href="#bazar" className="hover:text-orange-600 transition-colors">{t.nav.bazar}</a>
               <a href="#news" className="hover:text-orange-600 transition-colors">{t.nav.news}</a>
               <a href="#influencers" className="hover:text-orange-600 transition-colors">{t.nav.influencers}</a>
               <a href="#collab" className="hover:text-orange-600 transition-colors">{t.nav.collab}</a>
             </div>
-            <button 
-              onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100 hover:bg-orange-200 transition-colors text-xs font-bold text-orange-800"
-            >
-              <Languages size={14} />
-              {language === 'bn' ? 'English' : 'বাংলা'}
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-100 hover:bg-orange-200 transition-colors text-xs font-bold text-orange-800"
+              >
+                <Languages size={14} />
+                <span className="hidden xs:inline">{language === 'bn' ? 'English' : 'বাংলা'}</span>
+              </button>
+
+              {user ? (
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 p-1 pr-3 rounded-full bg-white border border-orange-200 hover:border-orange-400 transition-all"
+                  >
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white">
+                        <UserIcon size={16} />
+                      </div>
+                    )}
+                    <span className="text-xs font-bold hidden sm:block max-w-[100px] truncate">
+                      {user.displayName || user.email?.split('@')[0]}
+                    </span>
+                  </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-zinc-100 py-2 z-50 overflow-hidden">
+                      <div className="px-4 py-2 border-b border-zinc-50 mb-1">
+                        <p className="text-xs font-bold text-zinc-900 truncate">{user.displayName || 'User'}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">{user.email}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          signOut();
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={14} />
+                        {language === 'bn' ? 'লগআউট' : 'Sign Out'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setAuthModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600 hover:bg-orange-700 transition-all text-xs font-bold text-white shadow-lg shadow-orange-600/20"
+                >
+                  <LogIn size={14} />
+                  {language === 'bn' ? 'লগইন' : 'Login'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -63,6 +117,7 @@ export default function App() {
         </div>
       </main>
 
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
       <LiveChatWidget />
 
       {/* Footer */}

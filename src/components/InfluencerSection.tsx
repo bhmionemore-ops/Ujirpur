@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
-  Instagram, Twitter, Facebook, Youtube, Linkedin, Github
+  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { shareContent } from '../utils';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
+import { useFirebase } from '../FirebaseContext';
+import { Trash2, XCircle } from 'lucide-react';
 
 interface Influencer {
   id: string;
@@ -13,6 +17,7 @@ interface Influencer {
   bio: string;
   socials: string[];
   avatar: string;
+  uid?: string;
 }
 
 interface CollabRequest {
@@ -21,7 +26,8 @@ interface CollabRequest {
   toInfluencerId: string;
   toInfluencerName: string;
   message: string;
-  timestamp: string;
+  timestamp: any;
+  toUid?: string;
 }
 
 const getSocialIcon = (url: string) => {
@@ -37,14 +43,16 @@ const getSocialIcon = (url: string) => {
 
 export const InfluencerSection = () => {
   const { t } = useLanguage();
+  const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
-  const influencers = [...t.data.influencers, ...userInfluencers];
+  const influencers = userInfluencers;
 
   const [showForm, setShowForm] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [requests, setRequests] = useState<CollabRequest[]>([]);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestSentId, setRequestSentId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [newInfluencer, setNewInfluencer] = useState({
     name: '',
@@ -61,88 +69,97 @@ export const InfluencerSection = () => {
   });
 
   useEffect(() => {
-    fetchRequests();
-    fetchInfluencers();
-  }, []);
+    // Listen to influencers
+    const qInf = query(collection(db, 'influencers'), orderBy('createdAt', 'desc'));
+    const unsubInf = onSnapshot(qInf, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Influencer[];
+      setUserInfluencers(items);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'influencers'));
 
-  const fetchRequests = async () => {
-    try {
-      const res = await fetch('/api/collab-requests');
-      const data = await res.json();
-      setRequests(data);
-    } catch (err) {
-      console.error('Failed to fetch requests:', err);
+    // Listen to collab requests (only if logged in)
+    let unsubReq = () => {};
+    if (user) {
+      const qReq = query(collection(db, 'collab_requests'), where('toUid', '==', user.uid), orderBy('timestamp', 'desc'));
+      unsubReq = onSnapshot(qReq, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as CollabRequest[];
+        setRequests(items);
+      }, (error) => {
+        // Silently fail if collection doesn't exist or rules deny
+        console.warn("Collab requests listener error:", error);
+      });
     }
-  };
 
-  const fetchInfluencers = async () => {
-    try {
-      const res = await fetch('/api/influencers');
-      const data = await res.json();
-      setUserInfluencers(data);
-    } catch (err) {
-      console.error('Failed to fetch influencers:', err);
-    }
-  };
+    return () => {
+      unsubInf();
+      unsubReq();
+    };
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     const influencerData = {
       name: newInfluencer.name,
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
-      avatar: newInfluencer.avatarUrl || `https://picsum.photos/seed/${Math.random()}/200/200`
+      avatar: newInfluencer.avatarUrl || `https://picsum.photos/seed/${Math.random()}/200/200`,
+      uid: user.uid,
+      createdAt: serverTimestamp(),
+      category: 'Influencer'
     };
 
     try {
-      const res = await fetch('/api/influencers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(influencerData)
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        setUserInfluencers([...userInfluencers, data.influencer]);
-        
-        // Send notification to backend
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'influencer', data: data.influencer })
-        }).catch(err => console.error('Failed to send notification:', err));
-
-        setShowForm(false);
-        setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
-      }
+      await addDoc(collection(db, 'influencers'), influencerData);
+      setShowForm(false);
+      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
     } catch (err) {
-      console.error('Failed to save influencer:', err);
+      handleFirestoreError(err, OperationType.CREATE, 'influencers');
     }
   };
 
   const handleCollabRequest = async (e: React.FormEvent, influencer: Influencer) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/collab-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromName: collabForm.fromName,
-          toInfluencerId: influencer.id,
-          toInfluencerName: influencer.name,
-          message: collabForm.message
-        })
+      await addDoc(collection(db, 'collab_requests'), {
+        fromName: collabForm.fromName,
+        toInfluencerId: influencer.id,
+        toInfluencerName: influencer.name,
+        message: collabForm.message,
+        timestamp: serverTimestamp(),
+        toUid: influencer.uid || null,
+        fromUid: user?.uid || null
       });
       
-      if (res.ok) {
-        setRequestSentId(influencer.id);
-        setCollabForm({ fromName: '', message: '' });
-        setRequestingId(null);
-        fetchRequests();
-        setTimeout(() => setRequestSentId(null), 3000);
-      }
+      setRequestSentId(influencer.id);
+      setCollabForm({ fromName: '', message: '' });
+      setRequestingId(null);
+      setTimeout(() => setRequestSentId(null), 3000);
     } catch (err) {
-      console.error('Failed to send collab request:', err);
+      handleFirestoreError(err, OperationType.CREATE, 'collab_requests');
+    }
+  };
+
+  const handleDeleteInfluencer = async (id: string) => {
+    if (!window.confirm(language === 'bn' ? 'আপনি কি নিশ্চিত যে আপনি এই প্রোফাইলটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this profile?')) return;
+    try {
+      await deleteDoc(doc(db, 'influencers', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'influencers');
+    }
+  };
+
+  const handleDeleteRequest = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'collab_requests', id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'collab_requests');
     }
   };
 
@@ -157,30 +174,38 @@ export const InfluencerSection = () => {
             <p className="text-zinc-500 mt-2">{t.influencers.subtitle}</p>
           </div>
           <div className="flex gap-4">
+            {user && (
+              <button
+                onClick={() => setShowRequests(!showRequests)}
+                className="bg-white text-zinc-900 border border-zinc-200 px-6 py-3 rounded-xl font-medium hover:bg-zinc-50 transition-colors flex items-center gap-2 w-fit relative"
+              >
+                <Inbox size={20} />
+                {t.influencers.requests}
+                {requests.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+            )}
             <button
-              onClick={() => setShowRequests(!showRequests)}
-              className="bg-white text-zinc-900 border border-zinc-200 px-6 py-3 rounded-xl font-medium hover:bg-zinc-50 transition-colors flex items-center gap-2 w-fit relative"
-            >
-              <Inbox size={20} />
-              {t.influencers.requests}
-              {requests.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                  {requests.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                if (!user) {
+                  setAuthModalOpen(true);
+                } else {
+                  setShowForm(!showForm);
+                }
+              }}
               className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2 w-fit"
             >
-              <UserPlus size={20} />
-              {t.influencers.join}
+              {user ? <UserPlus size={20} /> : <LogIn size={20} />}
+              {user ? t.influencers.join : (language === 'bn' ? 'লগইন করুন' : 'Login to Join')}
             </button>
           </div>
         </div>
 
         <AnimatePresence>
-          {showRequests && (
+          {showRequests && user && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -199,15 +224,26 @@ export const InfluencerSection = () => {
               ) : (
                 <div className="space-y-4">
                   {requests.map((req) => (
-                    <div key={req.id} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-orange-600">{req.fromName}</h4>
-                        <span className="text-[10px] text-zinc-400">{new Date(req.timestamp).toLocaleDateString()}</span>
+                    <div key={req.id} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100 flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-orange-600">{req.fromName}</h4>
+                          <span className="text-[10px] text-zinc-400">
+                            {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleDateString() : 'Just now'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-zinc-600 mb-2">
+                          <span className="font-semibold text-zinc-900">To:</span> {req.toInfluencerName}
+                        </p>
+                        <p className="text-sm text-zinc-500 italic">"{req.message}"</p>
                       </div>
-                      <p className="text-sm text-zinc-600 mb-2">
-                        <span className="font-semibold text-zinc-900">To:</span> {req.toInfluencerName}
-                      </p>
-                      <p className="text-sm text-zinc-500 italic">"{req.message}"</p>
+                      <button 
+                        onClick={() => handleDeleteRequest(req.id)}
+                        className="ml-4 p-2 text-zinc-300 hover:text-red-500 transition-colors"
+                        title="Delete Request"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -215,7 +251,7 @@ export const InfluencerSection = () => {
             </motion.div>
           )}
 
-          {showForm && (
+          {showForm && user && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -326,7 +362,37 @@ export const InfluencerSection = () => {
         </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {influencers.map((inf) => (
+          {influencers.length === 0 ? (
+            <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-zinc-100 shadow-sm">
+              <UserPlus size={48} className="mx-auto text-zinc-200 mb-4" />
+              <h3 className="text-xl font-bold text-zinc-900 mb-2">
+                {language === 'bn' ? 'কোন ইনফ্লুয়েন্সার পাওয়া যায়নি' : 'No Influencers Found'}
+              </h3>
+              <p className="text-zinc-500 max-w-md mx-auto mb-8">
+                {language === 'bn' 
+                  ? 'আমাদের নেটওয়ার্কে প্রথম ইনফ্লুয়েন্সার হিসেবে যোগ দিন এবং আপনার প্রতিভা সবার সাথে শেয়ার করুন!' 
+                  : 'Be the first to join our network and share your talent with the community!'}
+              </p>
+              {!user ? (
+                <button 
+                  onClick={signIn}
+                  className="bg-zinc-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 mx-auto"
+                >
+                  <LogIn size={20} />
+                  {language === 'bn' ? 'লগইন করে যোগ দিন' : 'Login to Join'}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setShowForm(true)}
+                  className="bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center gap-2 mx-auto"
+                >
+                  <UserPlus size={20} />
+                  {t.influencers.join}
+                </button>
+              )}
+            </div>
+          ) : (
+            influencers.map((inf) => (
             <div key={inf.id} className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <img
@@ -335,12 +401,22 @@ export const InfluencerSection = () => {
                   className="w-20 h-20 rounded-full object-cover border-2 border-orange-100"
                   referrerPolicy="no-referrer"
                 />
-                <button 
-                  onClick={() => shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`)}
-                  className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
-                >
-                  <Share2 size={18} />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`)}
+                    className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                  >
+                    <Share2 size={18} />
+                  </button>
+                  {(isAdmin || (user && inf.uid === user.uid)) && (
+                    <button 
+                      onClick={() => handleDeleteInfluencer(inf.id)}
+                      className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
               </div>
               <h4 className="text-lg font-bold text-zinc-900">{inf.name}</h4>
               <p className="text-zinc-500 text-sm mb-4 line-clamp-2">{inf.bio}</p>
@@ -415,7 +491,7 @@ export const InfluencerSection = () => {
                 )}
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </section>

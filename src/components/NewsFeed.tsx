@@ -1,36 +1,118 @@
 import React, { useEffect, useState } from 'react';
-import { generateLocalNews, NewsItem } from '../services/gemini';
-import { Calendar, Tag, ChevronRight, RefreshCw, Share2, X } from 'lucide-react';
+import { generateLocalNews, generateTrendingNews, NewsItem, FALLBACK_NEWS } from '../services/gemini';
+import { Calendar, Tag, ChevronRight, RefreshCw, Share2, X, AlertCircle, TrendingUp, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { shareContent } from '../utils';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
+import { useFirebase } from '../FirebaseContext';
 
 export const NewsFeed = () => {
   const { language, t } = useLanguage();
+  const { isAdmin, user } = useFirebase();
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [trending, setTrending] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trendingLoading, setTrendingLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
-
-  const fetchNews = async () => {
-    setRefreshing(true);
-    const items = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", language);
-    setNews(items);
-    setLoading(false);
-    setRefreshing(false);
-  };
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [newsLimit, setNewsLimit] = useState(10);
 
   useEffect(() => {
-    fetchNews();
+    const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'), limit(newsLimit));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as NewsItem[];
+      
+      if (items.length === 0) {
+        setNews(FALLBACK_NEWS[language]);
+      } else {
+        setNews(items);
+      }
+      if (items.length > 0 && items[0].createdAt) {
+        const timestamp = (items[0] as any).createdAt;
+        if (timestamp && typeof timestamp.toDate === 'function') {
+          setLastUpdated(timestamp.toDate());
+        }
+      }
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'news');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [newsLimit, language]);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      setTrendingLoading(true);
+      try {
+        const items = await generateTrendingNews(language);
+        setTrending(items);
+      } catch (error) {
+        console.error("Error fetching trending news:", error);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+    fetchTrending();
   }, [language]);
 
-  const isUsingFallback = news.some(item => item.isFallback);
+  const getRelativeTime = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-  if (loading) {
+    if (language === 'bn') {
+      if (minutes < 1) return 'এইমাত্র';
+      if (minutes < 60) return `${minutes} মিনিট আগে`;
+      if (hours < 24) return `${hours} ঘণ্টা আগে`;
+      return `${days} দিন আগে`;
+    } else {
+      if (minutes < 1) return 'Just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      return `${days}d ago`;
+    }
+  };
+
+  const fetchAndSaveNews = async () => {
+    if (!isAdmin) return;
+    
+    setRefreshing(true);
+    try {
+      const items = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", language);
+      
+      const batch = writeBatch(db);
+      items.forEach((item) => {
+        const newDocRef = doc(collection(db, 'news'));
+        batch.set(newDocRef, {
+          ...item,
+          createdAt: serverTimestamp(),
+          isFallback: false
+        });
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error generating/saving news:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (loading && news.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center py-20 gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
-        <p className="text-zinc-500 font-medium animate-pulse text-sm">Searching for real local news...</p>
+        <p className="text-zinc-500 font-medium animate-pulse text-sm">Loading live news...</p>
       </div>
     );
   }
@@ -40,99 +122,183 @@ export const NewsFeed = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`flex h-2 w-2 rounded-full ${isUsingFallback ? 'bg-amber-500' : 'bg-orange-500 animate-ping'}`}></span>
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${isUsingFallback ? 'text-amber-600' : 'text-orange-600'}`}>
-              {isUsingFallback ? (language === 'bn' ? 'আর্কাইভ' : 'ARCHIVE') : t.news.live}
+            <span className={`flex h-2 w-2 rounded-full ${news.length === 0 ? 'bg-amber-500' : 'bg-orange-500 animate-ping'}`}></span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${news.length === 0 ? 'text-amber-600' : 'text-orange-600'}`}>
+              {news.length === 0 ? (language === 'bn' ? 'কোন খবর নেই' : 'NO NEWS') : t.news.live}
             </span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 border-l-4 border-orange-500 pl-4">
             {t.news.title}
           </h2>
-          {isUsingFallback && (
-            <p className="text-xs text-amber-600 mt-2 italic">
-              {language === 'bn' 
-                ? '* উচ্চ ট্র্যাফিকের কারণে বর্তমানে আর্কাইভ করা খবর দেখানো হচ্ছে।' 
-                : '* Currently showing archived news due to high traffic.'}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-xs text-zinc-400 font-mono">
-            {t.news.lastChecked}: {new Date().toLocaleTimeString()}
-          </span>
-          <button 
-            onClick={fetchNews}
-            disabled={refreshing}
-            className={`p-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-all text-zinc-600 ${refreshing ? 'animate-spin' : ''}`}
-            title="Refresh News"
-          >
-            <RefreshCw size={18} />
-          </button>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+              {t.news.lastChecked}
+            </span>
+            <span className="text-xs text-orange-600 font-mono font-bold">
+              {lastUpdated ? getRelativeTime(lastUpdated) : new Date().toLocaleTimeString()}
+            </span>
+          </div>
+          {isAdmin && (
+            <button 
+              onClick={fetchAndSaveNews}
+              disabled={refreshing}
+              className={`p-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-all text-zinc-600 ${refreshing ? 'animate-spin' : ''}`}
+              title="Generate Live News"
+            >
+              <RefreshCw size={18} />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {news.map((item, index) => (
-          <motion.article
-            key={item.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm hover:shadow-xl transition-all duration-300"
-          >
-            <div className="relative h-48 overflow-hidden">
-              <img
-                src={item.imageUrl || `https://picsum.photos/seed/${item.title.length}/800/600`}
-                alt={item.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                  <Tag size={12} />
-                  {item.category}
-                </span>
-                {item.isFallback && (
-                  <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider w-fit">
-                    {language === 'bn' ? 'আর্কাইভ' : 'ARCHIVE'}
-                  </span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Main News Column */}
+        <div className="lg:col-span-8 space-y-8">
+          {news.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-zinc-100 shadow-sm">
+              <div className="inline-flex p-4 bg-amber-50 rounded-full text-amber-500 mb-6">
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-2">
+                {language === 'bn' ? 'কোন খবর পাওয়া যায়নি' : 'No news found'}
+              </h3>
+              <p className="text-zinc-500 text-sm max-w-md mx-auto">
+                {language === 'bn' ? 'এই মুহূর্তে কোন খবর নেই। অনুগ্রহ করে পরে আবার চেষ্টা করুন।' : 'There are no news items available at the moment. Please check back later.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {news.map((item, index) => (
+                <motion.article
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="group bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={item.imageUrl || `https://picsum.photos/seed/${item.title.length}/800/600`}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1">
+                        <Tag size={10} />
+                        {item.category}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 text-zinc-400 text-[10px] mb-2">
+                      <Calendar size={12} />
+                      {item.date}
+                    </div>
+                    <h3 className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-zinc-600 text-xs leading-relaxed mb-4 line-clamp-2">
+                      {item.content}
+                    </p>
+                    <button 
+                      onClick={() => setSelectedNews(item)}
+                      className="flex items-center gap-1 text-orange-600 font-bold text-xs group-hover:gap-2 transition-all"
+                    >
+                      {t.news.readMore} <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {news.length >= newsLimit && (
+            <div className="flex justify-center pt-8">
+              <button
+                onClick={() => setNewsLimit(prev => prev + 10)}
+                className="flex items-center gap-2 px-8 py-3 bg-white border border-orange-200 text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-all shadow-sm"
+              >
+                <Plus size={18} />
+                {t.news.loadMore}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Trending News Sidebar */}
+        <div className="lg:col-span-4">
+          <div className="sticky top-24">
+            <div className="bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-zinc-800">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-orange-500 rounded-lg">
+                  <TrendingUp size={20} className="text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-tight">
+                  {t.news.trending}
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                {trendingLoading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="animate-pulse flex flex-col gap-2">
+                      <div className="h-4 bg-zinc-800 rounded w-full"></div>
+                      <div className="h-4 bg-zinc-800 rounded w-2/3"></div>
+                    </div>
+                  ))
+                ) : trending.length === 0 ? (
+                  <p className="text-zinc-500 text-sm italic">No trending news found.</p>
+                ) : (
+                  trending.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={() => setSelectedNews(item)}
+                      className="group cursor-pointer p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700 hover:bg-zinc-800 hover:border-orange-500/50 transition-all"
+                    >
+                      <div className="flex gap-4">
+                        <span className="text-2xl font-black text-zinc-700 group-hover:text-orange-500/30 transition-colors">
+                          {(index + 1).toString().padStart(2, '0')}
+                        </span>
+                        <h4 className="text-sm font-bold text-zinc-100 group-hover:text-white leading-snug">
+                          {item.title}
+                        </h4>
+                      </div>
+                    </motion.div>
+                  ))
                 )}
               </div>
             </div>
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-zinc-400 text-xs mb-3">
-                <Calendar size={14} />
-                {item.date}
-              </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-3 group-hover:text-orange-600 transition-colors">
-                {item.title}
-              </h3>
-              <p className="text-zinc-600 text-sm leading-relaxed mb-6 line-clamp-3">
-                {item.content}
-              </p>
-              <div className="flex items-center justify-between mt-6">
-                <button 
-                  onClick={() => setSelectedNews(item)}
-                  className="flex items-center gap-1 text-orange-600 font-semibold text-sm group-hover:gap-2 transition-all"
-                >
-                  {t.news.readMore} <ChevronRight size={16} />
-                </button>
-                <button 
-                  onClick={() => shareContent(item.title, item.content, window.location.href)}
-                  className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
-                >
-                  <Share2 size={18} />
+
+            {/* Newsletter or Ad Box */}
+            <div className="mt-8 p-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl text-white shadow-xl shadow-orange-500/20">
+              <h4 className="text-xl font-bold mb-2">Stay Updated!</h4>
+              <p className="text-orange-100 text-sm mb-6">Get the latest news directly in your inbox.</p>
+              <div className="flex gap-2">
+                <input 
+                  type="email" 
+                  placeholder="Email address"
+                  className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm w-full outline-none focus:bg-white/20"
+                />
+                <button className="bg-white text-orange-600 p-2 rounded-xl hover:bg-orange-50 transition-all">
+                  <ChevronRight size={20} />
                 </button>
               </div>
             </div>
-          </motion.article>
-        ))}
+          </div>
+        </div>
       </div>
 
       {/* News Detail Modal */}
       <AnimatePresence>
         {selectedNews && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

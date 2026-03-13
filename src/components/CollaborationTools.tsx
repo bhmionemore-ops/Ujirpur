@@ -1,12 +1,76 @@
-import React, { useState } from 'react';
-import { MessageSquare, Calendar, Layout, Plus, Send, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Calendar, Layout, Plus, Send, User, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirebase } from '../FirebaseContext';
 
 export const CollaborationTools = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user, signIn, setAuthModalOpen } = useFirebase();
   const [activeTab, setActiveTab] = useState<'messages' | 'planning' | 'projects'>('messages');
-  const [messages, setMessages] = useState<any[]>(t.data.collab.messages);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === 'messages' && user) {
+      const q = query(collection(db, 'messages'), orderBy('createdAt', 'asc'), limit(50));
+      const unsub = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setMessages(items);
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 100);
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
+      return () => unsub();
+    } else if (activeTab === 'messages' && !user) {
+      setMessages([]);
+    }
+  }, [activeTab, user]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim() || !user) return;
+
+    const messageText = newMessage;
+    setNewMessage('');
+
+    try {
+      await addDoc(collection(db, 'messages'), {
+        text: messageText,
+        senderId: user.uid,
+        senderName: user.displayName || 'User',
+        createdAt: serverTimestamp()
+      });
+
+      // Automated reply logic
+      const contactKeywords = [
+        'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
+        'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
+      ];
+      const needsContact = contactKeywords.some(keyword => messageText.toLowerCase().includes(keyword));
+
+      if (needsContact) {
+        setTimeout(async () => {
+          await addDoc(collection(db, 'messages'), {
+            text: t.data.chat.contactInfo,
+            senderId: 'system',
+            senderName: 'Assistant',
+            createdAt: serverTimestamp()
+          });
+        }, 1500);
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'messages');
+    }
+  };
 
   return (
     <section className="py-16 px-4 max-w-7xl mx-auto">
@@ -58,105 +122,95 @@ export const CollaborationTools = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="h-full flex flex-col"
               >
-                <div className="flex items-center justify-between mb-8 border-bottom pb-4">
+                <div className="flex items-center justify-between mb-8 border-b border-zinc-100 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                       <User size={20} />
                     </div>
                     <div>
-                      <h4 className="font-bold">{t.data.collab.chatWith}</h4>
+                      <h4 className="font-bold">{t.collab.chat}</h4>
                       <p className="text-xs text-orange-500 font-medium">{t.data.collab.online}</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 space-y-4 mb-6 overflow-y-auto max-h-[400px]">
-                  {messages.map((msg: any, i: number) => (
-                    <div key={i} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`${msg.isMe ? 'bg-orange-600 text-white rounded-tr-none' : 'bg-zinc-100 rounded-tl-none'} p-4 rounded-2xl max-w-[80%] text-sm`}>
-                        {msg.text}
+                <div 
+                  ref={scrollRef}
+                  className="flex-1 space-y-4 mb-6 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar"
+                >
+                  {!user ? (
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-400 gap-4">
+                      <LogIn size={48} className="opacity-20" />
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-zinc-900 mb-1">
+                          {language === 'bn' ? 'লগইন প্রয়োজন' : 'Login Required'}
+                        </p>
+                        <p className="text-xs">
+                          {language === 'bn' ? 'চ্যাটে অংশ নিতে অনুগ্রহ করে লগইন করুন' : 'Please login to participate in the chat'}
+                        </p>
                       </div>
+                      <button 
+                        onClick={() => setAuthModalOpen(true)}
+                        className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition-all"
+                      >
+                        {language === 'bn' ? 'লগইন করুন' : 'Login Now'}
+                      </button>
                     </div>
-                  ))}
+                  ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-400 gap-2">
+                      <MessageSquare size={32} className="opacity-20" />
+                      <p className="text-sm">{language === 'bn' ? 'এখনই চ্যাট শুরু করুন!' : 'Start the conversation!'}</p>
+                    </div>
+                  ) : (
+                    messages.map((msg: any, i: number) => {
+                      const isMe = user && msg.senderId === user.uid;
+                      const isSystem = msg.senderId === 'system';
+                      return (
+                        <div key={msg.id || i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className="flex flex-col max-w-[80%]">
+                            {!isMe && !isSystem && <span className="text-[10px] text-zinc-400 ml-2 mb-1">{msg.senderName}</span>}
+                            <div className={`${
+                              isMe ? 'bg-orange-600 text-white rounded-tr-none' : 
+                              isSystem ? 'bg-zinc-800 text-white rounded-tl-none' : 
+                              'bg-zinc-100 text-zinc-800 rounded-tl-none'
+                            } p-4 rounded-2xl text-sm shadow-sm`}>
+                              {msg.text}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    id="chat-input"
-                    placeholder={t.collab.placeholder}
-                    className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const input = e.currentTarget;
-                        const message = input.value;
-                        if (!message) return;
-                        
-                        setMessages(prev => [...prev, { text: message, isMe: true }]);
-
-                        // Check for contact keywords
-                        const contactKeywords = [
-                          'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
-                          'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
-                        ];
-                        const needsContact = contactKeywords.some(keyword => message.toLowerCase().includes(keyword));
-
-                        // Send notification to backend
-                        fetch('/api/notify', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            type: 'chat', 
-                            data: { sender: 'User', message } 
-                          })
-                        }).catch(err => console.error('Failed to send notification:', err));
-                        
-                        input.value = '';
-                        
-                        setTimeout(() => {
-                          setMessages(prev => [...prev, { 
-                            text: needsContact ? t.data.chat.contactInfo : t.data.chat.genericReply, 
-                            isMe: false 
-                          }]);
-                        }, 1000);
-                      }
-                    }}
-                  />
-                  <button 
-                    onClick={() => {
-                      const input = document.getElementById('chat-input') as HTMLInputElement;
-                      const message = input.value;
-                      if (!message) return;
-                      
-                      setMessages(prev => [...prev, { text: message, isMe: true }]);
-
-                      const contactKeywords = [
-                        'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
-                        'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
-                      ];
-                      const needsContact = contactKeywords.some(keyword => message.toLowerCase().includes(keyword));
-
-                      fetch('/api/notify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                          type: 'chat', 
-                          data: { sender: 'User', message } 
-                        })
-                      }).catch(err => console.error('Failed to send notification:', err));
-                      
-                      input.value = '';
-                      
-                      setTimeout(() => {
-                        setMessages(prev => [...prev, { 
-                          text: needsContact ? t.data.chat.contactInfo : t.data.chat.genericReply, 
-                          isMe: false 
-                        }]);
-                      }, 1000);
-                    }}
-                    className="bg-orange-600 text-white p-3 rounded-xl hover:bg-orange-700 transition-colors"
-                  >
-                    <Send size={20} />
-                  </button>
-                </div>
+                
+                {user ? (
+                  <form onSubmit={handleSendMessage} className="flex gap-3">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={t.collab.placeholder}
+                      className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!newMessage.trim()}
+                      className="bg-orange-600 text-white p-3 rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-50"
+                    >
+                      <Send size={20} />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="bg-zinc-50 p-6 rounded-2xl text-center border border-zinc-100">
+                    <p className="text-zinc-600 mb-4">{language === 'bn' ? 'চ্যাট করতে লগইন করুন' : 'Please login to join the conversation'}</p>
+                    <button 
+                      onClick={signIn}
+                      className="bg-zinc-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 mx-auto"
+                    >
+                      <LogIn size={18} />
+                      {language === 'bn' ? 'লগইন করুন' : 'Login'}
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
 

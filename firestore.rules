@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: influencers
+    // Fields: name, category, followers, bio, imageUrl, socialLinks, createdAt, uid
+    //
+    // Collection: shops
+    // Fields: name, category, location, description, imageUrl, contact, createdAt, uid
+    //
+    // Collection: news
+    // Fields: title, content, fullContent, date, category, imageUrl, sourceUrl, createdAt
+    //
+    // Collection: users
+    // Fields: displayName, email, photoURL, role, createdAt
+    //
+    // Collection: messages
+    // Fields: text, senderId, senderName, createdAt
+    //
+    // Collection: support_messages
+    // Fields: text, sessionId, isBot, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "okbgmi611@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['email', 'role']) &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidInfluencer(data) {
+      return hasRequiredFields(['name', 'category', 'bio', 'uid']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.bio is string && data.bio.size() > 0 && data.bio.size() < 1000 &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidShop(data) {
+      return hasRequiredFields(['name', 'category', 'description', 'uid']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 1000 &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidNews(data) {
+      return hasRequiredFields(['title', 'content', 'date', 'category']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 2000;
+    }
+
+    function isValidMessage(data) {
+      return hasRequiredFields(['text', 'senderId', 'senderName', 'createdAt']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 1000 &&
+             data.senderId == request.auth.uid;
+    }
+
+    function isValidSupportMessage(data) {
+      return hasRequiredFields(['text', 'sessionId', 'createdAt']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 1000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) && request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /influencers/{influencerId} {
+      allow read: if true; // Publicly viewable
+      allow create: if isAuthenticated() && isValidInfluencer(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidInfluencer(request.resource.data);
+      allow delete: if isAdmin() || (isAuthenticated() && isDocOwner());
+    }
+
+    match /shops/{shopId} {
+      allow read: if true; // Publicly viewable
+      allow create: if isAuthenticated() && isValidShop(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidShop(request.resource.data);
+      allow delete: if isAdmin() || (isAuthenticated() && isDocOwner());
+    }
+
+    match /news/{newsId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /support_messages/{messageId} {
+      allow read: if true; // Allow visitors to read their session messages
+      allow create: if isValidSupportMessage(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

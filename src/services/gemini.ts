@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -12,9 +12,10 @@ export interface NewsItem {
   imageUrl: string;
   sourceUrl?: string;
   isFallback?: boolean;
+  createdAt?: any;
 }
 
-const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
+export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
   bn: [
     {
       id: 'fallback-1',
@@ -65,30 +66,49 @@ const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
   ]
 };
 
+const NEWS_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING, description: "The headline of the news." },
+      content: { type: Type.STRING, description: "A 2-3 sentence summary." },
+      fullContent: { type: Type.STRING, description: "A detailed full story (150-200 words)." },
+      category: { type: Type.STRING, description: "Category like Agriculture, Education, etc." },
+      date: { type: Type.STRING, description: "Date in YYYY-MM-DD format." },
+      sourceUrl: { type: Type.STRING, description: "URL to the original news source." },
+    },
+    required: ["title", "content", "fullContent", "category", "date"],
+  },
+};
+
 export async function generateLocalNews(location: string, language: 'bn' | 'en' = 'bn'): Promise<NewsItem[]> {
   const today = new Date().toISOString().split('T')[0];
   const langName = language === 'bn' ? 'Bengali' : 'English';
   
-  const prompt = `Find the most recent real local news for ${location} (Ujirpur, Barnia, Nadia, West Bengal, India) or the broader Nadia district specifically for today (${today}) or the last 24-48 hours. 
-  Focus on actual events, local developments, government announcements, or community news in the Nadia district of West Bengal.
-  
-  IMPORTANT: Return all text content (title, content, category) in ${langName}.
-  
-  Return the result as a JSON array of 3 objects with properties: 
-  title (the headline in ${langName}), 
-  content (a 2-3 sentence summary in ${langName}), 
-  fullContent (a detailed full story with 150-200 words in ${langName}),
-  category (e.g., Agriculture, Education, Local Event, Infrastructure - in ${langName}), 
-  date (the actual date of the news in YYYY-MM-DD format),
-  sourceUrl (the URL to the original news source if found).`;
+  const locationsToTry = [
+    location, // Specific: Ujirpur Barnia Nadia
+    "Nadia district, West Bengal, India", // Broader: Nadia District
+    "West Bengal, India" // Broadest: West Bengal
+  ];
 
-  const maxRetries = 2;
   let retryCount = 0;
+  const maxRetries = 2;
 
-  async function attemptFetch(useSearch: boolean = true): Promise<NewsItem[]> {
+  async function attemptFetch(locIndex: number, useSearch: boolean = true): Promise<NewsItem[]> {
+    const currentLocation = locationsToTry[locIndex];
+    
+    const prompt = `Find the most recent LIVE local news for ${currentLocation} specifically for today (${today}) or the last 24 hours. 
+    Focus on actual events, local developments, government announcements, or community news.
+    
+    IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
+    
+    If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.`;
+
     try {
       const config: any = {
         responseMimeType: "application/json",
+        responseSchema: NEWS_SCHEMA,
       };
       
       if (useSearch) {
@@ -97,7 +117,7 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: prompt + (useSearch ? "" : "\nNote: If you cannot search, use your internal knowledge to provide the most likely recent news for this region."),
+        contents: prompt + (useSearch ? "" : "\nNote: Search tool is unavailable. Use your internal knowledge to provide the most likely real recent news for this region."),
         config,
       });
 
@@ -106,54 +126,109 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
 
       const rawNews = JSON.parse(text);
       
-      // Extract grounding metadata if available
+      if (!Array.isArray(rawNews) || rawNews.length === 0) {
+        if (locIndex < locationsToTry.length - 1) {
+          console.warn(`No news found for ${currentLocation}, trying broader location...`);
+          return attemptFetch(locIndex + 1, useSearch);
+        }
+        return FALLBACK_NEWS[language];
+      }
+      
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
       
-      const items = rawNews.map((item: any, index: number) => {
-        const source = item.sourceUrl || (groundingChunks?.[index]?.web?.uri);
-        
-        return {
-          ...item,
-          id: `news-${Date.now()}-${index}`,
-          imageUrl: `https://picsum.photos/seed/${encodeURIComponent(item.title)}-${index}/800/400`,
-          sourceUrl: source || '#',
-          isFallback: false // Mark as live news
-        };
+      return rawNews.map((item: any, index: number) => ({
+        ...item,
+        id: `news-${Date.now()}-${index}`,
+        imageUrl: `https://picsum.photos/seed/${encodeURIComponent(item.title)}-${index}/800/400`,
+        sourceUrl: item.sourceUrl || (groundingChunks?.[index]?.web?.uri) || '#',
+        isFallback: false
+      }));
+
+    } catch (error: any) {
+      const errorMessage = error?.message || "";
+      
+      // Handle search tool failures or transient errors
+      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN'))) {
+        console.warn("Search tool failed, attempting without search...");
+        return attemptFetch(locIndex, false);
+      }
+
+      if (retryCount < maxRetries) {
+        retryCount++;
+        await new Promise(r => setTimeout(r, 1000 * retryCount));
+        return attemptFetch(locIndex, useSearch);
+      }
+
+      console.error("News generation failed:", error);
+      return FALLBACK_NEWS[language];
+    }
+  }
+
+  return attemptFetch(0, true);
+}
+
+export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promise<NewsItem[]> {
+  const langName = language === 'bn' ? 'Bengali' : 'English';
+  const prompt = `Find the top 10 trending news headlines in India right now. 
+  Focus on national importance, sports, entertainment, or major current events.
+  
+  IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
+  Return the results in the specified JSON format.`;
+
+  let retryCount = 0;
+  const maxRetries = 2;
+
+  async function attemptFetch(useSearch: boolean = true): Promise<NewsItem[]> {
+    try {
+      const config: any = {
+        responseMimeType: "application/json",
+        responseSchema: NEWS_SCHEMA,
+      };
+      
+      if (useSearch) {
+        config.tools = [{ googleSearch: {} }];
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt + (useSearch ? "" : "\nNote: Search tool is unavailable. Use your internal knowledge to provide the most likely real trending news in India."),
+        config,
       });
 
-      return items.length > 0 ? items : FALLBACK_NEWS[language];
-    } catch (error: any) {
-      const errorMessage = error?.message || error?.error?.message || "";
-      const errorCode = error?.code || error?.error?.code || 0;
-      const errorStatus = error?.status || error?.error?.status || "";
+      const text = response.text;
+      if (!text) throw new Error("Empty response");
 
-      // If search tool failed, try one last time without it before going to hardcoded fallback
-      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorStatus === 'UNKNOWN')) {
-        console.warn("Search tool failed, attempting generation without search tool...");
+      const rawNews = JSON.parse(text);
+      
+      if (!Array.isArray(rawNews) || rawNews.length === 0) {
+        throw new Error("No news found in response");
+      }
+      
+      return rawNews.map((item: any, index: number) => ({
+        ...item,
+        id: `trending-${Date.now()}-${index}`,
+        imageUrl: `https://picsum.photos/seed/trending-${index}/800/400`,
+        isFallback: false
+      }));
+    } catch (error: any) {
+      const errorMessage = error?.message || "";
+      
+      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN'))) {
+        console.warn("Trending search tool failed, attempting without search...");
         return attemptFetch(false);
       }
 
-      const isTransient = errorMessage.includes('Rpc failed') || 
-                          errorMessage.includes('xhr error') || 
-                          errorCode === 500 || 
-                          errorStatus === 'INTERNAL' ||
-                          errorStatus === 'UNKNOWN';
-      
-      if (isTransient && retryCount < maxRetries) {
+      if (retryCount < maxRetries) {
         retryCount++;
-        console.warn(`Transient error in news generation, retrying (${retryCount}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        await new Promise(r => setTimeout(r, 1000 * retryCount));
         return attemptFetch(useSearch);
       }
 
-      if (error?.status === 'RESOURCE_EXHAUSTED' || error?.message?.includes('429') || error?.code === 429) {
-        console.warn("Gemini API quota exhausted. Using fallback news.");
-      } else {
-        console.error("Error generating news:", error);
-      }
-      return FALLBACK_NEWS[language];
+      console.error("Trending news generation failed:", error);
+      return [];
     }
   }
 
   return attemptFetch(true);
 }
+

@@ -1,62 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, where } from 'firebase/firestore';
+
+// Simple session ID for visitors
+const SESSION_ID = localStorage.getItem('chat_session_id') || Math.random().toString(36).substring(7);
+localStorage.setItem('chat_session_id', SESSION_ID);
 
 export const LiveChatWidget = () => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
-  const [messages, setMessages] = useState<{ text: string; isBot: boolean }[]>([
-    { text: t.data.chat.welcome, isBot: true }
-  ]);
+  const [messages, setMessages] = useState<{ text: string; isBot: boolean; id?: string }[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const q = query(
+        collection(db, 'support_messages'), 
+        where('sessionId', '==', SESSION_ID),
+        orderBy('createdAt', 'asc'), 
+        limit(50)
+      );
+      
+      const unsub = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as any[];
+        
+        if (items.length === 0) {
+          setMessages([{ text: t.data.chat.welcome, isBot: true }]);
+        } else {
+          setMessages(items);
+        }
+
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 100);
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'support_messages'));
+      
+      return () => unsub();
+    }
+  }, [isOpen, t.data.chat.welcome]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
 
     const userMessage = message.trim();
-    setMessages(prev => [...prev, { text: userMessage, isBot: false }]);
     setMessage('');
 
-    // Check for contact keywords
-    const contactKeywords = [
-      'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
-      'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
-    ];
-    const needsContact = contactKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
-
     try {
-      // Send notification to backend
-      fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'chat',
-          data: { sender: 'Website Visitor', message: userMessage }
-        })
+      await addDoc(collection(db, 'support_messages'), {
+        text: userMessage,
+        sessionId: SESSION_ID,
+        isBot: false,
+        createdAt: serverTimestamp()
       });
 
+      // Check for contact keywords
+      const contactKeywords = [
+        'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
+        'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
+      ];
+      const needsContact = contactKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+
       if (needsContact) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            text: t.data.chat.contactInfo, 
-            isBot: true 
-          }]);
-        }, 1000);
+        setTimeout(async () => {
+          await addDoc(collection(db, 'support_messages'), {
+            text: t.data.chat.contactInfo,
+            sessionId: SESSION_ID,
+            isBot: true,
+            createdAt: serverTimestamp()
+          });
+        }, 1500);
       } else {
         setSent(true);
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            text: t.data.chat.genericReply, 
-            isBot: true 
-          }]);
+        setTimeout(async () => {
+          await addDoc(collection(db, 'support_messages'), {
+            text: t.data.chat.genericReply,
+            sessionId: SESSION_ID,
+            isBot: true,
+            createdAt: serverTimestamp()
+          });
           setSent(false);
-        }, 1500);
+        }, 2000);
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      handleFirestoreError(error, OperationType.CREATE, 'support_messages');
     }
   };
 
@@ -85,7 +122,10 @@ export const LiveChatWidget = () => {
               </button>
             </div>
 
-            <div className="flex-1 p-4 overflow-y-auto bg-zinc-50 space-y-4">
+            <div 
+              ref={scrollRef}
+              className="flex-1 p-4 overflow-y-auto bg-zinc-50 space-y-4 custom-scrollbar"
+            >
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[80%] p-3 rounded-xl text-xs shadow-sm border ${

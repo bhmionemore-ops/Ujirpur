@@ -3,14 +3,37 @@ import { createServer as createViteServer } from "vite";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs/promises";
 
 dotenv.config();
+
+const DATA_FILE = path.resolve("data.json");
+
+async function loadData() {
+  try {
+    const data = await fs.readFile(DATA_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch (error) {
+    return {
+      collabRequests: [],
+      userInfluencers: [],
+      userShops: []
+    };
+  }
+}
+
+async function saveData(data: any) {
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Load initial data
+  let db = await loadData();
 
   // Email Transporter
   const transporter = nodemailer.createTransport({
@@ -23,42 +46,37 @@ async function startServer() {
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
 
-  // In-memory store for collaboration requests (resets on restart)
-  const collabRequests: any[] = [];
-  // In-memory store for user-added influencers (resets on restart)
-  const userInfluencers: any[] = [];
-  // In-memory store for user-added shops (resets on restart)
-  const userShops: any[] = [];
-
   // API Routes
   app.get("/api/influencers", (req, res) => {
-    res.json(userInfluencers);
+    res.json(db.userInfluencers);
   });
 
-  app.post("/api/influencers", (req, res) => {
+  app.post("/api/influencers", async (req, res) => {
     const influencer = {
       ...req.body,
       id: Math.random().toString(36).substr(2, 9)
     };
-    userInfluencers.push(influencer);
+    db.userInfluencers.push(influencer);
+    await saveData(db);
     res.json({ success: true, influencer });
   });
 
   app.get("/api/shops", (req, res) => {
-    res.json(userShops);
+    res.json(db.userShops);
   });
 
-  app.post("/api/shops", (req, res) => {
+  app.post("/api/shops", async (req, res) => {
     const shop = {
       ...req.body,
       id: Math.random().toString(36).substr(2, 9)
     };
-    userShops.push(shop);
+    db.userShops.push(shop);
+    await saveData(db);
     res.json({ success: true, shop });
   });
 
   app.get("/api/collab-requests", (req, res) => {
-    res.json(collabRequests);
+    res.json(db.collabRequests);
   });
 
   app.post("/api/collab-request", async (req, res) => {
@@ -73,7 +91,8 @@ async function startServer() {
       timestamp: new Date().toISOString()
     };
 
-    collabRequests.push(newRequest);
+    db.collabRequests.push(newRequest);
+    await saveData(db);
 
     // Also send an email notification
     try {
