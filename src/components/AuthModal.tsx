@@ -37,9 +37,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/unauthorized-domain') {
+        const hostname = window.location.hostname;
         setError(language === 'bn' 
-          ? 'এই ডোমেইনটি অনুমোদিত নয়। অনুগ্রহ করে আপনার ফায়ারবেস কনসোলে ডোমেইনটি যোগ করুন।' 
-          : 'This domain is not authorized. Please add it to your Firebase authorized domains.');
+          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে যোগ করুন।` 
+          : `This domain (${hostname}) is not authorized. Please add it to your Firebase authorized domains.`);
       } else {
         setError(err.message || 'Authentication failed');
       }
@@ -56,9 +57,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (err: any) {
       if (err.code === 'auth/unauthorized-domain') {
+        const hostname = window.location.hostname;
         setError(language === 'bn' 
-          ? 'এই ডোমেইনটি অনুমোদিত নয়। অনুগ্রহ করে আপনার ফায়ারবেস কনসোলে ডোমেইনটি যোগ করুন।' 
-          : 'This domain is not authorized. Please add it to your Firebase authorized domains.');
+          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে যোগ করুন।` 
+          : `This domain (${hostname}) is not authorized. Please add it to your Firebase authorized domains.`);
       } else {
         setError(err.message || 'Google sign-in failed');
       }
