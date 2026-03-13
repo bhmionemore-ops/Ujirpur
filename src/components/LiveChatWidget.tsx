@@ -4,16 +4,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, where } from 'firebase/firestore';
+import { generateChatReply } from '../services/gemini';
 
 // Simple session ID for visitors
 const SESSION_ID = localStorage.getItem('chat_session_id') || Math.random().toString(36).substring(7);
 localStorage.setItem('chat_session_id', SESSION_ID);
 
 export const LiveChatWidget = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<{ text: string; isBot: boolean; id?: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -64,36 +65,23 @@ export const LiveChatWidget = () => {
         createdAt: serverTimestamp()
       });
 
-      // Check for contact keywords
-      const contactKeywords = [
-        'contact', 'email', 'details', 'reach', 'phone', 'address', 'info', 'social', 'facebook', 'instagram', 'important', 'help',
-        'যোগাযোগ', 'ইমেইল', 'ফোন', 'ঠিকানা', 'সোশ্যাল', 'ফেসবুক', 'ইনস্টাগ্রাম', 'গুরুত্বপূর্ণ', 'সাহায্য'
-      ];
-      const needsContact = contactKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+      setIsTyping(true);
+      
+      // Get reply from Gemini
+      const history = messages.map(m => ({ text: m.text, isBot: m.isBot }));
+      const reply = await generateChatReply(userMessage, history, language);
 
-      if (needsContact) {
-        setTimeout(async () => {
-          await addDoc(collection(db, 'support_messages'), {
-            text: t.data.chat.contactInfo,
-            sessionId: SESSION_ID,
-            isBot: true,
-            createdAt: serverTimestamp()
-          });
-        }, 1500);
-      } else {
-        setSent(true);
-        setTimeout(async () => {
-          await addDoc(collection(db, 'support_messages'), {
-            text: t.data.chat.genericReply,
-            sessionId: SESSION_ID,
-            isBot: true,
-            createdAt: serverTimestamp()
-          });
-          setSent(false);
-        }, 2000);
-      }
+      await addDoc(collection(db, 'support_messages'), {
+        text: reply,
+        sessionId: SESSION_ID,
+        isBot: true,
+        createdAt: serverTimestamp()
+      });
+      
+      setIsTyping(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'support_messages');
+      setIsTyping(false);
     }
   };
 
@@ -137,9 +125,13 @@ export const LiveChatWidget = () => {
                   </div>
                 </div>
               ))}
-              {sent && (
-                <div className="text-center py-2">
-                  <p className="text-[10px] text-orange-600 font-bold">{t.data.chat.delivered}</p>
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white text-zinc-400 p-3 rounded-xl rounded-tl-none text-[10px] shadow-sm border border-zinc-100 flex gap-1">
+                    <span className="animate-bounce">.</span>
+                    <span className="animate-bounce [animation-delay:0.2s]">.</span>
+                    <span className="animate-bounce [animation-delay:0.4s]">.</span>
+                  </div>
                 </div>
               )}
             </div>
