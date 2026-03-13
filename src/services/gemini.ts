@@ -32,11 +32,83 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       id: 'fallback-2',
       title: 'নদীয়া জেলায় প্লাস্টিক বর্জন অভিযান জোরদার',
       content: 'পরিবেশ রক্ষায় নদীয়া জেলা প্রশাসনের পক্ষ থেকে প্লাস্টিক বর্জন অভিযান শুরু হয়েছে। স্থানীয় ব্যবসায়ীদের সচেতন করা হচ্ছে।',
-      fullContent: 'পরিবেশ রক্ষায় নদীয়া জেলা প্রশাসনের পক্ষ থেকে প্লাস্টিক বর্জন অভিযান শুরু হয়েছে। স্থানীয় ব্যবসায়ীদের সচেতন করা হচ্ছে। প্রশাসনের পক্ষ থেকে জানানো হয়েছে যে, ৭৫ মাইক্রনের নিচে প্লাস্টিক ব্যবহার করলে জরিমানা করা হবে। বিভিন্ন বাজার এলাকায় মাইকিং করে প্রচার চালানো হচ্ছে এবং বিকল্প হিসেবে চটের ব্যাগ বা কাগজের ব্যাগ ব্যবহারের পরামর্শ দেওয়া হচ্ছে।',
+      fullContent: 'পরিবেশ রক্ষায় নদীয়া জেলা প্রশাসনের পক্ষ থেকে প্লাস্টিক বর্জন অভিযান শুরু হয়েছে। স্থানীয় ব্যবসায়ীদের সচেতন করা হচ্ছে। প্রশাসনের পক্ষ থেকে জানানো হয়েছে যে, ৭৫ মাইক্রনের নিচে প্লাস্টিক ব্যবহার করলে জরিমানা করা হবে। বিভিন্ন বাজার এলাকায মাইকিং করে প্রচার চালানো হচ্ছে এবং বিকল্প হিসেবে চটের ব্যাগ বা কাগজের ব্যাগ ব্যবহারের পরামর্শ দেওয়া হচ্ছে।',
       date: new Date().toISOString().split('T')[0],
       category: 'পরিবেশ',
       imageUrl: 'https://picsum.photos/seed/environment-nadia/800/400',
       sourceUrl: '#',
+      isFallback: true
+    },
+    {
+      id: 'fallback-3',
+      title: 'উজিরপুর বার্নিয়া ডিজিটাল হাবের নতুন মোবাইল অ্যাপ চালু',
+      content: 'স্থানীয় বাসিন্দাদের জন্য ডিজিটাল হাবের পক্ষ থেকে একটি নতুন মোবাইল অ্যাপ চালু করা হয়েছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'প্রযুক্তি',
+      imageUrl: 'https://picsum.photos/seed/tech-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-4',
+      title: 'বার্নিয়া হাই স্কুলে বার্ষিক ক্রীড়া প্রতিযোগিতা সম্পন্ন',
+      content: 'স্থানীয় বার্নিয়া হাই স্কুলে অত্যন্ত উৎসাহের সাথে বার্ষিক ক্রীড়া প্রতিযোগিতা সম্পন্ন হলো।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'খেলাধুলা',
+      imageUrl: 'https://picsum.photos/seed/sports-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-5',
+      title: 'নদীয়ার তাঁত শিল্পীদের জন্য সরকারি অনুদান ঘোষণা',
+      content: 'রাজ্য সরকারের পক্ষ থেকে নদীয়ার তাঁত শিল্পীদের জন্য বিশেষ আর্থিক অনুদানের কথা ঘোষণা করা হয়েছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'শিল্প',
+      imageUrl: 'https://picsum.photos/seed/art-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-6',
+      title: 'বার্নিয়া প্রাথমিক স্বাস্থ্য কেন্দ্রে বিনামূল্যে স্বাস্থ্য শিবির',
+      content: 'আগামী রবিবার বার্নিয়া প্রাথমিক স্বাস্থ্য কেন্দ্রে একটি বিনামূল্যে স্বাস্থ্য শিবিরের আয়োজন করা হয়েছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'স্বাস্থ্য',
+      imageUrl: 'https://picsum.photos/seed/health-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-7',
+      title: 'স্থানীয় মেলায় হস্তশিল্পের প্রদর্শনী নজর কাড়ছে',
+      content: 'বার্নিয়া বার্ষিক মেলায় স্থানীয় শিল্পীদের তৈরি হস্তশিল্পের প্রদর্শনী দর্শকদের নজর কাড়ছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'সংস্কৃতি',
+      imageUrl: 'https://picsum.photos/seed/culture-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-8',
+      title: 'নদীয়ায় নতুন পর্যটন কেন্দ্র গড়ে তোলার পরিকল্পনা',
+      content: 'পর্যটন শিল্পের বিকাশে নদীয়ার বিভিন্ন ঐতিহাসিক স্থানে নতুন পর্যটন কেন্দ্র গড়ে তোলার পরিকল্পনা নেওয়া হয়েছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'পর্যটন',
+      imageUrl: 'https://picsum.photos/seed/tourism-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-9',
+      title: 'বার্নিয়া বাজারে অগ্নি নির্বাপক মহড়া অনুষ্ঠিত',
+      content: 'অগ্নি নিরাপত্তা নিশ্চিত করতে বার্নিয়া বাজারে দমকল বাহিনীর পক্ষ থেকে একটি মহড়া অনুষ্ঠিত হলো।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'নিরাপত্তা',
+      imageUrl: 'https://picsum.photos/seed/safety-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-10',
+      title: 'স্থানীয় যুবকদের জন্য দক্ষতা বৃদ্ধি প্রশিক্ষণ শুরু',
+      content: 'বেকার যুবকদের স্বনির্ভর করতে ডিজিটাল হাবের পক্ষ থেকে দক্ষতা বৃদ্ধি প্রশিক্ষণ শুরু হয়েছে।',
+      date: new Date().toISOString().split('T')[0],
+      category: 'শিক্ষা',
+      imageUrl: 'https://picsum.photos/seed/edu-nadia/800/400',
       isFallback: true
     }
   ],
@@ -62,6 +134,78 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       imageUrl: 'https://picsum.photos/seed/environment-nadia/800/400',
       sourceUrl: '#',
       isFallback: true
+    },
+    {
+      id: 'fallback-3',
+      title: 'Digital Hub Launches New Mobile App for Residents',
+      content: 'A new mobile application has been launched by the Digital Hub for local residents to access services easily.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Technology',
+      imageUrl: 'https://picsum.photos/seed/tech-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-4',
+      title: 'Annual Sports Meet Concludes at Barnia High School',
+      content: 'The annual sports competition was successfully held at Barnia High School with great enthusiasm.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Sports',
+      imageUrl: 'https://picsum.photos/seed/sports-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-5',
+      title: 'Government Grant Announced for Nadia Weavers',
+      content: 'The state government has announced a special financial grant for the weavers of Nadia district.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Industry',
+      imageUrl: 'https://picsum.photos/seed/art-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-6',
+      title: 'Free Health Camp at Barnia Primary Health Center',
+      content: 'A free health check-up camp has been organized at the Barnia Primary Health Center this Sunday.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Health',
+      imageUrl: 'https://picsum.photos/seed/health-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-7',
+      title: 'Handicraft Exhibition Attracts Crowds at Local Fair',
+      content: 'The exhibition of handicrafts made by local artists is drawing visitors at the Barnia annual fair.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Culture',
+      imageUrl: 'https://picsum.photos/seed/culture-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-8',
+      title: 'Plans for New Tourism Hubs in Nadia District',
+      content: 'Plans have been made to develop new tourism centers at various historical sites in Nadia to boost tourism.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Tourism',
+      imageUrl: 'https://picsum.photos/seed/tourism-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-9',
+      title: 'Fire Safety Drill Conducted at Barnia Bazar',
+      content: 'A mock drill was conducted by the fire department at Barnia Bazar to ensure fire safety compliance.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Safety',
+      imageUrl: 'https://picsum.photos/seed/safety-nadia/800/400',
+      isFallback: true
+    },
+    {
+      id: 'fallback-10',
+      title: 'Skill Development Training Starts for Local Youth',
+      content: 'Skill development training has started by the Digital Hub to make unemployed youth self-reliant.',
+      date: new Date().toISOString().split('T')[0],
+      category: 'Education',
+      imageUrl: 'https://picsum.photos/seed/edu-nadia/800/400',
+      isFallback: true
     }
   ]
 };
@@ -80,6 +224,33 @@ const NEWS_SCHEMA = {
     },
     required: ["title", "content", "fullContent", "category", "date"],
   },
+};
+
+export const FALLBACK_TRENDING: Record<'bn' | 'en', NewsItem[]> = {
+  bn: [
+    { id: 't-1', title: 'ভারতে ডিজিটাল বিপ্লব: নতুন মাইলফলক স্পর্শ', content: 'ভারতের ডিজিটাল অর্থনীতি দ্রুত গতিতে বৃদ্ধি পাচ্ছে।', date: new Date().toISOString().split('T')[0], category: 'জাতীয়', imageUrl: 'https://picsum.photos/seed/india-1/800/400' },
+    { id: 't-2', title: 'ভারতীয় মহাকাশ গবেষণায় নতুন দিগন্ত: ইসরোর সাফল্য', content: 'ইসরো সফলভাবে নতুন স্যাটেলাইট উৎক্ষেপণ করেছে।', date: new Date().toISOString().split('T')[0], category: 'বিজ্ঞান', imageUrl: 'https://picsum.photos/seed/india-2/800/400' },
+    { id: 't-3', title: 'ক্রিকেট: ভারত বনাম অস্ট্রেলিয়া সিরিজের উত্তেজনা তুঙ্গে', content: 'আসন্ন বর্ডার-গাভাস্কার ট্রফি নিয়ে ক্রিকেট প্রেমীদের মধ্যে উন্মাদনা।', date: new Date().toISOString().split('T')[0], category: 'খেলাধুলা', imageUrl: 'https://picsum.photos/seed/india-3/800/400' },
+    { id: 't-4', title: 'ভারতীয় অর্থনীতিতে জোয়ার: জিডিপি বৃদ্ধির পূর্বাভাস', content: 'বিশ্বব্যাংক ভারতের অর্থনৈতিক বৃদ্ধির প্রশংসা করেছে।', date: new Date().toISOString().split('T')[0], category: 'অর্থনীতি', imageUrl: 'https://picsum.photos/seed/india-4/800/400' },
+    { id: 't-5', title: 'পরিবেশ রক্ষা: ভারতে নবায়নযোগ্য শক্তির প্রসার', content: 'সৌর শক্তি উৎপাদনে ভারত বিশ্বে প্রথম সারিতে উঠে আসছে।', date: new Date().toISOString().split('T')[0], category: 'পরিবেশ', imageUrl: 'https://picsum.photos/seed/india-5/800/400' },
+    { id: 't-6', title: 'শিক্ষা ক্ষেত্রে সংস্কার: নতুন জাতীয় শিক্ষা নীতির প্রভাব', content: 'দেশজুড়ে নতুন শিক্ষা নীতি বাস্তবায়নের কাজ চলছে।', date: new Date().toISOString().split('T')[0], category: 'শিক্ষা', imageUrl: 'https://picsum.photos/seed/india-6/800/400' },
+    { id: 't-7', title: 'পর্যটন: ভারতের ঐতিহাসিক স্থানগুলিতে পর্যটকদের ভিড়', content: 'তাজমহলসহ বিভিন্ন স্থানে পর্যটকদের সংখ্যা রেকর্ড ছাড়িয়েছে।', date: new Date().toISOString().split('T')[0], category: 'পর্যটন', imageUrl: 'https://picsum.photos/seed/india-7/800/400' },
+    { id: 't-8', title: 'স্বাস্থ্য: আয়ুষ্মান ভারত প্রকল্পের সাফল্য', content: 'কোটি কোটি মানুষ এই প্রকল্পের মাধ্যমে বিনামূল্যে চিকিৎসা পাচ্ছেন।', date: new Date().toISOString().split('T')[0], category: 'স্বাস্থ্য', imageUrl: 'https://picsum.photos/seed/india-8/800/400' },
+    { id: 't-9', title: 'প্রযুক্তি: ভারতে ৫জি পরিষেবার দ্রুত বিস্তার', content: 'গ্রামাঞ্চলেও এখন দ্রুতগতির ইন্টারনেট পৌঁছে যাচ্ছে।', date: new Date().toISOString().split('T')[0], category: 'প্রযুক্তি', imageUrl: 'https://picsum.photos/seed/india-9/800/400' },
+    { id: 't-10', title: 'সংস্কৃতি: ভারতীয় চলচ্চিত্রের বিশ্বজয়', content: 'আন্তর্জাতিক মঞ্চে ভারতীয় সিনেমা এবং সংগীতের জয়জয়কার।', date: new Date().toISOString().split('T')[0], category: 'বিনোদন', imageUrl: 'https://picsum.photos/seed/india-10/800/400' }
+  ],
+  en: [
+    { id: 't-1', title: 'Digital Revolution in India: Touching New Milestones', content: 'India\'s digital economy is growing at a rapid pace.', date: new Date().toISOString().split('T')[0], category: 'National', imageUrl: 'https://picsum.photos/seed/india-1/800/400' },
+    { id: 't-2', title: 'New Horizons in Indian Space Research: ISRO\'s Success', content: 'ISRO has successfully launched a new satellite.', date: new Date().toISOString().split('T')[0], category: 'Science', imageUrl: 'https://picsum.photos/seed/india-2/800/400' },
+    { id: 't-3', title: 'Cricket: Excitement Peaks for India vs Australia Series', content: 'Enthusiasm among cricket fans for the upcoming Border-Gavaskar Trophy.', date: new Date().toISOString().split('T')[0], category: 'Sports', imageUrl: 'https://picsum.photos/seed/india-3/800/400' },
+    { id: 't-4', title: 'Boom in Indian Economy: GDP Growth Forecast', content: 'The World Bank has praised India\'s economic growth.', date: new Date().toISOString().split('T')[0], category: 'Economy', imageUrl: 'https://picsum.photos/seed/india-4/800/400' },
+    { id: 't-5', title: 'Environmental Protection: Expansion of Renewable Energy in India', content: 'India is emerging as a global leader in solar energy production.', date: new Date().toISOString().split('T')[0], category: 'Environment', imageUrl: 'https://picsum.photos/seed/india-5/800/400' },
+    { id: 't-6', title: 'Education Reforms: Impact of New National Education Policy', content: 'Implementation of the new education policy is underway across the country.', date: new Date().toISOString().split('T')[0], category: 'Education', imageUrl: 'https://picsum.photos/seed/india-6/800/400' },
+    { id: 't-7', title: 'Tourism: Record Crowds at India\'s Historical Sites', content: 'Tourist numbers at the Taj Mahal and other sites have broken records.', date: new Date().toISOString().split('T')[0], category: 'Tourism', imageUrl: 'https://picsum.photos/seed/india-7/800/400' },
+    { id: 't-8', title: 'Health: Success of Ayushman Bharat Project', content: 'Millions of people are receiving free treatment through this project.', date: new Date().toISOString().split('T')[0], category: 'Health', imageUrl: 'https://picsum.photos/seed/india-8/800/400' },
+    { id: 't-9', title: 'Technology: Rapid Expansion of 5G Services in India', content: 'High-speed internet is now reaching rural areas as well.', date: new Date().toISOString().split('T')[0], category: 'Technology', imageUrl: 'https://picsum.photos/seed/india-9/800/400' },
+    { id: 't-10', title: 'Culture: Global Triumph of Indian Cinema', content: 'Indian movies and music are winning accolades on the international stage.', date: new Date().toISOString().split('T')[0], category: 'Entertainment', imageUrl: 'https://picsum.photos/seed/india-10/800/400' }
+  ]
 };
 
 export async function generateLocalNews(location: string, language: 'bn' | 'en' = 'bn'): Promise<NewsItem[]> {
@@ -267,7 +438,7 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
       }
 
       console.error("Trending news generation failed:", error);
-      return [];
+      return FALLBACK_TRENDING[language];
     }
   }
 
