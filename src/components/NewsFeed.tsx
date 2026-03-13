@@ -64,6 +64,30 @@ export const NewsFeed = () => {
     fetchTrending();
   }, [language]);
 
+  useEffect(() => {
+    // Handle deep linking for news
+    const path = window.location.pathname;
+    const newsIdMatch = path.match(/\/news\/([^/]+)/);
+    if (newsIdMatch && newsIdMatch[1]) {
+      const newsId = newsIdMatch[1];
+      // If news is already loaded, find it
+      if (news.length > 0) {
+        const item = news.find(n => n.id === newsId);
+        if (item) setSelectedNews(item);
+      }
+    }
+  }, [news]);
+
+  const handleOpenNews = (item: NewsItem) => {
+    setSelectedNews(item);
+    window.history.pushState({}, '', `/news/${item.id}`);
+  };
+
+  const handleCloseNews = () => {
+    setSelectedNews(null);
+    window.history.pushState({}, '', '/');
+  };
+
   const getRelativeTime = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -144,10 +168,11 @@ export const NewsFeed = () => {
             <button 
               onClick={fetchAndSaveNews}
               disabled={refreshing}
-              className={`p-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-all text-zinc-600 ${refreshing ? 'animate-spin' : ''}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
               title="Generate Live News"
             >
-              <RefreshCw size={18} />
+              <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? (language === 'bn' ? 'খবর তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'নতুন খবর আনুন' : 'Refresh News')}
             </button>
           )}
         </div>
@@ -204,7 +229,7 @@ export const NewsFeed = () => {
                       {item.content}
                     </p>
                     <button 
-                      onClick={() => setSelectedNews(item)}
+                      onClick={() => handleOpenNews(item)}
                       className="flex items-center gap-1 text-orange-600 font-bold text-xs group-hover:gap-2 transition-all"
                     >
                       {t.news.readMore} <ChevronRight size={14} />
@@ -259,7 +284,7 @@ export const NewsFeed = () => {
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      onClick={() => setSelectedNews(item)}
+                      onClick={() => handleOpenNews(item)}
                       className="group cursor-pointer p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700 hover:bg-zinc-800 hover:border-orange-500/50 transition-all"
                     >
                       <div className="flex gap-4">
@@ -313,7 +338,7 @@ export const NewsFeed = () => {
                   referrerPolicy="no-referrer"
                 />
                 <button 
-                  onClick={() => setSelectedNews(null)}
+                  onClick={handleCloseNews}
                   className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-all"
                 >
                   <X size={20} />
@@ -341,14 +366,17 @@ export const NewsFeed = () => {
                 
                 <div className="mt-10 pt-6 border-t border-zinc-100 flex items-center justify-between">
                   <button 
-                    onClick={() => shareContent(selectedNews.title, selectedNews.content, window.location.href)}
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/news/${selectedNews.id}`;
+                      shareContent(selectedNews.title, selectedNews.content, shareUrl);
+                    }}
                     className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200"
                   >
                     <Share2 size={18} />
                     {t.news.share}
                   </button>
                   <button 
-                    onClick={() => setSelectedNews(null)}
+                    onClick={handleCloseNews}
                     className="text-zinc-500 font-medium hover:text-zinc-800 transition-all"
                   >
                     Close

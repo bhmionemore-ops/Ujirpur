@@ -403,7 +403,10 @@ export const InfluencerSection = () => {
                 />
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`)}
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/profile/${inf.id}`;
+                      shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`, shareUrl);
+                    }}
                     className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                   >
                     <Share2 size={18} />
