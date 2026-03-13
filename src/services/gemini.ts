@@ -253,6 +253,35 @@ export const FALLBACK_TRENDING: Record<'bn' | 'en', NewsItem[]> = {
   ]
 };
 
+export async function generateNewsImage(prompt: string, category: string): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: [{
+        text: `A realistic, high-quality photograph of a scene in rural West Bengal, India, specifically related to ${category}. 
+        Context: ${prompt}. 
+        The image should look like a local news photograph from Nadia district. 
+        No text in the image. Natural lighting, authentic local atmosphere.`
+      }],
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9",
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error("No image data in response");
+  } catch (error) {
+    console.warn("AI Image generation failed, using fallback:", error);
+    return `https://picsum.photos/seed/nadia-bengal-${encodeURIComponent(category)}-${Math.random()}/800/400`;
+  }
+}
+
 export async function generateLocalNews(location: string, language: 'bn' | 'en' = 'bn'): Promise<NewsItem[]> {
   const today = new Date().toISOString().split('T')[0];
   const langName = language === 'bn' ? 'Bengali' : 'English';
@@ -308,13 +337,19 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
       
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
       
-      return rawNews.map((item: any, index: number) => ({
-        ...item,
-        id: `news-${Date.now()}-${index}`,
-        imageUrl: `https://picsum.photos/seed/${encodeURIComponent(item.title)}-${index}/800/400`,
-        sourceUrl: item.sourceUrl || (groundingChunks?.[index]?.web?.uri) || '#',
-        isFallback: false
+      // Generate AI images for each news item in parallel
+      const newsWithImages = await Promise.all(rawNews.map(async (item: any, index: number) => {
+        const imageUrl = await generateNewsImage(item.title, item.category);
+        return {
+          ...item,
+          id: `news-${Date.now()}-${index}`,
+          imageUrl,
+          sourceUrl: item.sourceUrl || (groundingChunks?.[index]?.web?.uri) || '#',
+          isFallback: false
+        };
       }));
+
+      return newsWithImages;
 
     } catch (error: any) {
       const errorMessage = error?.message || "";
