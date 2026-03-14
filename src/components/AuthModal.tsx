@@ -50,8 +50,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
       } else if (err.code === 'auth/operation-not-allowed') {
         setError(language === 'bn'
-          ? 'এই লগইন পদ্ধতিটি সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
-          : 'This sign-in method is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
+          ? 'ইমেইল/পাসওয়ার্ড লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
+          : 'Email/Password sign-in is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError(language === 'bn'
+          ? 'এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। অনুগ্রহ করে লগইন করুন।'
+          : 'This email is already in use. Please sign in instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError(language === 'bn'
+          ? 'পাসওয়ার্ডটি খুব দুর্বল। কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড ব্যবহার করুন।'
+          : 'The password is too weak. Please use at least 6 characters.');
+      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError(language === 'bn'
+          ? 'ভুল ইমেইল বা পাসওয়ার্ড।'
+          : 'Invalid email or password.');
       } else if (err.code === 'auth/network-request-failed') {
         setError(language === 'bn'
           ? 'নেটওয়ার্ক সমস্যা। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।'
@@ -172,6 +184,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 required
                 className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
               />
+              {mode === 'signup' && (
+                <p className="text-[10px] text-zinc-400 mt-1 ml-2">
+                  {language === 'bn' ? 'এই সাইটের জন্য একটি নতুন পাসওয়ার্ড তৈরি করুন' : 'Create a new password for this site'}
+                </p>
+              )}
             </div>
 
             {error && (

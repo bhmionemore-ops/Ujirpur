@@ -116,12 +116,9 @@ export default function App() {
 
       <main>
         <Banner />
+        <NewsFeed />
         <WhyJoin />
         
-        <div>
-          <NewsFeed />
-        </div>
-
         <div id="bazar">
           <BarniaBazar />
         </div>
