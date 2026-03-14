@@ -93,6 +93,21 @@
         "count": { "type": "integer" }
       },
       "required": ["count"]
+    },
+    "collab_request": {
+      "title": "Collaboration Request",
+      "description": "A request for collaboration sent to an influencer.",
+      "type": "object",
+      "properties": {
+        "fromName": { "type": "string" },
+        "toInfluencerId": { "type": "string" },
+        "toInfluencerName": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "toUid": { "type": "string" },
+        "fromUid": { "type": "string" }
+      },
+      "required": ["fromName", "toInfluencerId", "toInfluencerName", "message"]
     }
   },
   "firestore": {
@@ -123,6 +138,10 @@
     "/stats/{statId}": {
       "schema": "stat",
       "description": "Global application statistics like visitor counts."
+    },
+    "/collab_requests/{requestId}": {
+      "schema": "collab_request",
+      "description": "Collaboration requests sent to influencers."
     }
   }
 }
