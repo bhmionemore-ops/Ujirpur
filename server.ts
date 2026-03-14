@@ -58,6 +58,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:image" content="${metadata.image}" />
     <meta property="og:url" content="${metadata.url}" />
     <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${metadata.title}" />
     <meta name="twitter:description" content="${metadata.description}" />
@@ -65,12 +66,33 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   `;
 
   // Remove existing title and meta tags that we are replacing
-  let modifiedHtml = html.replace(/<title>.*?<\/title>/, "");
-  modifiedHtml = modifiedHtml.replace(/<meta name="description" content=".*?" \/>/, "");
-  modifiedHtml = modifiedHtml.replace(/<meta name="keywords" content=".*?" \/>/, "");
+  let modifiedHtml = html;
+  
+  // Remove title
+  modifiedHtml = modifiedHtml.replace(/<title>.*?<\/title>/gi, "");
+  
+  // Remove existing meta tags that might conflict
+  const tagsToRemove = [
+    'description', 
+    'og:title', 
+    'og:description', 
+    'og:image', 
+    'og:url', 
+    'og:type', 
+    'og:site_name',
+    'twitter:card',
+    'twitter:title',
+    'twitter:description',
+    'twitter:image'
+  ];
+  
+  tagsToRemove.forEach(tag => {
+    const regex = new RegExp(`<meta (name|property)="${tag}" content=".*?"\\s*\\/?>`, 'gi');
+    modifiedHtml = modifiedHtml.replace(regex, "");
+  });
   
   // Inject new tags into head
-  return modifiedHtml.replace("</head>", `${metaTags}</head>`);
+  return modifiedHtml.replace("<head>", `<head>${metaTags}`);
 }
 
 const DATA_FILE = path.resolve("data.json");
@@ -243,11 +265,15 @@ async function startServer() {
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
       if (newsItem) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+        
         html = await injectMetaTags(html, {
           title: newsItem.title,
           description: newsItem.content.substring(0, 160) + "...",
           image: newsItem.imageUrl,
-          url: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+          url: fullUrl
         });
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
@@ -259,11 +285,15 @@ async function startServer() {
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
       if (profile) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
         html = await injectMetaTags(html, {
           title: profile.name,
           description: profile.bio,
           image: profile.avatar,
-          url: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+          url: fullUrl
         });
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
@@ -282,11 +312,15 @@ async function startServer() {
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
       if (newsItem) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
         html = await injectMetaTags(html, {
           title: newsItem.title,
           description: newsItem.content.substring(0, 160) + "...",
           image: newsItem.imageUrl,
-          url: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+          url: fullUrl
         });
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
@@ -297,11 +331,15 @@ async function startServer() {
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
       if (profile) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
         html = await injectMetaTags(html, {
           title: profile.name,
           description: profile.bio,
           image: profile.avatar,
-          url: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+          url: fullUrl
         });
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
