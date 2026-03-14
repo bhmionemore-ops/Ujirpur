@@ -36,6 +36,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (err: any) {
       console.error("Auth error:", err);
+      const errorCode = err.code || 'unknown';
+      const errorMessage = err.message || 'Authentication failed';
+      
       if (err.code === 'auth/unauthorized-domain') {
         const hostname = window.location.hostname;
         setError(language === 'bn' 
@@ -45,12 +48,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজারে পপআপ অনুমতি দিন বা নতুন ট্যাবে অ্যাপটি খুলুন।'
           : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError(language === 'bn'
+          ? 'এই লগইন পদ্ধতিটি সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
+          : 'This sign-in method is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
       } else if (err.code === 'auth/network-request-failed') {
         setError(language === 'bn'
           ? 'নেটওয়ার্ক সমস্যা। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।'
           : 'Network error. Please check your internet connection.');
+      } else if (errorMessage.includes('missing initial state')) {
+        setError(language === 'bn'
+          ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'
+          : 'Login session lost. Please open the app in a new tab or disable Incognito/Private mode.');
       } else {
-        setError(err.message || 'Authentication failed');
+        setError(`${errorMessage} (${errorCode})`);
       }
     } finally {
       setLoading(false);
@@ -65,6 +76,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (err: any) {
       console.error("Google Auth error:", err);
+      const errorCode = err.code || 'unknown';
+      const errorMessage = err.message || 'Google sign-in failed';
+
       if (err.code === 'auth/unauthorized-domain') {
         const hostname = window.location.hostname;
         setError(language === 'bn' 
@@ -76,10 +90,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
       } else if (err.code === 'auth/operation-not-allowed') {
         setError(language === 'bn'
-          ? 'গুগল লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে এটি সক্রিয় করুন।'
-          : 'Google sign-in is not enabled. Please enable it in your Firebase Console.');
+          ? 'গুগল লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
+          : 'Google sign-in is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
+      } else if (errorMessage.includes('missing initial state')) {
+        setError(language === 'bn'
+          ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'
+          : 'Login session lost. Please open the app in a new tab or disable Incognito/Private mode.');
       } else {
-        setError(err.message || 'Google sign-in failed');
+        setError(`${errorMessage} (${errorCode})`);
       }
     } finally {
       setLoading(false);
