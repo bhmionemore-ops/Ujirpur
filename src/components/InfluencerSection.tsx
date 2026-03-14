@@ -32,13 +32,13 @@ interface CollabRequest {
 
 const getSocialIcon = (url: string) => {
   const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('instagram.com')) return <Instagram size={16} />;
-  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <Twitter size={16} />;
-  if (lowerUrl.includes('facebook.com')) return <Facebook size={16} />;
-  if (lowerUrl.includes('youtube.com')) return <Youtube size={16} />;
-  if (lowerUrl.includes('linkedin.com')) return <Linkedin size={16} />;
-  if (lowerUrl.includes('github.com')) return <Github size={16} />;
-  return <Globe size={16} />;
+  if (lowerUrl.includes('instagram.com')) return <Instagram size={16} className="text-[#E4405F]" />;
+  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <Twitter size={16} className="text-[#1DA1F2]" />;
+  if (lowerUrl.includes('facebook.com')) return <Facebook size={16} className="text-[#1877F2]" />;
+  if (lowerUrl.includes('youtube.com')) return <Youtube size={16} className="text-[#FF0000]" />;
+  if (lowerUrl.includes('linkedin.com')) return <Linkedin size={16} className="text-[#0077B5]" />;
+  if (lowerUrl.includes('github.com')) return <Github size={16} className="text-[#181717]" />;
+  return <Globe size={16} className="text-zinc-400" />;
 };
 
 export const InfluencerSection = () => {

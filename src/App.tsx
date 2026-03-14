@@ -144,8 +144,8 @@ export default function App() {
               {t.footer.about}
             </p>
             <div className="flex gap-4 mt-8">
-              <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-orange-600 transition-all"><Facebook size={20} /></a>
-              <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-lg hover:bg-orange-600 transition-all"><Instagram size={20} /></a>
+              <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="group p-2 bg-zinc-800 rounded-lg hover:bg-[#1877F2] transition-all"><Facebook size={20} className="text-[#1877F2] group-hover:text-white transition-colors" /></a>
+              <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="group p-2 bg-zinc-800 rounded-lg hover:bg-[#E4405F] transition-all"><Instagram size={20} className="text-[#E4405F] group-hover:text-white transition-colors" /></a>
             </div>
           </div>
           
