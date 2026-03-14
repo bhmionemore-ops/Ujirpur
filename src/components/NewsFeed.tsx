@@ -104,6 +104,22 @@ export const NewsFeed = () => {
     }
   }, [news]);
 
+  useEffect(() => {
+    // Auto-refresh news for admins if it's older than 12 hours or if no news exists
+    if (isAdmin && !refreshing) {
+      const now = new Date();
+      const twelveHoursInMs = 12 * 60 * 60 * 1000;
+      
+      const isStale = lastUpdated && (now.getTime() - lastUpdated.getTime() > twelveHoursInMs);
+      const isEmpty = !loading && news.length === 0;
+
+      if (isStale || isEmpty) {
+        console.log(isEmpty ? "No news found, auto-generating..." : "News is stale, auto-refreshing...");
+        fetchAndSaveNews();
+      }
+    }
+  }, [isAdmin, lastUpdated, refreshing, news.length, loading]);
+
   const handleOpenNews = (item: NewsItem) => {
     setSelectedNews(item);
     window.history.pushState({}, '', `/news/${item.id}`);

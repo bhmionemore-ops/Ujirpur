@@ -299,12 +299,14 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     const currentLocation = locationsToTry[locIndex];
     
     const prompt = `Find the top 10 most recent LIVE local news for ${currentLocation} specifically for today (${today}) or the last 24 hours. 
-    Focus on actual events, local developments, government announcements, or community news.
+    Focus on ACTUAL events, local developments, government announcements, or community news that happened VERY RECENTLY.
     
-    IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
-    Return exactly 10 news items in the specified JSON format.
-    
-    If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.`;
+    IMPORTANT: 
+    1. Return all text content (title, content, category, fullContent) in ${langName}.
+    2. Return exactly 10 news items in the specified JSON format.
+    3. If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.
+    4. Ensure the news is diverse (e.g., agriculture, education, health, local events).
+    5. The 'date' field MUST be ${today} or very close to it.`;
 
     try {
       const config: any = {
