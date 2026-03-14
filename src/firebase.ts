@@ -25,11 +25,22 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Auth Helpers
 export const signInWithGoogle = async () => {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    return signInWithRedirect(auth, googleProvider);
+  try {
+    // Always try popup first as it's more reliable in most desktop/mobile browsers
+    // unless explicitly blocked.
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error: any) {
+    console.error("Sign in with popup error:", error);
+    
+    // If popup is blocked or fails, and we are on mobile, try redirect
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request')) {
+      return signInWithRedirect(auth, googleProvider);
+    }
+    
+    // Re-throw to be handled by the UI
+    throw error;
   }
-  return signInWithPopup(auth, googleProvider);
 };
 
 export const handleRedirectResult = () => getRedirectResult(auth);

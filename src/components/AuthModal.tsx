@@ -35,12 +35,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       }
       onClose();
     } catch (err: any) {
-      console.error(err);
+      console.error("Auth error:", err);
       if (err.code === 'auth/unauthorized-domain') {
         const hostname = window.location.hostname;
         setError(language === 'bn' 
-          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে যোগ করুন।` 
-          : `This domain (${hostname}) is not authorized. Please add it to your Firebase authorized domains.`);
+          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে (Authentication > Settings > Authorized Domains) যোগ করুন।` 
+          : `This domain (${hostname}) is not authorized. Please add it to your Firebase Console (Authentication > Settings > Authorized Domains).`);
+      } else if (err.code === 'auth/popup-blocked') {
+        setError(language === 'bn'
+          ? 'পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজারে পপআপ অনুমতি দিন বা নতুন ট্যাবে অ্যাপটি খুলুন।'
+          : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError(language === 'bn'
+          ? 'নেটওয়ার্ক সমস্যা। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।'
+          : 'Network error. Please check your internet connection.');
       } else {
         setError(err.message || 'Authentication failed');
       }
@@ -56,11 +64,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       await signIn();
       onClose();
     } catch (err: any) {
+      console.error("Google Auth error:", err);
       if (err.code === 'auth/unauthorized-domain') {
         const hostname = window.location.hostname;
         setError(language === 'bn' 
-          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে যোগ করুন।` 
-          : `This domain (${hostname}) is not authorized. Please add it to your Firebase authorized domains.`);
+          ? `এই ডোমেইনটি (${hostname}) অনুমোদিত নয়। অনুগ্রহ করে এটি আপনার ফায়ারবেস কনসোলে (Authentication > Settings > Authorized Domains) যোগ করুন।` 
+          : `This domain (${hostname}) is not authorized. Please add it to your Firebase Console (Authentication > Settings > Authorized Domains).`);
+      } else if (err.code === 'auth/popup-blocked') {
+        setError(language === 'bn'
+          ? 'পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজারে পপআপ অনুমতি দিন বা নতুন ট্যাবে অ্যাপটি খুলুন।'
+          : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError(language === 'bn'
+          ? 'গুগল লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে এটি সক্রিয় করুন।'
+          : 'Google sign-in is not enabled. Please enable it in your Firebase Console.');
       } else {
         setError(err.message || 'Google sign-in failed');
       }
@@ -182,15 +199,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
           </button>
 
-          <div className="mt-8 text-center">
+          <div className="mt-8 text-center space-y-4">
             <button
               onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-              className="text-sm text-zinc-500 hover:text-orange-600 transition-colors"
+              className="text-sm text-zinc-500 hover:text-orange-600 transition-colors block w-full"
             >
               {mode === 'login'
                 ? (language === 'bn' ? 'অ্যাকাউন্ট নেই? সাইন আপ করুন' : "Don't have an account? Sign up")
                 : (language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'Already have an account? Sign in')}
             </button>
+            
+            <p className="text-[10px] text-zinc-400 italic">
+              {language === 'bn' 
+                ? 'লগইন করতে সমস্যা হচ্ছে? অ্যাপটি নতুন ট্যাবে খোলার চেষ্টা করুন।' 
+                : 'Having trouble logging in? Try opening the app in a new tab.'}
+            </p>
           </div>
         </div>
       </motion.div>
