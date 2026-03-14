@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
-  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn
+  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -63,6 +63,16 @@ export const InfluencerSection = () => {
     social3: ''
   });
 
+  useEffect(() => {
+    if (showForm && user && !newInfluencer.name) {
+      setNewInfluencer(prev => ({
+        ...prev,
+        name: user.displayName || '',
+        avatarUrl: user.photoURL || ''
+      }));
+    }
+  }, [showForm, user]);
+
   const [collabForm, setCollabForm] = useState({
     fromName: '',
     message: ''
@@ -100,6 +110,29 @@ export const InfluencerSection = () => {
       unsubReq();
     };
   }, [user]);
+
+  const autoFetchAvatar = (url: string) => {
+    if (!url) return;
+    
+    let avatarUrl = '';
+    if (url.includes('facebook.com/')) {
+      const username = url.split('facebook.com/')[1]?.split('/')[0]?.split('?')[0];
+      if (username) avatarUrl = `https://unavatar.io/facebook/${username}`;
+    } else if (url.includes('instagram.com/')) {
+      const username = url.split('instagram.com/')[1]?.split('/')[0]?.split('?')[0];
+      if (username) avatarUrl = `https://unavatar.io/instagram/${username}`;
+    } else if (url.includes('twitter.com/')) {
+      const username = url.split('twitter.com/')[1]?.split('/')[0]?.split('?')[0];
+      if (username) avatarUrl = `https://unavatar.io/twitter/${username}`;
+    } else if (url.includes('github.com/')) {
+      const username = url.split('github.com/')[1]?.split('/')[0]?.split('?')[0];
+      if (username) avatarUrl = `https://unavatar.io/github/${username}`;
+    }
+
+    if (avatarUrl) {
+      setNewInfluencer(prev => ({ ...prev, avatarUrl }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,7 +316,19 @@ export const InfluencerSection = () => {
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-zinc-700">{t.influencers.avatarLabel}</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-zinc-700">{t.influencers.avatarLabel}</label>
+                    {user?.photoURL && (
+                      <button
+                        type="button"
+                        onClick={() => setNewInfluencer(prev => ({ ...prev, avatarUrl: user.photoURL || '' }))}
+                        className="text-[10px] font-bold text-orange-600 hover:underline flex items-center gap-1"
+                      >
+                        <Globe size={10} />
+                        {language === 'bn' ? 'গুগল প্রোফাইল থেকে নিন' : 'Sync from Google'}
+                      </button>
+                    )}
+                  </div>
                   <div className="flex gap-4 items-center">
                     <div className="w-16 h-16 rounded-full bg-zinc-100 flex-shrink-0 overflow-hidden border-2 border-orange-100">
                       {newInfluencer.avatarUrl ? (
@@ -292,7 +337,9 @@ export const InfluencerSection = () => {
                           alt="Preview" 
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
-                          onError={(e) => (e.currentTarget.src = 'https://picsum.photos/200')}
+                          onError={(e) => {
+                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(newInfluencer.name || 'User')}&background=random&color=fff`;
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-300">
@@ -308,8 +355,11 @@ export const InfluencerSection = () => {
                         className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                         placeholder={t.influencers.avatarPlaceholder}
                       />
-                      <p className="text-[10px] text-zinc-400 px-1">
-                        Tip: Right-click your social media profile picture and select "Copy image address" to get the link.
+                      <p className="text-[11px] text-orange-600 font-medium px-1 bg-orange-50 py-1 rounded-md mt-2 flex items-center gap-1">
+                        <Zap size={10} />
+                        {language === 'bn' 
+                          ? 'টিপ: নিচে আপনার সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
+                          : 'Tip: Add your social links below and we will try to fetch your photo automatically!'}
                       </p>
                     </div>
                   </div>
@@ -321,21 +371,39 @@ export const InfluencerSection = () => {
                       required
                       type="text"
                       value={newInfluencer.social1}
-                      onChange={(e) => setNewInfluencer({ ...newInfluencer, social1: e.target.value })}
+                      onChange={(e) => {
+                        setNewInfluencer({ ...newInfluencer, social1: e.target.value });
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
+                      onBlur={(e) => {
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
                       className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
                     <input
                       type="text"
                       value={newInfluencer.social2}
-                      onChange={(e) => setNewInfluencer({ ...newInfluencer, social2: e.target.value })}
+                      onChange={(e) => {
+                        setNewInfluencer({ ...newInfluencer, social2: e.target.value });
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
+                      onBlur={(e) => {
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
                       className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
                     <input
                       type="text"
                       value={newInfluencer.social3}
-                      onChange={(e) => setNewInfluencer({ ...newInfluencer, social3: e.target.value })}
+                      onChange={(e) => {
+                        setNewInfluencer({ ...newInfluencer, social3: e.target.value });
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
+                      onBlur={(e) => {
+                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
+                      }}
                       className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
                       placeholder={t.influencers.socialPlaceholder}
                     />
@@ -400,6 +468,9 @@ export const InfluencerSection = () => {
                   alt={inf.name}
                   className="w-20 h-20 rounded-full object-cover border-2 border-orange-100"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(inf.name)}&background=random&color=fff`;
+                  }}
                 />
                 <div className="flex gap-2">
                   <button 

@@ -53,7 +53,22 @@ export default function App() {
                     className="flex items-center gap-2 p-1 pr-3 rounded-full bg-white border border-orange-200 hover:border-orange-400 transition-all"
                   >
                     {user.photoURL ? (
-                      <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+                      <img 
+                        src={user.photoURL} 
+                        alt="" 
+                        className="w-8 h-8 rounded-full" 
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = "w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white text-[10px] font-bold";
+                            fallback.innerText = user.displayName ? user.displayName[0].toUpperCase() : 'U';
+                            parent.prepend(fallback);
+                          }
+                        }}
+                      />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white">
                         <UserIcon size={16} />
