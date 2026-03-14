@@ -16,7 +16,10 @@ export const LiveChatWidget = () => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<{ text: string; isBot: boolean; id?: string }[]>([]);
+  const [error, setError] = useState<Error | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  if (error) throw error;
 
   useEffect(() => {
     if (isOpen) {
@@ -44,7 +47,7 @@ export const LiveChatWidget = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
           }
         }, 100);
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'support_messages'));
+      }, (error) => setError(handleFirestoreError(error, OperationType.LIST, 'support_messages')));
       
       return () => unsub();
     }
@@ -80,7 +83,7 @@ export const LiveChatWidget = () => {
       
       setIsTyping(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'support_messages');
+      setError(handleFirestoreError(error, OperationType.CREATE, 'support_messages'));
       setIsTyping(false);
     }
   };

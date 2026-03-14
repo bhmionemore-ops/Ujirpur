@@ -45,6 +45,7 @@ export const InfluencerSection = () => {
   const { t } = useLanguage();
   const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
+  const [error, setError] = useState<Error | null>(null);
   const influencers = userInfluencers;
 
   const [showForm, setShowForm] = useState(false);
@@ -62,6 +63,8 @@ export const InfluencerSection = () => {
     social2: '',
     social3: ''
   });
+
+  if (error) throw error;
 
   useEffect(() => {
     if (showForm && user && !newInfluencer.name) {
@@ -87,7 +90,13 @@ export const InfluencerSection = () => {
         ...doc.data()
       })) as Influencer[];
       setUserInfluencers(items);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'influencers'));
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'influencers');
+      } catch (e) {
+        setError(e as Error);
+      }
+    });
 
     // Listen to collab requests (only if logged in)
     let unsubReq = () => {};
@@ -153,7 +162,11 @@ export const InfluencerSection = () => {
       setShowForm(false);
       setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'influencers');
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'influencers');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 
@@ -175,7 +188,11 @@ export const InfluencerSection = () => {
       setRequestingId(null);
       setTimeout(() => setRequestSentId(null), 3000);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'collab_requests');
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'collab_requests');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 
@@ -184,7 +201,11 @@ export const InfluencerSection = () => {
     try {
       await deleteDoc(doc(db, 'influencers', id));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, 'influencers');
+      try {
+        handleFirestoreError(err, OperationType.DELETE, 'influencers');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 
@@ -192,7 +213,11 @@ export const InfluencerSection = () => {
     try {
       await deleteDoc(doc(db, 'collab_requests', id));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, 'collab_requests');
+      try {
+        handleFirestoreError(err, OperationType.DELETE, 'collab_requests');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 

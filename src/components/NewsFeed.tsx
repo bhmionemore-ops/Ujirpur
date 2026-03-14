@@ -19,11 +19,24 @@ export const NewsFeed = () => {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [newsLimit, setNewsLimit] = useState(10);
+  const [error, setError] = useState<Error | null>(null);
+
+  if (error) throw error;
 
   useEffect(() => {
+    // Safety timeout to ensure loading doesn't get stuck
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("News loading timed out, showing fallback.");
+        setNews(FALLBACK_NEWS[language]);
+        setLoading(false);
+      }
+    }, 5000);
+
     const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'), limit(newsLimit));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      clearTimeout(timeout);
       const items = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -42,11 +55,24 @@ export const NewsFeed = () => {
       }
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'news');
+      clearTimeout(timeout);
+      console.error("Firestore news error:", error);
+      setNews(FALLBACK_NEWS[language]);
       setLoading(false);
+      // We still report it for the system to catch if it's a permission issue
+      if (error.message?.includes('permission')) {
+        try {
+          handleFirestoreError(error, OperationType.LIST, 'news');
+        } catch (e) {
+          setError(e as Error);
+        }
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [newsLimit, language]);
 
   useEffect(() => {

@@ -84,6 +84,15 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["text", "sessionId"]
+    },
+    "stat": {
+      "title": "Statistic",
+      "description": "A global statistic for the application.",
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer" }
+      },
+      "required": ["count"]
     }
   },
   "firestore": {
@@ -110,6 +119,10 @@
     "/support_messages/{messageId}": {
       "schema": "support_message",
       "description": "Support chat messages."
+    },
+    "/stats/{statId}": {
+      "schema": "stat",
+      "description": "Global application statistics like visitor counts."
     }
   }
 }

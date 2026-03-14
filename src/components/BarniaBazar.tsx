@@ -29,6 +29,7 @@ export const BarniaBazar = () => {
   const { user, signIn, isAdmin, setAuthModalOpen } = useFirebase();
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const [showAddShop, setShowAddShop] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +46,8 @@ export const BarniaBazar = () => {
     products: [{ name: '', price: '' }]
   });
 
+  if (error) throw error;
+
   useEffect(() => {
     const q = query(collection(db, 'shops'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -55,7 +58,11 @@ export const BarniaBazar = () => {
       setShops(items);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'shops');
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'shops');
+      } catch (e) {
+        setError(e as Error);
+      }
       setLoading(false);
     });
 
@@ -76,7 +83,11 @@ export const BarniaBazar = () => {
       await deleteDoc(doc(db, 'shops', confirmDelete));
       setConfirmDelete(null);
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `shops/${confirmDelete}`);
+      try {
+        handleFirestoreError(err, OperationType.DELETE, `shops/${confirmDelete}`);
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 
@@ -129,7 +140,11 @@ export const BarniaBazar = () => {
         });
       }, 3000);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'shops');
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'shops');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 

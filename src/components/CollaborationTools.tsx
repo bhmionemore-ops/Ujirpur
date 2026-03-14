@@ -12,7 +12,10 @@ export const CollaborationTools = () => {
   const [activeTab, setActiveTab] = useState<'messages' | 'planning' | 'projects'>('messages');
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [error, setError] = useState<Error | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  if (error) throw error;
 
   useEffect(() => {
     if (activeTab === 'messages' && user) {
@@ -28,7 +31,7 @@ export const CollaborationTools = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
           }
         }, 100);
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
+      }, (error) => setError(handleFirestoreError(error, OperationType.LIST, 'messages')));
       return () => unsub();
     } else if (activeTab === 'messages' && !user) {
       setMessages([]);
@@ -68,7 +71,7 @@ export const CollaborationTools = () => {
         }, 1500);
       }
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'messages');
+      setError(handleFirestoreError(err, OperationType.CREATE, 'messages'));
     }
   };
 

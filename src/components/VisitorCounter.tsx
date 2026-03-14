@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { db, increment, updateDoc, doc, getDoc, setDoc, onSnapshot } from '../firebase';
+import { db, increment, updateDoc, doc, getDoc, setDoc, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
 import { Users } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 export const VisitorCounter = () => {
   const [count, setCount] = useState<number | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const { t } = useLanguage();
   const BASE_COUNT = 1500;
+
+  if (error) throw error;
 
   useEffect(() => {
     const visitorDoc = doc(db, 'stats', 'visitors');
@@ -22,7 +25,11 @@ export const VisitorCounter = () => {
           });
         }
       } catch (error) {
-        console.error("Error updating visitor count:", error);
+        try {
+          handleFirestoreError(error, OperationType.WRITE, 'stats/visitors');
+        } catch (e) {
+          setError(e as Error);
+        }
       }
     };
 
@@ -36,6 +43,12 @@ export const VisitorCounter = () => {
     const unsub = onSnapshot(visitorDoc, (doc) => {
       if (doc.exists()) {
         setCount(doc.data().count);
+      }
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.GET, 'stats/visitors');
+      } catch (e) {
+        setError(e as Error);
       }
     });
 

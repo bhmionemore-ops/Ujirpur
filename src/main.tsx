@@ -4,13 +4,16 @@ import App from './App.tsx';
 import './index.css';
 import { LanguageProvider } from './LanguageContext';
 import { FirebaseProvider } from './FirebaseContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <FirebaseProvider>
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </FirebaseProvider>
+    <ErrorBoundary>
+      <FirebaseProvider>
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
+      </FirebaseProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -24,6 +24,9 @@ service cloud.firestore {
     // Collection: support_messages
     // Fields: text, sessionId, isBot, createdAt
     //
+    // Collection: stats
+    // Fields: count
+    //
     // ===============================================================
 
     // ===============================================================
@@ -105,6 +108,11 @@ service cloud.firestore {
              data.text is string && data.text.size() > 0 && data.text.size() < 1000;
     }
 
+    function isValidStat(data) {
+      return hasRequiredFields(['count']) &&
+             data.count is int;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -145,6 +153,15 @@ service cloud.firestore {
     match /support_messages/{messageId} {
       allow read: if true; // Allow visitors to read their session messages
       allow create: if isValidSupportMessage(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /stats/{statId} {
+      allow read: if true;
+      // Allow anyone to create/update the visitor count
+      // In a production app, we might want to restrict this more, 
+      // but for a simple visitor counter, this is necessary.
+      allow create, update: if isValidStat(request.resource.data);
       allow delete: if isAdmin();
     }
 

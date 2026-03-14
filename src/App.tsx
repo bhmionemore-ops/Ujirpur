@@ -118,7 +118,7 @@ export default function App() {
         <Banner />
         <WhyJoin />
         
-        <div id="news">
+        <div>
           <NewsFeed />
         </div>
 
