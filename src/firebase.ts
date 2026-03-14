@@ -13,7 +13,7 @@ import {
   updateProfile,
   sendEmailVerification
 } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, getDocFromServer, increment, updateDoc } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -45,7 +45,18 @@ export const signInWithGoogle = async () => {
 
 export const handleRedirectResult = () => getRedirectResult(auth);
 export const logout = () => signOut(auth);
-export { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification };
+export { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  updateProfile, 
+  sendEmailVerification, 
+  increment, 
+  updateDoc,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot
+};
 
 // Connection Test
 async function testConnection() {

@@ -4,6 +4,8 @@ import { NewsFeed } from './components/NewsFeed';
 import { BarniaBazar } from './components/BarniaBazar';
 import { InfluencerSection } from './components/InfluencerSection';
 import { CollaborationTools } from './components/CollaborationTools';
+import { WhyJoin } from './components/WhyJoin';
+import { VisitorCounter } from './components/VisitorCounter';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { AuthModal } from './components/AuthModal';
 import { useLanguage } from './LanguageContext';
@@ -114,6 +116,7 @@ export default function App() {
 
       <main>
         <Banner />
+        <WhyJoin />
         
         <div id="news">
           <NewsFeed />
@@ -177,8 +180,11 @@ export default function App() {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-zinc-800 text-center text-zinc-500 text-xs">
-          © {new Date().getFullYear()} Ujirpur Barnia Nadia. {t.footer.rights}
+        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="text-zinc-500 text-xs">
+            © {new Date().getFullYear()} Ujirpur Barnia Nadia. {t.footer.rights}
+          </div>
+          <VisitorCounter />
         </div>
       </footer>
     </div>

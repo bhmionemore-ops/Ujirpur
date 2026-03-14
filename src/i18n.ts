@@ -28,7 +28,7 @@ export const translations = {
     },
     bazar: {
       title: 'বার্নিয়া বাজার',
-      subtitle: 'দৈনিক বাজার দর দেখুন এবং স্থানীয় দোকানদারদের সাথে যোগাযোগ করুন।',
+      subtitle: 'আপনার দোকানের পণ্যগুলো অনলাইনে প্রদর্শন করুন এবং প্রতিদিনের বাজার দর আপডেট করে কাস্টমারদের সাথে যুক্ত থাকুন।',
       search: 'দোকান বা পণ্য খুঁজুন...',
       register: 'দোকান নথিভুক্ত করুন',
       category: 'বিভাগ',
@@ -45,7 +45,7 @@ export const translations = {
     },
     influencers: {
       title: 'ইনফ্লুয়েন্সার নেটওয়ার্ক',
-      subtitle: 'স্থানীয় ক্রিয়েটরদের সাথে যুক্ত হন এবং সহযোগিতা করুন।',
+      subtitle: 'আপনার প্রতিভা সবার সামনে তুলে ধরুন, অন্যান্য ক্রিয়েটরদের সাথে সহযোগিতা করুন এবং আমাদের ডিজিটাল সম্প্রদায়ের অংশ হোন।',
       join: 'নেটওয়ার্কে যোগ দিন',
       bio: 'বায়ো',
       collab: 'সহযোগিতা করুন',
@@ -73,6 +73,23 @@ export const translations = {
       links: 'দ্রুত লিঙ্ক',
       contact: 'যোগাযোগ করুন',
       rights: 'সর্বস্বত্ব সংরক্ষিত।',
+      visitorCount: 'মোট ভিজিটর',
+    },
+    whyJoin: {
+      title: 'আমাদের সাথে কেন যুক্ত হবেন?',
+      subtitle: 'উজিরপুর বার্নিয়া ডিজিটাল হাবের অংশ হওয়ার সুবিধাগুলো জানুন।',
+      influencers: {
+        title: 'ইনফ্লুয়েন্সার হিসেবে',
+        description: 'আপনার প্রতিভা সবার সামনে তুলে ধরুন, অন্যান্য ক্রিয়েটরদের সাথে সহযোগিতা করুন এবং আপনার ফলোয়ার বাড়ান।',
+      },
+      shops: {
+        title: 'দোকানদার হিসেবে',
+        description: 'আপনার পণ্যগুলো অনলাইনে প্রদর্শন করুন, প্রতিদিনের বাজার দর আপডেট করুন এবং আরও বেশি কাস্টমারের কাছে পৌঁছান।',
+      },
+      community: {
+        title: 'সম্প্রদায়ের অংশ হিসেবে',
+        description: 'আপনার এলাকার খবরাখবর সবার আগে পান এবং স্থানীয় ব্যবসার উন্নতিতে সাহায্য করুন।',
+      }
     },
     data: {
       influencers: [
@@ -174,7 +191,7 @@ export const translations = {
     },
     bazar: {
       title: 'Barnia Bazar',
-      subtitle: 'Check daily prices and connect with local shop owners.',
+      subtitle: 'Showcase your shop products online and stay connected with customers by updating daily market prices.',
       search: 'Search shops or products...',
       register: 'Register Shop',
       category: 'Category',
@@ -191,7 +208,7 @@ export const translations = {
     },
     influencers: {
       title: 'Influencer Network',
-      subtitle: 'Connect and collaborate with local creators.',
+      subtitle: 'Showcase your talent, collaborate with other creators, and become a vital part of our digital community.',
       join: 'Join the Network',
       bio: 'Bio',
       collab: 'Collaborate',
@@ -219,6 +236,23 @@ export const translations = {
       links: 'Quick Links',
       contact: 'Contact Us',
       rights: 'All rights reserved.',
+      visitorCount: 'Total Visitors',
+    },
+    whyJoin: {
+      title: 'Why Join Us?',
+      subtitle: 'Discover the benefits of being part of the Ujirpur Barnia Digital Hub.',
+      influencers: {
+        title: 'As an Influencer',
+        description: 'Showcase your talent, collaborate with other creators, and grow your audience within the community.',
+      },
+      shops: {
+        title: 'As a Shop Owner',
+        description: 'Display your products online, update daily prices, and reach more customers in the area.',
+      },
+      community: {
+        title: 'As a Community Member',
+        description: 'Get the latest local news first and support the growth of local businesses.',
+      }
     },
     data: {
       influencers: [],
