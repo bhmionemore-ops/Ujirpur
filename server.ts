@@ -10,18 +10,23 @@ import { generateLocalNews, generateTrendingNews } from "./src/services/gemini.t
 
 dotenv.config();
 
-const firebaseConfig = JSON.parse(await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8"));
+let firestore: admin.firestore.Firestore | null = null;
 
 // Background Task: Auto-update news every 2 hours
-async function autoUpdateNews(firestore: admin.firestore.Firestore) {
+async function autoUpdateNews() {
+  if (!firestore) {
+    console.error("Skipping news update: Firestore not initialized");
+    return;
+  }
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] Starting automated news update...`);
   try {
     const batch = firestore.batch();
     
     // 1. Update Local News
-    console.log(`[${timestamp}] Fetching local news...`);
+    console.log(`[${timestamp}] Fetching local news (BN)...`);
     const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
+    console.log(`[${timestamp}] Fetching local news (EN)...`);
     const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
     
     const newsCollection = firestore.collection("news");
@@ -37,8 +42,9 @@ async function autoUpdateNews(firestore: admin.firestore.Firestore) {
     });
 
     // 2. Update Trending News
-    console.log(`[${timestamp}] Fetching trending news...`);
+    console.log(`[${timestamp}] Fetching trending news (BN)...`);
     const trendingBn = await generateTrendingNews("bn");
+    console.log(`[${timestamp}] Fetching trending news (EN)...`);
     const trendingEn = await generateTrendingNews("en");
     
     const trendingCollection = firestore.collection("trending_news");
@@ -53,15 +59,15 @@ async function autoUpdateNews(firestore: admin.firestore.Firestore) {
     });
     
     await batch.commit();
-    console.log(`[${new Date().toISOString()}] Successfully updated all news categories.`);
+    console.log(`[${new Date().toISOString()}] Successfully updated all news categories. Added ${localNewsBn.length + localNewsEn.length} local items and ${trendingBn.length + trendingEn.length} trending items.`);
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
   }
 }
 
-async function getNewsItem(id: string) {
+async function getNewsItem(id: string, projectId: string, databaseId: string) {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${firebaseConfig.firestoreDatabaseId}/documents/news/${id}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/news/${id}`;
     const response = await fetch(url);
     if (!response.ok) return null;
     const data = await response.json();
@@ -79,9 +85,9 @@ async function getNewsItem(id: string) {
   }
 }
 
-async function getProfileItem(id: string) {
+async function getProfileItem(id: string, projectId: string, databaseId: string) {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${firebaseConfig.firestoreDatabaseId}/documents/influencers/${id}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/influencers/${id}`;
     const response = await fetch(url);
     if (!response.ok) return null;
     const data = await response.json();
@@ -167,16 +173,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
-
-  // Health check endpoint
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  // Initialize Firebase Admin
-  let firestore: admin.firestore.Firestore | null = null;
+  let firebaseConfig: any = null;
   try {
+    const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
+    firebaseConfig = JSON.parse(configData);
+    
     if (!admin.apps.length) {
       admin.initializeApp({
         projectId: firebaseConfig.projectId,
@@ -185,8 +186,21 @@ async function startServer() {
     firestore = admin.firestore(firebaseConfig.firestoreDatabaseId);
     console.log("Firebase Admin initialized successfully.");
   } catch (error) {
-    console.error("Firebase Admin initialization failed:", error);
+    console.error("Firebase initialization failed:", error);
   }
+
+  app.use(express.json());
+
+  // Logging middleware for API requests
+  app.use("/api", (req, res, next) => {
+    console.log(`[${new Date().toISOString()}] API Request: ${req.method} ${req.originalUrl}`);
+    next();
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   // Load initial data
   let db = await loadData();
@@ -320,15 +334,16 @@ async function startServer() {
   });
 
   app.post("/api/admin/update-news", async (req, res) => {
+    console.log("Received manual news update request");
     // In a real app, we would verify the admin token here
     // For this app, we'll assume the request is authorized if it comes from the admin UI
     try {
-      if (!firestore) throw new Error("Firestore not initialized");
-      await autoUpdateNews(firestore);
+      await autoUpdateNews();
+      console.log("Manual news update completed successfully");
       res.json({ success: true, message: "News update triggered successfully" });
     } catch (error) {
       console.error("Manual news update failed:", error);
-      res.status(500).json({ success: false, error: "Failed to update news" });
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Failed to update news" });
     }
   });
 
@@ -341,7 +356,7 @@ async function startServer() {
     app.use(vite.middlewares);
 
     app.get("/news/:id", async (req, res) => {
-      const newsItem = await getNewsItem(req.params.id);
+      const newsItem = firebaseConfig ? await getNewsItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
@@ -361,7 +376,7 @@ async function startServer() {
     });
 
     app.get("/profile/:id", async (req, res) => {
-      const profile = await getProfileItem(req.params.id);
+      const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
@@ -385,11 +400,17 @@ async function startServer() {
       html = await vite.transformIndexHtml(req.originalUrl, html);
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     });
+
+    // Catch-all for unmatched API POST requests
+    app.post("/api/*", (req, res) => {
+      console.warn(`Unmatched API POST request: ${req.originalUrl}`);
+      res.status(404).json({ success: false, error: `API route not found: ${req.originalUrl}` });
+    });
   } else {
     app.use(express.static("dist", { index: false }));
 
     app.get("/news/:id", async (req, res) => {
-      const newsItem = await getNewsItem(req.params.id);
+      const newsItem = firebaseConfig ? await getNewsItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
       if (newsItem) {
@@ -408,7 +429,7 @@ async function startServer() {
     });
 
     app.get("/profile/:id", async (req, res) => {
-      const profile = await getProfileItem(req.params.id);
+      const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
       if (profile) {
@@ -435,17 +456,14 @@ async function startServer() {
     console.log(`Server running on http://localhost:${PORT}`);
     
     // Start background tasks after server is listening
-    if (firestore) {
-      const fs = firestore;
-      setInterval(() => {
-        autoUpdateNews(fs).catch(err => console.error("Interval news update failed:", err));
-      }, 7200000);
+    setInterval(() => {
+      autoUpdateNews().catch(err => console.error("Interval news update failed:", err));
+    }, 7200000);
 
-      console.log("Scheduling initial news update in 10 seconds...");
-      setTimeout(() => {
-        autoUpdateNews(fs).catch(err => console.error("Initial news update failed:", err));
-      }, 10000);
-    }
+    console.log("Scheduling initial news update in 10 seconds...");
+    setTimeout(() => {
+      autoUpdateNews().catch(err => console.error("Initial news update failed:", err));
+    }, 10000);
   });
 }
 

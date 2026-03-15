@@ -306,7 +306,9 @@ export async function generateNewsImage(prompt: string, category: string): Promi
 }
 
 export async function generateLocalNews(location: string, language: 'bn' | 'en' = 'bn'): Promise<NewsItem[]> {
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const currentTime = now.toLocaleTimeString();
   const langName = language === 'bn' ? 'Bengali' : 'English';
   
   const locationsToTry = [
@@ -322,6 +324,7 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     const currentLocation = locationsToTry[locIndex];
     
     const prompt = `Find the top 11 most recent LIVE local news for ${currentLocation} specifically for today (${today}) or the last 24 hours. 
+    Current server time is ${currentTime}.
     Focus on ACTUAL events, local developments, government announcements, or community news that happened VERY RECENTLY.
     
     IMPORTANT: 
@@ -331,7 +334,8 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     4. Ensure the news is diverse (e.g., agriculture, education, health, local events, and AT LEAST ONE item about Politics).
     5. The 'date' field MUST be ${today} or very close to it.
     6. The 'fullContent' MUST be detailed and informative (300-500 words).
-    7. The 'sourceName' MUST be the name of the news agency or website where the news was found.`;
+    7. The 'sourceName' MUST be the name of the news agency or website where the news was found.
+    8. AVOID repeating news from previous hours. Look for the absolute latest updates.`;
 
     try {
       const config: any = {
@@ -443,12 +447,16 @@ export async function generateChatReply(message: string, history: { text: string
 }
 
 export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promise<NewsItem[]> {
+  const now = new Date();
+  const currentTime = now.toLocaleTimeString();
   const langName = language === 'bn' ? 'Bengali' : 'English';
   const prompt = `Find the top 10 trending news headlines in India right now. 
+  Current server time is ${currentTime}.
   Focus on national importance, sports, entertainment, or major current events.
   
   IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
-  Return the results in the specified JSON format.`;
+  Return the results in the specified JSON format.
+  AVOID repeating news from previous hours. Look for the absolute latest updates.`;
 
   let retryCount = 0;
   const maxRetries = 2;

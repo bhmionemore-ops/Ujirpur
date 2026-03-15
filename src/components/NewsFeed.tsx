@@ -33,22 +33,27 @@ export const NewsFeed = () => {
       }
     }, 5000);
 
-    const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'), limit(newsLimit));
+    // We fetch more than we need and filter by language client-side to avoid index requirements
+    const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'), limit(200));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       clearTimeout(timeout);
-      const items = snapshot.docs.map(doc => ({
+      const allItems = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as NewsItem[];
       
-      if (items.length === 0) {
+      // Filter by language
+      const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, newsLimit);
+      
+      if (filteredItems.length === 0) {
         setNews(FALLBACK_NEWS[language]);
       } else {
-        setNews(items);
+        setNews(filteredItems);
       }
-      if (items.length > 0 && items[0].createdAt) {
-        const timestamp = (items[0] as any).createdAt;
+      
+      if (filteredItems.length > 0 && filteredItems[0].createdAt) {
+        const timestamp = (filteredItems[0] as any).createdAt;
         if (timestamp && typeof timestamp.toDate === 'function') {
           setLastUpdated(timestamp.toDate());
         }
@@ -59,7 +64,6 @@ export const NewsFeed = () => {
       console.error("Firestore news error:", error);
       setNews(FALLBACK_NEWS[language]);
       setLoading(false);
-      // We still report it for the system to catch if it's a permission issue
       if (error.message?.includes('permission')) {
         try {
           handleFirestoreError(error, OperationType.LIST, 'news');
@@ -76,18 +80,43 @@ export const NewsFeed = () => {
   }, [newsLimit, language]);
 
   useEffect(() => {
-    const fetchTrending = async () => {
-      setTrendingLoading(true);
-      try {
-        const items = await generateTrendingNews(language);
-        setTrending(items);
-      } catch (error) {
-        console.error("Error fetching trending news:", error);
-      } finally {
+    setTrendingLoading(true);
+    
+    // Fetch trending news from Firestore instead of calling AI directly
+    const q = query(collection(db, 'trending_news'), orderBy('createdAt', 'desc'), limit(100));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allItems = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as NewsItem[];
+      
+      // Filter by language
+      const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, 10);
+      
+      if (filteredItems.length === 0) {
+        // Fallback to AI if no trending news in DB yet
+        const fetchTrendingAI = async () => {
+          try {
+            const items = await generateTrendingNews(language);
+            setTrending(items);
+          } catch (error) {
+            console.error("Error fetching trending news from AI:", error);
+          } finally {
+            setTrendingLoading(false);
+          }
+        };
+        fetchTrendingAI();
+      } else {
+        setTrending(filteredItems);
         setTrendingLoading(false);
       }
-    };
-    fetchTrending();
+    }, (error) => {
+      console.error("Firestore trending news error:", error);
+      setTrendingLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [language]);
 
   useEffect(() => {
@@ -156,6 +185,13 @@ export const NewsFeed = () => {
     setRefreshing(true);
     try {
       const response = await fetch('/api/admin/update-news', { method: 'POST' });
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.error(`Manual news update failed with status ${response.status}:`, text);
+        throw new Error(`Server error (${response.status}). Please try again.`);
+      }
+
       const data = await response.json();
       if (!data.success) {
         throw new Error(data.error || "Failed to trigger update");
