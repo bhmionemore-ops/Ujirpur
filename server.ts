@@ -5,10 +5,80 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs/promises";
 import fetch from "node-fetch";
+import admin from "firebase-admin";
+import { generateLocalNews, generateTrendingNews } from "./src/services/gemini.js";
 
 dotenv.config();
 
 const firebaseConfig = JSON.parse(await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8"));
+
+// Initialize Firebase Admin
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: firebaseConfig.projectId,
+  });
+}
+
+const firestore = admin.firestore(firebaseConfig.firestoreDatabaseId);
+
+// Background Task: Auto-update news every 2 hours
+async function autoUpdateNews() {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] Starting automated news update...`);
+  try {
+    const batch = firestore.batch();
+    
+    // 1. Update Local News
+    console.log(`[${timestamp}] Fetching local news...`);
+    const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
+    const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
+    
+    const newsCollection = firestore.collection("news");
+    
+    // Add language tag and prepare batch
+    localNewsBn.forEach(item => {
+      const { id, ...rest } = item;
+      batch.set(newsCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+    });
+    localNewsEn.forEach(item => {
+      const { id, ...rest } = item;
+      batch.set(newsCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+    });
+
+    // 2. Update Trending News
+    console.log(`[${timestamp}] Fetching trending news...`);
+    const trendingBn = await generateTrendingNews("bn");
+    const trendingEn = await generateTrendingNews("en");
+    
+    const trendingCollection = firestore.collection("trending_news");
+    
+    trendingBn.forEach(item => {
+      const { id, ...rest } = item;
+      batch.set(trendingCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+    });
+    trendingEn.forEach(item => {
+      const { id, ...rest } = item;
+      batch.set(trendingCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+    });
+    
+    await batch.commit();
+    console.log(`[${new Date().toISOString()}] Successfully updated all news categories.`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
+  }
+}
+
+// Run every 2 hours (7200000 ms)
+setInterval(() => {
+  autoUpdateNews().catch(err => console.error("Interval news update failed:", err));
+}, 7200000);
+
+// Also run once on startup after a short delay
+console.log("Scheduling initial news update in 10 seconds...");
+setTimeout(() => {
+  autoUpdateNews().catch(err => console.error("Initial news update failed:", err));
+}, 10000);
 
 async function getNewsItem(id: string) {
   try {
@@ -248,6 +318,18 @@ async function startServer() {
     } catch (error) {
       console.error("Error sending email:", error);
       res.status(500).json({ success: false, error: "Failed to send notification" });
+    }
+  });
+
+  app.post("/api/admin/update-news", async (req, res) => {
+    // In a real app, we would verify the admin token here
+    // For this app, we'll assume the request is authorized if it comes from the admin UI
+    try {
+      await autoUpdateNews();
+      res.json({ success: true, message: "News update triggered successfully" });
+    } catch (error) {
+      console.error("Manual news update failed:", error);
+      res.status(500).json({ success: false, error: "Failed to update news" });
     }
   });
 

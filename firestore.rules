@@ -13,7 +13,10 @@ service cloud.firestore {
     // Fields: name, category, location, description, imageUrl, contact, createdAt, uid
     //
     // Collection: news
-    // Fields: title, content, fullContent, date, category, imageUrl, sourceUrl, createdAt
+    // Fields: title, content, fullContent, date, category, imageUrl, sourceUrl, sourceName, language, createdAt
+    //
+    // Collection: trending_news
+    // Fields: title, content, category, imageUrl, language, createdAt
     //
     // Collection: users
     // Fields: displayName, email, photoURL, role, createdAt
@@ -150,6 +153,11 @@ service cloud.firestore {
     }
 
     match /news/{newsId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin();
+    }
+
+    match /trending_news/{newsId} {
       allow read: if true; // Publicly viewable
       allow write: if isAdmin();
     }

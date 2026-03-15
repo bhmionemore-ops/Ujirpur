@@ -23,12 +23,14 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-[#FFF9F0]/80 backdrop-blur-md border-b border-orange-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img 
-              src="https://picsum.photos/seed/ujirpur-logo/200/200" 
-              alt="Logo" 
-              className="w-10 h-10 rounded-lg object-cover border-2 border-orange-600"
-              referrerPolicy="no-referrer"
-            />
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shadow-lg border border-orange-400/30 overflow-hidden">
+              <img 
+                src="https://images.unsplash.com/photo-1585829365234-781fcd50330b?auto=format&fit=crop&q=80&w=100&h=100" 
+                alt="Logo" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>
           </div>
           <div className="flex items-center gap-4 md:gap-6">

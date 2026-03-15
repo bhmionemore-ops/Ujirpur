@@ -155,21 +155,15 @@ export const NewsFeed = () => {
     
     setRefreshing(true);
     try {
-      const items = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", language);
-      
-      const batch = writeBatch(db);
-      items.forEach((item) => {
-        const { id, ...rest } = item;
-        const newDocRef = doc(collection(db, 'news'));
-        batch.set(newDocRef, {
-          ...rest,
-          createdAt: serverTimestamp(),
-          isFallback: false
-        });
-      });
-      await batch.commit();
+      const response = await fetch('/api/admin/update-news', { method: 'POST' });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to trigger update");
+      }
+      // The onSnapshot will automatically pick up the new news
     } catch (error) {
-      console.error("Error generating/saving news:", error);
+      console.error("Error triggering manual news update:", error);
+      alert(language === 'bn' ? 'খবর আপডেট করতে ব্যর্থ হয়েছে।' : 'Failed to update news.');
     } finally {
       setRefreshing(false);
     }

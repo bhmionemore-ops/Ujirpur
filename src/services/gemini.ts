@@ -12,6 +12,7 @@ export interface NewsItem {
   imageUrl: string;
   sourceUrl?: string;
   sourceName?: string;
+  language?: 'bn' | 'en';
   isFallback?: boolean;
   createdAt?: any;
 }
