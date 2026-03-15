@@ -13,11 +13,24 @@ dotenv.config();
 const firebaseConfig = JSON.parse(await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8"));
 
 // Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: firebaseConfig.projectId,
-  });
+try {
+  if (!admin.apps.length) {
+    // Try to initialize with default credentials, fallback to project ID only
+    try {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: firebaseConfig.projectId,
+      });
+      console.log("Firebase Admin initialized with default credentials.");
+    } catch (credError) {
+      console.warn("Failed to initialize with default credentials, falling back to project ID only:", credError);
+      admin.initializeApp({
+        projectId: firebaseConfig.projectId,
+      });
+    }
+  }
+} catch (initError) {
+  console.error("Critical error during Firebase Admin initialization:", initError);
 }
 
 const firestore = admin.firestore(firebaseConfig.firestoreDatabaseId);
