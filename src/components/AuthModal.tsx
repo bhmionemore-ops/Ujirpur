@@ -64,10 +64,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'ভুল ইমেইল বা পাসওয়ার্ড।'
           : 'Invalid email or password.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError(language === 'bn'
+          ? 'লগইন উইন্ডোটি বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন এবং উইন্ডোটি খোলা রাখুন।'
+          : 'The sign-in window was closed before completion. Please try again and keep the window open.');
       } else if (err.code === 'auth/network-request-failed') {
         setError(language === 'bn'
           ? 'নেটওয়ার্ক সমস্যা। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।'
           : 'Network error. Please check your internet connection.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError(language === 'bn'
+          ? 'লগইন উইন্ডোটি বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন এবং উইন্ডোটি খোলা রাখুন।'
+          : 'The sign-in window was closed before completion. Please try again and keep the window open.');
       } else if (errorMessage.includes('missing initial state')) {
         setError(language === 'bn'
           ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'
@@ -104,6 +112,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'গুগল লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
           : 'Google sign-in is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError(language === 'bn'
+          ? 'লগইন উইন্ডোটি বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন এবং উইন্ডোটি খোলা রাখুন।'
+          : 'The sign-in window was closed before completion. Please try again and keep the window open.');
       } else if (errorMessage.includes('missing initial state')) {
         setError(language === 'bn'
           ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'

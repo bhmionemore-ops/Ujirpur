@@ -338,7 +338,8 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     8. AVOID repeating news from previous hours. Look for the absolute latest updates, breaking news, or developing stories.
     9. If there are no new major events, look for local community updates, weather reports, or upcoming local events.
     10. To ensure uniqueness, include a small detail about the time or a specific local person/place mentioned in the news.
-    11. DO NOT return the same headlines as previous requests. Find DIFFERENT stories.`;
+    11. DO NOT return the same headlines as previous requests. Find DIFFERENT stories.
+    Random seed for variety: ${Math.random()}.`;
 
     try {
       const config: any = {

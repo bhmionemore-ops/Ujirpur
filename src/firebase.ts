@@ -28,13 +28,21 @@ export const signInWithGoogle = async () => {
   try {
     // Always try popup first as it's more reliable in most desktop/mobile browsers
     // unless explicitly blocked.
-    return await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+    return result;
   } catch (error: any) {
     console.error("Sign in with popup error:", error);
     
-    // If popup is blocked or fails, and we are on mobile, try redirect
+    // If popup is blocked, cancelled, or closed by user, and we are on mobile, try redirect
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request')) {
+    const isPopupError = [
+      'auth/popup-blocked',
+      'auth/cancelled-popup-request',
+      'auth/popup-closed-by-user'
+    ].includes(error.code);
+
+    if (isMobile && isPopupError) {
+      console.log("Attempting redirect fallback for mobile...");
       return signInWithRedirect(auth, googleProvider);
     }
     

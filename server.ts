@@ -21,6 +21,23 @@ async function autoUpdateNews() {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] Starting automated news update...`);
   try {
+    // 1. Fetch Local News
+    console.log(`[${timestamp}] Fetching local news (BN)...`);
+    const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
+    console.log(`[${timestamp}] Fetching local news (EN)...`);
+    const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
+    
+    // 2. Fetch Trending News
+    console.log(`[${timestamp}] Fetching trending news (BN)...`);
+    const trendingBn = await generateTrendingNews("bn");
+    console.log(`[${timestamp}] Fetching trending news (EN)...`);
+    const trendingEn = await generateTrendingNews("en");
+
+    if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
+      console.warn("No news generated, skipping update.");
+      return;
+    }
+
     // Cleanup old news (older than 48 hours)
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const oldNewsQuery = await firestore.collection("news").where("createdAt", "<", fortyEightHoursAgo).get();
@@ -33,14 +50,8 @@ async function autoUpdateNews() {
     console.log(`[${timestamp}] Cleaned up ${oldNewsQuery.size + oldTrendingQuery.size} old news items.`);
 
     const batch = firestore.batch();
-    
-    // 1. Update Local News
-    console.log(`[${timestamp}] Fetching local news (BN)...`);
-    const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
-    console.log(`[${timestamp}] Fetching local news (EN)...`);
-    const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
-    
     const newsCollection = firestore.collection("news");
+    const trendingCollection = firestore.collection("trending_news");
     
     // Add language tag and prepare batch
     localNewsBn.forEach(item => {
@@ -51,14 +62,6 @@ async function autoUpdateNews() {
       const { id, ...rest } = item;
       batch.set(newsCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
     });
-
-    // 2. Update Trending News
-    console.log(`[${timestamp}] Fetching trending news (BN)...`);
-    const trendingBn = await generateTrendingNews("bn");
-    console.log(`[${timestamp}] Fetching trending news (EN)...`);
-    const trendingEn = await generateTrendingNews("en");
-    
-    const trendingCollection = firestore.collection("trending_news");
     
     trendingBn.forEach(item => {
       const { id, ...rest } = item;

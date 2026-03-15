@@ -34,7 +34,7 @@ export const NewsFeed = () => {
     }, 5000);
 
     // We fetch more than we need and filter by language client-side to avoid index requirements
-    const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'), limit(200));
+    const q = query(collection(db, 'news'), limit(200));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       clearTimeout(timeout);
@@ -43,6 +43,13 @@ export const NewsFeed = () => {
         id: doc.id
       })) as NewsItem[];
       
+      // Sort by createdAt desc, handling potential nulls from serverTimestamp
+      allItems.sort((a, b) => {
+        const dateA = (a as any).createdAt?.toDate?.() || new Date();
+        const dateB = (b as any).createdAt?.toDate?.() || new Date();
+        return dateB.getTime() - dateA.getTime();
+      });
+
       // Filter by language
       const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, newsLimit);
       

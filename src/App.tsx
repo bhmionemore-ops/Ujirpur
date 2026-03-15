@@ -23,23 +23,8 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-[#FFF9F0]/80 backdrop-blur-md border-b border-orange-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shadow-lg border border-orange-400/30 overflow-hidden">
-              <img 
-                src="https://picsum.photos/seed/ujirpur-hub-logo/100/100" 
-                alt="Logo" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    const icon = document.createElement('div');
-                    icon.className = "text-white font-black text-xl";
-                    icon.innerText = "UB";
-                    parent.appendChild(icon);
-                  }
-                }}
-              />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-600 to-orange-800 flex items-center justify-center shadow-lg border border-orange-500/30">
+              <span className="text-white font-black text-xl tracking-tighter">UB</span>
             </div>
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>
           </div>
