@@ -12,12 +12,21 @@ dotenv.config();
 
 let firestore: admin.firestore.Firestore | null = null;
 
+let isUpdatingNews = false;
+
 // Background Task: Auto-update news every 2 hours
 async function autoUpdateNews() {
   if (!firestore) {
     console.error("Skipping news update: Firestore not initialized");
     return;
   }
+  
+  if (isUpdatingNews) {
+    console.log("News update already in progress, skipping...");
+    return;
+  }
+
+  isUpdatingNews = true;
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] Starting automated news update...`);
   try {
@@ -35,19 +44,22 @@ async function autoUpdateNews() {
 
     if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
       console.warn("No news generated, skipping update.");
+      isUpdatingNews = false;
       return;
     }
 
-    // Cleanup old news (older than 48 hours)
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    const oldNewsQuery = await firestore.collection("news").where("createdAt", "<", fortyEightHoursAgo).get();
-    const oldTrendingQuery = await firestore.collection("trending_news").where("createdAt", "<", fortyEightHoursAgo).get();
+    // 3. If we have new news, clear the old news and save new ones
+    console.log(`[${timestamp}] Clearing old news and saving fresh content...`);
+    
+    // Delete ALL existing news to ensure only LIVE news is shown
+    const allNewsQuery = await firestore.collection("news").get();
+    const allTrendingQuery = await firestore.collection("trending_news").get();
     
     const cleanupBatch = firestore.batch();
-    oldNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
-    oldTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+    allNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+    allTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
     await cleanupBatch.commit();
-    console.log(`[${timestamp}] Cleaned up ${oldNewsQuery.size + oldTrendingQuery.size} old news items.`);
+    console.log(`[${timestamp}] Cleaned up ${allNewsQuery.size + allTrendingQuery.size} old news items.`);
 
     const batch = firestore.batch();
     const newsCollection = firestore.collection("news");
@@ -72,11 +84,54 @@ async function autoUpdateNews() {
       batch.set(trendingCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
     });
     
+    // Update a "system" document to track last successful update
+    batch.set(firestore.collection("system").doc("news_status"), {
+      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      status: "success",
+      count: localNewsBn.length + localNewsEn.length + trendingBn.length + trendingEn.length
+    });
+    
     await batch.commit();
     console.log(`[${new Date().toISOString()}] Successfully updated all news categories. Added ${localNewsBn.length + localNewsEn.length} local items and ${trendingBn.length + trendingEn.length} trending items.`);
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
+    if (firestore) {
+      await firestore.collection("system").doc("news_status").set({
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        status: "error",
+        error: error instanceof Error ? error.message : String(error)
+      }, { merge: true });
+    }
+  } finally {
+    isUpdatingNews = false;
   }
+}
+
+// Middleware to check if news is stale and trigger update
+async function checkNewsFreshness(req: any, res: any, next: any) {
+  if (!firestore) return next();
+  
+  try {
+    const statusDoc = await firestore.collection("system").doc("news_status").get();
+    const now = Date.now();
+    const twoHours = 2 * 60 * 60 * 1000;
+    
+    if (!statusDoc.exists) {
+      console.log("No news status found, triggering initial update...");
+      autoUpdateNews().catch(err => console.error("Background update failed:", err));
+    } else {
+      const data = statusDoc.data();
+      const lastUpdated = data?.lastUpdated?.toDate()?.getTime() || 0;
+      
+      if (now - lastUpdated > twoHours && !isUpdatingNews) {
+        console.log(`News is stale (${Math.floor((now - lastUpdated) / 60000)}m old), triggering background update...`);
+        autoUpdateNews().catch(err => console.error("Background update failed:", err));
+      }
+    }
+  } catch (error) {
+    console.error("Error checking news freshness:", error);
+  }
+  next();
 }
 
 async function getNewsItem(id: string, projectId: string, databaseId: string) {
@@ -204,6 +259,7 @@ async function startServer() {
   }
 
   app.use(express.json());
+  app.use(checkNewsFreshness);
 
   // Logging middleware for API requests
   app.use("/api", (req, res, next) => {
@@ -474,10 +530,10 @@ async function startServer() {
       autoUpdateNews().catch(err => console.error("Interval news update failed:", err));
     }, 7200000);
 
-    console.log("Scheduling initial news update in 10 seconds...");
+    console.log("Scheduling initial news update in 5 seconds...");
     setTimeout(() => {
       autoUpdateNews().catch(err => console.error("Initial news update failed:", err));
-    }, 10000);
+    }, 5000);
   });
 }
 

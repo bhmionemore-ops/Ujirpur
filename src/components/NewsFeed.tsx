@@ -212,6 +212,8 @@ export const NewsFeed = () => {
     }
   };
 
+  const isStale = lastUpdated && (new Date().getTime() - lastUpdated.getTime() > 2 * 60 * 60 * 1000);
+
   if (loading && news.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center py-20 gap-4">
@@ -226,9 +228,9 @@ export const NewsFeed = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`flex h-2 w-2 rounded-full ${news.length === 0 ? 'bg-amber-500' : 'bg-orange-500 animate-ping'}`}></span>
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${news.length === 0 ? 'text-amber-600' : 'text-orange-600'}`}>
-              {news.length === 0 ? (language === 'bn' ? 'কোন খবর নেই' : 'NO NEWS') : t.news.live}
+            <span className={`flex h-2 w-2 rounded-full ${news.length === 0 || isStale ? 'bg-amber-500' : 'bg-orange-500 animate-ping'}`}></span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${news.length === 0 || isStale ? 'text-amber-600' : 'text-orange-600'}`}>
+              {news.length === 0 ? (language === 'bn' ? 'কোন খবর নেই' : 'NO NEWS') : (isStale ? (language === 'bn' ? 'খবর আপডেট হচ্ছে...' : 'REFRESHING LIVE NEWS...') : t.news.live)}
             </span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 border-l-4 border-orange-500 pl-4">
