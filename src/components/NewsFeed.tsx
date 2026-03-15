@@ -18,7 +18,7 @@ export const NewsFeed = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [newsLimit, setNewsLimit] = useState(10);
+  const [newsLimit, setNewsLimit] = useState(11);
   const [error, setError] = useState<Error | null>(null);
 
   if (error) throw error;
@@ -405,6 +405,13 @@ export const NewsFeed = () => {
                     {selectedNews.fullContent || selectedNews.content}
                   </p>
                 </div>
+
+                {selectedNews.sourceName && (
+                  <div className="mt-6 flex items-center gap-2 text-zinc-500 text-sm italic">
+                    <span>Source:</span>
+                    <span className="font-bold text-orange-600">{selectedNews.sourceName}</span>
+                  </div>
+                )}
                 
                 <div className="mt-10 pt-6 border-t border-zinc-100 flex items-center justify-between">
                   <button 

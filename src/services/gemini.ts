@@ -11,6 +11,7 @@ export interface NewsItem {
   category: string;
   imageUrl: string;
   sourceUrl?: string;
+  sourceName?: string;
   isFallback?: boolean;
   createdAt?: any;
 }
@@ -26,6 +27,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       category: 'কৃষি',
       imageUrl: 'https://picsum.photos/seed/agriculture-nadia/800/400',
       sourceUrl: '#',
+      sourceName: 'স্থানীয় সংবাদ',
       isFallback: true
     },
     {
@@ -37,6 +39,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       category: 'পরিবেশ',
       imageUrl: 'https://picsum.photos/seed/environment-nadia/800/400',
       sourceUrl: '#',
+      sourceName: 'জেলা বার্তা',
       isFallback: true
     },
     {
@@ -46,6 +49,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'প্রযুক্তি',
       imageUrl: 'https://picsum.photos/seed/tech-nadia/800/400',
+      sourceName: 'ডিজিটাল হাব নিউজ',
       isFallback: true
     },
     {
@@ -55,6 +59,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'খেলাধুলা',
       imageUrl: 'https://picsum.photos/seed/sports-nadia/800/400',
+      sourceName: 'স্কুল স্পোর্টস ডেস্ক',
       isFallback: true
     },
     {
@@ -64,6 +69,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'শিল্প',
       imageUrl: 'https://picsum.photos/seed/art-nadia/800/400',
+      sourceName: 'সরকারি পোর্টাল',
       isFallback: true
     },
     {
@@ -73,6 +79,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'স্বাস্থ্য',
       imageUrl: 'https://picsum.photos/seed/health-nadia/800/400',
+      sourceName: 'স্বাস্থ্য বিভাগ',
       isFallback: true
     },
     {
@@ -82,6 +89,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'সংস্কৃতি',
       imageUrl: 'https://picsum.photos/seed/culture-nadia/800/400',
+      sourceName: 'স্থানীয় সংবাদ',
       isFallback: true
     },
     {
@@ -91,6 +99,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'পর্যটন',
       imageUrl: 'https://picsum.photos/seed/tourism-nadia/800/400',
+      sourceName: 'পর্যটন পর্ষদ',
       isFallback: true
     },
     {
@@ -100,6 +109,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'নিরাপত্তা',
       imageUrl: 'https://picsum.photos/seed/safety-nadia/800/400',
+      sourceName: 'দমকল বিভাগ',
       isFallback: true
     },
     {
@@ -109,6 +119,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'শিক্ষা',
       imageUrl: 'https://picsum.photos/seed/edu-nadia/800/400',
+      sourceName: 'দক্ষতা হাব',
       isFallback: true
     }
   ],
@@ -122,6 +133,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       category: 'Agriculture',
       imageUrl: 'https://picsum.photos/seed/agriculture-nadia/800/400',
       sourceUrl: '#',
+      sourceName: 'Local News',
       isFallback: true
     },
     {
@@ -133,6 +145,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       category: 'Environment',
       imageUrl: 'https://picsum.photos/seed/environment-nadia/800/400',
       sourceUrl: '#',
+      sourceName: 'District News',
       isFallback: true
     },
     {
@@ -142,6 +155,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Technology',
       imageUrl: 'https://picsum.photos/seed/tech-nadia/800/400',
+      sourceName: 'Digital Hub News',
       isFallback: true
     },
     {
@@ -151,6 +165,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Sports',
       imageUrl: 'https://picsum.photos/seed/sports-nadia/800/400',
+      sourceName: 'School Sports Desk',
       isFallback: true
     },
     {
@@ -160,6 +175,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Industry',
       imageUrl: 'https://picsum.photos/seed/art-nadia/800/400',
+      sourceName: 'WB Govt Portal',
       isFallback: true
     },
     {
@@ -169,6 +185,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Health',
       imageUrl: 'https://picsum.photos/seed/health-nadia/800/400',
+      sourceName: 'Health Dept',
       isFallback: true
     },
     {
@@ -178,6 +195,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Culture',
       imageUrl: 'https://picsum.photos/seed/culture-nadia/800/400',
+      sourceName: 'Local Events',
       isFallback: true
     },
     {
@@ -187,6 +205,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Tourism',
       imageUrl: 'https://picsum.photos/seed/tourism-nadia/800/400',
+      sourceName: 'Tourism Board',
       isFallback: true
     },
     {
@@ -196,6 +215,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Safety',
       imageUrl: 'https://picsum.photos/seed/safety-nadia/800/400',
+      sourceName: 'Fire Dept',
       isFallback: true
     },
     {
@@ -205,6 +225,7 @@ export const FALLBACK_NEWS: Record<'bn' | 'en', NewsItem[]> = {
       date: new Date().toISOString().split('T')[0],
       category: 'Education',
       imageUrl: 'https://picsum.photos/seed/edu-nadia/800/400',
+      sourceName: 'Skill Hub',
       isFallback: true
     }
   ]
@@ -217,12 +238,13 @@ const NEWS_SCHEMA = {
     properties: {
       title: { type: Type.STRING, description: "The headline of the news." },
       content: { type: Type.STRING, description: "A 2-3 sentence summary." },
-      fullContent: { type: Type.STRING, description: "A detailed full story (150-200 words)." },
-      category: { type: Type.STRING, description: "Category like Agriculture, Education, etc." },
+      fullContent: { type: Type.STRING, description: "A detailed full story (300-500 words)." },
+      category: { type: Type.STRING, description: "Category like Agriculture, Education, Politics, etc." },
       date: { type: Type.STRING, description: "Date in YYYY-MM-DD format." },
       sourceUrl: { type: Type.STRING, description: "URL to the original news source." },
+      sourceName: { type: Type.STRING, description: "The name of the news source (e.g., Anandabazar Patrika, The Times of India)." },
     },
-    required: ["title", "content", "fullContent", "category", "date"],
+    required: ["title", "content", "fullContent", "category", "date", "sourceName"],
   },
 };
 
@@ -298,15 +320,17 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
   async function attemptFetch(locIndex: number, useSearch: boolean = true): Promise<NewsItem[]> {
     const currentLocation = locationsToTry[locIndex];
     
-    const prompt = `Find the top 10 most recent LIVE local news for ${currentLocation} specifically for today (${today}) or the last 24 hours. 
+    const prompt = `Find the top 11 most recent LIVE local news for ${currentLocation} specifically for today (${today}) or the last 24 hours. 
     Focus on ACTUAL events, local developments, government announcements, or community news that happened VERY RECENTLY.
     
     IMPORTANT: 
-    1. Return all text content (title, content, category, fullContent) in ${langName}.
-    2. Return exactly 10 news items in the specified JSON format.
+    1. Return all text content (title, content, category, fullContent, sourceName) in ${langName}.
+    2. Return exactly 11 news items in the specified JSON format.
     3. If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.
-    4. Ensure the news is diverse (e.g., agriculture, education, health, local events).
-    5. The 'date' field MUST be ${today} or very close to it.`;
+    4. Ensure the news is diverse (e.g., agriculture, education, health, local events, and AT LEAST ONE item about Politics).
+    5. The 'date' field MUST be ${today} or very close to it.
+    6. The 'fullContent' MUST be detailed and informative (300-500 words).
+    7. The 'sourceName' MUST be the name of the news agency or website where the news was found.`;
 
     try {
       const config: any = {
