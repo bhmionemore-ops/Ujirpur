@@ -239,7 +239,7 @@ const NEWS_SCHEMA = {
     properties: {
       title: { type: Type.STRING, description: "The headline of the news." },
       content: { type: Type.STRING, description: "A 2-3 sentence summary." },
-      fullContent: { type: Type.STRING, description: "A detailed full story (300-500 words)." },
+      fullContent: { type: Type.STRING, description: "A detailed full story (200-300 words)." },
       category: { type: Type.STRING, description: "Category like Agriculture, Education, Politics, etc." },
       date: { type: Type.STRING, description: "Date in YYYY-MM-DD format." },
       sourceUrl: { type: Type.STRING, description: "URL to the original news source." },
@@ -323,17 +323,17 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
   async function attemptFetch(locIndex: number, useSearch: boolean = true): Promise<NewsItem[]> {
     const currentLocation = locationsToTry[locIndex];
     
-    const prompt = `Find the top 11 most recent LIVE BREAKING local news for ${currentLocation} specifically for TODAY, ${today} (Year: 2026). 
+    const prompt = `Find the top 8 most recent LIVE BREAKING local news for ${currentLocation} specifically for TODAY, ${today} (Year: 2026). 
     Current server time is ${currentTime}.
     Focus on ACTUAL events, breaking news, local developments, or community updates that happened in the LAST 1-6 HOURS.
     
     IMPORTANT: 
     1. Return all text content (title, content, category, fullContent, sourceName) in ${langName}.
-    2. Return exactly 11 news items in the specified JSON format.
+    2. Return exactly 8 news items in the specified JSON format.
     3. If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.
     4. Ensure the news is diverse (e.g., agriculture, education, health, local events, and AT LEAST ONE item about Politics).
     5. The 'date' field MUST be ${today}.
-    6. The 'fullContent' MUST be detailed and informative (300-500 words).
+    6. The 'fullContent' MUST be detailed and informative (200-300 words).
     7. The 'sourceName' MUST be the name of the news agency or website where the news was found.
     8. AVOID repeating news from previous hours. Look for the absolute latest updates, breaking news, or developing stories.
     9. If there are no new major events, look for local community updates, weather reports, or upcoming local events.
@@ -455,13 +455,15 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
   const now = new Date();
   const currentTime = now.toLocaleTimeString();
   const langName = language === 'bn' ? 'Bengali' : 'English';
-  const prompt = `Find the top 10 trending news headlines in India right now. 
+  const prompt = `Find the top 6 trending news headlines in India right now. 
   Current server time is ${currentTime}.
   Focus on national importance, sports, entertainment, or major current events.
   
-  IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
-  Return the results in the specified JSON format.
-  AVOID repeating news from previous hours. Look for the absolute latest updates, viral stories, or breaking headlines from the last 1-2 hours.
+  IMPORTANT: 
+  1. Return all text content (title, content, category, fullContent) in ${langName}.
+  2. Return exactly 6 news items in the specified JSON format.
+  3. The 'fullContent' MUST be detailed (200-300 words).
+  4. AVOID repeating news from previous hours. Look for the absolute latest updates, viral stories, or breaking headlines from the last 1-2 hours.
   Ensure the news is different from what was trending earlier today.
   Random seed for variety: ${Math.random()}.`;
 
