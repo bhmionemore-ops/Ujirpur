@@ -10,7 +10,7 @@ import { LiveChatWidget } from './components/LiveChatWidget';
 import { AuthModal } from './components/AuthModal';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Newspaper } from 'lucide-react';
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
@@ -23,12 +23,22 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-[#FFF9F0]/80 backdrop-blur-md border-b border-orange-100">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shadow-lg border border-orange-400/30 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shadow-lg border border-orange-400/30 overflow-hidden">
               <img 
-                src="https://images.unsplash.com/photo-1585829365234-781fcd50330b?auto=format&fit=crop&q=80&w=100&h=100" 
+                src="https://picsum.photos/seed/ujirpur-hub-logo/100/100" 
                 alt="Logo" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const icon = document.createElement('div');
+                    icon.className = "text-white font-black text-xl";
+                    icon.innerText = "UB";
+                    parent.appendChild(icon);
+                  }
+                }}
               />
             </div>
             <span className="font-bold tracking-tight text-lg hidden sm:block">Ujirpur Barnia Nadia</span>

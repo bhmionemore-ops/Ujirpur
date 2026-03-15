@@ -335,7 +335,10 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     5. The 'date' field MUST be ${today} or very close to it.
     6. The 'fullContent' MUST be detailed and informative (300-500 words).
     7. The 'sourceName' MUST be the name of the news agency or website where the news was found.
-    8. AVOID repeating news from previous hours. Look for the absolute latest updates.`;
+    8. AVOID repeating news from previous hours. Look for the absolute latest updates, breaking news, or developing stories.
+    9. If there are no new major events, look for local community updates, weather reports, or upcoming local events.
+    10. To ensure uniqueness, include a small detail about the time or a specific local person/place mentioned in the news.
+    11. DO NOT return the same headlines as previous requests. Find DIFFERENT stories.`;
 
     try {
       const config: any = {
@@ -456,7 +459,9 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
   
   IMPORTANT: Return all text content (title, content, category, fullContent) in ${langName}.
   Return the results in the specified JSON format.
-  AVOID repeating news from previous hours. Look for the absolute latest updates.`;
+  AVOID repeating news from previous hours. Look for the absolute latest updates, viral stories, or breaking headlines from the last 1-2 hours.
+  Ensure the news is different from what was trending earlier today.
+  Random seed for variety: ${Math.random()}.`;
 
   let retryCount = 0;
   const maxRetries = 2;

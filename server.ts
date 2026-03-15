@@ -21,6 +21,17 @@ async function autoUpdateNews() {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] Starting automated news update...`);
   try {
+    // Cleanup old news (older than 48 hours)
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const oldNewsQuery = await firestore.collection("news").where("createdAt", "<", fortyEightHoursAgo).get();
+    const oldTrendingQuery = await firestore.collection("trending_news").where("createdAt", "<", fortyEightHoursAgo).get();
+    
+    const cleanupBatch = firestore.batch();
+    oldNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+    oldTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+    await cleanupBatch.commit();
+    console.log(`[${timestamp}] Cleaned up ${oldNewsQuery.size + oldTrendingQuery.size} old news items.`);
+
     const batch = firestore.batch();
     
     // 1. Update Local News
