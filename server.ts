@@ -6,37 +6,14 @@ import path from "path";
 import fs from "fs/promises";
 import fetch from "node-fetch";
 import admin from "firebase-admin";
-import { generateLocalNews, generateTrendingNews } from "./src/services/gemini.js";
+import { generateLocalNews, generateTrendingNews } from "./src/services/gemini.ts";
 
 dotenv.config();
 
 const firebaseConfig = JSON.parse(await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8"));
 
-// Initialize Firebase Admin
-try {
-  if (!admin.apps.length) {
-    // Try to initialize with default credentials, fallback to project ID only
-    try {
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        projectId: firebaseConfig.projectId,
-      });
-      console.log("Firebase Admin initialized with default credentials.");
-    } catch (credError) {
-      console.warn("Failed to initialize with default credentials, falling back to project ID only:", credError);
-      admin.initializeApp({
-        projectId: firebaseConfig.projectId,
-      });
-    }
-  }
-} catch (initError) {
-  console.error("Critical error during Firebase Admin initialization:", initError);
-}
-
-const firestore = admin.firestore(firebaseConfig.firestoreDatabaseId);
-
 // Background Task: Auto-update news every 2 hours
-async function autoUpdateNews() {
+async function autoUpdateNews(firestore: admin.firestore.Firestore) {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] Starting automated news update...`);
   try {
@@ -81,17 +58,6 @@ async function autoUpdateNews() {
     console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
   }
 }
-
-// Run every 2 hours (7200000 ms)
-setInterval(() => {
-  autoUpdateNews().catch(err => console.error("Interval news update failed:", err));
-}, 7200000);
-
-// Also run once on startup after a short delay
-console.log("Scheduling initial news update in 10 seconds...");
-setTimeout(() => {
-  autoUpdateNews().catch(err => console.error("Initial news update failed:", err));
-}, 10000);
 
 async function getNewsItem(id: string) {
   try {
@@ -202,6 +168,25 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Initialize Firebase Admin
+  let firestore: admin.firestore.Firestore | null = null;
+  try {
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        projectId: firebaseConfig.projectId,
+      });
+    }
+    firestore = admin.firestore(firebaseConfig.firestoreDatabaseId);
+    console.log("Firebase Admin initialized successfully.");
+  } catch (error) {
+    console.error("Firebase Admin initialization failed:", error);
+  }
 
   // Load initial data
   let db = await loadData();
@@ -338,7 +323,8 @@ async function startServer() {
     // In a real app, we would verify the admin token here
     // For this app, we'll assume the request is authorized if it comes from the admin UI
     try {
-      await autoUpdateNews();
+      if (!firestore) throw new Error("Firestore not initialized");
+      await autoUpdateNews(firestore);
       res.json({ success: true, message: "News update triggered successfully" });
     } catch (error) {
       console.error("Manual news update failed:", error);
@@ -447,6 +433,19 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    
+    // Start background tasks after server is listening
+    if (firestore) {
+      const fs = firestore;
+      setInterval(() => {
+        autoUpdateNews(fs).catch(err => console.error("Interval news update failed:", err));
+      }, 7200000);
+
+      console.log("Scheduling initial news update in 10 seconds...");
+      setTimeout(() => {
+        autoUpdateNews(fs).catch(err => console.error("Initial news update failed:", err));
+      }, 10000);
+    }
   });
 }
 
