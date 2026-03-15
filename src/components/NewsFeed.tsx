@@ -38,8 +38,8 @@ export const NewsFeed = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       clearTimeout(timeout);
       const items = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        id: doc.id
       })) as NewsItem[];
       
       if (items.length === 0) {
@@ -159,9 +159,10 @@ export const NewsFeed = () => {
       
       const batch = writeBatch(db);
       items.forEach((item) => {
+        const { id, ...rest } = item;
         const newDocRef = doc(collection(db, 'news'));
         batch.set(newDocRef, {
-          ...item,
+          ...rest,
           createdAt: serverTimestamp(),
           isFallback: false
         });
