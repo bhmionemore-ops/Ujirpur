@@ -12,98 +12,104 @@ dotenv.config();
 
 let firestore: admin.firestore.Firestore | null = null;
 
-let isUpdatingNews = false;
+let currentUpdatePromise: Promise<void> | null = null;
 
 // Background Task: Auto-update news every 2 hours
 async function autoUpdateNews() {
-  if (!firestore) {
-    console.error("Skipping news update: Firestore not initialized");
-    return;
-  }
-  
-  if (isUpdatingNews) {
-    console.log("News update already in progress, skipping...");
-    return;
+  if (currentUpdatePromise) {
+    console.log("News update already in progress, waiting for it to complete...");
+    return currentUpdatePromise;
   }
 
-  isUpdatingNews = true;
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] Starting automated news update...`);
-  try {
-    // 1. Fetch Local News
-    console.log(`[${timestamp}] Fetching local news (BN)...`);
-    const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
-    console.log(`[${timestamp}] Fetching local news (EN)...`);
-    const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
-    
-    // 2. Fetch Trending News
-    console.log(`[${timestamp}] Fetching trending news (BN)...`);
-    const trendingBn = await generateTrendingNews("bn");
-    console.log(`[${timestamp}] Fetching trending news (EN)...`);
-    const trendingEn = await generateTrendingNews("en");
-
-    if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
-      console.warn("No news generated, skipping update.");
-      isUpdatingNews = false;
+  currentUpdatePromise = (async () => {
+    if (!firestore) {
+      console.error("Skipping news update: Firestore not initialized");
       return;
     }
+    
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Starting automated news update...`);
+    try {
+      // 1. Fetch Local News
+      console.log(`[${timestamp}] Fetching local news (BN)...`);
+      const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
+      console.log(`[${timestamp}] Fetching local news (EN)...`);
+      const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
+      
+      // 2. Fetch Trending News
+      console.log(`[${timestamp}] Fetching trending news (BN)...`);
+      const trendingBn = await generateTrendingNews("bn");
+      console.log(`[${timestamp}] Fetching trending news (EN)...`);
+      const trendingEn = await generateTrendingNews("en");
 
-    // 3. If we have new news, clear the old news and save new ones
-    console.log(`[${timestamp}] Clearing old news and saving fresh content...`);
-    
-    // Delete ALL existing news to ensure only LIVE news is shown
-    const allNewsQuery = await firestore.collection("news").get();
-    const allTrendingQuery = await firestore.collection("trending_news").get();
-    
-    const cleanupBatch = firestore.batch();
-    allNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
-    allTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
-    await cleanupBatch.commit();
-    console.log(`[${timestamp}] Cleaned up ${allNewsQuery.size + allTrendingQuery.size} old news items.`);
+      if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
+        console.warn("No news generated, skipping update.");
+        return;
+      }
 
-    const batch = firestore.batch();
-    const newsCollection = firestore.collection("news");
-    const trendingCollection = firestore.collection("trending_news");
-    
-    // Add language tag and prepare batch
-    localNewsBn.forEach(item => {
-      const { id, ...rest } = item;
-      batch.set(newsCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-    });
-    localNewsEn.forEach(item => {
-      const { id, ...rest } = item;
-      batch.set(newsCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-    });
-    
-    trendingBn.forEach(item => {
-      const { id, ...rest } = item;
-      batch.set(trendingCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-    });
-    trendingEn.forEach(item => {
-      const { id, ...rest } = item;
-      batch.set(trendingCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-    });
-    
-    // Update a "system" document to track last successful update
-    batch.set(firestore.collection("system").doc("news_status"), {
-      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-      status: "success",
-      count: localNewsBn.length + localNewsEn.length + trendingBn.length + trendingEn.length
-    });
-    
-    await batch.commit();
-    console.log(`[${new Date().toISOString()}] Successfully updated all news categories. Added ${localNewsBn.length + localNewsEn.length} local items and ${trendingBn.length + trendingEn.length} trending items.`);
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
-    if (firestore) {
-      await firestore.collection("system").doc("news_status").set({
+      // 3. If we have new news, clear the old news and save new ones
+      console.log(`[${timestamp}] Clearing old news and saving fresh content...`);
+      
+      // Delete ALL existing news to ensure only LIVE news is shown
+      const allNewsQuery = await firestore.collection("news").get();
+      const allTrendingQuery = await firestore.collection("trending_news").get();
+      
+      const cleanupBatch = firestore.batch();
+      allNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+      allTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
+      await cleanupBatch.commit();
+      console.log(`[${timestamp}] Cleaned up ${allNewsQuery.size + allTrendingQuery.size} old news items.`);
+
+      const batch = firestore.batch();
+      const newsCollection = firestore.collection("news");
+      const trendingCollection = firestore.collection("trending_news");
+      
+      // Add language tag and prepare batch
+      localNewsBn.forEach(item => {
+        const { id, ...rest } = item;
+        batch.set(newsCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+      });
+      localNewsEn.forEach(item => {
+        const { id, ...rest } = item;
+        batch.set(newsCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+      });
+      
+      trendingBn.forEach(item => {
+        const { id, ...rest } = item;
+        batch.set(trendingCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+      });
+      trendingEn.forEach(item => {
+        const { id, ...rest } = item;
+        batch.set(trendingCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
+      });
+      
+      // Update a "system" document to track last successful update
+      batch.set(firestore.collection("system").doc("news_status"), {
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        status: "error",
-        error: error instanceof Error ? error.message : String(error)
-      }, { merge: true });
+        lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+        status: "success",
+        count: localNewsBn.length + localNewsEn.length + trendingBn.length + trendingEn.length
+      });
+      
+      await batch.commit();
+      console.log(`[${new Date().toISOString()}] Successfully updated all news categories. Added ${localNewsBn.length + localNewsEn.length} local items and ${trendingBn.length + trendingEn.length} trending items.`);
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
+      if (firestore) {
+        await firestore.collection("system").doc("news_status").set({
+          lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+          status: "error",
+          error: error instanceof Error ? error.message : String(error)
+        }, { merge: true });
+      }
+      throw error; // Re-throw so callers know it failed
     }
+  })();
+
+  try {
+    await currentUpdatePromise;
   } finally {
-    isUpdatingNews = false;
+    currentUpdatePromise = null;
   }
 }
 
@@ -123,7 +129,7 @@ async function checkNewsFreshness(req: any, res: any, next: any) {
       const data = statusDoc.data();
       const lastUpdated = data?.lastUpdated?.toDate()?.getTime() || 0;
       
-      if (now - lastUpdated > twoHours && !isUpdatingNews) {
+      if (now - lastUpdated > twoHours && !currentUpdatePromise) {
         console.log(`News is stale (${Math.floor((now - lastUpdated) / 60000)}m old), triggering background update...`);
         autoUpdateNews().catch(err => console.error("Background update failed:", err));
       }

@@ -16,6 +16,7 @@ export const NewsFeed = () => {
   const [loading, setLoading] = useState(true);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [newsLimit, setNewsLimit] = useState(11);
@@ -203,6 +204,9 @@ export const NewsFeed = () => {
       if (!data.success) {
         throw new Error(data.error || "Failed to trigger update");
       }
+      
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
       // The onSnapshot will automatically pick up the new news
     } catch (error) {
       console.error("Error triggering manual news update:", error);
@@ -247,15 +251,23 @@ export const NewsFeed = () => {
             </span>
           </div>
           {isAdmin && (
-            <button 
-              onClick={fetchAndSaveNews}
-              disabled={refreshing}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
-              title="Generate Live News"
-            >
-              <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-              {refreshing ? (language === 'bn' ? 'খবর তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'নতুন খবর আনুন' : 'Refresh News')}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={fetchAndSaveNews}
+                disabled={refreshing}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                title="Generate Live News"
+              >
+                <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+                {refreshing ? (language === 'bn' ? 'খবর তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'নতুন খবর আনুন' : 'Refresh News')}
+              </button>
+              
+              {showSuccess && (
+                <div className="absolute top-full right-0 mt-2 bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg animate-bounce whitespace-nowrap z-50">
+                  {language === 'bn' ? 'খবর সফলভাবে আপডেট হয়েছে!' : 'News updated successfully!'}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
