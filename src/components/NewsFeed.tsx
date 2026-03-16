@@ -19,7 +19,9 @@ export const NewsFeed = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [newsLimit, setNewsLimit] = useState(11);
+  const [lastAttempt, setLastAttempt] = useState<Date | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<'success' | 'error' | 'pending'>('success');
+  const [newsLimit, setNewsLimit] = useState(15);
   const [error, setError] = useState<Error | null>(null);
 
   if (error) throw error;
@@ -60,12 +62,6 @@ export const NewsFeed = () => {
         setNews(filteredItems);
       }
       
-      if (filteredItems.length > 0 && filteredItems[0].createdAt) {
-        const timestamp = (filteredItems[0] as any).createdAt;
-        if (timestamp && typeof timestamp.toDate === 'function') {
-          setLastUpdated(timestamp.toDate());
-        }
-      }
       setLoading(false);
     }, (error) => {
       clearTimeout(timeout);
@@ -86,6 +82,26 @@ export const NewsFeed = () => {
       clearTimeout(timeout);
     };
   }, [newsLimit, language]);
+
+  useEffect(() => {
+    // Listen to system status for last update time
+    const unsubscribe = onSnapshot(doc(db, 'system', 'news_status'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.lastUpdated) {
+          setLastUpdated(data.lastUpdated.toDate());
+        }
+        if (data.lastAttempt) {
+          setLastAttempt(data.lastAttempt.toDate());
+        }
+        if (data.status) {
+          setUpdateStatus(data.status);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     setTrendingLoading(true);
@@ -205,12 +221,21 @@ export const NewsFeed = () => {
         throw new Error(data.error || "Failed to trigger update");
       }
       
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      if (data.noNews) {
+        alert(language === 'bn' 
+          ? 'আপডেট সম্পন্ন হয়েছে, কিন্তু আজকের জন্য কোনো নতুন খবর পাওয়া যায়নি।' 
+          : 'Update completed, but no new news was found for today.');
+      } else {
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 5000);
+      }
       // The onSnapshot will automatically pick up the new news
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error triggering manual news update:", error);
-      alert(language === 'bn' ? 'খবর আপডেট করতে ব্যর্থ হয়েছে।' : 'Failed to update news.');
+      const errorMessage = error instanceof Error ? error.message : "Failed to update news.";
+      alert(language === 'bn' 
+        ? `খবর আপডেট করতে ব্যর্থ হয়েছে: ${errorMessage}` 
+        : `Failed to update news: ${errorMessage}`);
     } finally {
       setRefreshing(false);
     }
@@ -247,8 +272,14 @@ export const NewsFeed = () => {
               {t.news.lastChecked}
             </span>
             <span className="text-xs text-orange-600 font-mono font-bold">
-              {lastUpdated ? getRelativeTime(lastUpdated) : new Date().toLocaleTimeString()}
+              {lastUpdated ? getRelativeTime(lastUpdated) : (language === 'bn' ? 'কখনো না' : 'Never')}
             </span>
+            {isAdmin && lastAttempt && lastAttempt.getTime() !== lastUpdated?.getTime() && (
+              <span className={`text-[9px] font-medium mt-1 ${updateStatus === 'error' ? 'text-red-500' : 'text-zinc-400'}`}>
+                {language === 'bn' ? 'শেষ চেষ্টা:' : 'Last Attempt:'} {getRelativeTime(lastAttempt)}
+                {updateStatus === 'error' && (language === 'bn' ? ' (ত্রুটি)' : ' (Error)')}
+              </span>
+            )}
           </div>
           {isAdmin && (
             <div className="relative">
@@ -413,6 +444,17 @@ export const NewsFeed = () => {
           </div>
         </div>
       </div>
+
+      {news.length >= newsLimit && newsLimit < 50 && (
+        <div className="mt-12 text-center">
+          <button 
+            onClick={() => setNewsLimit(prev => prev + 10)}
+            className="px-8 py-3 rounded-2xl border-2 border-zinc-200 text-zinc-600 font-bold hover:bg-zinc-50 transition-all"
+          >
+            {language === 'bn' ? 'আরো খবর দেখুন' : 'See More News'}
+          </button>
+        </div>
+      )}
 
       {/* News Detail Modal */}
       <AnimatePresence>

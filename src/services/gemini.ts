@@ -322,8 +322,9 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
 
   async function attemptFetch(locIndex: number, useSearch: boolean = true): Promise<NewsItem[]> {
     const currentLocation = locationsToTry[locIndex];
+    console.log(`[AI News] Attempting to fetch news for: ${currentLocation} (Search: ${useSearch}, Retry: ${retryCount})`);
     
-    const prompt = `Find the top 8 most recent local news for ${currentLocation} specifically for TODAY (${today}) or the last 24 hours. 
+    const prompt = `Find the top 8 most recent local news for ${currentLocation} specifically for TODAY (${today}) or the last 24-48 hours. 
     Current server time is ${currentTime}.
     Focus on ACTUAL events, breaking news, local developments, or community updates.
     
@@ -336,7 +337,7 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     6. The 'fullContent' MUST be detailed and informative (200-300 words).
     7. The 'sourceName' MUST be the name of the news agency or website where the news was found.
     8. Focus on the absolute latest updates available.
-    9. If there are no new major events today, look for local community updates, weather reports, or upcoming local events from the last 24-48 hours.
+    9. If there are no new major events today, look for local community updates, weather reports, or upcoming local events from the last 2 days.
     10. To ensure uniqueness, include a small detail about the time or a specific local person/place mentioned in the news.
     11. DO NOT return the same headlines as previous requests. Find DIFFERENT stories.
     12. Focus on "LIVE" and "RECENT" content.
@@ -359,21 +360,24 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
       });
 
       const text = response.text;
-      if (!text) throw new Error("Empty response");
+      if (!text) throw new Error("Empty response from AI");
 
       const rawNews = JSON.parse(text);
+      console.log(`[AI News] Successfully parsed ${Array.isArray(rawNews) ? rawNews.length : 0} news items for ${currentLocation}`);
       
       if (!Array.isArray(rawNews) || rawNews.length === 0) {
         if (locIndex < locationsToTry.length - 1) {
-          console.warn(`No news found for ${currentLocation}, trying broader location...`);
+          console.warn(`[AI News] No news found for ${currentLocation}, trying broader location...`);
           return attemptFetch(locIndex + 1, useSearch);
         }
-        return FALLBACK_NEWS[language];
+        console.warn(`[AI News] All locations failed, returning empty array for ${language}`);
+        return [];
       }
       
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
       
       // Generate AI images for each news item in parallel
+      console.log(`[AI News] Generating AI images for ${rawNews.length} items...`);
       const newsWithImages = await Promise.all(rawNews.map(async (item: any, index: number) => {
         const imageUrl = await generateNewsImage(item.title, item.category);
         return {
@@ -389,21 +393,23 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
 
     } catch (error: any) {
       const errorMessage = error?.message || "";
+      console.error(`[AI News] Error in attemptFetch for ${currentLocation}:`, errorMessage);
       
       // Handle search tool failures or transient errors
-      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN'))) {
-        console.warn("Search tool failed, attempting without search...");
+      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN') || errorMessage.includes('Search tool'))) {
+        console.warn("[AI News] Search tool failed, attempting without search...");
         return attemptFetch(locIndex, false);
       }
 
       if (retryCount < maxRetries) {
         retryCount++;
+        console.log(`[AI News] Retrying in ${retryCount}s...`);
         await new Promise(r => setTimeout(r, 1000 * retryCount));
         return attemptFetch(locIndex, useSearch);
       }
 
-      console.error("News generation failed:", error);
-      return FALLBACK_NEWS[language];
+      console.error("[AI News] All retries failed for local news generation:", error);
+      return [];
     }
   }
 
@@ -471,6 +477,7 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
   const maxRetries = 2;
 
   async function attemptFetch(useSearch: boolean = true): Promise<NewsItem[]> {
+    console.log(`[AI Trending] Attempting to fetch trending news (Search: ${useSearch}, Retry: ${retryCount})`);
     try {
       const config: any = {
         responseMimeType: "application/json",
@@ -488,9 +495,10 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
       });
 
       const text = response.text;
-      if (!text) throw new Error("Empty response");
+      if (!text) throw new Error("Empty response from AI");
 
       const rawNews = JSON.parse(text);
+      console.log(`[AI Trending] Successfully parsed ${Array.isArray(rawNews) ? rawNews.length : 0} trending items`);
       
       if (!Array.isArray(rawNews) || rawNews.length === 0) {
         throw new Error("No news found in response");
@@ -504,20 +512,22 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
       }));
     } catch (error: any) {
       const errorMessage = error?.message || "";
+      console.error(`[AI Trending] Error in attemptFetch:`, errorMessage);
       
-      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN'))) {
-        console.warn("Trending search tool failed, attempting without search...");
+      if (useSearch && (errorMessage.includes('Rpc failed') || errorMessage.includes('xhr error') || errorMessage.includes('UNKNOWN') || errorMessage.includes('Search tool'))) {
+        console.warn("[AI Trending] Search tool failed, attempting without search...");
         return attemptFetch(false);
       }
 
       if (retryCount < maxRetries) {
         retryCount++;
+        console.log(`[AI Trending] Retrying in ${retryCount}s...`);
         await new Promise(r => setTimeout(r, 1000 * retryCount));
         return attemptFetch(useSearch);
       }
 
-      console.error("Trending news generation failed:", error);
-      return FALLBACK_TRENDING[language];
+      console.error("[AI Trending] All retries failed for trending news generation:", error);
+      return [];
     }
   }
 

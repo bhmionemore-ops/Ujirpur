@@ -189,6 +189,11 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid || isAdmin());
     }
 
+    match /system/{docId} {
+      allow read: if true; // Publicly viewable status
+      allow write: if isAdmin();
+    }
+
     match /{path=**} {
       allow read, write: if false;
     }

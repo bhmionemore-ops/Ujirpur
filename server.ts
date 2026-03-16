@@ -12,10 +12,10 @@ dotenv.config();
 
 let firestore: admin.firestore.Firestore | null = null;
 
-let currentUpdatePromise: Promise<void> | null = null;
+let currentUpdatePromise: Promise<boolean | void> | null = null;
 
 // Background Task: Auto-update news every 2 hours
-async function autoUpdateNews() {
+async function autoUpdateNews(): Promise<boolean | void> {
   if (currentUpdatePromise) {
     console.log("News update already in progress, waiting for it to complete...");
     return currentUpdatePromise;
@@ -30,69 +30,83 @@ async function autoUpdateNews() {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] Starting automated news update...`);
     try {
-      // 1. Fetch Local News
-      console.log(`[${timestamp}] Fetching local news (BN)...`);
-      const localNewsBn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn");
-      console.log(`[${timestamp}] Fetching local news (EN)...`);
-      const localNewsEn = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en");
-      
-      // 2. Fetch Trending News
-      console.log(`[${timestamp}] Fetching trending news (BN)...`);
-      const trendingBn = await generateTrendingNews("bn");
-      console.log(`[${timestamp}] Fetching trending news (EN)...`);
-      const trendingEn = await generateTrendingNews("en");
+      // 1. Fetch all news categories in parallel
+      console.log(`[${timestamp}] Fetching all news categories in parallel...`);
+      const [localNewsBn, localNewsEn, trendingBn, trendingEn] = await Promise.all([
+        generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn"),
+        generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en"),
+        generateTrendingNews("bn"),
+        generateTrendingNews("en")
+      ]);
 
-      if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
-        console.warn("No news generated, skipping update.");
-        return;
+      const results = {
+        localBn: localNewsBn,
+        localEn: localNewsEn,
+        trendingBn: trendingBn,
+        trendingEn: trendingEn
+      };
+
+      console.log(`[${timestamp}] Fetch results: Local BN: ${localNewsBn.length}, Local EN: ${localNewsEn.length}, Trending BN: ${trendingBn.length}, Trending EN: ${trendingEn.length}`);
+
+      if (Object.values(results).every(arr => arr.length === 0)) {
+        console.warn("No news generated for any category, skipping update.");
+        if (firestore) {
+          await firestore.collection("system").doc("news_status").set({
+            lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+            status: "no_news",
+            error: "No news found for any category."
+          }, { merge: true });
+        }
+        return false;
       }
-
-      // 3. If we have new news, clear the old news and save new ones
-      console.log(`[${timestamp}] Clearing old news and saving fresh content...`);
-      
-      // Delete ALL existing news to ensure only LIVE news is shown
-      const allNewsQuery = await firestore.collection("news").get();
-      const allTrendingQuery = await firestore.collection("trending_news").get();
-      
-      const cleanupBatch = firestore.batch();
-      allNewsQuery.forEach(doc => cleanupBatch.delete(doc.ref));
-      allTrendingQuery.forEach(doc => cleanupBatch.delete(doc.ref));
-      await cleanupBatch.commit();
-      console.log(`[${timestamp}] Cleaned up ${allNewsQuery.size + allTrendingQuery.size} old news items.`);
 
       const batch = firestore.batch();
       const newsCollection = firestore.collection("news");
       const trendingCollection = firestore.collection("trending_news");
-      
-      // Add language tag and prepare batch
-      localNewsBn.forEach(item => {
-        const { id, ...rest } = item;
-        batch.set(newsCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-      });
-      localNewsEn.forEach(item => {
-        const { id, ...rest } = item;
-        batch.set(newsCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-      });
-      
-      trendingBn.forEach(item => {
-        const { id, ...rest } = item;
-        batch.set(trendingCollection.doc(), { ...rest, language: 'bn', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-      });
-      trendingEn.forEach(item => {
-        const { id, ...rest } = item;
-        batch.set(trendingCollection.doc(), { ...rest, language: 'en', createdAt: admin.firestore.FieldValue.serverTimestamp(), isFallback: false });
-      });
-      
-      // Update a "system" document to track last successful update
+      let totalAdded = 0;
+
+      // Helper to update a category
+      const updateCategory = async (items: any[], collection: admin.firestore.CollectionReference, lang: string, isTrending: boolean) => {
+        if (items.length === 0) return;
+
+        // Clear existing items for this language/category
+        const q = await collection.where('language', '==', lang).get();
+        q.forEach(doc => batch.delete(doc.ref));
+
+        // Add new items
+        items.forEach(item => {
+          const { id, ...rest } = item;
+          batch.set(collection.doc(), { 
+            ...rest, 
+            language: lang, 
+            createdAt: admin.firestore.FieldValue.serverTimestamp() 
+          });
+          totalAdded++;
+        });
+      };
+
+      await updateCategory(localNewsBn, newsCollection, 'bn', false);
+      await updateCategory(localNewsEn, newsCollection, 'en', false);
+      await updateCategory(trendingBn, trendingCollection, 'bn', true);
+      await updateCategory(trendingEn, trendingCollection, 'en', true);
+
+      // Update status
       batch.set(firestore.collection("system").doc("news_status"), {
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
         status: "success",
-        count: localNewsBn.length + localNewsEn.length + trendingBn.length + trendingEn.length
+        count: totalAdded,
+        details: {
+          localBn: localNewsBn.length,
+          localEn: localNewsEn.length,
+          trendingBn: trendingBn.length,
+          trendingEn: trendingEn.length
+        }
       });
-      
+
       await batch.commit();
-      console.log(`[${new Date().toISOString()}] Successfully updated all news categories. Added ${localNewsBn.length + localNewsEn.length} local items and ${trendingBn.length + trendingEn.length} trending items.`);
+      console.log(`[${new Date().toISOString()}] Successfully updated news. Total items added: ${totalAdded}`);
+      return true;
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Automated news update failed:`, error);
       if (firestore) {
@@ -107,7 +121,7 @@ async function autoUpdateNews() {
   })();
 
   try {
-    await currentUpdatePromise;
+    return await currentUpdatePromise;
   } finally {
     currentUpdatePromise = null;
   }
@@ -414,9 +428,16 @@ async function startServer() {
     // In a real app, we would verify the admin token here
     // For this app, we'll assume the request is authorized if it comes from the admin UI
     try {
-      await autoUpdateNews();
-      console.log("Manual news update completed successfully");
-      res.json({ success: true, message: "News update triggered successfully" });
+      const updated = await autoUpdateNews();
+      if (updated === true) {
+        console.log("Manual news update completed successfully");
+        res.json({ success: true, message: "News update triggered successfully" });
+      } else if (updated === false) {
+        console.log("Manual news update completed, but no news was found");
+        res.json({ success: true, message: "Update completed, but no new news was found for today.", noNews: true });
+      } else {
+        res.json({ success: true, message: "News update already in progress" });
+      }
     } catch (error) {
       console.error("Manual news update failed:", error);
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Failed to update news" });
