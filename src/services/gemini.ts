@@ -508,6 +508,7 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
         ...item,
         id: `trending-${Date.now()}-${index}`,
         imageUrl: `https://picsum.photos/seed/trending-${index}/800/400`,
+        language,
         isFallback: false
       }));
     } catch (error: any) {

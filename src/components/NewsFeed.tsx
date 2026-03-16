@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { generateLocalNews, generateTrendingNews, NewsItem, FALLBACK_NEWS } from '../services/gemini';
+import { generateLocalNews, generateTrendingNews, NewsItem, FALLBACK_NEWS, FALLBACK_TRENDING } from '../services/gemini';
 import { Calendar, Tag, ChevronRight, RefreshCw, Share2, X, AlertCircle, TrendingUp, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -123,9 +123,14 @@ export const NewsFeed = () => {
         const fetchTrendingAI = async () => {
           try {
             const items = await generateTrendingNews(language);
-            setTrending(items);
+            if (items.length === 0) {
+              setTrending(FALLBACK_TRENDING[language]);
+            } else {
+              setTrending(items);
+            }
           } catch (error) {
             console.error("Error fetching trending news from AI:", error);
+            setTrending(FALLBACK_TRENDING[language]);
           } finally {
             setTrendingLoading(false);
           }
@@ -401,7 +406,9 @@ export const NewsFeed = () => {
                     </div>
                   ))
                 ) : trending.length === 0 ? (
-                  <p className="text-zinc-500 text-sm italic">No trending news found.</p>
+                  <p className="text-zinc-500 text-sm italic">
+                    {language === 'bn' ? 'কোন ট্রেন্ডিং নিউজ পাওয়া যায়নি।' : 'No trending news found.'}
+                  </p>
                 ) : (
                   trending.map((item, index) => (
                     <motion.div
