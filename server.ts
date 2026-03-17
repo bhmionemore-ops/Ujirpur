@@ -7,10 +7,28 @@ import path from "path";
 import fs from "fs/promises";
 import fetch from "node-fetch";
 import admin from "firebase-admin";
+import { initializeApp as initializeClientApp } from "firebase/app";
+import { 
+  getAuth, 
+  signInWithCustomToken 
+} from "firebase/auth";
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  writeBatch, 
+  doc, 
+  setDoc, 
+  serverTimestamp,
+  query,
+  where,
+  deleteDoc,
+  Firestore
+} from "firebase/firestore";
 
 dotenv.config();
 
-let firestore: admin.firestore.Firestore | null = null;
+let db: Firestore | null = null;
 
 let currentUpdatePromise: Promise<boolean | void> | null = null;
 
@@ -129,22 +147,34 @@ async function startServer() {
     const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
     firebaseConfig = JSON.parse(configData);
     
+    // Initialize Client SDK (more reliable for permissions in this environment)
+    const clientApp = initializeClientApp(firebaseConfig);
+    db = getFirestore(clientApp, firebaseConfig.firestoreDatabaseId || undefined);
+    const clientAuth = getAuth(clientApp);
+    
+    // Still init Admin for other potential uses (like Auth if needed later)
     if (!admin.apps.length) {
-      admin.initializeApp();
+      admin.initializeApp({
+        projectId: firebaseConfig.projectId
+      });
     }
-    // Use the databaseId from config if provided, otherwise default
-    firestore = admin.firestore(firebaseConfig.firestoreDatabaseId || undefined);
-    console.log("Firebase Admin initialized successfully.");
+
+    // Sign in as server admin using a custom token to satisfy security rules
+    try {
+      const customToken = await admin.auth().createCustomToken("server-admin");
+      await signInWithCustomToken(clientAuth, customToken);
+      console.log("Server authenticated as 'server-admin'");
+    } catch (authError) {
+      console.error("Server authentication failed:", authError);
+    }
+    
+    console.log(`Firebase Client SDK initialized. Project: ${firebaseConfig.projectId}`);
   } catch (error) {
     console.error("Firebase initialization failed:", error);
-    // Fallback to default initialization
-    if (!admin.apps.length) {
-      admin.initializeApp();
-    }
-    firestore = admin.firestore();
   }
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Logging middleware for API requests
   app.use("/api", (req, res, next) => {
@@ -153,7 +183,10 @@ async function startServer() {
   });
 
   app.post("/api/admin/save-news", async (req, res) => {
-    if (!firestore) return res.status(500).json({ error: "Firestore not initialized" });
+    if (!db) return res.status(500).json({ error: "Firestore not initialized" });
+    
+    const clientAuth = getAuth();
+    console.log(`[${new Date().toISOString()}] Save news request. Current UID: ${clientAuth.currentUser?.uid}`);
     
     const { localBn, localEn, trendingBn, trendingEn } = req.body;
     const timestamp = new Date().toISOString();
@@ -161,21 +194,21 @@ async function startServer() {
     try {
       console.log(`[${timestamp}] Saving news provided by client...`);
       
-      const newsCollection = firestore.collection("news");
-      const trendingCollection = firestore.collection("trending_news");
+      const newsCollection = collection(db, "news");
+      const trendingCollection = collection(db, "trending_news");
       let totalAdded = 0;
 
       // Helper to delete old items safely in batches
-      const deleteOldItems = async (collection: admin.firestore.CollectionReference, lang: string) => {
-        const q = await collection.where("language", "==", lang).get();
-        let batch = firestore!.batch();
+      const deleteOldItems = async (colRef: any, lang: string) => {
+        const q = await getDocs(query(colRef, where("language", "==", lang)));
+        let batch = writeBatch(db!);
         let count = 0;
-        for (const doc of q.docs) {
-          batch.delete(doc.ref);
+        for (const document of q.docs) {
+          batch.delete(document.ref);
           count++;
           if (count >= 450) {
             await batch.commit();
-            batch = firestore!.batch();
+            batch = writeBatch(db!);
             count = 0;
           }
         }
@@ -183,24 +216,24 @@ async function startServer() {
         return count;
       };
 
-      const saveCategory = async (items: any[], collection: admin.firestore.CollectionReference, lang: string) => {
+      const saveCategory = async (items: any[], colRef: any, lang: string) => {
         if (!items || items.length === 0) return;
-        await deleteOldItems(collection, lang);
+        await deleteOldItems(colRef, lang);
         
-        let batch = firestore!.batch();
+        let batch = writeBatch(db!);
         let count = 0;
         for (const item of items) {
           const { id, ...rest } = item;
-          batch.set(collection.doc(), {
+          batch.set(doc(colRef), {
             ...rest,
             language: lang,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
           });
           count++;
           totalAdded++;
           if (count >= 450) {
             await batch.commit();
-            batch = firestore!.batch();
+            batch = writeBatch(db!);
             count = 0;
           }
         }
@@ -214,8 +247,8 @@ async function startServer() {
         saveCategory(trendingEn, trendingCollection, 'en')
       ]);
 
-      await firestore.collection("system").doc("news_status").set({
-        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      await setDoc(doc(db, "system", "news_status"), {
+        lastUpdated: serverTimestamp(),
         status: "success",
         count: totalAdded
       }, { merge: true });
@@ -237,7 +270,7 @@ async function startServer() {
   });
 
   // Load initial data
-  let db = await loadData();
+  let localDb = await loadData();
 
   // Email Transporter
   const transporter = nodemailer.createTransport({
@@ -252,7 +285,7 @@ async function startServer() {
 
   // API Routes
   app.get("/api/influencers", (req, res) => {
-    res.json(db.userInfluencers);
+    res.json(localDb.userInfluencers);
   });
 
   app.post("/api/influencers", async (req, res) => {
@@ -260,13 +293,13 @@ async function startServer() {
       ...req.body,
       id: Math.random().toString(36).substr(2, 9)
     };
-    db.userInfluencers.push(influencer);
-    await saveData(db);
+    localDb.userInfluencers.push(influencer);
+    await saveData(localDb);
     res.json({ success: true, influencer });
   });
 
   app.get("/api/shops", (req, res) => {
-    res.json(db.userShops);
+    res.json(localDb.userShops);
   });
 
   app.post("/api/shops", async (req, res) => {
@@ -274,13 +307,13 @@ async function startServer() {
       ...req.body,
       id: Math.random().toString(36).substr(2, 9)
     };
-    db.userShops.push(shop);
-    await saveData(db);
+    localDb.userShops.push(shop);
+    await saveData(localDb);
     res.json({ success: true, shop });
   });
 
   app.get("/api/collab-requests", (req, res) => {
-    res.json(db.collabRequests);
+    res.json(localDb.collabRequests);
   });
 
   app.post("/api/collab-request", async (req, res) => {
@@ -295,8 +328,8 @@ async function startServer() {
       timestamp: new Date().toISOString()
     };
 
-    db.collabRequests.push(newRequest);
-    await saveData(db);
+    localDb.collabRequests.push(newRequest);
+    await saveData(localDb);
 
     // Also send an email notification
     try {
@@ -368,7 +401,10 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-news", async (req, res) => {
-    if (!firestore) return res.status(500).json({ error: "Firestore not initialized" });
+    if (!db) return res.status(500).json({ error: "Firestore not initialized" });
+    
+    const clientAuth = getAuth();
+    console.log(`[${new Date().toISOString()}] Clear news request. Current UID: ${clientAuth.currentUser?.uid}`);
     
     try {
       console.log(`[${new Date().toISOString()}] Manual news clear requested`);
@@ -377,18 +413,19 @@ async function startServer() {
       let totalDeleted = 0;
       
       for (const colName of collections) {
-        const q = await firestore.collection(colName).get();
-        let batch = firestore.batch();
+        const colRef = collection(db, colName);
+        const q = await getDocs(colRef);
+        let batch = writeBatch(db);
         let count = 0;
         
-        for (const doc of q.docs) {
-          batch.delete(doc.ref);
+        for (const document of q.docs) {
+          batch.delete(document.ref);
           count++;
           totalDeleted++;
           
           if (count >= 450) {
             await batch.commit();
-            batch = firestore.batch();
+            batch = writeBatch(db);
             count = 0;
           }
         }
@@ -400,10 +437,10 @@ async function startServer() {
       }
       
       // Reset status
-      await firestore.collection("system").doc("news_status").set({
+      await setDoc(doc(db, "system", "news_status"), {
         status: "cleared",
         lastUpdated: null,
-        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
+        lastAttempt: serverTimestamp()
       }, { merge: true });
       
       res.json({ success: true, deletedCount: totalDeleted });

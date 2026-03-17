@@ -51,10 +51,18 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == resource.data.uid;
     }
 
+    function isServerAdmin() {
+      return isAuthenticated() && request.auth.uid == 'server-admin';
+    }
+
     function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "okbgmi611@gmail.com" && request.auth.token.email_verified == true));
+      return isServerAdmin() || (
+        isAuthenticated() && (
+          (request.auth.token.email == "okbgmi611@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        )
+      );
     }
 
     function hasRequiredFields(fields) {
