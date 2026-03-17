@@ -130,7 +130,7 @@ export const NewsFeed = () => {
       })) as NewsItem[];
       
       // Filter by language
-      const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, 10);
+      const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, 6);
       
       if (filteredItems.length === 0) {
         // Fallback to AI if no trending news in DB yet
