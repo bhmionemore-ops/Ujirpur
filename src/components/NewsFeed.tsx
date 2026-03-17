@@ -57,7 +57,21 @@ export const NewsFeed = () => {
       const filteredItems = allItems.filter(item => !item.language || item.language === language).slice(0, newsLimit);
       
       if (filteredItems.length === 0) {
-        setNews(FALLBACK_NEWS[language]);
+        // Fallback to AI if no news in DB yet
+        const fetchNewsAI = async () => {
+          try {
+            const items = await generateLocalNews("Ujirpur Barnia Nadia, WB, India", language);
+            if (items.length === 0) {
+              setNews(FALLBACK_NEWS[language]);
+            } else {
+              setNews(items);
+            }
+          } catch (error) {
+            console.error("Error fetching news from AI:", error);
+            setNews(FALLBACK_NEWS[language]);
+          }
+        };
+        fetchNewsAI();
       } else {
         setNews(filteredItems);
       }
@@ -277,13 +291,22 @@ export const NewsFeed = () => {
               {t.news.lastChecked}
             </span>
             <span className="text-xs text-orange-600 font-mono font-bold">
-              {lastUpdated ? getRelativeTime(lastUpdated) : (language === 'bn' ? 'কখনো না' : 'Never')}
+              {lastUpdated ? getRelativeTime(lastUpdated) : (language === 'bn' ? 'কখনো না (আপডেট হচ্ছে...)' : 'Never (Updating...)')}
             </span>
-            {isAdmin && lastAttempt && lastAttempt.getTime() !== lastUpdated?.getTime() && (
-              <span className={`text-[9px] font-medium mt-1 ${updateStatus === 'error' ? 'text-red-500' : 'text-zinc-400'}`}>
-                {language === 'bn' ? 'শেষ চেষ্টা:' : 'Last Attempt:'} {getRelativeTime(lastAttempt)}
-                {updateStatus === 'error' && (language === 'bn' ? ' (ত্রুটি)' : ' (Error)')}
-              </span>
+            {isAdmin && (
+              <div className="flex flex-col items-end mt-1 gap-1">
+                {lastAttempt && lastAttempt.getTime() !== lastUpdated?.getTime() && (
+                  <span className={`text-[9px] font-medium ${updateStatus === 'error' ? 'text-red-500' : 'text-zinc-400'}`}>
+                    {language === 'bn' ? 'শেষ চেষ্টা:' : 'Last Attempt:'} {getRelativeTime(lastAttempt)}
+                    {updateStatus === 'error' && (language === 'bn' ? ' (ত্রুটি)' : ' (Error)')}
+                  </span>
+                )}
+                {updateStatus === 'no_news' && (
+                  <span className="text-[9px] font-medium text-amber-500">
+                    {language === 'bn' ? 'আজকের কোনো নতুন খবর পাওয়া যায়নি' : 'No new news found for today'}
+                  </span>
+                )}
+              </div>
             )}
           </div>
           {isAdmin && (
@@ -348,9 +371,22 @@ export const NewsFeed = () => {
                     </div>
                   </div>
                   <div className="p-6">
-                    <div className="flex items-center gap-2 text-zinc-400 text-[10px] mb-2">
-                      <Calendar size={12} />
-                      {item.date}
+                    <div className="flex items-center justify-between text-zinc-400 text-[10px] mb-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={12} />
+                        {item.date}
+                      </div>
+                      {item.sourceName ? (
+                        <div className="flex items-center gap-1 font-medium text-orange-600/70">
+                          <Tag size={10} />
+                          {item.sourceName}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 font-medium text-zinc-400 italic">
+                          <Tag size={10} />
+                          {language === 'bn' ? 'স্থানীয় সংবাদ' : 'Local News'}
+                        </div>
+                      )}
                     </div>
                     <h3 className="text-lg font-bold text-zinc-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
                       {item.title}
@@ -423,9 +459,14 @@ export const NewsFeed = () => {
                         <span className="text-2xl font-black text-zinc-700 group-hover:text-orange-500/30 transition-colors">
                           {(index + 1).toString().padStart(2, '0')}
                         </span>
-                        <h4 className="text-sm font-bold text-zinc-100 group-hover:text-white leading-snug">
-                          {item.title}
-                        </h4>
+                        <div className="flex flex-col gap-1">
+                          <h4 className="text-sm font-bold text-zinc-100 group-hover:text-white leading-snug">
+                            {item.title}
+                          </h4>
+                          <span className="text-[10px] text-zinc-500 font-medium italic">
+                            {item.sourceName || (language === 'bn' ? 'সংবাদ সূত্র' : 'News Source')}
+                          </span>
+                        </div>
                       </div>
                     </motion.div>
                   ))
@@ -507,12 +548,12 @@ export const NewsFeed = () => {
                   </p>
                 </div>
 
-                {selectedNews.sourceName && (
-                  <div className="mt-6 flex items-center gap-2 text-zinc-500 text-sm italic">
-                    <span>Source:</span>
-                    <span className="font-bold text-orange-600">{selectedNews.sourceName}</span>
-                  </div>
-                )}
+                <div className="mt-6 flex items-center gap-2 text-zinc-500 text-sm italic">
+                  <span>{language === 'bn' ? 'সূত্র:' : 'Source:'}</span>
+                  <span className="font-bold text-orange-600">
+                    {selectedNews.sourceName || (language === 'bn' ? 'স্থানীয় সংবাদ মাধ্যম' : 'Local News Media')}
+                  </span>
+                </div>
                 
                 <div className="mt-10 pt-6 border-t border-zinc-100 flex items-center justify-between">
                   <button 

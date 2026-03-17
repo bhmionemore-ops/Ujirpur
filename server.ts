@@ -23,12 +23,19 @@ async function autoUpdateNews(): Promise<boolean | void> {
 
   currentUpdatePromise = (async () => {
     if (!firestore) {
-      console.error("Skipping news update: Firestore not initialized");
+      console.error(`[${new Date().toISOString()}] Skipping news update: Firestore not initialized`);
       return;
     }
     
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] Starting automated news update...`);
+    
+    // Set status to pending
+    await firestore.collection("system").doc("news_status").set({
+      status: "pending",
+      lastAttempt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).catch(e => console.error("Failed to update status to pending:", e));
+
     try {
       // 1. Fetch all news categories in parallel
       console.log(`[${timestamp}] Fetching all news categories in parallel...`);
@@ -67,14 +74,19 @@ async function autoUpdateNews(): Promise<boolean | void> {
 
       // Helper to update a category
       const updateCategory = async (items: any[], collection: admin.firestore.CollectionReference, lang: string, isTrending: boolean) => {
-        if (items.length === 0) return;
+        console.log(`[${timestamp}] Updating category: ${isTrending ? 'Trending' : 'Local'} (${lang}), Items: ${items.length}`);
+        if (items.length === 0) {
+          console.warn(`[${timestamp}] No items to update for ${isTrending ? 'Trending' : 'Local'} (${lang})`);
+          return;
+        }
 
         // Clear existing items for this language/category
         const q = await collection.where('language', '==', lang).get();
+        console.log(`[${timestamp}] Clearing ${q.size} existing items for ${isTrending ? 'Trending' : 'Local'} (${lang})`);
         q.forEach(doc => batch.delete(doc.ref));
 
         // Add new items
-        items.forEach(item => {
+        items.forEach((item, index) => {
           const { id, ...rest } = item;
           batch.set(collection.doc(), { 
             ...rest, 
@@ -137,14 +149,25 @@ async function checkNewsFreshness(req: any, res: any, next: any) {
     const twoHours = 2 * 60 * 60 * 1000;
     
     if (!statusDoc.exists) {
-      console.log("No news status found, triggering initial update...");
+      console.log(`[${new Date().toISOString()}] No news status found, triggering initial update...`);
+      // Create initial status doc so UI doesn't show "Never" forever if update takes time
+      firestore.collection("system").doc("news_status").set({
+        status: "pending",
+        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(e => console.error("Failed to set initial status:", e));
+      
       autoUpdateNews().catch(err => console.error("Background update failed:", err));
     } else {
       const data = statusDoc.data();
       const lastUpdated = data?.lastUpdated?.toDate()?.getTime() || 0;
+      const lastAttempt = data?.lastAttempt?.toDate()?.getTime() || 0;
       
-      if (now - lastUpdated > twoHours && !currentUpdatePromise) {
-        console.log(`News is stale (${Math.floor((now - lastUpdated) / 60000)}m old), triggering background update...`);
+      // If last update was more than 2 hours ago OR if it's been 30 mins since last attempt and it failed
+      const shouldUpdate = (now - lastUpdated > twoHours) || 
+                           (data?.status === 'error' && now - lastAttempt > 30 * 60 * 1000);
+
+      if (shouldUpdate && !currentUpdatePromise) {
+        console.log(`[${new Date().toISOString()}] News is stale or needs retry (Last update: ${new Date(lastUpdated).toISOString()}, Status: ${data?.status}), triggering background update...`);
         autoUpdateNews().catch(err => console.error("Background update failed:", err));
       }
     }
