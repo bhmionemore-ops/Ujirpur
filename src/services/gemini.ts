@@ -316,23 +316,23 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     const currentLocation = locationsToTry[locIndex];
     console.log(`[AI News] Attempting to fetch news for: ${currentLocation} (Search: ${useSearch}, Retry: ${retryCount})`);
     
-    const prompt = `Find the top 8 most recent local news for ${currentLocation} specifically for TODAY (${today}) or the last 12-24 hours. 
+    const prompt = `Find the top 8 most recent local news for ${currentLocation} specifically for TODAY (${today}). 
     Current server time is ${currentTime}.
-    Focus on BREAKING news, LIVE updates, local developments, or community events.
+    Focus on BREAKING news, LIVE updates, local developments, or community events happening on ${today}.
     
     IMPORTANT: 
     1. Return all text content (title, content, category, fullContent, sourceName) in ${langName}.
     2. Return exactly 8 news items in the specified JSON format.
     3. If you cannot find news for the specific village, find news for the Nadia district or West Bengal that would be relevant to residents of ${location}.
     4. Ensure the news is diverse (e.g., agriculture, education, health, local events, and AT LEAST ONE item about Politics).
-    5. The 'date' field MUST be ${today} or the actual date of the news (YYYY-MM-DD).
+    5. The 'date' field MUST be ${today}.
     6. The 'fullContent' MUST be detailed and informative (200-300 words).
     7. The 'sourceName' MUST be the name of the news agency or website where the news was found (e.g., Anandabazar Patrika, Sangbad Pratidin, Zee 24 Ghanta).
-    8. Focus on the absolute latest, most recent updates available.
-    9. If there are no new major events today, look for local community updates, weather reports, or upcoming local events from the last 12-24 hours.
+    8. Focus on the absolute latest, most recent updates available from ${today}.
+    9. If there are no new major events today, look for local community updates, weather reports, or upcoming local events from the last 12 hours.
     10. To ensure uniqueness, include a small detail about the time or a specific local person/place mentioned in the news.
     11. DO NOT return the same headlines as previous requests. Find FRESH, DIFFERENT stories.
-    12. Focus on "LIVE", "BREAKING", and "RECENT" content.
+    12. Focus on "LIVE", "BREAKING", and "RECENT" content from ${today}.
     Random seed for variety: ${Math.random()}.`;
 
     try {
@@ -461,16 +461,17 @@ export async function generateTrendingNews(language: 'bn' | 'en' = 'en'): Promis
   const now = new Date();
   const currentTime = now.toLocaleTimeString();
   const langName = language === 'bn' ? 'Bengali' : 'English';
-  const prompt = `Find the top 6 BREAKING trending news headlines in India right now (last 12-24 hours). 
+  const today = now.toISOString().split('T')[0];
+  const prompt = `Find the top 6 BREAKING trending news headlines in India for TODAY, ${today}. 
   Current server time is ${currentTime}.
-  Focus on national importance, sports, entertainment, or major current events.
+  Focus on national importance, sports, entertainment, or major current events happening RIGHT NOW or in the last few hours.
   
   IMPORTANT: 
   1. Return all text content (title, content, category, fullContent, sourceName) in ${langName}.
   2. Return exactly 6 news items in the specified JSON format.
   3. The 'fullContent' MUST be detailed (200-300 words).
   4. The 'sourceName' MUST be the name of the news agency (e.g., NDTV, Times of India, ABP News).
-  5. Look for the absolute latest updates, viral stories, or breaking headlines.
+  5. Look for the absolute latest updates, viral stories, or breaking headlines from ${today}.
   Ensure the news is different from what was trending earlier today.
   Random seed for variety: ${Math.random()}.`;
 

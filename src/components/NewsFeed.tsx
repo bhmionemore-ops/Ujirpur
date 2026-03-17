@@ -17,6 +17,8 @@ export const NewsFeed = () => {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+  const [clearSuccess, setClearSuccess] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastAttempt, setLastAttempt] = useState<Date | null>(null);
@@ -48,8 +50,8 @@ export const NewsFeed = () => {
       
       // Sort by createdAt desc, handling potential nulls from serverTimestamp
       allItems.sort((a, b) => {
-        const dateA = (a as any).createdAt?.toDate?.() || new Date();
-        const dateB = (b as any).createdAt?.toDate?.() || new Date();
+        const dateA = (a as any).createdAt?.toDate?.() || new Date(0); // If missing, treat as very old
+        const dateB = (b as any).createdAt?.toDate?.() || new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
 
@@ -227,34 +229,83 @@ export const NewsFeed = () => {
     
     setRefreshing(true);
     try {
-      const response = await fetch('/api/admin/update-news', { method: 'POST' });
+      console.log("Generating news on client...");
+      // 1. Generate all news categories in parallel on the client
+      const [localNewsBn, localNewsEn, trendingBn, trendingEn] = await Promise.all([
+        generateLocalNews("Ujirpur Barnia Nadia, WB, India", "bn"),
+        generateLocalNews("Ujirpur Barnia Nadia, WB, India", "en"),
+        generateTrendingNews("bn"),
+        generateTrendingNews("en")
+      ]);
+
+      if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
+        alert(language === 'bn' 
+          ? 'আজকের জন্য কোনো নতুন খবর পাওয়া যায়নি।' 
+          : 'No new news was found for today.');
+        return;
+      }
+
+      // 2. Send the generated news to the server to be saved in Firestore
+      const response = await fetch('/api/admin/save-news', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          localBn: localNewsBn,
+          localEn: localNewsEn,
+          trendingBn: trendingBn,
+          trendingEn: trendingEn
+        })
+      });
       
       if (!response.ok) {
         const text = await response.text();
-        console.error(`Manual news update failed with status ${response.status}:`, text);
+        console.error(`Failed to save news with status ${response.status}:`, text);
         throw new Error(`Server error (${response.status}). Please try again.`);
       }
 
       const data = await response.json();
       if (!data.success) {
-        throw new Error(data.error || "Failed to trigger update");
+        throw new Error(data.error || "Failed to save news");
       }
       
-      if (data.noNews) {
-        alert(language === 'bn' 
-          ? 'আপডেট সম্পন্ন হয়েছে, কিন্তু আজকের জন্য কোনো নতুন খবর পাওয়া যায়নি।' 
-          : 'Update completed, but no new news was found for today.');
-      } else {
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 5000);
-      }
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
       // The onSnapshot will automatically pick up the new news
     } catch (error: any) {
-      console.error("Error triggering manual news update:", error);
+      console.error("Error updating news:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to update news.";
       alert(language === 'bn' 
         ? `খবর আপডেট করতে ব্যর্থ হয়েছে: ${errorMessage}` 
         : `Failed to update news: ${errorMessage}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const clearAllNews = async () => {
+    if (!isAdmin) return;
+    
+    setRefreshing(true);
+    setShowConfirmClear(false);
+    try {
+      const response = await fetch('/api/admin/clear-news', { method: 'POST' });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to clear news");
+      }
+      
+      if (data.success) {
+        setNews([]);
+        setTrending([]);
+        setClearSuccess(true);
+        setTimeout(() => setClearSuccess(false), 3000);
+      }
+    } catch (error: any) {
+      console.error("Error clearing news:", error);
+      alert(language === 'bn' 
+        ? `খবর মুছতে ব্যর্থ হয়েছে: ${error.message}` 
+        : `Failed to clear news: ${error.message}`);
     } finally {
       setRefreshing(false);
     }
@@ -310,22 +361,70 @@ export const NewsFeed = () => {
             )}
           </div>
           {isAdmin && (
-            <div className="relative">
-              <button 
-                onClick={fetchAndSaveNews}
-                disabled={refreshing}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                title="Generate Live News"
-              >
-                <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-                {refreshing ? (language === 'bn' ? 'খবর তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'নতুন খবর আনুন' : 'Refresh News')}
-              </button>
-              
-              {showSuccess && (
-                <div className="absolute top-full right-0 mt-2 bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg animate-bounce whitespace-nowrap z-50">
-                  {language === 'bn' ? 'খবর সফলভাবে আপডেট হয়েছে!' : 'News updated successfully!'}
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button 
+                  onClick={() => setShowConfirmClear(true)}
+                  disabled={refreshing}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  title="Clear All News"
+                >
+                  <X size={18} />
+                  {language === 'bn' ? 'সব মুছুন' : 'Clear All'}
+                </button>
+
+                <AnimatePresence>
+                  {showConfirmClear && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-zinc-200 p-4 z-[100]"
+                    >
+                      <p className="text-sm font-bold text-zinc-900 mb-4">
+                        {language === 'bn' ? 'আপনি কি নিশ্চিত যে আপনি সব খবর মুছে ফেলতে চান?' : 'Are you sure you want to clear all news?'}
+                      </p>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={clearAllNews}
+                          className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition-colors"
+                        >
+                          {language === 'bn' ? 'হ্যাঁ, মুছুন' : 'Yes, Clear'}
+                        </button>
+                        <button 
+                          onClick={() => setShowConfirmClear(false)}
+                          className="flex-1 bg-zinc-100 text-zinc-600 py-2 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-colors"
+                        >
+                          {language === 'bn' ? 'না' : 'No'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {clearSuccess && (
+                  <div className="absolute top-full right-0 mt-2 bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg animate-bounce whitespace-nowrap z-50">
+                    {language === 'bn' ? 'সব খবর মুছে ফেলা হয়েছে!' : 'All news cleared!'}
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button 
+                  onClick={fetchAndSaveNews}
+                  disabled={refreshing}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all font-bold text-sm shadow-sm ${refreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  title="Generate Live News"
+                >
+                  <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+                  {refreshing ? (language === 'bn' ? 'খবর তৈরি হচ্ছে...' : 'Generating...') : (language === 'bn' ? 'নতুন খবর আনুন' : 'Refresh News')}
+                </button>
+                
+                {showSuccess && (
+                  <div className="absolute top-full right-0 mt-2 bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg animate-bounce whitespace-nowrap z-50">
+                    {language === 'bn' ? 'খবর সফলভাবে আপডেট হয়েছে!' : 'News updated successfully!'}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
