@@ -1,3 +1,4 @@
+// Server entry point - Updated trending news limit to 6
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import nodemailer from "nodemailer";
