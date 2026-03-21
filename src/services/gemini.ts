@@ -335,6 +335,8 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     12. Focus on "LIVE", "BREAKING", and "RECENT" content from ${today}.
     Random seed for variety: ${Math.random()}.`;
 
+    console.log(`[AI News] Prompt for ${currentLocation}:`, prompt.substring(0, 200) + "...");
+
     try {
       const config: any = {
         responseMimeType: "application/json",
@@ -352,6 +354,7 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
       });
 
       const text = response.text;
+      console.log(`[AI News] Raw response text length: ${text?.length || 0}`);
       if (!text) throw new Error("Empty response from AI");
 
       const rawNews = JSON.parse(text);

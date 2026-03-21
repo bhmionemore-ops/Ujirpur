@@ -264,7 +264,7 @@ async function startServer() {
         
         await deleteOldItems(colRef, lang);
         
-        console.log(`Saving ${items.length} new items for ${lang} in ${colRef.path}`);
+        console.log(`Saving ${items.length} new items for ${lang} in ${colRef.path}. First title: "${items[0]?.title}"`);
         let batch = adminDb.batch();
         let count = 0;
         for (const item of items) {

@@ -48,6 +48,8 @@ export const NewsFeed = () => {
         id: doc.id
       })) as NewsItem[];
       
+      console.log(`[NewsFeed] Fetched ${allItems.length} total news items from Firestore.`);
+      
       // Sort by createdAt desc, handling potential nulls from serverTimestamp
       allItems.sort((a, b) => {
         const dateA = (a as any).createdAt?.toDate?.() || new Date(0); // If missing, treat as very old
@@ -224,6 +226,12 @@ export const NewsFeed = () => {
     }
   };
 
+  useEffect(() => {
+    if (news.length > 0) {
+      console.log(`[NewsFeed] News state updated. First title: ${news[0].title}`);
+    }
+  }, [news]);
+
   const fetchAndSaveNews = async () => {
     if (!isAdmin) return;
     
@@ -237,6 +245,8 @@ export const NewsFeed = () => {
         generateTrendingNews("bn"),
         generateTrendingNews("en")
       ]);
+
+      console.log(`Generated news on client. Local(BN): ${localNewsBn[0]?.title}, Local(EN): ${localNewsEn[0]?.title}`);
 
       if (localNewsBn.length === 0 && localNewsEn.length === 0 && trendingBn.length === 0 && trendingEn.length === 0) {
         alert(language === 'bn' 
@@ -462,11 +472,20 @@ export const NewsFeed = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
                       <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1">
                         <Tag size={10} />
                         {item.category}
                       </span>
+                      {item.isFallback ? (
+                        <span className="bg-zinc-500 text-white text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider w-fit">
+                          Static
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider w-fit animate-pulse">
+                          Live AI
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="p-6">
