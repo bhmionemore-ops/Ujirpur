@@ -51,17 +51,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == resource.data.uid;
     }
 
-    function isServerAdmin() {
-      return isAuthenticated() && request.auth.uid == 'server-admin';
-    }
-
     function isAdmin() {
-      return isServerAdmin() || (
-        isAuthenticated() && (
-          (request.auth.token.email == "okbgmi611@gmail.com" && request.auth.token.email_verified == true) ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-        )
+      return isAuthenticated() && (
+        request.auth.uid == "server-admin" ||
+        request.auth.token.email == "okbgmi611@gmail.com" ||
+        request.auth.token.admin == true
       );
     }
 
@@ -162,12 +156,12 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      allow write: if isAdmin();
+      allow write: if isAdmin() || request.auth.uid == "server-admin";
     }
 
     match /trending_news/{newsId} {
       allow read: if true; // Publicly viewable
-      allow write: if isAdmin();
+      allow write: if isAdmin() || request.auth.uid == "server-admin";
     }
 
     match /messages/{messageId} {
@@ -199,7 +193,7 @@ service cloud.firestore {
 
     match /system/{docId} {
       allow read: if true; // Publicly viewable status
-      allow write: if isAdmin();
+      allow write: if isAdmin() || request.auth.uid == "server-admin";
     }
 
     match /{path=**} {

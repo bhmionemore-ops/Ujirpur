@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs/promises";
 import fetch from "node-fetch";
 import admin from "firebase-admin";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { 
   getAuth, 
@@ -23,12 +24,16 @@ import {
   query,
   where,
   deleteDoc,
-  Firestore
+  Firestore,
+  initializeFirestore,
+  getDocFromServer
 } from "firebase/firestore";
 
 dotenv.config();
 
 let db: Firestore | null = null;
+let adminDb: any = null;
+let clientAuth: any = null;
 
 let currentUpdatePromise: Promise<boolean | void> | null = null;
 
@@ -147,28 +152,58 @@ async function startServer() {
     const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
     firebaseConfig = JSON.parse(configData);
     
-    // Initialize Client SDK (more reliable for permissions in this environment)
+    // Initialize Client SDK (for client-side compatible operations if needed)
     const clientApp = initializeClientApp(firebaseConfig);
-    db = getFirestore(clientApp, firebaseConfig.firestoreDatabaseId || undefined);
-    const clientAuth = getAuth(clientApp);
+    // Use initializeFirestore with long polling to avoid gRPC issues in Node.js environment
+    db = initializeFirestore(clientApp, {
+      experimentalForceLongPolling: true
+    }, firebaseConfig.firestoreDatabaseId || undefined);
+    clientAuth = getAuth(clientApp);
     
-    // Still init Admin for other potential uses (like Auth if needed later)
+    // Initialize Admin SDK for server-side administrative tasks (bypasses rules)
     if (!admin.apps.length) {
       admin.initializeApp({
         projectId: firebaseConfig.projectId
       });
     }
+    adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
 
-    // Sign in as server admin using a custom token to satisfy security rules
+    // Test write with Admin SDK
     try {
-      const customToken = await admin.auth().createCustomToken("server-admin");
+      await adminDb.collection("system").doc("admin_test").set({
+        lastStartup: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      console.log("Admin Firestore startup test successful.");
+    } catch (testError) {
+      console.error("Admin Firestore startup test failed:", testError);
+    }
+
+    // Sign in as the server admin using a custom token to satisfy security rules
+    try {
+      const customToken = await admin.auth().createCustomToken("server-admin", {
+        admin: true,
+        email: "okbgmi611@gmail.com",
+        email_verified: true
+      });
       await signInWithCustomToken(clientAuth, customToken);
-      console.log("Server authenticated as 'server-admin'");
+      console.log(`Server authenticated as 'server-admin' (UID: ${clientAuth.currentUser?.uid})`);
+      
+      // Test write to verify connection and rules
+      try {
+        await setDoc(doc(db, "system", "startup_test"), {
+          lastStartup: serverTimestamp(),
+          authenticatedAs: "server-admin",
+          uid: clientAuth.currentUser?.uid
+        }, { merge: true });
+        console.log("Firestore Client SDK startup test successful.");
+      } catch (testError) {
+        console.error("Firestore Client SDK startup test failed (Rules issue?):", testError);
+      }
     } catch (authError) {
       console.error("Server authentication failed:", authError);
     }
     
-    console.log(`Firebase Client SDK initialized. Project: ${firebaseConfig.projectId}`);
+    console.log(`Firebase SDKs initialized. Project: ${firebaseConfig.projectId}, Database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
   } catch (error) {
     console.error("Firebase initialization failed:", error);
   }
@@ -183,32 +218,37 @@ async function startServer() {
   });
 
   app.post("/api/admin/save-news", async (req, res) => {
-    if (!db) return res.status(500).json({ error: "Firestore not initialized" });
+    if (!adminDb) {
+      console.error("Admin Firestore not initialized during save-news request");
+      return res.status(500).json({ error: "Admin Firestore not initialized" });
+    }
     
-    const clientAuth = getAuth();
-    console.log(`[${new Date().toISOString()}] Save news request. Current UID: ${clientAuth.currentUser?.uid}`);
+    console.log(`[${new Date().toISOString()}] Save news request via Admin SDK`);
     
     const { localBn, localEn, trendingBn, trendingEn } = req.body;
     const timestamp = new Date().toISOString();
     
     try {
-      console.log(`[${timestamp}] Saving news provided by client...`);
+      console.log(`[${timestamp}] Saving news provided by client using Admin SDK...`);
       
-      const newsCollection = collection(db, "news");
-      const trendingCollection = collection(db, "trending_news");
+      const newsCollection = adminDb.collection("news");
+      const trendingCollection = adminDb.collection("trending_news");
       let totalAdded = 0;
 
       // Helper to delete old items safely in batches
       const deleteOldItems = async (colRef: any, lang: string) => {
-        const q = await getDocs(query(colRef, where("language", "==", lang)));
-        let batch = writeBatch(db!);
+        console.log(`Deleting old items for language: ${lang} in ${colRef.path}`);
+        const q = await colRef.where("language", "==", lang).get();
+        console.log(`Found ${q.docs.length} items to delete`);
+        
+        let batch = adminDb.batch();
         let count = 0;
         for (const document of q.docs) {
           batch.delete(document.ref);
           count++;
           if (count >= 450) {
             await batch.commit();
-            batch = writeBatch(db!);
+            batch = adminDb.batch();
             count = 0;
           }
         }
@@ -217,23 +257,28 @@ async function startServer() {
       };
 
       const saveCategory = async (items: any[], colRef: any, lang: string) => {
-        if (!items || items.length === 0) return;
+        if (!items || items.length === 0) {
+          console.log(`No items to save for ${lang} in ${colRef.path}`);
+          return;
+        }
+        
         await deleteOldItems(colRef, lang);
         
-        let batch = writeBatch(db!);
+        console.log(`Saving ${items.length} new items for ${lang} in ${colRef.path}`);
+        let batch = adminDb.batch();
         let count = 0;
         for (const item of items) {
           const { id, ...rest } = item;
-          batch.set(doc(colRef), {
+          batch.set(colRef.doc(), {
             ...rest,
             language: lang,
-            createdAt: serverTimestamp()
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
           });
           count++;
           totalAdded++;
           if (count >= 450) {
             await batch.commit();
-            batch = writeBatch(db!);
+            batch = adminDb.batch();
             count = 0;
           }
         }
@@ -247,17 +292,67 @@ async function startServer() {
         saveCategory(trendingEn, trendingCollection, 'en')
       ]);
 
-      await setDoc(doc(db, "system", "news_status"), {
-        lastUpdated: serverTimestamp(),
+      await adminDb.collection("system").doc("news_status").set({
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         status: "success",
         count: totalAdded
       }, { merge: true });
 
+      console.log(`Successfully saved ${totalAdded} news items via Admin SDK`);
       res.json({ success: true, count: totalAdded });
     } catch (error) {
-      console.error("Failed to save news:", error);
+      console.error("Failed to save news via Admin SDK:", error);
       res.status(500).json({ success: false, error: String(error) });
     }
+  });
+
+  app.post("/api/admin/update-news", async (req, res) => {
+    res.status(405).json({ error: "Method not allowed. Generation must happen on client." });
+  });
+
+  // Diagnostic endpoint
+  app.get("/api/admin/diag", async (req, res) => {
+    const diag: any = {
+      timestamp: new Date().toISOString(),
+      firebaseConfig: {
+        projectId: firebaseConfig?.projectId,
+        databaseId: firebaseConfig?.firestoreDatabaseId,
+      },
+      clientAuth: {
+        authenticated: !!clientAuth?.currentUser,
+        uid: clientAuth?.currentUser?.uid,
+        email: clientAuth?.currentUser?.email,
+      },
+      adminDb: !!adminDb,
+    };
+
+    if (db) {
+      try {
+        const testDoc = await getDocFromServer(doc(db, "system", "startup_test"));
+        diag.clientDbTest = {
+          success: true,
+          exists: testDoc.exists(),
+          data: testDoc.exists() ? testDoc.data() : null
+        };
+      } catch (e: any) {
+        diag.clientDbTest = { success: false, error: e.message };
+      }
+    }
+
+    if (adminDb) {
+      try {
+        const testDoc = await adminDb.collection("system").doc("admin_test").get();
+        diag.adminDbTest = {
+          success: true,
+          exists: testDoc.exists,
+          data: testDoc.exists ? testDoc.data() : null
+        };
+      } catch (e: any) {
+        diag.adminDbTest = { success: false, error: e.message };
+      }
+    }
+
+    res.json(diag);
   });
 
   app.post("/api/admin/update-news", async (req, res) => {
@@ -401,21 +496,25 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-news", async (req, res) => {
-    if (!db) return res.status(500).json({ error: "Firestore not initialized" });
+    if (!adminDb) {
+      console.error("Admin Firestore not initialized during clear-news request");
+      return res.status(500).json({ error: "Admin Firestore not initialized" });
+    }
     
-    const clientAuth = getAuth();
-    console.log(`[${new Date().toISOString()}] Clear news request. Current UID: ${clientAuth.currentUser?.uid}`);
+    console.log(`[${new Date().toISOString()}] Clear news request via Admin SDK`);
     
     try {
-      console.log(`[${new Date().toISOString()}] Manual news clear requested`);
+      console.log(`[${new Date().toISOString()}] Manual news clear requested via Admin SDK`);
       
       const collections = ["news", "trending_news"];
       let totalDeleted = 0;
       
       for (const colName of collections) {
-        const colRef = collection(db, colName);
-        const q = await getDocs(colRef);
-        let batch = writeBatch(db);
+        const colRef = adminDb.collection(colName);
+        const q = await colRef.get();
+        console.log(`Clearing ${q.docs.length} items from ${colName}`);
+        
+        let batch = adminDb.batch();
         let count = 0;
         
         for (const document of q.docs) {
@@ -425,7 +524,7 @@ async function startServer() {
           
           if (count >= 450) {
             await batch.commit();
-            batch = writeBatch(db);
+            batch = adminDb.batch();
             count = 0;
           }
         }
@@ -433,25 +532,21 @@ async function startServer() {
         if (count > 0) {
           await batch.commit();
         }
-        console.log(`Cleared ${count} items from ${colName}`);
       }
       
       // Reset status
-      await setDoc(doc(db, "system", "news_status"), {
+      await adminDb.collection("system").doc("news_status").set({
         status: "cleared",
         lastUpdated: null,
-        lastAttempt: serverTimestamp()
+        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       
+      console.log(`Successfully cleared ${totalDeleted} news items via Admin SDK`);
       res.json({ success: true, deletedCount: totalDeleted });
     } catch (error) {
-      console.error("Clear news failed:", error);
+      console.error("Clear news failed via Admin SDK:", error);
       res.status(500).json({ success: false, error: String(error) });
     }
-  });
-
-  app.post("/api/admin/update-news", async (req, res) => {
-    res.status(405).json({ error: "Method not allowed. Generation must happen on client." });
   });
 
   // Vite middleware for development
