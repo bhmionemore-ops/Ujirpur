@@ -333,7 +333,8 @@ export async function generateLocalNews(location: string, language: 'bn' | 'en' 
     10. To ensure uniqueness, include a small detail about the time or a specific local person/place mentioned in the news.
     11. DO NOT return the same headlines as previous requests. Find FRESH, DIFFERENT stories.
     12. Focus on "LIVE", "BREAKING", and "RECENT" content from ${today}.
-    Random seed for variety: ${Math.random()}.`;
+    13. Current timestamp for freshness: ${new Date().toISOString()}.
+    14. Random seed for variety: ${Math.random()}.`;
 
     console.log(`[AI News] Prompt for ${currentLocation}:`, prompt.substring(0, 200) + "...");
 

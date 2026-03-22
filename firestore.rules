@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
+      return request.auth != null && (
         request.auth.uid == "server-admin" ||
         request.auth.token.email == "okbgmi611@gmail.com" ||
         request.auth.token.admin == true
@@ -156,12 +156,12 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      allow write: if isAdmin() || request.auth.uid == "server-admin";
+      allow write: if request.auth != null && (request.auth.uid == "server-admin" || isAdmin());
     }
 
     match /trending_news/{newsId} {
       allow read: if true; // Publicly viewable
-      allow write: if isAdmin() || request.auth.uid == "server-admin";
+      allow write: if request.auth != null && (request.auth.uid == "server-admin" || isAdmin());
     }
 
     match /messages/{messageId} {

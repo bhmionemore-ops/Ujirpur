@@ -162,18 +162,51 @@ async function startServer() {
     
     // Initialize Admin SDK for server-side administrative tasks (bypasses rules)
     if (!admin.apps.length) {
-      admin.initializeApp({
-        projectId: firebaseConfig.projectId
-      });
+      try {
+        // Try initializing with application default credentials
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+          projectId: firebaseConfig.projectId
+        });
+        console.log("Admin SDK initialized with Application Default Credentials.");
+      } catch (credError) {
+        console.warn("Could not load default credentials, trying to initialize with project ID only:", credError);
+        try {
+          // Fallback: Initialize with just the project ID. 
+          // In some environments, this is enough if the environment is already authenticated.
+          admin.initializeApp({
+            projectId: firebaseConfig.projectId
+          });
+          console.log("Admin SDK initialized with project ID only.");
+        } catch (initError) {
+          console.error("Admin SDK failed to initialize even with project ID fallback:", initError);
+        }
+      }
     }
-    adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
+    
+    try {
+      adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
+      console.log(`Admin Firestore instance created for database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
+    } catch (dbError) {
+      console.error("Failed to create Admin Firestore instance:", dbError);
+    }
 
     // Test write with Admin SDK
     try {
+      console.log(`Attempting Admin Firestore startup test write to system/admin_test...`);
       await adminDb.collection("system").doc("admin_test").set({
-        lastStartup: admin.firestore.FieldValue.serverTimestamp()
+        lastStartup: admin.firestore.FieldValue.serverTimestamp(),
+        databaseId: firebaseConfig.firestoreDatabaseId || '(default)'
       }, { merge: true });
       console.log("Admin Firestore startup test successful.");
+      
+      // Try to list collections as a further test of permissions
+      try {
+        const collections = await adminDb.listCollections();
+        console.log(`Admin SDK can list collections: ${collections.map((c: any) => c.id).join(", ")}`);
+      } catch (listError) {
+        console.warn("Admin SDK failed to list collections (might be expected if no collections exist or limited permissions):", listError);
+      }
     } catch (testError) {
       console.error("Admin Firestore startup test failed:", testError);
     }
@@ -188,16 +221,25 @@ async function startServer() {
       await signInWithCustomToken(clientAuth, customToken);
       console.log(`Server authenticated as 'server-admin' (UID: ${clientAuth.currentUser?.uid})`);
       
+      // Force a refresh of the auth state to ensure it's propagated
+      await clientAuth.currentUser?.getIdToken(true);
+      
       // Test write to verify connection and rules
       try {
+        const testPath = "system/startup_test";
+        console.log(`Attempting Client SDK startup test write to ${testPath}...`);
         await setDoc(doc(db, "system", "startup_test"), {
           lastStartup: serverTimestamp(),
           authenticatedAs: "server-admin",
-          uid: clientAuth.currentUser?.uid
+          uid: clientAuth.currentUser?.uid,
+          timestamp: new Date().toISOString()
         }, { merge: true });
         console.log("Firestore Client SDK startup test successful.");
       } catch (testError) {
         console.error("Firestore Client SDK startup test failed (Rules issue?):", testError);
+        if (testError instanceof Error) {
+          console.error("Error details:", testError.message);
+        }
       }
     } catch (authError) {
       console.error("Server authentication failed:", authError);
@@ -238,22 +280,62 @@ async function startServer() {
       // Helper to delete old items safely in batches
       const deleteOldItems = async (colRef: any, lang: string) => {
         console.log(`Deleting old items for language: ${lang} in ${colRef.path}`);
-        const q = await colRef.where("language", "==", lang).get();
-        console.log(`Found ${q.docs.length} items to delete`);
         
-        let batch = adminDb.batch();
-        let count = 0;
-        for (const document of q.docs) {
-          batch.delete(document.ref);
-          count++;
-          if (count >= 450) {
-            await batch.commit();
-            batch = adminDb.batch();
-            count = 0;
+        // Try Admin SDK first
+        try {
+          const q = await colRef.where("language", "==", lang).get();
+          console.log(`[Admin] Found ${q.docs.length} items to delete for ${lang}`);
+          
+          let batch = adminDb.batch();
+          let count = 0;
+          for (const document of q.docs) {
+            batch.delete(document.ref);
+            count++;
+            if (count >= 450) {
+              await batch.commit();
+              batch = adminDb.batch();
+              count = 0;
+            }
           }
+          if (count > 0) await batch.commit();
+          
+          // Also check for items with NO language field and delete them if this is the first time
+          const qNoLang = await colRef.where("language", "==", null).get();
+          if (qNoLang.docs.length > 0) {
+            console.log(`[Admin] Found ${qNoLang.docs.length} items with NO language to delete`);
+            let batch2 = adminDb.batch();
+            let count2 = 0;
+            for (const document of qNoLang.docs) {
+              batch2.delete(document.ref);
+              count2++;
+              if (count2 >= 450) {
+                await batch2.commit();
+                batch2 = adminDb.batch();
+                count2 = 0;
+              }
+            }
+            if (count2 > 0) await batch2.commit();
+          }
+          
+          return count;
+        } catch (adminError) {
+          console.warn(`[Admin] Failed to delete items for ${lang}, trying Client SDK:`, adminError);
+          
+          // Fallback to Client SDK if Admin fails
+          if (db) {
+            const q = query(collection(db, colRef.id), where("language", "==", lang));
+            const snapshot = await getDocs(q);
+            console.log(`[Client] Found ${snapshot.docs.length} items to delete for ${lang}`);
+            
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(document => {
+              batch.delete(doc(db, colRef.id, document.id));
+            });
+            await batch.commit();
+            return snapshot.docs.length;
+          }
+          throw adminError;
         }
-        if (count > 0) await batch.commit();
-        return count;
       };
 
       const saveCategory = async (items: any[], colRef: any, lang: string) => {
@@ -265,24 +347,48 @@ async function startServer() {
         await deleteOldItems(colRef, lang);
         
         console.log(`Saving ${items.length} new items for ${lang} in ${colRef.path}. First title: "${items[0]?.title}"`);
-        let batch = adminDb.batch();
-        let count = 0;
-        for (const item of items) {
-          const { id, ...rest } = item;
-          batch.set(colRef.doc(), {
-            ...rest,
-            language: lang,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          count++;
-          totalAdded++;
-          if (count >= 450) {
+        
+        try {
+          // Try Admin SDK first
+          let batch = adminDb.batch();
+          let count = 0;
+          for (const item of items) {
+            const { id, ...rest } = item;
+            batch.set(colRef.doc(), {
+              ...rest,
+              language: lang,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            count++;
+            totalAdded++;
+            if (count >= 450) {
+              await batch.commit();
+              batch = adminDb.batch();
+              count = 0;
+            }
+          }
+          if (count > 0) await batch.commit();
+        } catch (adminError) {
+          console.warn(`[Admin] Failed to save items for ${lang}, trying Client SDK:`, adminError);
+          
+          // Fallback to Client SDK
+          if (db) {
+            const batch = writeBatch(db);
+            for (const item of items) {
+              const { id, ...rest } = item;
+              const newDocRef = doc(collection(db, colRef.id));
+              batch.set(newDocRef, {
+                ...rest,
+                language: lang,
+                createdAt: serverTimestamp()
+              });
+              totalAdded++;
+            }
             await batch.commit();
-            batch = adminDb.batch();
-            count = 0;
+          } else {
+            throw adminError;
           }
         }
-        if (count > 0) await batch.commit();
       };
 
       await Promise.all([
@@ -496,55 +602,80 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-news", async (req, res) => {
-    if (!adminDb) {
-      console.error("Admin Firestore not initialized during clear-news request");
-      return res.status(500).json({ error: "Admin Firestore not initialized" });
-    }
-    
-    console.log(`[${new Date().toISOString()}] Clear news request via Admin SDK`);
+    console.log(`[${new Date().toISOString()}] Clear news request received`);
     
     try {
-      console.log(`[${new Date().toISOString()}] Manual news clear requested via Admin SDK`);
-      
       const collections = ["news", "trending_news"];
       let totalDeleted = 0;
       
       for (const colName of collections) {
-        const colRef = adminDb.collection(colName);
-        const q = await colRef.get();
-        console.log(`Clearing ${q.docs.length} items from ${colName}`);
+        console.log(`Clearing collection: ${colName}`);
         
-        let batch = adminDb.batch();
-        let count = 0;
-        
-        for (const document of q.docs) {
-          batch.delete(document.ref);
-          count++;
-          totalDeleted++;
+        try {
+          // Try Admin SDK first
+          if (!adminDb) throw new Error("Admin Firestore not initialized");
           
-          if (count >= 450) {
-            await batch.commit();
-            batch = adminDb.batch();
-            count = 0;
+          const colRef = adminDb.collection(colName);
+          const snapshot = await colRef.get();
+          console.log(`[Admin] Found ${snapshot.docs.length} docs in ${colName}`);
+          
+          let batch = adminDb.batch();
+          let count = 0;
+          for (const document of snapshot.docs) {
+            batch.delete(document.ref);
+            count++;
+            totalDeleted++;
+            if (count >= 450) {
+              await batch.commit();
+              batch = adminDb.batch();
+              count = 0;
+            }
           }
-        }
-        
-        if (count > 0) {
-          await batch.commit();
+          if (count > 0) await batch.commit();
+        } catch (adminError) {
+          console.warn(`[Admin] Failed to clear ${colName}, trying Client SDK:`, adminError);
+          
+          // Fallback to Client SDK
+          if (db) {
+            const colRef = collection(db, colName);
+            const snapshot = await getDocs(colRef);
+            console.log(`[Client] Found ${snapshot.docs.length} docs in ${colName}`);
+            
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(document => {
+              batch.delete(doc(db, colName, document.id));
+              totalDeleted++;
+            });
+            await batch.commit();
+          } else {
+            throw adminError;
+          }
         }
       }
       
       // Reset status
-      await adminDb.collection("system").doc("news_status").set({
-        status: "cleared",
-        lastUpdated: null,
-        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      try {
+        if (adminDb) {
+          await adminDb.collection("system").doc("news_status").set({
+            status: "cleared",
+            lastUpdated: null,
+            lastAttempt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } else if (db) {
+          await setDoc(doc(db, "system", "news_status"), {
+            status: "cleared",
+            lastUpdated: null,
+            lastAttempt: serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (statusError) {
+        console.warn("Failed to update status doc after clear:", statusError);
+      }
       
-      console.log(`Successfully cleared ${totalDeleted} news items via Admin SDK`);
+      console.log(`Successfully cleared ${totalDeleted} news items`);
       res.json({ success: true, deletedCount: totalDeleted });
     } catch (error) {
-      console.error("Clear news failed via Admin SDK:", error);
+      console.error("Clear news failed:", error);
       res.status(500).json({ success: false, error: String(error) });
     }
   });
