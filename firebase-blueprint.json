@@ -32,38 +32,6 @@
       },
       "required": ["name", "category", "description", "uid"]
     },
-    "news": {
-      "title": "News",
-      "description": "A local news item.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "fullContent": { "type": "string" },
-        "date": { "type": "string" },
-        "category": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "sourceUrl": { "type": "string" },
-        "sourceName": { "type": "string" },
-        "language": { "type": "string", "enum": ["bn", "en"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "content", "date", "category"]
-    },
-    "trending_news": {
-      "title": "Trending News",
-      "description": "A trending news item.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "category": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "language": { "type": "string", "enum": ["bn", "en"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "content", "category", "language"]
-    },
     "user": {
       "title": "User",
       "description": "A user of the application.",
@@ -134,14 +102,6 @@
     "/shops/{shopId}": {
       "schema": "shop",
       "description": "Collection of local shops in Barnia Bazar."
-    },
-    "/news/{newsId}": {
-      "schema": "news",
-      "description": "Collection of local news items."
-    },
-    "/trending_news/{newsId}": {
-      "schema": "trending_news",
-      "description": "Collection of trending news items."
     },
     "/users/{userId}": {
       "schema": "user",

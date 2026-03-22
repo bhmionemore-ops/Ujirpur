@@ -3,28 +3,16 @@ export type Language = 'bn' | 'en';
 export const translations = {
   bn: {
     nav: {
-      news: 'খবর',
       bazar: 'বাজার',
       influencers: 'ইনফ্লুয়েন্সার',
       collab: 'সহযোগিতা',
     },
     banner: {
       title: 'উজিরপুর বার্নিয়া ডিজিটাল হাব',
-      subtitle: 'নদীয়ার হৃদস্পন্দনের সাথে যুক্ত থাকুন। খবর, বাজার দর এবং স্থানীয় প্রতিভা - সব এক জায়গায়।',
+      subtitle: 'নদীয়ার হৃদস্পন্দনের সাথে যুক্ত থাকুন। বাজার দর এবং স্থানীয় প্রতিভা - সব এক জায়গায়।',
       cta: 'বাজার দেখুন',
-      news: 'নিউজ',
       influencer: 'ইনফ্লুয়েন্সার',
       bazar: 'বার্নিয়া বাজার',
-    },
-    news: {
-      title: 'উজিরপুর বার্নিয়া দৈনিক',
-      live: 'লাইভ আপডেট',
-      trending: 'ট্রেন্ডিং নিউজ (ভারত)',
-      lastChecked: 'শেষ চেক করা হয়েছে',
-      category: 'বিভাগ',
-      readMore: 'আরও পড়ুন',
-      loadMore: 'আরও খবর দেখুন',
-      share: 'শেয়ার করুন',
     },
     bazar: {
       title: 'বার্নিয়া বাজার',
@@ -69,7 +57,7 @@ export const translations = {
       send: 'পাঠান',
     },
     footer: {
-      about: 'উজিরপুর বার্নিয়ার ডিজিটাল প্রাণকেন্দ্র। আমরা আপনাদের জন্য প্রতিদিনের স্থানীয় খবর নিয়ে আসি এবং ক্রিয়েটরদের আমাদের সম্প্রদায়ের ভবিষ্যৎ গড়ে তোলার জন্য একটি প্ল্যাটফর্ম প্রদান করি।',
+      about: 'উজিরপুর বার্নিয়ার ডিজিটাল প্রাণকেন্দ্র। আমরা ক্রিয়েটরদের আমাদের সম্প্রদায়ের ভবিষ্যৎ গড়ে তোলার জন্য একটি প্ল্যাটফর্ম প্রদান করি।',
       links: 'দ্রুত লিঙ্ক',
       contact: 'যোগাযোগ করুন',
       rights: 'সর্বস্বত্ব সংরক্ষিত।',
@@ -88,7 +76,7 @@ export const translations = {
       },
       community: {
         title: 'সম্প্রদায়ের অংশ হিসেবে',
-        description: 'আপনার এলাকার খবরাখবর সবার আগে পান এবং স্থানীয় ব্যবসার উন্নতিতে সাহায্য করুন।',
+        description: 'স্থানীয় ব্যবসার উন্নতিতে সাহায্য করুন এবং আপনার সম্প্রদায়ের সাথে যুক্ত থাকুন।',
       }
     },
     data: {
@@ -166,28 +154,16 @@ export const translations = {
   },
   en: {
     nav: {
-      news: 'News',
       bazar: 'Bazar',
       influencers: 'Influencers',
       collab: 'Collaborate',
     },
     banner: {
       title: 'Ujirpur Barnia Digital Hub',
-      subtitle: 'Stay connected with the heartbeat of Nadia. News, market prices, and local talent - all in one place.',
+      subtitle: 'Stay connected with the heartbeat of Nadia. Market prices, and local talent - all in one place.',
       cta: 'Explore Bazar',
-      news: 'NEWS',
       influencer: 'INFLUENCER',
       bazar: 'BARNIA BAZAR',
-    },
-    news: {
-      title: 'Ujirpur Barnia Daily',
-      live: 'Live Updates',
-      trending: 'Trending News (India)',
-      lastChecked: 'Last Checked',
-      category: 'Category',
-      readMore: 'Read More',
-      loadMore: 'Load More News',
-      share: 'Share',
     },
     bazar: {
       title: 'Barnia Bazar',
@@ -232,7 +208,7 @@ export const translations = {
       send: 'Send',
     },
     footer: {
-      about: 'The digital heart of Ujirpur Barnia. We bring you daily local news and provide a platform for creators to connect and build the future of our community.',
+      about: 'The digital heart of Ujirpur Barnia. We provide a platform for creators to connect and build the future of our community.',
       links: 'Quick Links',
       contact: 'Contact Us',
       rights: 'All rights reserved.',
@@ -251,7 +227,7 @@ export const translations = {
       },
       community: {
         title: 'As a Community Member',
-        description: 'Get the latest local news first and support the growth of local businesses.',
+        description: 'Support the growth of local businesses and stay connected with your community.',
       }
     },
     data: {

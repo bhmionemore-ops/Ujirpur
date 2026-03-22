@@ -12,12 +12,6 @@ service cloud.firestore {
     // Collection: shops
     // Fields: name, category, location, description, imageUrl, contact, createdAt, uid
     //
-    // Collection: news
-    // Fields: title, content, fullContent, date, category, imageUrl, sourceUrl, sourceName, language, createdAt
-    //
-    // Collection: trending_news
-    // Fields: title, content, category, imageUrl, language, createdAt
-    //
     // Collection: users
     // Fields: displayName, email, photoURL, role, createdAt
     //
@@ -105,12 +99,6 @@ service cloud.firestore {
              data.uid == request.auth.uid;
     }
 
-    function isValidNews(data) {
-      return hasRequiredFields(['title', 'content', 'date', 'category']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.content is string && data.content.size() > 0 && data.content.size() < 2000;
-    }
-
     function isValidMessage(data) {
       return hasRequiredFields(['text', 'senderId', 'senderName', 'createdAt']) &&
              data.text is string && data.text.size() > 0 && data.text.size() < 1000 &&
@@ -158,16 +146,6 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidShop(request.resource.data);
       allow update: if isAuthenticated() && isDocOwner() && isValidShop(request.resource.data);
       allow delete: if isAdmin() || (isAuthenticated() && isDocOwner());
-    }
-
-    match /news/{newsId} {
-      allow read: if true; // Publicly viewable
-      allow write: if isAdmin();
-    }
-
-    match /trending_news/{newsId} {
-      allow read: if true; // Publicly viewable
-      allow write: if isAdmin();
     }
 
     match /messages/{messageId} {

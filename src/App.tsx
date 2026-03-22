@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Banner } from './components/Banner';
-import { NewsFeed } from './components/NewsFeed';
 import { BarniaBazar } from './components/BarniaBazar';
 import { InfluencerSection } from './components/InfluencerSection';
 import { CollaborationTools } from './components/CollaborationTools';
@@ -10,7 +9,7 @@ import { LiveChatWidget } from './components/LiveChatWidget';
 import { AuthModal } from './components/AuthModal';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Newspaper } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut } from 'lucide-react';
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
@@ -31,7 +30,6 @@ export default function App() {
           <div className="flex items-center gap-4 md:gap-6">
             <div className="hidden lg:flex items-center gap-6 text-sm font-medium text-zinc-600">
               <a href="#bazar" className="hover:text-orange-600 transition-colors">{t.nav.bazar}</a>
-              <a href="#news" className="hover:text-orange-600 transition-colors">{t.nav.news}</a>
               <a href="#influencers" className="hover:text-orange-600 transition-colors">{t.nav.influencers}</a>
               <a href="#collab" className="hover:text-orange-600 transition-colors">{t.nav.collab}</a>
             </div>
@@ -113,7 +111,6 @@ export default function App() {
 
       <main>
         <Banner />
-        <NewsFeed />
         <WhyJoin />
         
         <div id="bazar">
@@ -168,7 +165,6 @@ export default function App() {
             <h4 className="font-bold mb-6 uppercase text-xs tracking-widest text-zinc-500">{t.footer.links}</h4>
             <ul className="space-y-4 text-sm text-zinc-400">
               <li><a href="#bazar" className="hover:text-white transition-colors">{t.nav.bazar}</a></li>
-              <li><a href="#news" className="hover:text-white transition-colors">{t.nav.news}</a></li>
               <li><a href="#influencers" className="hover:text-white transition-colors">{t.nav.influencers}</a></li>
               <li><a href="#collab" className="hover:text-white transition-colors">{t.nav.collab}</a></li>
             </ul>

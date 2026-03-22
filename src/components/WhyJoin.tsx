@@ -23,7 +23,7 @@ export const WhyJoin = () => {
       icon: <Users className="text-orange-600" size={32} />,
       title: t.whyJoin.community.title,
       description: t.whyJoin.community.description,
-      link: "#news"
+      link: "#bazar"
     }
   ];
 
