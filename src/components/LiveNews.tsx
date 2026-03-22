@@ -15,15 +15,34 @@ export const LiveNews = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [visibleCounts, setVisibleCounts] = useState({
-    local: 6,
-    westBengal: 6,
-    india: 6
+    local: 5,
+    westBengal: 5,
+    india: 5
   });
 
   useEffect(() => {
     const checkAndFetchNews = async () => {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      
+      // Calculate "News Date" based on 6 AM IST refresh
+      const getNewsDate = () => {
+        const now = new Date();
+        const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        const hours = istDate.getHours();
+        
+        // If before 6 AM IST, we are still in the previous "news day"
+        if (hours < 6) {
+          istDate.setDate(istDate.getDate() - 1);
+        }
+        
+        const year = istDate.getFullYear();
+        const month = String(istDate.getMonth() + 1).padStart(2, '0');
+        const day = String(istDate.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+      };
+
+      const today = getNewsDate();
       const newsDocRef = doc(db, 'news', today);
       
       try {

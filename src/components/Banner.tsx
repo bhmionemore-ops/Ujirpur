@@ -65,8 +65,28 @@ export const Banner = () => {
           transition={{ delay: 0.2 }}
           className="mb-6"
         >
-          <span className="inline-block px-4 py-1.5 rounded-full bg-brand-500/20 border border-brand-500/30 text-brand-400 text-xs font-black uppercase tracking-[0.3em] backdrop-blur-md">
-            Welcome to our community
+          <span className="inline-block px-6 py-2 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-400 text-sm font-black uppercase tracking-[0.4em] backdrop-blur-md shadow-[0_0_20px_rgba(245,142,39,0.2)]">
+            {"Welcome to our community".split("").map((letter, index) => (
+              <motion.span
+                key={index}
+                initial={{ opacity: 0, scale: 0.8, filter: "blur(4px)" }}
+                animate={{ 
+                  opacity: [0, 1, 1, 0],
+                  scale: [0.8, 1, 1, 0.8],
+                  filter: ["blur(4px)", "blur(0px)", "blur(0px)", "blur(4px)"]
+                }}
+                transition={{ 
+                  duration: 4,
+                  repeat: Infinity,
+                  delay: 0.5 + index * 0.05,
+                  times: [0, 0.2, 0.8, 1],
+                  ease: "easeInOut"
+                }}
+                className="inline-block"
+              >
+                {letter === " " ? "\u00A0" : letter}
+              </motion.span>
+            ))}
           </span>
         </motion.div>
 
