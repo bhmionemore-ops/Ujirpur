@@ -58,6 +58,29 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
   }
 }
 
+async function getNewsItem(date: string, tab: string, index: string, projectId: string, databaseId: string) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/news/${date}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    
+    const fields = data.fields;
+    const tabData = fields[tab]?.arrayValue?.values;
+    if (!tabData || !tabData[parseInt(index)]) return null;
+    
+    const item = tabData[parseInt(index)].mapValue.fields;
+    return {
+      title: item.title?.stringValue || "Ujirpur Barnia News",
+      content: item.content?.stringValue || "Latest news from our community.",
+      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200" // Generic news image
+    };
+  } catch (error) {
+    console.error("Error fetching news for meta tags:", error);
+    return null;
+  }
+}
+
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string }) {
   const metaTags = `
     <title>${metadata.title}</title>
@@ -395,6 +418,27 @@ async function startServer() {
     });
     app.use(vite.middlewares);
 
+    app.get("/news/:date/:tab/:index", async (req, res) => {
+      const { date, tab, index } = req.params;
+      const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+      let html = await fs.readFile(path.resolve("index.html"), "utf-8");
+      html = await vite.transformIndexHtml(req.originalUrl, html);
+      
+      if (newsItem) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
+        html = await injectMetaTags(html, {
+          title: newsItem.title,
+          description: newsItem.content.substring(0, 200) + "...",
+          image: newsItem.image,
+          url: fullUrl
+        });
+      }
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    });
+
     app.get("/profile/:id", async (req, res) => {
       const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
@@ -428,6 +472,26 @@ async function startServer() {
     });
   } else {
     app.use(express.static("dist", { index: false }));
+
+    app.get("/news/:date/:tab/:index", async (req, res) => {
+      const { date, tab, index } = req.params;
+      const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+      let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+      
+      if (newsItem) {
+        const host = req.get('host');
+        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
+        html = await injectMetaTags(html, {
+          title: newsItem.title,
+          description: newsItem.content.substring(0, 200) + "...",
+          image: newsItem.image,
+          url: fullUrl
+        });
+      }
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    });
 
     app.get("/profile/:id", async (req, res) => {
       const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;

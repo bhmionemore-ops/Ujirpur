@@ -43,3 +43,59 @@ export async function generateChatReply(message: string, history: { text: string
   }
 }
 
+export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> {
+  const langName = language === 'bn' ? 'Bengali' : 'English';
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  const generateCategoryNews = async (category: string, location: string) => {
+    const prompt = `Find the latest 5 news items for today (${today}) for: ${category} from ${location}.
+    
+    For each news item, provide:
+    - Title
+    - Content (Detailed summary, at least 300-500 words. Be very descriptive and thorough).
+    - Source (Name of the news source).
+    - Date (Actual date of the news).
+    
+    Return the data in the following JSON format:
+    {
+      "items": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
+    }
+    
+    IMPORTANT: All text must be in ${langName}.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+      },
+    });
+
+    try {
+      const parsed = JSON.parse(response.text || "{\"items\": []}");
+      return parsed.items || [];
+    } catch (e) {
+      console.error(`Failed to parse ${category} news:`, e);
+      return [];
+    }
+  };
+
+  try {
+    const [local, westBengal, india] = await Promise.all([
+      generateCategoryNews("Local News", "Ujirpur Barnia, Nadia, West Bengal"),
+      generateCategoryNews("Top News", "West Bengal"),
+      generateCategoryNews("Top News", "India")
+    ]);
+
+    return {
+      local,
+      westBengal,
+      india
+    };
+  } catch (error) {
+    console.error("News generation failed:", error);
+    throw error;
+  }
+}
+

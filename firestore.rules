@@ -27,6 +27,9 @@ service cloud.firestore {
     // Collection: collab_requests
     // Fields: fromName, toInfluencerId, toInfluencerName, message, timestamp, toUid, fromUid
     //
+    // Collection: news
+    // Fields: date, local, westBengal, india, updatedAt
+    //
     // ===============================================================
 
     // ===============================================================
@@ -122,6 +125,14 @@ service cloud.firestore {
              (data.fromUid == null || data.fromUid == request.auth.uid);
     }
 
+    function isValidNews(data) {
+      return hasRequiredFields(['date', 'local', 'westBengal', 'india', 'updatedAt']) &&
+             data.date is string &&
+             data.local is list &&
+             data.westBengal is list &&
+             data.india is list;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -173,6 +184,12 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid || isAdmin());
       allow create: if isValidCollabRequest(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid || isAdmin());
+    }
+
+    match /news/{newsId} {
+      allow read: if true; // Publicly viewable
+      allow create, update: if isAuthenticated() && isValidNews(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /system/{docId} {

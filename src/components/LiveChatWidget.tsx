@@ -93,74 +93,124 @@ export const LiveChatWidget = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="bg-white w-80 h-96 rounded-2xl shadow-2xl border border-zinc-200 flex flex-col mb-4 overflow-hidden"
+            initial={{ opacity: 0, scale: 0.8, y: 20, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.8, y: 20, filter: 'blur(10px)' }}
+            className="bg-white/80 backdrop-blur-xl w-85 h-[500px] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/20 flex flex-col mb-6 overflow-hidden"
           >
-            <div className="bg-orange-600 p-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                  <User size={16} />
+            {/* Header */}
+            <div className="bg-gradient-to-r from-brand-600 to-brand-500 p-5 text-white flex items-center justify-between shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30">
+                    <User size={20} className="text-white" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-brand-500 rounded-full shadow-sm animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold">{t.data.chat.support}</h4>
-                  <p className="text-[10px] opacity-80">{t.data.chat.assistant}</p>
+                  <h4 className="text-sm font-bold tracking-tight">{t.data.chat.support}</h4>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <p className="text-[10px] font-medium opacity-90 uppercase tracking-wider">{t.data.chat.assistant}</p>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-1 rounded-lg transition-colors">
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="hover:bg-white/20 p-2 rounded-xl transition-all active:scale-90"
+              >
                 <X size={20} />
               </button>
             </div>
 
+            {/* Messages Area */}
             <div 
               ref={scrollRef}
-              className="flex-1 p-4 overflow-y-auto bg-zinc-50 space-y-4 custom-scrollbar"
+              className="flex-1 p-5 overflow-y-auto bg-zinc-50/50 space-y-4 custom-scrollbar"
             >
               {messages.map((msg, i) => (
-                <div key={msg.id || `chat-msg-${i}`} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`max-w-[80%] p-3 rounded-xl text-xs shadow-sm border ${
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  key={msg.id || `chat-msg-${i}`} 
+                  className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}
+                >
+                  <div className={`max-w-[85%] p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-sm border ${
                     msg.isBot 
-                      ? 'bg-white text-zinc-600 border-zinc-100 rounded-tl-none' 
-                      : 'bg-orange-600 text-white border-orange-500 rounded-tr-none'
+                      ? 'bg-white text-zinc-700 border-zinc-200/50 rounded-tl-none' 
+                      : 'bg-gradient-to-br from-brand-600 to-brand-500 text-white border-brand-400/30 rounded-tr-none font-medium'
                   }`}>
                     {msg.text}
                   </div>
-                </div>
+                </motion.div>
               ))}
               {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white text-zinc-400 p-3 rounded-xl rounded-tl-none text-[10px] shadow-sm border border-zinc-100 flex gap-1">
-                    <span className="animate-bounce">.</span>
-                    <span className="animate-bounce [animation-delay:0.2s]">.</span>
-                    <span className="animate-bounce [animation-delay:0.4s]">.</span>
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-white text-brand-500 p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-zinc-200/50 flex gap-1.5 items-center">
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
 
-            <form onSubmit={handleSend} className="p-4 bg-white border-t border-zinc-100 flex gap-2">
+            {/* Input Area */}
+            <form onSubmit={handleSend} className="p-5 bg-white border-t border-zinc-100 flex gap-3 items-center">
+              <div className="flex-1 relative">
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={t.collab.placeholder}
-                  className="flex-1 text-xs p-2 rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                  className="w-full text-sm py-3 px-4 rounded-2xl border border-zinc-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all bg-zinc-50/50"
                 />
-                <button type="submit" className="bg-orange-600 text-white p-2 rounded-lg hover:bg-orange-700 transition-colors">
-                  <Send size={16} />
-                </button>
-              </form>
+              </div>
+              <button 
+                type="submit" 
+                disabled={!message.trim()}
+                className="bg-gradient-to-br from-brand-600 to-brand-500 text-white p-3 rounded-2xl hover:shadow-lg hover:shadow-brand-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
+              >
+                <Send size={20} />
+              </button>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-orange-600 text-white rounded-full shadow-lg hover:bg-orange-700 transition-all flex items-center justify-center hover:scale-110 active:scale-95"
+        className="w-16 h-16 bg-gradient-to-br from-brand-600 to-brand-500 text-white rounded-[24px] shadow-[0_10px_30px_rgba(245,142,39,0.4)] flex items-center justify-center transition-all relative overflow-hidden group"
       >
-        {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
-      </button>
+        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+        <AnimatePresence mode="wait">
+          {isOpen ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+            >
+              <X size={28} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="chat"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+            >
+              <MessageCircle size={28} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
     </div>
   );
 };

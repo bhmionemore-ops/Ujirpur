@@ -148,34 +148,49 @@ export const BarniaBazar = () => {
     }
   };
 
-  const filteredShops = Array.from(new Map(shops.map(shop => [shop.id, shop])).values()).filter(shop => 
+  const filteredShops = Array.from(new Map<string, Shop>(shops.map(shop => [shop.id, shop])).values()).filter(shop => 
     shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shop.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
-    <section className="py-16 px-4 bg-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag className="text-orange-600" size={24} />
-              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">{t.bazar.category}</span>
-            </div>
-            <h2 className="text-4xl font-bold tracking-tight text-zinc-900">{t.bazar.title}</h2>
-            <p className="text-zinc-500 mt-2">{t.bazar.subtitle}</p>
+    <section className="py-32 px-4 bg-zinc-50 relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 right-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-brand-100/30 rounded-full blur-[150px]"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-100/30 rounded-full blur-[150px]"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-20 gap-10">
+          <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100 text-brand-600 text-[10px] font-black uppercase tracking-widest mb-6"
+            >
+              <ShoppingBag size={14} />
+              {t.bazar.category}
+            </motion.div>
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-900 mb-6 leading-none">
+              {t.bazar.title}
+            </h2>
+            <p className="text-zinc-500 text-lg leading-relaxed max-w-xl">
+              {t.bazar.subtitle}
+            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="relative group flex-1 sm:flex-none">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-600 transition-colors" size={20} />
               <input
                 type="text"
                 placeholder={t.bazar.search}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none w-full sm:w-64"
+                className="pl-12 pr-6 py-4 rounded-2xl bg-white border border-zinc-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none w-full sm:w-80 transition-all shadow-sm"
               />
             </div>
             <button
@@ -186,7 +201,7 @@ export const BarniaBazar = () => {
                   setShowAddShop(true);
                 }
               }}
-              className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
+              className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10"
             >
               {user ? <Plus size={20} /> : <LogIn size={20} />}
               {user ? t.bazar.register : (language === 'bn' ? 'লগইন করুন' : 'Login to Register')}
@@ -195,72 +210,101 @@ export const BarniaBazar = () => {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
-            <p className="text-zinc-500 font-medium animate-pulse">{language === 'bn' ? 'দোকান লোড হচ্ছে...' : 'Loading shops...'}</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-6">
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 border-4 border-brand-100 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-brand-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-zinc-400 font-black uppercase tracking-widest text-xs animate-pulse">
+              {language === 'bn' ? 'দোকান লোড হচ্ছে...' : 'Loading shops...'}
+            </p>
           </div>
         ) : filteredShops.length === 0 ? (
-          <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
-            <ShoppingBag className="mx-auto text-zinc-300 mb-4" size={48} />
-            <h3 className="text-xl font-bold text-zinc-900 mb-2">
+          <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-zinc-100 shadow-sm">
+            <div className="w-24 h-24 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-8">
+              <ShoppingBag className="text-zinc-300" size={48} />
+            </div>
+            <h3 className="text-3xl font-black text-zinc-900 mb-4 tracking-tight">
               {language === 'bn' ? 'কোন দোকান পাওয়া যায়নি' : 'No shops found'}
             </h3>
-            <p className="text-zinc-500">
+            <p className="text-zinc-500 max-w-md mx-auto">
               {searchQuery ? (language === 'bn' ? 'আপনার অনুসন্ধানের সাথে মেলে এমন কিছু পাওয়া যায়নি' : 'Try adjusting your search query') : (language === 'bn' ? 'প্রথম দোকানটি নথিভুক্ত করুন!' : 'Be the first to register a shop!')}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {filteredShops.map((shop) => (
               <motion.div
                 layoutId={shop.id}
                 key={shop.id}
-                className="group bg-white rounded-2xl border border-zinc-100 shadow-sm hover:shadow-xl transition-all overflow-hidden"
+                whileHover={{ y: -10 }}
+                className="group bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
               >
-                <div className="aspect-video overflow-hidden relative cursor-pointer" onClick={() => setSelectedShop(shop)}>
+                <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => setSelectedShop(shop)}>
                   <img
                     src={shop.image}
                     alt={shop.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute top-4 left-4 flex gap-2">
-                    <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-orange-600 uppercase tracking-wider shadow-sm">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <div className="absolute top-6 left-6 flex gap-2">
+                    <span className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest shadow-xl">
                       {shop.category}
                     </span>
                   </div>
+                  
                   {(isAdmin || (user && shop.uid === user.uid)) && (
                     <button
                       onClick={(e) => handleDeleteShop(shop.id, e)}
-                      className="absolute top-4 right-4 p-2 bg-red-500/80 backdrop-blur-md text-white rounded-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100"
+                      className="absolute top-6 right-6 p-3 bg-red-500/90 backdrop-blur-md text-white rounded-2xl hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 shadow-xl"
                     >
-                      <X size={16} />
+                      <X size={18} />
                     </button>
                   )}
                 </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-xl font-bold text-zinc-900 cursor-pointer" onClick={() => setSelectedShop(shop)}>{shop.name}</h3>
+                
+                <div className="p-10 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-3xl font-black text-zinc-900 cursor-pointer group-hover:text-brand-600 transition-colors tracking-tight leading-tight" onClick={() => setSelectedShop(shop)}>
+                      {shop.name}
+                    </h3>
                     <button 
                       onClick={() => shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`)}
-                      className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                      className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
                     >
-                      <Share2 size={18} />
+                      <Share2 size={20} />
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 text-zinc-500 text-sm mb-4">
-                    <MapPin size={14} />
+                  
+                  <div className="flex items-center gap-3 text-zinc-500 text-sm mb-8 font-medium">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-brand-600">
+                      <MapPin size={16} />
+                    </div>
                     <span>{shop.location}</span>
                   </div>
                   
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t.bazar.prices}</p>
+                  <div className="space-y-4 mt-auto">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.bazar.prices}</p>
+                      <div className="h-px flex-1 bg-zinc-50 mx-4"></div>
+                    </div>
                     {shop.products.slice(0, 2).map((p, i) => (
-                      <div key={`shop-${shop.id}-p-${i}`} className="flex justify-between items-center text-sm">
-                        <span className="text-zinc-600">{p.name}</span>
-                        <span className="font-bold text-orange-600">{p.price}</span>
+                      <div key={`shop-${shop.id}-p-${i}`} className="flex justify-between items-center p-4 rounded-2xl bg-zinc-50/50 border border-zinc-100/50 group-hover:bg-white group-hover:border-brand-100 transition-all">
+                        <span className="text-zinc-600 font-bold text-sm">{p.name}</span>
+                        <span className="font-black text-brand-600">{p.price}</span>
                       </div>
                     ))}
+                    
+                    {shop.products.length > 2 && (
+                      <button 
+                        onClick={() => setSelectedShop(shop)}
+                        className="w-full py-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-brand-600 transition-colors"
+                      >
+                        + {shop.products.length - 2} More Products
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -348,7 +392,7 @@ export const BarniaBazar = () => {
                               type="text"
                               value={newShop.name}
                               onChange={(e) => setNewShop({ ...newShop, name: e.target.value })}
-                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             />
                           </div>
                           <div className="space-y-1">
@@ -358,7 +402,7 @@ export const BarniaBazar = () => {
                               type="text"
                               value={newShop.owner}
                               onChange={(e) => setNewShop({ ...newShop, owner: e.target.value })}
-                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             />
                           </div>
                         </div>
@@ -369,7 +413,7 @@ export const BarniaBazar = () => {
                             <select
                               value={newShop.category}
                               onChange={(e) => setNewShop({ ...newShop, category: e.target.value })}
-                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             >
                               <option>Grocery</option>
                               <option>Stationery</option>
@@ -386,7 +430,7 @@ export const BarniaBazar = () => {
                               type="tel"
                               value={newShop.phone}
                               onChange={(e) => setNewShop({ ...newShop, phone: e.target.value })}
-                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             />
                           </div>
                         </div>
@@ -398,7 +442,7 @@ export const BarniaBazar = () => {
                             type="text"
                             value={newShop.location}
                             onChange={(e) => setNewShop({ ...newShop, location: e.target.value })}
-                            className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                            className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             placeholder="e.g. Near Barnia Station"
                           />
                         </div>
@@ -425,7 +469,7 @@ export const BarniaBazar = () => {
                               type="text"
                               value={newShop.imageUrl}
                               onChange={(e) => setNewShop({ ...newShop, imageUrl: e.target.value })}
-                              className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                              className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                               placeholder={t.bazar.imagePlaceholder}
                             />
                           </div>
@@ -437,7 +481,7 @@ export const BarniaBazar = () => {
                             <button 
                               type="button"
                               onClick={handleAddProduct}
-                              className="text-orange-600 hover:text-orange-700 p-1 rounded-lg hover:bg-orange-50 transition-all"
+                              className="text-brand-600 hover:text-brand-700 p-1 rounded-lg hover:bg-brand-50 transition-all"
                             >
                               <Plus size={18} />
                             </button>
@@ -450,14 +494,14 @@ export const BarniaBazar = () => {
                                   placeholder={t.bazar.productNamePlaceholder}
                                   value={product.name}
                                   onChange={(e) => handleProductChange(index, 'name', e.target.value)}
-                                  className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                  className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                                 />
                                 <input
                                   type="text"
                                   placeholder={t.bazar.productPricePlaceholder}
                                   value={product.price}
                                   onChange={(e) => handleProductChange(index, 'price', e.target.value)}
-                                  className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                  className="w-full p-2 text-sm rounded-lg border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                                 />
                               </div>
                             ))}
@@ -465,7 +509,7 @@ export const BarniaBazar = () => {
                           <button 
                             type="button"
                             onClick={handleAddProduct}
-                            className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 hover:border-orange-200 hover:text-orange-600 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-2 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 hover:border-brand-200 hover:text-brand-600 transition-all flex items-center justify-center gap-2"
                           >
                             <Plus size={14} />
                             {t.bazar.addProduct}
@@ -474,7 +518,7 @@ export const BarniaBazar = () => {
 
                         <button
                           type="submit"
-                          className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200"
+                          className="w-full bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-200"
                         >
                           Register Shop
                         </button>
@@ -519,17 +563,17 @@ export const BarniaBazar = () => {
                 <div className="p-8">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">{selectedShop.category}</span>
+                      <span className="text-[10px] font-bold text-brand-600 uppercase tracking-widest">{selectedShop.category}</span>
                       <h3 className="text-3xl font-bold text-zinc-900">{selectedShop.name}</h3>
                       <p className="text-zinc-500">Owner: {selectedShop.owner}</p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center gap-2 text-zinc-600 mb-1">
-                        <Phone size={16} className="text-orange-600" />
+                        <Phone size={16} className="text-brand-600" />
                         <span className="font-bold">{selectedShop.phone}</span>
                       </div>
                       <div className="flex items-center gap-2 text-zinc-500 text-sm">
-                        <MapPin size={16} className="text-orange-600" />
+                        <MapPin size={16} className="text-brand-600" />
                         <span>{selectedShop.location}</span>
                       </div>
                     </div>
@@ -537,14 +581,14 @@ export const BarniaBazar = () => {
 
                   <div className="space-y-4">
                     <h4 className="text-lg font-bold flex items-center gap-2">
-                      <Tag size={20} className="text-orange-600" />
+                      <Tag size={20} className="text-brand-600" />
                       Product Price List
                     </h4>
                     <div className="grid grid-cols-1 gap-3">
                       {selectedShop.products.map((p, i) => (
                         <div key={`sel-${selectedShop.id}-p-${i}`} className="flex justify-between items-center p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                           <span className="font-medium text-zinc-700">{p.name}</span>
-                          <span className="text-lg font-bold text-orange-600">{p.price}</span>
+                          <span className="text-lg font-bold text-brand-600">{p.price}</span>
                         </div>
                       ))}
                     </div>

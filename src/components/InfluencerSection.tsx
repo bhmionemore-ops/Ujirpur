@@ -222,25 +222,53 @@ export const InfluencerSection = () => {
   };
 
   return (
-    <section className="py-16 bg-zinc-50 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
+    <section className="py-32 bg-zinc-50 relative overflow-hidden px-4">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-200/30 blur-[120px] rounded-full"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+          <div className="max-w-2xl">
+            <motion.span 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="inline-block px-4 py-1.5 bg-brand-100 text-brand-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-full mb-6"
+            >
+              {language === 'bn' ? 'আমাদের নেটওয়ার্ক' : 'Our Network'}
+            </motion.span>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-900 leading-[0.9]"
+            >
               {t.influencers.title}
-            </h2>
-            <p className="text-zinc-500 mt-2">{t.influencers.subtitle}</p>
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-zinc-500 mt-6 text-lg font-medium max-w-lg"
+            >
+              {t.influencers.subtitle}
+            </motion.p>
           </div>
-          <div className="flex gap-4">
+          
+          <div className="flex flex-wrap gap-4">
             {user && (
               <button
                 onClick={() => setShowRequests(!showRequests)}
-                className="bg-white text-zinc-900 border border-zinc-200 px-6 py-3 rounded-xl font-medium hover:bg-zinc-50 transition-colors flex items-center gap-2 w-fit relative"
+                className="bg-white text-zinc-900 border border-zinc-200 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/5 relative group"
               >
-                <Inbox size={20} />
+                <Inbox size={20} className="group-hover:scale-110 transition-transform" />
                 {t.influencers.requests}
                 {requests.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-brand-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-lg animate-bounce">
                     {requests.length}
                   </span>
                 )}
@@ -254,9 +282,9 @@ export const InfluencerSection = () => {
                   setShowForm(!showForm);
                 }
               }}
-              className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2 w-fit"
+              className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/10 group"
             >
-              {user ? <UserPlus size={20} /> : <LogIn size={20} />}
+              {user ? <UserPlus size={20} className="group-hover:rotate-12 transition-transform" /> : <LogIn size={20} />}
               {user ? t.influencers.join : (language === 'bn' ? 'লগইন করুন' : 'Login to Join')}
             </button>
           </div>
@@ -265,44 +293,67 @@ export const InfluencerSection = () => {
         <AnimatePresence>
           {showRequests && user && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-lg mb-12"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="bg-white p-10 rounded-[3rem] border border-zinc-100 shadow-2xl mb-16 relative overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">{t.influencers.requests}</h3>
-                <button onClick={() => setShowRequests(false)} className="text-zinc-400 hover:text-zinc-900">
-                  <Inbox size={20} />
+              <div className="absolute top-0 left-0 w-2 h-full bg-brand-600"></div>
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-zinc-900 tracking-tight">{t.influencers.requests}</h3>
+                  <p className="text-zinc-400 text-sm font-medium mt-1">Manage your collaboration inquiries</p>
+                </div>
+                <button onClick={() => setShowRequests(false)} className="p-3 bg-zinc-50 text-zinc-400 hover:text-zinc-900 rounded-2xl transition-all">
+                  <XCircle size={24} />
                 </button>
               </div>
               
               {requests.length === 0 ? (
-                <p className="text-zinc-500 text-center py-8">{t.influencers.noRequests}</p>
+                <div className="py-16 text-center">
+                  <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Inbox size={32} className="text-zinc-200" />
+                  </div>
+                  <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">{t.influencers.noRequests}</p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {requests.map((req) => (
-                    <div key={req.id} className="p-4 bg-zinc-50 rounded-xl border border-zinc-100 flex justify-between items-start">
+                    <motion.div 
+                      layout
+                      key={req.id} 
+                      className="p-6 bg-zinc-50 rounded-[2rem] border border-zinc-100 flex justify-between items-start group hover:bg-white hover:shadow-xl transition-all"
+                    >
                       <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-orange-600">{req.fromName}</h4>
-                          <span className="text-[10px] text-zinc-400">
-                            {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleDateString() : 'Just now'}
-                          </span>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-black">
+                              {req.fromName.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="font-black text-zinc-900">{req.fromName}</h4>
+                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleDateString() : 'Just now'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-zinc-600 mb-2">
-                          <span className="font-semibold text-zinc-900">To:</span> {req.toInfluencerName}
-                        </p>
-                        <p className="text-sm text-zinc-500 italic">"{req.message}"</p>
+                        <div className="space-y-3">
+                          <p className="text-xs font-black text-brand-600 uppercase tracking-widest flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-brand-600"></span>
+                            To: {req.toInfluencerName}
+                          </p>
+                          <p className="text-zinc-600 text-sm italic bg-white/50 p-4 rounded-2xl border border-zinc-100">"{req.message}"</p>
+                        </div>
                       </div>
                       <button 
                         onClick={() => handleDeleteRequest(req.id)}
-                        className="ml-4 p-2 text-zinc-300 hover:text-red-500 transition-colors"
+                        className="ml-4 p-3 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
                         title="Delete Request"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={18} />
                       </button>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -311,51 +362,61 @@ export const InfluencerSection = () => {
 
           {showForm && user && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-lg mb-12 overflow-hidden"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="bg-white p-12 rounded-[3rem] border border-zinc-100 shadow-2xl mb-16 relative overflow-hidden"
             >
-              <h3 className="text-xl font-bold mb-6">Create Your Profile</h3>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-zinc-700">Full Name</label>
+              <div className="absolute top-0 left-0 w-2 h-full bg-zinc-900"></div>
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-zinc-900 tracking-tight">Create Your Profile</h3>
+                  <p className="text-zinc-400 text-sm font-medium mt-1">Join our professional community</p>
+                </div>
+                <button onClick={() => setShowForm(false)} className="p-3 bg-zinc-50 text-zinc-400 hover:text-zinc-900 rounded-2xl transition-all">
+                  <XCircle size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Full Name</label>
                   <input
                     required
                     type="text"
                     value={newInfluencer.name}
                     onChange={(e) => setNewInfluencer({ ...newInfluencer, name: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                     placeholder="Your Name"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-zinc-700">Short Bio</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Short Bio</label>
                   <input
                     required
                     type="text"
                     value={newInfluencer.bio}
                     onChange={(e) => setNewInfluencer({ ...newInfluencer, bio: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                     placeholder="What do you do?"
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-zinc-700">{t.influencers.avatarLabel}</label>
+                <div className="space-y-3 md:col-span-2">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.influencers.avatarLabel}</label>
                     {user?.photoURL && (
                       <button
                         type="button"
                         onClick={() => setNewInfluencer(prev => ({ ...prev, avatarUrl: user.photoURL || '' }))}
-                        className="text-[10px] font-bold text-orange-600 hover:underline flex items-center gap-1"
+                        className="text-[10px] font-black text-brand-600 hover:text-brand-700 uppercase tracking-widest flex items-center gap-2"
                       >
-                        <Globe size={10} />
+                        <Globe size={12} />
                         {language === 'bn' ? 'গুগল প্রোফাইল থেকে নিন' : 'Sync from Google'}
                       </button>
                     )}
                   </div>
-                  <div className="flex gap-4 items-center">
-                    <div className="w-16 h-16 rounded-full bg-zinc-100 flex-shrink-0 overflow-hidden border-2 border-orange-100">
+                  <div className="flex gap-6 items-center p-6 bg-zinc-50 rounded-[2rem] border border-zinc-100">
+                    <div className="w-24 h-24 rounded-full bg-white flex-shrink-0 overflow-hidden border-4 border-white shadow-xl">
                       {newInfluencer.avatarUrl ? (
                         <img 
                           src={newInfluencer.avatarUrl} 
@@ -367,84 +428,59 @@ export const InfluencerSection = () => {
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-300">
-                          <UserPlus size={24} />
+                        <div className="w-full h-full flex items-center justify-center text-zinc-200">
+                          <UserPlus size={32} />
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1 space-y-3">
                       <input
                         type="text"
                         value={newInfluencer.avatarUrl}
                         onChange={(e) => setNewInfluencer({ ...newInfluencer, avatarUrl: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                         placeholder={t.influencers.avatarPlaceholder}
                       />
-                      <p className="text-[11px] text-orange-600 font-medium px-1 bg-orange-50 py-1 rounded-md mt-2 flex items-center gap-1">
-                        <Zap size={10} />
+                      <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest flex items-center gap-2">
+                        <Zap size={12} />
                         {language === 'bn' 
-                          ? 'টিপ: নিচে আপনার সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
-                          : 'Tip: Add your social links below and we will try to fetch your photo automatically!'}
+                          ? 'টিপ: সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
+                          : 'Tip: Add social links for auto-photo fetch!'}
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-semibold text-zinc-700">Social Media Pages (Up to 3)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input
-                      required
-                      type="text"
-                      value={newInfluencer.social1}
-                      onChange={(e) => {
-                        setNewInfluencer({ ...newInfluencer, social1: e.target.value });
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      onBlur={(e) => {
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
-                      placeholder={t.influencers.socialPlaceholder}
-                    />
-                    <input
-                      type="text"
-                      value={newInfluencer.social2}
-                      onChange={(e) => {
-                        setNewInfluencer({ ...newInfluencer, social2: e.target.value });
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      onBlur={(e) => {
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
-                      placeholder={t.influencers.socialPlaceholder}
-                    />
-                    <input
-                      type="text"
-                      value={newInfluencer.social3}
-                      onChange={(e) => {
-                        setNewInfluencer({ ...newInfluencer, social3: e.target.value });
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      onBlur={(e) => {
-                        if (!newInfluencer.avatarUrl) autoFetchAvatar(e.target.value);
-                      }}
-                      className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 outline-none"
-                      placeholder={t.influencers.socialPlaceholder}
-                    />
+                <div className="space-y-3 md:col-span-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Social Media Pages (Up to 3)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((num) => (
+                      <input
+                        key={`social-${num}`}
+                        required={num === 1}
+                        type="text"
+                        value={(newInfluencer as any)[`social${num}`]}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewInfluencer(prev => ({ ...prev, [`social${num}`]: val }));
+                          if (!newInfluencer.avatarUrl) autoFetchAvatar(val);
+                        }}
+                        className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                        placeholder={t.influencers.socialPlaceholder}
+                      />
+                    ))}
                   </div>
                 </div>
-                <div className="md:col-span-2 flex justify-end gap-4">
+                <div className="md:col-span-2 flex justify-end gap-4 mt-4">
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="px-6 py-3 rounded-xl font-medium text-zinc-600 hover:bg-zinc-100 transition-colors"
+                    className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-zinc-500 hover:bg-zinc-100 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-orange-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-orange-700 transition-colors"
+                    className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 hover:scale-105 transition-all shadow-xl shadow-brand-600/20"
                   >
                     Publish Profile
                   </button>
@@ -454,14 +490,16 @@ export const InfluencerSection = () => {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {influencers.length === 0 ? (
-            <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-zinc-100 shadow-sm">
-              <UserPlus size={48} className="mx-auto text-zinc-200 mb-4" />
-              <h3 className="text-xl font-bold text-zinc-900 mb-2">
+            <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-zinc-100 shadow-sm">
+              <div className="w-24 h-24 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                <UserPlus size={48} className="text-zinc-200" />
+              </div>
+              <h3 className="text-3xl font-black text-zinc-900 mb-4 tracking-tight">
                 {language === 'bn' ? 'কোন ইনফ্লুয়েন্সার পাওয়া যায়নি' : 'No Influencers Found'}
               </h3>
-              <p className="text-zinc-500 max-w-md mx-auto mb-8">
+              <p className="text-zinc-500 max-w-md mx-auto mb-10 font-medium">
                 {language === 'bn' 
                   ? 'আমাদের নেটওয়ার্কে প্রথম ইনফ্লুয়েন্সার হিসেবে যোগ দিন এবং আপনার প্রতিভা সবার সাথে শেয়ার করুন!' 
                   : 'Be the first to join our network and share your talent with the community!'}
@@ -469,7 +507,7 @@ export const InfluencerSection = () => {
               {!user ? (
                 <button 
                   onClick={signIn}
-                  className="bg-zinc-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 mx-auto"
+                  className="bg-zinc-900 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center gap-3 mx-auto shadow-xl shadow-zinc-900/10"
                 >
                   <LogIn size={20} />
                   {language === 'bn' ? 'লগইন করে যোগ দিন' : 'Login to Join'}
@@ -477,7 +515,7 @@ export const InfluencerSection = () => {
               ) : (
                 <button 
                   onClick={() => setShowForm(true)}
-                  className="bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center gap-2 mx-auto"
+                  className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3 mx-auto shadow-xl shadow-brand-600/20"
                 >
                   <UserPlus size={20} />
                   {t.influencers.join}
@@ -486,47 +524,61 @@ export const InfluencerSection = () => {
             </div>
           ) : (
             influencers.map((inf) => (
-            <div key={inf.id} className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col">
-              <div className="flex justify-between items-start mb-4">
-                <img
-                  src={inf.avatar}
-                  alt={inf.name}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-orange-100"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(inf.name)}&background=random&color=fff`;
-                  }}
-                />
+            <motion.div 
+              layout
+              key={inf.id} 
+              whileHover={{ y: -10 }}
+              className="group bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-zinc-50 group-hover:bg-brand-600 transition-colors"></div>
+              
+              <div className="flex justify-between items-start mb-8">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-brand-600 blur-2xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full"></div>
+                  <img
+                    src={inf.avatar}
+                    alt={inf.name}
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl relative z-10 group-hover:scale-105 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(inf.name)}&background=random&color=fff`;
+                    }}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => {
                       const shareUrl = `${window.location.origin}/profile/${inf.id}`;
                       shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`, shareUrl);
                     }}
-                    className="p-2 text-zinc-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                    className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
                   >
-                    <Share2 size={18} />
+                    <Share2 size={20} />
                   </button>
                   {(isAdmin || (user && inf.uid === user.uid)) && (
                     <button 
                       onClick={() => handleDeleteInfluencer(inf.id)}
-                      className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      className="p-3 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={20} />
                     </button>
                   )}
                 </div>
               </div>
-              <h4 className="text-lg font-bold text-zinc-900">{inf.name}</h4>
-              <p className="text-zinc-500 text-sm mb-4 line-clamp-2">{inf.bio}</p>
-              <div className="flex flex-wrap gap-2 mb-6">
+
+              <div className="mb-6">
+                <h4 className="text-2xl font-black text-zinc-900 group-hover:text-brand-600 transition-colors tracking-tight leading-tight mb-2">{inf.name}</h4>
+                <p className="text-zinc-500 text-sm font-medium line-clamp-2 leading-relaxed">{inf.bio}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mb-8">
                 {inf.socials.map((social, i) => (
                   <a
                     key={`${inf.id}-social-${i}`}
                     href={social.startsWith('http') ? social : `https://${social}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 bg-zinc-50 rounded-lg hover:bg-orange-50 text-zinc-400 hover:text-orange-600 transition-colors"
+                    className="p-3 bg-zinc-50 rounded-2xl hover:bg-brand-50 text-zinc-400 hover:text-brand-600 transition-all hover:scale-110"
                     title={social}
                   >
                     {getSocialIcon(social)}
@@ -534,18 +586,22 @@ export const InfluencerSection = () => {
                 ))}
               </div>
               
-              <div className="mt-auto space-y-2">
+              <div className="mt-auto">
                 {requestSentId === inf.id ? (
-                  <div className="w-full py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                    <CheckCircle size={16} />
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="w-full py-4 bg-brand-50 text-brand-600 rounded-[1.5rem] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 border border-brand-100"
+                  >
+                    <CheckCircle size={18} />
                     {t.influencers.requestSent}
-                  </div>
+                  </motion.div>
                 ) : requestingId === inf.id ? (
                   <motion.form 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     onSubmit={(e) => handleCollabRequest(e, inf)}
-                    className="space-y-2 p-3 bg-zinc-50 rounded-xl border border-zinc-200"
+                    className="space-y-3 p-4 bg-zinc-50 rounded-[2rem] border border-zinc-100"
                   >
                     <input
                       required
@@ -553,28 +609,28 @@ export const InfluencerSection = () => {
                       placeholder="Your Name"
                       value={collabForm.fromName}
                       onChange={(e) => setCollabForm({ ...collabForm, fromName: e.target.value })}
-                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-orange-500"
+                      className="w-full p-3 text-xs rounded-xl bg-white border border-zinc-100 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-bold"
                     />
                     <textarea
                       required
                       placeholder="Message..."
                       value={collabForm.message}
                       onChange={(e) => setCollabForm({ ...collabForm, message: e.target.value })}
-                      className="w-full p-2 text-xs rounded-lg border border-zinc-200 outline-none focus:ring-1 focus:ring-orange-500 h-16 resize-none"
+                      className="w-full p-3 text-xs rounded-xl bg-white border border-zinc-100 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 h-20 resize-none font-bold"
                     />
                     <div className="flex gap-2">
                       <button 
                         type="button"
                         onClick={() => setRequestingId(null)}
-                        className="flex-1 py-1.5 text-[10px] font-bold text-zinc-500 hover:bg-zinc-200 rounded-lg transition-colors"
+                        className="flex-1 py-2.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:bg-zinc-200 rounded-xl transition-all"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit"
-                        className="flex-1 py-1.5 bg-orange-600 text-white text-[10px] font-bold rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-600/20"
                       >
-                        <Send size={12} />
+                        <Send size={14} />
                         Send
                       </button>
                     </div>
@@ -582,14 +638,14 @@ export const InfluencerSection = () => {
                 ) : (
                   <button 
                     onClick={() => setRequestingId(inf.id)}
-                    className="w-full py-2 bg-zinc-900 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-zinc-900 text-white rounded-[1.5rem] text-xs font-black uppercase tracking-widest hover:bg-brand-600 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10"
                   >
-                    <MessageSquare size={16} />
+                    <MessageSquare size={18} />
                     {t.influencers.requestCollab}
                   </button>
                 )}
               </div>
-            </div>
+            </motion.div>
           )))}
         </div>
       </div>

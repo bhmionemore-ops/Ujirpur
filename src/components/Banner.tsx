@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper } from 'lucide-react';
 
 const SLIDES = [
   {
@@ -36,101 +36,114 @@ export const Banner = () => {
   const prev = () => setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
 
   return (
-    <div className="relative h-[600px] w-full overflow-hidden bg-zinc-900">
+    <div className="relative h-[700px] w-full overflow-hidden bg-zinc-950">
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
           className="absolute inset-0"
         >
           <img
             src={SLIDES[current].url}
             alt={SLIDES[current].title}
-            className="h-full w-full object-cover opacity-60 brightness-75"
+            className="h-full w-full object-cover opacity-50 brightness-75 transition-all duration-1000"
             referrerPolicy="no-referrer"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950/30"></div>
         </motion.div>
       </AnimatePresence>
       
       {/* Overlay Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
         
-        {/* "WELCOME TO" - Rainbow Gradient */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-2"
+          transition={{ delay: 0.2 }}
+          className="mb-6"
         >
-          <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,0.8)] bg-clip-text text-transparent bg-gradient-to-r from-red-500 via-yellow-400 via-green-400 via-blue-500 to-purple-500">
-            WELCOME TO
-          </h2>
+          <span className="inline-block px-4 py-1.5 rounded-full bg-brand-500/20 border border-brand-500/30 text-brand-400 text-xs font-black uppercase tracking-[0.3em] backdrop-blur-md">
+            Welcome to our community
+          </span>
         </motion.div>
 
-        {/* Main Title - 3D Blue Text */}
         <motion.div
           key={`title-${current}`}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="max-w-5xl mx-auto"
         >
-          <h1 className="text-5xl md:text-8xl font-black tracking-tight text-white drop-shadow-[6px_6px_0px_#FF9933] px-8 py-4">
+          <h1 className="text-6xl md:text-9xl font-black tracking-tighter text-white mb-6 leading-[0.9]">
             {SLIDES[current].title}
           </h1>
-          <p className="text-xl md:text-2xl text-orange-200 font-bold mt-4 drop-shadow-md">
+          <p className="text-lg md:text-2xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed">
             {SLIDES[current].subtitle}
           </p>
         </motion.div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap justify-center gap-6 mb-12">
-          <motion.a 
-            whileHover={{ scale: 1.1, rotate: -2 }}
-            whileTap={{ scale: 0.9 }}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="flex flex-wrap justify-center gap-4 mt-12"
+        >
+          <a 
+            href="#news" 
+            className="group relative px-8 py-4 rounded-2xl bg-brand-600 text-white font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3"
+          >
+            <Newspaper size={20} />
+            {t.banner.news}
+          </a>
+
+          <a 
             href="#bazar" 
-            className="group relative bg-[#FF9933] text-white px-8 py-3 rounded-xl font-black text-xl shadow-[4px_4px_0px_#800000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
+            className="group relative px-8 py-4 rounded-2xl bg-white/10 text-white font-bold text-lg backdrop-blur-md border border-white/20 hover:bg-white/20 hover:scale-105 transition-all flex items-center gap-3"
           >
             <ShoppingBag size={20} />
             {t.banner.bazar}
-          </motion.a>
+          </a>
           
-          <motion.a 
-            whileHover={{ scale: 1.1, rotate: 2 }}
-            whileTap={{ scale: 0.9 }}
+          <a 
             href="#influencers" 
-            className="group relative bg-[#800000] text-white px-8 py-3 rounded-xl font-black text-xl shadow-[4px_4px_0px_#FF9933] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center gap-2"
+            className="group relative px-8 py-4 rounded-2xl bg-zinc-900 text-white font-bold text-lg hover:bg-black hover:scale-105 transition-all flex items-center gap-3"
           >
             <Users size={20} />
             {t.banner.influencer}
-          </motion.a>
-        </div>
+          </a>
+        </motion.div>
       </div>
 
       {/* Controls */}
-      <button 
-        onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-colors"
-      >
-        <ChevronLeft size={32} />
-      </button>
-      <button 
-        onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-colors"
-      >
-        <ChevronRight size={32} />
-      </button>
-
-      {/* Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-        {SLIDES.map((_, i) => (
-          <button
-            key={`slide-dot-${i}`}
-            onClick={() => setCurrent(i)}
-            className={`w-3 h-3 rounded-full transition-all ${current === i ? 'bg-[#FF9933] w-8' : 'bg-white/50'}`}
-          />
-        ))}
+      <div className="absolute bottom-12 left-4 right-4 md:left-12 md:right-12 flex items-center justify-between z-20">
+        <div className="flex gap-3">
+          {SLIDES.map((_, i) => (
+            <button
+              key={`slide-dot-${i}`}
+              onClick={() => setCurrent(i)}
+              className={`h-1 rounded-full transition-all duration-500 ${current === i ? 'bg-brand-500 w-12' : 'bg-white/20 w-6 hover:bg-white/40'}`}
+            />
+          ))}
+        </div>
+        
+        <div className="flex gap-2">
+          <button 
+            onClick={prev}
+            className="p-3 rounded-2xl bg-white/5 text-white hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button 
+            onClick={next}
+            className="p-3 rounded-2xl bg-white/5 text-white hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -131,28 +131,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-md">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative"
+        initial={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(10px)' }}
+        className="bg-white/90 backdrop-blur-2xl w-full max-w-md rounded-[40px] shadow-[0_30px_100px_rgba(0,0,0,0.2)] overflow-hidden relative border border-white/20"
       >
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 hover:bg-zinc-100 rounded-full transition-colors z-10"
+          className="absolute top-8 right-8 p-2.5 hover:bg-zinc-100 rounded-2xl transition-all active:scale-90 z-10"
         >
           <X size={20} className="text-zinc-400" />
         </button>
 
-        <div className="p-8 pt-12">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-zinc-900">
+        <div className="p-10 pt-16">
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 bg-gradient-to-br from-brand-600 to-brand-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-brand-500/20 border border-white/20">
+              <span className="text-white font-black text-2xl tracking-tighter">UB</span>
+            </div>
+            <h2 className="text-3xl font-black text-zinc-900 tracking-tight">
               {mode === 'login' 
                 ? (language === 'bn' ? 'স্বাগতম' : 'Welcome Back') 
                 : (language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account')}
             </h2>
-            <p className="text-zinc-500 text-sm mt-2">
+            <p className="text-zinc-500 text-sm mt-3 font-medium">
               {mode === 'login'
                 ? (language === 'bn' ? 'আপনার অ্যাকাউন্টে লগইন করুন' : 'Sign in to your account to continue')
                 : (language === 'bn' ? 'বর্নিয়া বাজার কমিউনিটিতে যোগ দিন' : 'Join the Barnia Bazar community today')}
@@ -161,77 +164,81 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
                 <input
                   type="text"
                   placeholder={language === 'bn' ? 'আপনার নাম' : 'Full Name'}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                  className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
                 />
               </div>
             )}
 
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
               <input
                 type="email"
                 placeholder={language === 'bn' ? 'ইমেইল ঠিকানা' : 'Email Address'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
               />
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
               <input
                 type="password"
                 placeholder={language === 'bn' ? 'পাসওয়ার্ড' : 'Password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
+                className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
               />
               {mode === 'signup' && (
-                <p className="text-[10px] text-zinc-400 mt-1 ml-2">
+                <p className="text-[10px] text-zinc-400 mt-2 ml-2 font-medium">
                   {language === 'bn' ? 'এই সাইটের জন্য একটি নতুন পাসওয়ার্ড তৈরি করুন' : 'Create a new password for this site'}
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-red-500 text-xs bg-red-50 p-3 rounded-xl">
-                <AlertCircle size={14} />
-                <span>{error}</span>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 text-red-500 text-xs bg-red-50 p-4 rounded-2xl border border-red-100"
+              >
+                <AlertCircle size={16} />
+                <span className="font-medium leading-tight">{error}</span>
+              </motion.div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-orange-600 text-white py-3 rounded-2xl font-bold text-sm hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-2xl font-black text-sm hover:shadow-xl hover:shadow-brand-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 mt-6"
             >
               {loading ? (
-                <Loader2 className="animate-spin" size={18} />
+                <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
                   {mode === 'login' ? (language === 'bn' ? 'লগইন' : 'Sign In') : (language === 'bn' ? 'সাইন আপ' : 'Sign Up')}
-                  <ArrowRight size={18} />
+                  <ArrowRight size={20} />
                 </>
               )}
             </button>
           </form>
 
-          <div className="relative my-8">
+          <div className="relative my-10">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-zinc-100"></div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-4 text-zinc-400 font-medium">
+            <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
+              <span className="bg-white/0 backdrop-blur-xl px-4 text-zinc-400">
                 {language === 'bn' ? 'অথবা' : 'Or continue with'}
               </span>
             </div>
@@ -240,23 +247,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 py-3 border border-zinc-200 rounded-2xl hover:bg-zinc-50 transition-all text-sm font-medium text-zinc-700"
+            className="w-full flex items-center justify-center gap-3 py-4 border border-zinc-200 rounded-2xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm font-bold text-zinc-700 active:scale-[0.98]"
           >
-            <Chrome size={18} className="text-orange-600" />
+            <Chrome size={20} className="text-brand-600" />
             {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
           </button>
 
-          <div className="mt-8 text-center space-y-4">
+          <div className="mt-10 text-center space-y-4">
             <button
               onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-              className="text-sm text-zinc-500 hover:text-orange-600 transition-colors block w-full"
+              className="text-sm font-bold text-zinc-500 hover:text-brand-600 transition-colors block w-full"
             >
               {mode === 'login'
                 ? (language === 'bn' ? 'অ্যাকাউন্ট নেই? সাইন আপ করুন' : "Don't have an account? Sign up")
                 : (language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'Already have an account? Sign in')}
             </button>
             
-            <p className="text-[10px] text-zinc-400 italic">
+            <p className="text-[10px] text-zinc-400 font-medium italic">
               {language === 'bn' 
                 ? 'লগইন করতে সমস্যা হচ্ছে? অ্যাপটি নতুন ট্যাবে খোলার চেষ্টা করুন।' 
                 : 'Having trouble logging in? Try opening the app in a new tab.'}

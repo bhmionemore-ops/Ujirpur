@@ -58,14 +58,20 @@ export const VisitorCounter = () => {
   if (count === null) return null;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 rounded-full border border-zinc-700 shadow-lg">
-      <Users size={14} className="text-orange-500" />
-      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-        {t.footer.visitorCount}:
-      </span>
-      <span className="text-xs font-mono font-bold text-white">
-        {(BASE_COUNT + count).toLocaleString()}
-      </span>
+    <div className="flex items-center gap-3 px-5 py-2.5 bg-zinc-900/50 backdrop-blur-md rounded-2xl border border-white/5 shadow-2xl group hover:border-brand-500/30 transition-all duration-500">
+      <div className="w-8 h-8 rounded-xl bg-brand-500/10 flex items-center justify-center group-hover:bg-brand-500/20 transition-colors">
+        <Users size={16} className="text-brand-500" />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 leading-none mb-1">
+          {t.footer.visitorCount}
+        </span>
+        <span className="text-sm font-mono font-bold text-white tracking-wider">
+          {(BASE_COUNT + count).toLocaleString().split('').map((char, i) => (
+            <span key={i} className="inline-block min-w-[0.6em] text-center">{char}</span>
+          ))}
+        </span>
+      </div>
     </div>
   );
 };
