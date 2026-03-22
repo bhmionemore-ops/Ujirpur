@@ -211,18 +211,23 @@ async function startServer() {
       console.error("Admin Firestore startup test failed:", testError);
     }
 
-    // Sign in as the server admin using a custom token to satisfy security rules
-    try {
-      const customToken = await admin.auth().createCustomToken("server-admin", {
-        admin: true,
-        email: "okbgmi611@gmail.com",
-        email_verified: true
-      });
-      await signInWithCustomToken(clientAuth, customToken);
-      console.log(`Server authenticated as 'server-admin' (UID: ${clientAuth.currentUser?.uid})`);
-      
-      // Force a refresh of the auth state to ensure it's propagated
-      await clientAuth.currentUser?.getIdToken(true);
+      // Sign in as the server admin using a custom token to satisfy security rules
+      try {
+        const customToken = await admin.auth().createCustomToken("server-admin", {
+          admin: true,
+          email: "okbgmi611@gmail.com",
+          email_verified: true
+        });
+        await signInWithCustomToken(clientAuth, customToken);
+        const user = clientAuth.currentUser;
+        console.log(`Server authenticated as 'server-admin' (UID: ${user?.uid})`);
+        
+        // Log token claims for debugging
+        const idTokenResult = await user?.getIdTokenResult();
+        console.log("Server Admin Token Claims:", JSON.stringify(idTokenResult?.claims));
+        
+        // Force a refresh of the auth state to ensure it's propagated
+        await user?.getIdToken(true);
       
       // Test write to verify connection and rules
       try {
@@ -602,51 +607,62 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-news", async (req, res) => {
-    console.log(`[${new Date().toISOString()}] Clear news request received`);
+    console.log(`[${new Date().toISOString()}] Clear news request received (Aggressive Nuke)`);
     
     try {
       const collections = ["news", "trending_news"];
       let totalDeleted = 0;
       
       for (const colName of collections) {
-        console.log(`Clearing collection: ${colName}`);
+        console.log(`Aggressively clearing collection: ${colName}`);
         
+        // Try Admin SDK first (bypasses rules)
         try {
-          // Try Admin SDK first
           if (!adminDb) throw new Error("Admin Firestore not initialized");
           
           const colRef = adminDb.collection(colName);
           const snapshot = await colRef.get();
-          console.log(`[Admin] Found ${snapshot.docs.length} docs in ${colName}`);
+          console.log(`[Admin] Found ${snapshot.docs.length} docs in ${colName} to delete`);
           
-          let batch = adminDb.batch();
-          let count = 0;
-          for (const document of snapshot.docs) {
-            batch.delete(document.ref);
-            count++;
-            totalDeleted++;
-            if (count >= 450) {
-              await batch.commit();
-              batch = adminDb.batch();
-              count = 0;
+          if (snapshot.docs.length > 0) {
+            let batch = adminDb.batch();
+            let count = 0;
+            for (const document of snapshot.docs) {
+              batch.delete(document.ref);
+              count++;
+              totalDeleted++;
+              if (count >= 450) {
+                await batch.commit();
+                batch = adminDb.batch();
+                count = 0;
+              }
             }
+            if (count > 0) await batch.commit();
           }
-          if (count > 0) await batch.commit();
         } catch (adminError) {
-          console.warn(`[Admin] Failed to clear ${colName}, trying Client SDK:`, adminError);
+          console.warn(`[Admin] Failed to clear ${colName} via Admin SDK, trying Client SDK:`, adminError);
           
-          // Fallback to Client SDK
+          // Fallback to Client SDK (respects rules)
           if (db) {
             const colRef = collection(db, colName);
             const snapshot = await getDocs(colRef);
-            console.log(`[Client] Found ${snapshot.docs.length} docs in ${colName}`);
+            console.log(`[Client] Found ${snapshot.docs.length} docs in ${colName} to delete`);
             
-            const batch = writeBatch(db);
-            snapshot.docs.forEach(document => {
-              batch.delete(doc(db, colName, document.id));
-              totalDeleted++;
-            });
-            await batch.commit();
+            if (snapshot.docs.length > 0) {
+              let batch = writeBatch(db);
+              let count = 0;
+              for (const document of snapshot.docs) {
+                batch.delete(doc(db, colName, document.id));
+                count++;
+                totalDeleted++;
+                if (count >= 450) {
+                  await batch.commit();
+                  batch = writeBatch(db);
+                  count = 0;
+                }
+              }
+              if (count > 0) await batch.commit();
+            }
           } else {
             throw adminError;
           }
@@ -655,15 +671,28 @@ async function startServer() {
       
       // Reset status
       try {
+        const statusData = {
+          status: "cleared",
+          lastUpdated: null,
+          lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+          clearedAt: new Date().toISOString()
+        };
+        
         if (adminDb) {
-          await adminDb.collection("system").doc("news_status").set({
-            status: "cleared",
-            lastUpdated: null,
-            lastAttempt: admin.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
+          await adminDb.collection("system").doc("news_status").set(statusData, { merge: true });
         } else if (db) {
-          await setDoc(doc(db, "system", "news_status"), {
-            status: "cleared",
+          await setDoc(doc(db, "system", "news_status"), statusData, { merge: true });
+        }
+      } catch (statusErr) {
+        console.warn("Failed to update news_status after clear:", statusErr);
+      }
+      
+      res.json({ success: true, message: `Successfully cleared ${totalDeleted} items from news and trending_news`, count: totalDeleted });
+    } catch (error) {
+      console.error("Error clearing news:", error);
+      res.status(500).json({ success: false, error: String(error) });
+    }
+  });
             lastUpdated: null,
             lastAttempt: serverTimestamp()
           }, { merge: true });
