@@ -126,7 +126,7 @@ export const Banner = () => {
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
         {SLIDES.map((_, i) => (
           <button
-            key={i}
+            key={`slide-dot-${i}`}
             onClick={() => setCurrent(i)}
             className={`w-3 h-3 rounded-full transition-all ${current === i ? 'bg-[#FF9933] w-8' : 'bg-white/50'}`}
           />

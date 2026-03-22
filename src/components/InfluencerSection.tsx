@@ -522,7 +522,7 @@ export const InfluencerSection = () => {
               <div className="flex flex-wrap gap-2 mb-6">
                 {inf.socials.map((social, i) => (
                   <a
-                    key={i}
+                    key={`${inf.id}-social-${i}`}
                     href={social.startsWith('http') ? social : `https://${social}`}
                     target="_blank"
                     rel="noopener noreferrer"

@@ -118,7 +118,7 @@ export const LiveChatWidget = () => {
               className="flex-1 p-4 overflow-y-auto bg-zinc-50 space-y-4 custom-scrollbar"
             >
               {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
+                <div key={msg.id || `chat-msg-${i}`} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[80%] p-3 rounded-xl text-xs shadow-sm border ${
                     msg.isBot 
                       ? 'bg-white text-zinc-600 border-zinc-100 rounded-tl-none' 

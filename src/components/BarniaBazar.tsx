@@ -148,7 +148,7 @@ export const BarniaBazar = () => {
     }
   };
 
-  const filteredShops = shops.filter(shop => 
+  const filteredShops = Array.from(new Map(shops.map(shop => [shop.id, shop])).values()).filter(shop => 
     shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shop.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -256,7 +256,7 @@ export const BarniaBazar = () => {
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t.bazar.prices}</p>
                     {shop.products.slice(0, 2).map((p, i) => (
-                      <div key={i} className="flex justify-between items-center text-sm">
+                      <div key={`shop-${shop.id}-p-${i}`} className="flex justify-between items-center text-sm">
                         <span className="text-zinc-600">{p.name}</span>
                         <span className="font-bold text-orange-600">{p.price}</span>
                       </div>
@@ -444,7 +444,7 @@ export const BarniaBazar = () => {
                           </div>
                           <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                             {newShop.products.map((product, index) => (
-                              <div key={index} className="grid grid-cols-2 gap-2">
+                              <div key={`new-p-${index}`} className="grid grid-cols-2 gap-2">
                                 <input
                                   type="text"
                                   placeholder={t.bazar.productNamePlaceholder}
@@ -542,7 +542,7 @@ export const BarniaBazar = () => {
                     </h4>
                     <div className="grid grid-cols-1 gap-3">
                       {selectedShop.products.map((p, i) => (
-                        <div key={i} className="flex justify-between items-center p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                        <div key={`sel-${selectedShop.id}-p-${i}`} className="flex justify-between items-center p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                           <span className="font-medium text-zinc-700">{p.name}</span>
                           <span className="text-lg font-bold text-orange-600">{p.price}</span>
                         </div>

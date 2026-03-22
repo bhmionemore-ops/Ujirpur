@@ -168,7 +168,7 @@ export const CollaborationTools = () => {
                       const isMe = user && msg.senderId === user.uid;
                       const isSystem = msg.senderId === 'system';
                       return (
-                        <div key={msg.id || i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div key={msg.id || `msg-${i}`} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                           <div className="flex flex-col max-w-[80%]">
                             {!isMe && !isSystem && <span className="text-[10px] text-zinc-400 ml-2 mb-1">{msg.senderName}</span>}
                             <div className={`${
@@ -232,7 +232,7 @@ export const CollaborationTools = () => {
                 </div>
                 <div className="space-y-4">
                   {t.data.collab.campaigns.map((campaign: any, i: number) => (
-                    <div key={i} className="p-6 border border-zinc-100 rounded-2xl flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                    <div key={`camp-${i}`} className="p-6 border border-zinc-100 rounded-2xl flex items-center justify-between hover:bg-zinc-50 transition-colors">
                       <div>
                         <h5 className="font-bold text-zinc-900">{campaign.title}</h5>
                         <p className="text-sm text-zinc-500">{campaign.date}</p>
@@ -258,7 +258,7 @@ export const CollaborationTools = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {t.data.collab.projects.map((project: any, i: number) => (
-                    <div key={i} className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
+                    <div key={`proj-${i}`} className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
                       <h5 className="font-bold mb-2">{project.title}</h5>
                       <p className="text-xs text-zinc-500 mb-4">Partners: {project.partners.join(', ')}</p>
                       <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
