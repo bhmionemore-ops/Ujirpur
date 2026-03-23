@@ -11,6 +11,7 @@ export const LiveNews = () => {
   const [news, setNews] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'local' | 'westBengal' | 'india'>('local');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -23,37 +24,58 @@ export const LiveNews = () => {
   useEffect(() => {
     const checkAndFetchNews = async () => {
       setLoading(true);
+      setError(null);
       
       // Calculate "News Date" based on 6 AM IST refresh
       const getNewsDate = () => {
         const now = new Date();
-        const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-        const hours = istDate.getHours();
+        // Use Intl to get IST parts accurately
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          hour12: false
+        });
+        
+        const parts = formatter.formatToParts(now);
+        const dateParts: { [key: string]: string } = {};
+        parts.forEach(p => dateParts[p.type] = p.value);
+        
+        let year = parseInt(dateParts.year);
+        let month = parseInt(dateParts.month);
+        let day = parseInt(dateParts.day);
+        let hour = parseInt(dateParts.hour);
         
         // If before 6 AM IST, we are still in the previous "news day"
-        if (hours < 6) {
-          istDate.setDate(istDate.getDate() - 1);
+        if (hour < 6) {
+          const d = new Date(year, month - 1, day);
+          d.setDate(d.getDate() - 1);
+          year = d.getFullYear();
+          month = d.getMonth() + 1;
+          day = d.getDate();
         }
         
-        const year = istDate.getFullYear();
-        const month = String(istDate.getMonth() + 1).padStart(2, '0');
-        const day = String(istDate.getDate()).padStart(2, '0');
-        
-        return `${year}-${month}-${day}`;
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       };
 
       const today = getNewsDate();
+      console.log("Fetching news for date:", today);
       const newsDocRef = doc(db, 'news', today);
       
       try {
+        console.log("Attempting to get news document:", today);
         const docSnap = await getDoc(newsDocRef);
         let newsData: any = null;
 
         if (docSnap.exists()) {
+          console.log("News document found in Firestore");
           newsData = docSnap.data();
           setNews(newsData);
           setLoading(false);
         } else {
+          console.log("News document not found, generating fresh news...");
           setGenerating(true);
           const freshNews = await fetchLiveNews(language);
           newsData = {
@@ -61,7 +83,15 @@ export const LiveNews = () => {
             date: today,
             updatedAt: new Date().toISOString()
           };
-          await setDoc(newsDocRef, newsData);
+          console.log("Saving generated news to Firestore...");
+          try {
+            await setDoc(newsDocRef, newsData);
+            console.log("News saved successfully");
+          } catch (setErr: any) {
+            console.error("Failed to save news to Firestore:", setErr);
+            // If we can't save it, we can still show it to the current user
+            // but we should warn them or log it
+          }
           setNews(newsData);
           setGenerating(false);
           setLoading(false);
@@ -94,8 +124,9 @@ export const LiveNews = () => {
             }
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching news:", error);
+        setError(error.message || "Failed to load news");
         setLoading(false);
         setGenerating(false);
       }
@@ -122,6 +153,22 @@ export const LiveNews = () => {
       <div className="py-20 flex flex-col items-center justify-center text-zinc-500 bg-zinc-50">
         <RefreshCw className="animate-spin mb-4" size={32} />
         <p>{generating ? t.news.generating : t.news.loading}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-zinc-50 px-4 text-center">
+        <RefreshCw className="mb-4" size={32} />
+        <p className="font-bold mb-2">{language === 'bn' ? 'খবর লোড করতে সমস্যা হয়েছে' : 'Error loading news'}</p>
+        <p className="text-xs opacity-70 mb-6 max-w-md">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold text-sm"
+        >
+          {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Try Again'}
+        </button>
       </div>
     );
   }

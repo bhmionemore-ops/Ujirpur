@@ -13,13 +13,35 @@ import {
   updateProfile,
   sendEmailVerification
 } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp, getDocFromServer, increment, updateDoc } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore,
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  limit, 
+  addDoc, 
+  serverTimestamp, 
+  getDocFromServer, 
+  increment, 
+  updateDoc 
+} from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Use initializeFirestore with experimentalForceLongPolling for more robust connection in iframes/proxies
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
+
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 

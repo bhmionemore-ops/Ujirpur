@@ -48,7 +48,8 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   
   const generateCategoryNews = async (category: string, location: string) => {
-    const prompt = `Find the latest 10 news items for today (${today}) for: ${category} from ${location}.
+    const prompt = `Find the latest 10 news items for: ${category} from ${location}. 
+    Focus on recent events from the last 24-48 hours. Today's date is ${today}.
     
     For each news item, provide:
     - Title

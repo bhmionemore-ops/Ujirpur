@@ -186,9 +186,16 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid || isAdmin());
     }
 
+    match /test/{docId} {
+      allow read: if true;
+    }
+
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      allow create, update: if isAuthenticated() && isValidNews(request.resource.data);
+      // Allow creation by anyone if it's valid news data for that specific day
+      // This allows the first visitor of the day to trigger and save the AI generation
+      allow create: if isValidNews(request.resource.data) && newsId == request.resource.data.date;
+      allow update: if isAuthenticated() && isValidNews(request.resource.data);
       allow delete: if isAdmin();
     }
 
