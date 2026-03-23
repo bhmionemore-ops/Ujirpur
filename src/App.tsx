@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { Banner } from './components/Banner';
-import { BarniaBazar } from './components/BarniaBazar';
-import { InfluencerSection } from './components/InfluencerSection';
-import { CollaborationTools } from './components/CollaborationTools';
-import { LiveNews } from './components/LiveNews';
-import { WhyJoin } from './components/WhyJoin';
-import { VisitorCounter } from './components/VisitorCounter';
-import { LiveChatWidget } from './components/LiveChatWidget';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Home } from './pages/Home';
+import { InfluencerPage } from './pages/InfluencerPage';
+import { BarniaBazarPage } from './pages/BarniaBazarPage';
 import { AuthModal } from './components/AuthModal';
+import { LiveChatWidget } from './components/LiveChatWidget';
+import { VisitorCounter } from './components/VisitorCounter';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X } from 'lucide-react';
 
-export default function App() {
+function AppContent() {
   const { language, setLanguage, t } = useLanguage();
   const { user, signOut, isAuthModalOpen, setAuthModalOpen } = useFirebase();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
@@ -28,7 +28,7 @@ export default function App() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <Link to="/" className="flex items-center gap-4 group cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-500 flex items-center justify-center shadow-[0_8px_20px_rgba(245,142,39,0.3)] border border-white/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
               <span className="text-white font-black text-2xl tracking-tighter">UB</span>
             </div>
@@ -36,24 +36,23 @@ export default function App() {
               <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-600">Ujirpur Barnia</span>
               <span className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
             </div>
-          </div>
+          </Link>
           
           <div className="flex items-center gap-4 md:gap-8">
             <div className="hidden lg:flex items-center gap-10 text-[13px] font-bold text-zinc-500 uppercase tracking-widest">
               {[
-                { href: '#news', label: t.nav.news },
-                { href: '#bazar', label: t.nav.bazar },
-                { href: '#influencers', label: t.nav.influencers },
-                { href: '#collab', label: t.nav.collab }
+                { to: '/', label: t.nav.news },
+                { to: '/bazar', label: t.nav.bazar },
+                { to: '/influencers', label: t.nav.influencers },
               ].map((link) => (
-                <a 
-                  key={link.href}
-                  href={link.href} 
-                  className="hover:text-brand-600 transition-all relative group py-2"
+                <Link 
+                  key={link.to}
+                  to={link.to} 
+                  className={`hover:text-brand-600 transition-all relative group py-2 ${location.pathname === link.to ? 'text-brand-600' : ''}`}
                 >
                   {link.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-brand-600 transition-all duration-300 group-hover:w-full"></span>
-                </a>
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-brand-600 transition-all duration-300 ${location.pathname === link.to ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                </Link>
               ))}
             </div>
             
@@ -63,7 +62,7 @@ export default function App() {
                 className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-100/80 hover:bg-white hover:shadow-md transition-all text-xs font-bold text-zinc-700 border border-transparent hover:border-zinc-200"
               >
                 <Languages size={14} className="text-brand-600" />
-                <span>{language === 'bn' ? 'English' : 'বাংলা'}</span>
+                <span className="hidden sm:inline">{language === 'bn' ? 'English' : 'বাংলা'}</span>
               </button>
 
               {user ? (
@@ -117,30 +116,51 @@ export default function App() {
                   className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 transition-all text-xs font-bold text-white shadow-[0_8px_20px_rgba(245,142,39,0.3)] hover:shadow-[0_12px_25px_rgba(245,142,39,0.4)] active:scale-95"
                 >
                   <LogIn size={14} />
-                  {language === 'bn' ? 'লগইন' : 'Login'}
+                  <span className="hidden sm:inline">{language === 'bn' ? 'লগইন' : 'Login'}</span>
                 </button>
               )}
+
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2.5 rounded-2xl bg-zinc-100 text-zinc-600 hover:bg-white hover:shadow-md transition-all"
+              >
+                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden bg-white border-b border-zinc-100 py-6 px-4 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            {[
+              { to: '/', label: t.nav.news },
+              { to: '/bazar', label: t.nav.bazar },
+              { to: '/influencers', label: t.nav.influencers },
+            ].map((link) => (
+              <Link 
+                key={link.to}
+                to={link.to} 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${
+                  location.pathname === link.to ? 'bg-brand-50 text-brand-600' : 'text-zinc-500 hover:bg-zinc-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </nav>
 
       <main className="relative z-10">
-        <Banner />
-        <LiveNews />
-        <WhyJoin />
-        
-        <div id="bazar" className="scroll-mt-20">
-          <BarniaBazar />
-        </div>
-
-        <div id="influencers" className="scroll-mt-20">
-          <InfluencerSection />
-        </div>
-
-        <div id="collab" className="scroll-mt-20">
-          <CollaborationTools />
-        </div>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/influencers" element={<InfluencerPage />} />
+          <Route path="/bazar" element={<BarniaBazarPage />} />
+          {/* Deep linking for news handled within components or via routes if needed */}
+          <Route path="/news/:date/:tab/:index" element={<Home />} />
+        </Routes>
       </main>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
@@ -148,7 +168,6 @@ export default function App() {
 
       {/* Footer */}
       <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">
-        {/* Footer Background Pattern */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
@@ -206,19 +225,18 @@ export default function App() {
               <h4 className="font-black mb-8 uppercase text-[11px] tracking-[0.2em] text-brand-500">{t.footer.links}</h4>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { href: '#news', label: t.nav.news },
-                  { href: '#bazar', label: t.nav.bazar },
-                  { href: '#influencers', label: t.nav.influencers },
-                  { href: '#collab', label: t.nav.collab }
+                  { to: '/', label: t.nav.news },
+                  { to: '/bazar', label: t.nav.bazar },
+                  { to: '/influencers', label: t.nav.influencers },
                 ].map((link) => (
-                  <a 
-                    key={link.href}
-                    href={link.href} 
+                  <Link 
+                    key={link.to}
+                    to={link.to} 
                     className="text-sm text-zinc-400 hover:text-brand-500 transition-all flex items-center gap-2 group"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-zinc-800 group-hover:bg-brand-500 transition-colors" />
                     {link.label}
-                  </a>
+                  </Link>
                 ))}
               </div>
               
@@ -241,5 +259,13 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }

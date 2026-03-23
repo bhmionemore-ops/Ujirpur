@@ -2,27 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
   {
     url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=1920",
-    title: "উজিরপুর, বার্নিয়া, নদীয়া",
-    subtitle: "স্বাগতম আমাদের গ্রামে"
+    title: "Live News Hub",
+    subtitle: "Stay updated with the latest news from Ujirpur Barnia and beyond.",
+    path: "/",
+    icon: <Newspaper size={20} />,
+    labelKey: 'news'
   },
   {
     url: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=1920",
-    title: "আমাদের বাজার",
-    subtitle: "তাজা সবজি এবং হস্তশিল্প"
+    title: "Barnia Bazar",
+    subtitle: "Explore local shops and check daily market prices online.",
+    path: "/bazar",
+    icon: <ShoppingBag size={20} />,
+    labelKey: 'bazar'
   },
   {
     url: "https://images.unsplash.com/photo-1590005354167-6da97870c921?auto=format&fit=crop&q=80&w=1920",
-    title: "ইনফ্লুয়েন্সার হাব",
-    subtitle: "প্রতিভা এবং সৃজনশীলতা"
+    title: "Influencer Network",
+    subtitle: "Connect with local talent and collaborate on creative projects.",
+    path: "/influencers",
+    icon: <Users size={20} />,
+    labelKey: 'influencer'
   }
 ];
 
 export const Banner = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -36,7 +47,7 @@ export const Banner = () => {
   const prev = () => setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
 
   return (
-    <div className="relative h-[700px] w-full overflow-hidden bg-zinc-950">
+    <div className="relative h-[600px] w-full overflow-hidden bg-zinc-950">
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -97,11 +108,19 @@ export const Banner = () => {
           transition={{ delay: 0.4 }}
           className="max-w-5xl mx-auto"
         >
-          <h1 className="text-6xl md:text-9xl font-black tracking-tighter text-white mb-6 leading-[0.9]">
-            {SLIDES[current].title}
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9]">
+            {language === 'bn' ? (
+              current === 0 ? 'লাইভ নিউজ হাব' : 
+              current === 1 ? 'বার্নিয়া বাজার' : 
+              'ইনফ্লুয়েন্সার নেটওয়ার্ক'
+            ) : SLIDES[current].title}
           </h1>
-          <p className="text-lg md:text-2xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed">
-            {SLIDES[current].subtitle}
+          <p className="text-lg md:text-xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed">
+            {language === 'bn' ? (
+              current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
+              current === 1 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
+              'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।'
+            ) : SLIDES[current].subtitle}
           </p>
         </motion.div>
 
@@ -112,29 +131,29 @@ export const Banner = () => {
           transition={{ delay: 0.6 }}
           className="flex flex-wrap justify-center gap-4 mt-12"
         >
-          <a 
-            href="#news" 
+          <button 
+            onClick={() => navigate('/')}
             className="group relative px-8 py-4 rounded-2xl bg-brand-600 text-white font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3"
           >
             <Newspaper size={20} />
             {t.banner.news}
-          </a>
+          </button>
 
-          <a 
-            href="#bazar" 
+          <button 
+            onClick={() => navigate('/bazar')}
             className="group relative px-8 py-4 rounded-2xl bg-white/10 text-white font-bold text-lg backdrop-blur-md border border-white/20 hover:bg-white/20 hover:scale-105 transition-all flex items-center gap-3"
           >
             <ShoppingBag size={20} />
             {t.banner.bazar}
-          </a>
+          </button>
           
-          <a 
-            href="#influencers" 
+          <button 
+            onClick={() => navigate('/influencers')}
             className="group relative px-8 py-4 rounded-2xl bg-zinc-900 text-white font-bold text-lg hover:bg-black hover:scale-105 transition-all flex items-center gap-3"
           >
             <Users size={20} />
             {t.banner.influencer}
-          </a>
+          </button>
         </motion.div>
       </div>
 
