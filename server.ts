@@ -41,16 +41,57 @@ let currentUpdatePromise: Promise<boolean | void> | null = null;
 
 async function getProfileItem(id: string, projectId: string, databaseId: string) {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/influencers/${id}`;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
+    let data: any = null;
     
-    const fields = data.fields;
+    // Try using Admin SDK first if available
+    if (adminDb) {
+      const doc = await adminDb.collection("influencers").doc(id).get();
+      if (doc.exists) {
+        data = doc.data();
+      }
+    }
+    
+    // Fallback to REST API if Admin SDK failed or not available
+    if (!data) {
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/influencers/${id}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const restData = await response.json();
+        const fields = restData.fields;
+        data = {
+          name: fields.name?.stringValue,
+          bio: fields.bio?.stringValue,
+          avatar: fields.avatar?.stringValue,
+          socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
+        };
+      }
+    }
+
+    if (!data) return null;
+
+    // Format social media info for description
+    const socialIcons: { [key: string]: string } = {
+      'instagram.com': '📸 Instagram',
+      'facebook.com': '📘 Facebook',
+      'twitter.com': '🐦 Twitter',
+      'x.com': '🐦 X',
+      'youtube.com': '📺 YouTube',
+      'linkedin.com': '💼 LinkedIn',
+      'github.com': '💻 GitHub'
+    };
+
+    const socialInfo = (data.socials || [])
+      .map((url: string) => {
+        const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
+        return match ? socialIcons[match] : '🌐 Social';
+      })
+      .join(' | ');
+
     return {
-      name: fields.name?.stringValue || "Ujirpur Barnia Profile",
-      bio: fields.bio?.stringValue || "Community member profile.",
-      avatar: fields.avatar?.stringValue || "https://picsum.photos/seed/profile/200/200"
+      name: data.name || "Ujirpur Barnia Profile",
+      bio: data.bio || "Community member profile.",
+      avatar: data.avatar || "https://picsum.photos/seed/profile/400/400",
+      socialInfo: socialInfo ? `\n\nConnect: ${socialInfo}` : ''
     };
   } catch (error) {
     console.error("Error fetching profile for meta tags:", error);
@@ -88,10 +129,13 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:title" content="${metadata.title}" />
     <meta property="og:description" content="${metadata.description}" />
     <meta property="og:image" content="${metadata.image}" />
+    <meta property="og:image:secure_url" content="${metadata.image}" />
+    <meta property="og:image:width" content="400" />
+    <meta property="og:image:height" content="400" />
     <meta property="og:url" content="${metadata.url}" />
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="profile" />
     <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${metadata.title}" />
     <meta name="twitter:description" content="${metadata.description}" />
     <meta name="twitter:image" content="${metadata.image}" />
@@ -109,6 +153,9 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     'og:title', 
     'og:description', 
     'og:image', 
+    'og:image:secure_url',
+    'og:image:width',
+    'og:image:height',
     'og:url', 
     'og:type', 
     'og:site_name',
@@ -450,8 +497,8 @@ async function startServer() {
         const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
         html = await injectMetaTags(html, {
-          title: profile.name,
-          description: profile.bio,
+          title: `${profile.name} | Ujirpur Barnia Influencer`,
+          description: `${profile.bio}${profile.socialInfo}\n\n✨ Join our network at Ujirpur Barnia Digital Hub!`,
           image: profile.avatar,
           url: fullUrl
         });
@@ -503,8 +550,8 @@ async function startServer() {
         const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
         html = await injectMetaTags(html, {
-          title: profile.name,
-          description: profile.bio,
+          title: `${profile.name} | Ujirpur Barnia Influencer`,
+          description: `${profile.bio}${profile.socialInfo}\n\n✨ Join our network at Ujirpur Barnia Digital Hub!`,
           image: profile.avatar,
           url: fullUrl
         });
