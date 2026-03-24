@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
-  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap
+  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -43,6 +44,7 @@ const getSocialIcon = (url: string) => {
 
 export const InfluencerSection = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
   const [error, setError] = useState<Error | null>(null);
@@ -296,7 +298,7 @@ export const InfluencerSection = () => {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="bg-white p-10 rounded-[3rem] border border-zinc-100 shadow-2xl mb-16 relative overflow-hidden"
+              className="bg-white p-10 rounded-[3rem] border-4 border-brand-600 shadow-2xl mb-16 relative overflow-y-auto max-h-[90vh] custom-scrollbar"
             >
               <div className="absolute top-0 left-0 w-2 h-full bg-brand-600"></div>
               <div className="flex items-center justify-between mb-10">
@@ -365,7 +367,7 @@ export const InfluencerSection = () => {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="bg-white p-12 rounded-[3rem] border border-zinc-100 shadow-2xl mb-16 relative overflow-hidden"
+              className="bg-white p-12 rounded-[3rem] border-4 border-zinc-900 shadow-2xl mb-16 relative overflow-y-auto max-h-[90vh] custom-scrollbar"
             >
               <div className="absolute top-0 left-0 w-2 h-full bg-zinc-900"></div>
               <div className="flex items-center justify-between mb-10">
@@ -528,7 +530,7 @@ export const InfluencerSection = () => {
               layout
               key={inf.id} 
               whileHover={{ y: -10 }}
-              className="group bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col relative overflow-hidden"
+              className="group bg-white p-8 rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-zinc-50 group-hover:bg-brand-600 transition-colors"></div>
               
@@ -566,8 +568,11 @@ export const InfluencerSection = () => {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h4 className="text-2xl font-black text-zinc-900 group-hover:text-brand-600 transition-colors tracking-tight leading-tight mb-2">{inf.name}</h4>
+              <div className="mb-6 cursor-pointer" onClick={() => navigate(`/profile/${inf.id}`)}>
+                <h4 className="text-2xl font-black text-zinc-900 group-hover:text-brand-600 transition-colors tracking-tight leading-tight mb-2 flex items-center gap-2">
+                  {inf.name}
+                  <ExternalLink size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h4>
                 <p className="text-zinc-500 text-sm font-medium line-clamp-2 leading-relaxed">{inf.bio}</p>
               </div>
 
@@ -586,7 +591,15 @@ export const InfluencerSection = () => {
                 ))}
               </div>
               
-              <div className="mt-auto">
+              <div className="mt-auto space-y-3">
+                <button 
+                  onClick={() => navigate(`/profile/${inf.id}`)}
+                  className="w-full py-4 bg-white text-zinc-900 border-4 border-zinc-100 rounded-[1.5rem] text-xs font-black uppercase tracking-widest hover:border-brand-600 hover:text-brand-600 transition-all flex items-center justify-center gap-3 shadow-sm"
+                >
+                  <User size={18} />
+                  {language === 'bn' ? 'প্রোফাইল দেখুন' : 'View Profile'}
+                </button>
+
                 {requestSentId === inf.id ? (
                   <motion.div 
                     initial={{ scale: 0.9, opacity: 0 }}

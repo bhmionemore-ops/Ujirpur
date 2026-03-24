@@ -5,6 +5,7 @@ import { Users, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { Banner } from '../components/Banner';
+import { CollaborationTools } from '../components/CollaborationTools';
 
 export const InfluencerPage = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export const InfluencerPage = () => {
       <div className="max-w-7xl mx-auto px-4 mt-12">
         <button 
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 mb-12 shadow-sm hover:shadow-md"
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-4 border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 mb-12 shadow-sm hover:shadow-md"
         >
           <ChevronLeft size={16} />
           {language === 'bn' ? 'হোম পেজে ফিরে যান' : 'Back to Home'}
@@ -40,8 +41,12 @@ export const InfluencerPage = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border border-zinc-100">
-          <InfluencerSection />
+        <div className="space-y-20">
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border-4 border-brand-600">
+            <InfluencerSection />
+          </div>
+
+          <CollaborationTools />
         </div>
       </div>
     </div>

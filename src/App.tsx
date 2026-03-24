@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -158,6 +159,7 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/influencers" element={<InfluencerPage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
+          <Route path="/profile/:id" element={<ProfilePage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>

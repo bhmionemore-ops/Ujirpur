@@ -15,6 +15,11 @@
   --color-brand-700: #c2410c;
   --color-brand-800: #9a3412;
   --color-brand-900: #7c2d12;
+
+  --color-vibrant-pink: #ff007f;
+  --color-vibrant-blue: #0070f3;
+  --color-vibrant-purple: #7928ca;
+  --color-vibrant-cyan: #50e3c2;
 }
 
 @layer base {
@@ -28,6 +33,35 @@
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-3d {
+    text-shadow: 
+      0 1px 0 #ccc,
+      0 2px 0 #c9c9c9,
+      0 3px 0 #bbb,
+      0 4px 0 #b9b9b9,
+      0 5px 0 #aaa,
+      0 6px 1px rgba(0,0,0,.1),
+      0 0 5px rgba(0,0,0,.1),
+      0 1px 3px rgba(0,0,0,.3),
+      0 3px 5px rgba(0,0,0,.2),
+      0 5px 10px rgba(0,0,0,.25),
+      0 10px 10px rgba(0,0,0,.2),
+      0 20px 20px rgba(0,0,0,.15);
+  }
+
+  .text-3d-colorful {
+    text-shadow: 
+      2px 2px 0px #ff007f,
+      4px 4px 0px #7928ca,
+      6px 6px 0px #0070f3;
+  }
+
+  .card-border {
+    @apply border-2 border-zinc-200 hover:border-brand-500 transition-colors duration-300;
   }
 }
 

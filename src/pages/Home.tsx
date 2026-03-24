@@ -6,8 +6,6 @@ import { LiveNews } from '../components/LiveNews';
 import { Banner } from '../components/Banner';
 import { useLanguage } from '../LanguageContext';
 
-import { CollaborationTools } from '../components/CollaborationTools';
-
 export const Home = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -24,7 +22,7 @@ export const Home = () => {
           <motion.div
             whileHover={{ y: -10 }}
             onClick={() => navigate('/influencers')}
-            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-600 to-brand-500 p-10 text-white shadow-2xl shadow-brand-500/20"
+            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-600 to-brand-500 p-10 text-white shadow-2xl shadow-brand-500/20 border-4 border-brand-400/50"
           >
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
               <Users size={120} />
@@ -50,7 +48,7 @@ export const Home = () => {
           <motion.div
             whileHover={{ y: -10 }}
             onClick={() => navigate('/bazar')}
-            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-zinc-900 p-10 text-white shadow-2xl shadow-zinc-900/20 border border-white/5"
+            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-zinc-900 p-10 text-white shadow-2xl shadow-zinc-900/20 border-4 border-zinc-800"
           >
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
               <Store size={120} />
@@ -72,8 +70,6 @@ export const Home = () => {
             </div>
           </motion.div>
         </div>
-
-        <CollaborationTools />
       </div>
     </div>
   );

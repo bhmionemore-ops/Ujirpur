@@ -238,7 +238,7 @@ export const BarniaBazar = () => {
                 layoutId={shop.id}
                 key={shop.id}
                 whileHover={{ y: -10 }}
-                className="group bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
+                className="group bg-white rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
               >
                 <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => setSelectedShop(shop)}>
                   <img
@@ -363,7 +363,7 @@ export const BarniaBazar = () => {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-hidden"
+                className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative z-10 overflow-y-auto max-h-[90vh] custom-scrollbar border-4 border-brand-500"
               >
                 <div className="p-8">
                   {isRegistered ? (
@@ -544,7 +544,7 @@ export const BarniaBazar = () => {
               />
               <motion.div
                 layoutId={selectedShop.id}
-                className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 overflow-hidden"
+                className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 overflow-y-auto max-h-[90vh] custom-scrollbar border-4 border-zinc-900"
               >
                 <div className="h-48 relative">
                   <img

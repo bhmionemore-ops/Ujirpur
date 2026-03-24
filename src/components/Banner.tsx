@@ -28,6 +28,16 @@ const SLIDES = [
     path: "/influencers",
     icon: <Users size={20} />,
     labelKey: 'influencer'
+  },
+  {
+    // Note: Direct Facebook photo links often don't work as direct image sources.
+    // Replace this URL with a direct image link (e.g., from Unsplash or a direct CDN)
+    url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1920",
+    title: "Collaboration Hub",
+    subtitle: "Tools designed for seamless partnership between creators.",
+    path: "/influencers",
+    icon: <Zap size={20} />,
+    labelKey: 'collab'
   }
 ];
 
@@ -108,18 +118,20 @@ export const Banner = () => {
           transition={{ delay: 0.4 }}
           className="max-w-5xl mx-auto"
         >
-          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9]">
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9] text-3d-colorful">
             {language === 'bn' ? (
               current === 0 ? 'লাইভ নিউজ হাব' : 
               current === 1 ? 'বার্নিয়া বাজার' : 
-              'ইনফ্লুয়েন্সার নেটওয়ার্ক'
+              current === 2 ? 'ইনফ্লুয়েন্সার নেটওয়ার্ক' :
+              'সহযোগিতা হাব'
             ) : SLIDES[current].title}
           </h1>
-          <p className="text-lg md:text-xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed text-3d">
             {language === 'bn' ? (
               current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
               current === 1 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
-              'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।'
+              current === 2 ? 'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।' :
+              'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।'
             ) : SLIDES[current].subtitle}
           </p>
         </motion.div>

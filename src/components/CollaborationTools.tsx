@@ -111,7 +111,7 @@ export const CollaborationTools = () => {
         </motion.p>
       </div>
 
-      <div className="bg-white rounded-[3rem] border border-zinc-100 shadow-2xl overflow-hidden min-h-[700px] flex flex-col md:flex-row relative">
+      <div className="bg-white rounded-[3rem] border-4 border-brand-600 shadow-2xl overflow-hidden min-h-[700px] flex flex-col md:flex-row relative">
         {/* Sidebar Tabs */}
         <div className="w-full md:w-80 bg-zinc-50/50 backdrop-blur-md border-r border-zinc-100 p-10 flex flex-row md:flex-col gap-4 relative z-20">
           <div className="hidden md:block mb-10">
@@ -289,7 +289,7 @@ export const CollaborationTools = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
                       key={`camp-${i}`} 
-                      className="p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100 flex items-center justify-between hover:bg-white hover:shadow-2xl hover:shadow-brand-500/5 transition-all group"
+                      className="p-8 bg-zinc-50 rounded-[2.5rem] border-4 border-zinc-100 flex items-center justify-between hover:bg-white hover:shadow-2xl hover:shadow-brand-500/5 transition-all group"
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-zinc-400 group-hover:text-brand-600 transition-colors shadow-sm">
@@ -333,7 +333,7 @@ export const CollaborationTools = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.1 }}
                       key={`proj-${i}`} 
-                      className="p-10 bg-zinc-50 rounded-[3rem] border border-zinc-100 hover:bg-white hover:shadow-2xl hover:shadow-brand-500/5 transition-all group"
+                      className="p-10 bg-zinc-50 rounded-[3rem] border-4 border-zinc-100 hover:bg-white hover:shadow-2xl hover:shadow-brand-500/5 transition-all group"
                     >
                       <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-zinc-400 group-hover:text-brand-600 transition-colors shadow-sm mb-8">
                         <Layout size={24} />

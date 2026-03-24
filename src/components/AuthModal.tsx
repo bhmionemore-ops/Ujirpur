@@ -136,13 +136,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         initial={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(10px)' }}
         animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
         exit={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(10px)' }}
-        className="bg-white/90 backdrop-blur-2xl w-full max-w-md rounded-[40px] shadow-[0_30px_100px_rgba(0,0,0,0.2)] overflow-hidden relative border border-white/20"
+        className="bg-white/90 backdrop-blur-2xl w-full max-w-md rounded-[40px] shadow-[0_30px_100px_rgba(0,0,0,0.2)] relative border-4 border-brand-500 overflow-y-auto max-h-[90vh] custom-scrollbar"
       >
         <button
           onClick={onClose}
-          className="absolute top-8 right-8 p-2.5 hover:bg-zinc-100 rounded-2xl transition-all active:scale-90 z-10"
+          className="absolute top-4 right-4 p-2.5 bg-zinc-100 hover:bg-zinc-200 rounded-2xl transition-all active:scale-90 z-20 shadow-sm"
         >
-          <X size={20} className="text-zinc-400" />
+          <X size={20} className="text-zinc-600" />
         </button>
 
         <div className="p-10 pt-16">
