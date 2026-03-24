@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera, LogIn, CheckCircle } from 'lucide-react';
+import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera, LogIn, CheckCircle, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { shareContent } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -25,6 +26,7 @@ interface Shop {
 }
 
 export const BarniaBazar = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { user, signIn, isAdmin, setAuthModalOpen } = useFirebase();
   const [shops, setShops] = useState<Shop[]>([]);
@@ -155,32 +157,13 @@ export const BarniaBazar = () => {
   );
 
   return (
-    <section className="py-32 px-4 bg-zinc-50 relative overflow-hidden">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 right-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-brand-100/30 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-100/30 rounded-full blur-[150px]"></div>
-      </div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-20 gap-10">
-          <div className="max-w-2xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100 text-brand-600 text-[10px] font-black uppercase tracking-widest mb-6"
-            >
-              <ShoppingBag size={14} />
-              {t.bazar.category}
-            </motion.div>
-            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-900 mb-6 leading-none">
-              {t.bazar.title}
-            </h2>
-            <p className="text-zinc-500 text-lg leading-relaxed max-w-xl">
-              {t.bazar.subtitle}
-            </p>
-          </div>
+    <div className="relative">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-10">
+        <div className="max-w-2xl">
+          <p className="text-zinc-500 text-lg leading-relaxed max-w-xl">
+            {t.bazar.subtitle}
+          </p>
+        </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
             <div className="relative group flex-1 sm:flex-none">
@@ -271,19 +254,30 @@ export const BarniaBazar = () => {
                       {shop.name}
                     </h3>
                     <button 
-                      onClick={() => shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`)}
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/shop/${shop.id}`;
+                        shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`, shareUrl);
+                      }}
                       className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
                     >
                       <Share2 size={20} />
                     </button>
                   </div>
                   
-                  <div className="flex items-center gap-3 text-zinc-500 text-sm mb-8 font-medium">
+                  <div className="flex items-center gap-3 text-zinc-500 text-sm mb-6 font-medium">
                     <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-brand-600">
                       <MapPin size={16} />
                     </div>
                     <span>{shop.location}</span>
                   </div>
+
+                  <button 
+                    onClick={() => navigate(`/shop/${shop.id}`)}
+                    className="w-full py-3 mb-6 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink size={14} />
+                    {language === 'bn' ? 'দোকান দেখুন' : 'View Shop'}
+                  </button>
                   
                   <div className="space-y-4 mt-auto">
                     <div className="flex items-center justify-between">
@@ -594,19 +588,27 @@ export const BarniaBazar = () => {
                     </div>
                   </div>
 
-                  <a 
-                    href={`tel:${selectedShop.phone}`}
-                    className="w-full mt-8 bg-zinc-900 text-white py-4 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Phone size={20} />
-                    Contact Shop Owner
-                  </a>
+                  <div className="flex gap-4 mt-8">
+                    <a 
+                      href={`tel:${selectedShop.phone}`}
+                      className="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Phone size={20} />
+                      {language === 'bn' ? 'কল করুন' : 'Call Owner'}
+                    </a>
+                    <button 
+                      onClick={() => navigate(`/shop/${selectedShop.id}`)}
+                      className="flex-1 bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
+                    >
+                      <ExternalLink size={20} />
+                      {language === 'bn' ? 'প্রোফাইল' : 'Full Profile'}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
-      </div>
-    </section>
+    </div>
   );
 };

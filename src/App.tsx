@@ -4,12 +4,15 @@ import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ShopProfilePage } from './pages/ShopProfilePage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
 import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X } from 'lucide-react';
+
+import { Toaster } from 'sonner';
 
 function AppContent() {
   const { language, setLanguage, t } = useLanguage();
@@ -160,6 +163,7 @@ function AppContent() {
           <Route path="/influencers" element={<InfluencerPage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
           <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/shop/:id" element={<ShopProfilePage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>
@@ -167,6 +171,7 @@ function AppContent() {
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
       <LiveChatWidget />
+      <Toaster position="top-center" richColors />
 
       {/* Footer */}
       <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">

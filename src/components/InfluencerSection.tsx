@@ -56,6 +56,7 @@ export const InfluencerSection = () => {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestSentId, setRequestSentId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const [newInfluencer, setNewInfluencer] = useState({
     name: '',
@@ -198,13 +199,18 @@ export const InfluencerSection = () => {
     }
   };
 
-  const handleDeleteInfluencer = async (id: string) => {
-    if (!window.confirm(language === 'bn' ? 'আপনি কি নিশ্চিত যে আপনি এই প্রোফাইলটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this profile?')) return;
+  const handleDeleteInfluencer = (id: string) => {
+    setConfirmDelete(id);
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete) return;
     try {
-      await deleteDoc(doc(db, 'influencers', id));
+      await deleteDoc(doc(db, 'influencers', confirmDelete));
+      setConfirmDelete(null);
     } catch (err) {
       try {
-        handleFirestoreError(err, OperationType.DELETE, 'influencers');
+        handleFirestoreError(err, OperationType.DELETE, `influencers/${confirmDelete}`);
       } catch (e) {
         setError(e as Error);
       }
@@ -224,42 +230,19 @@ export const InfluencerSection = () => {
   };
 
   return (
-    <section className="py-32 bg-zinc-50 relative overflow-hidden px-4">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-200/30 blur-[120px] rounded-full"></div>
-      </div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
-          <div className="max-w-2xl">
-            <motion.span 
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="inline-block px-4 py-1.5 bg-brand-100 text-brand-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-full mb-6"
-            >
-              {language === 'bn' ? 'আমাদের নেটওয়ার্ক' : 'Our Network'}
-            </motion.span>
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-900 leading-[0.9]"
-            >
-              {t.influencers.title}
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-zinc-500 mt-6 text-lg font-medium max-w-lg"
-            >
-              {t.influencers.subtitle}
-            </motion.p>
-          </div>
+    <div className="relative">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
+        <div className="max-w-2xl">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-zinc-500 text-lg font-medium max-w-lg"
+          >
+            {t.influencers.subtitle}
+          </motion.p>
+        </div>
           
           <div className="flex flex-wrap gap-4">
             {user && (
@@ -661,7 +644,44 @@ export const InfluencerSection = () => {
             </motion.div>
           )))}
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {confirmDelete && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center"
+              >
+                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 mb-2">
+                  {language === 'bn' ? 'প্রোফাইল মুছে ফেলবেন?' : 'Delete Profile?'}
+                </h3>
+                <p className="text-zinc-500 mb-8">
+                  {language === 'bn' ? 'আপনি কি নিশ্চিত যে আপনি এই প্রোফাইলটি মুছে ফেলতে চান? এই কাজটি আর ফেরানো যাবে না।' : 'Are you sure you want to delete this profile? This action cannot be undone.'}
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setConfirmDelete(null)}
+                    className="flex-1 px-6 py-3 rounded-xl font-bold text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-all"
+                  >
+                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={confirmDeleteAction}
+                    className="flex-1 px-6 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                  >
+                    {language === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
-    </section>
-  );
-};
+    );
+  };

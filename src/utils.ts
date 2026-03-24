@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 export const shareContent = async (title: string, text: string, url: string = window.location.href) => {
   if (navigator.share) {
     try {
@@ -9,9 +11,10 @@ export const shareContent = async (title: string, text: string, url: string = wi
     // Fallback: Copy to clipboard
     try {
       await navigator.clipboard.writeText(`${title}\n${text}\n${url}`);
-      alert('Link copied to clipboard!');
+      toast.success('Link copied to clipboard!');
     } catch (err) {
       console.error('Failed to copy:', err);
+      toast.error('Failed to copy link');
     }
   }
 };
