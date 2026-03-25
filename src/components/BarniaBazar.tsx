@@ -47,8 +47,41 @@ export const BarniaBazar = () => {
     imageUrl: '',
     products: [{ name: '', price: '' }]
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   if (error) throw error;
+
+  const myShop = user ? shops.find(s => s.uid === user.uid) : null;
+
+  useEffect(() => {
+    if (showAddShop && user) {
+      if (myShop && !editingId) {
+        setEditingId(myShop.id);
+        setNewShop({
+          name: myShop.name,
+          owner: myShop.owner,
+          category: myShop.category,
+          location: myShop.location,
+          phone: myShop.phone,
+          imageUrl: myShop.image,
+          products: myShop.products.length > 0 ? myShop.products : [{ name: '', price: '' }]
+        });
+      } else if (!newShop.name && !editingId) {
+        setNewShop(prev => ({ ...prev, owner: user.displayName || '' }));
+      }
+    } else if (!showAddShop) {
+      setEditingId(null);
+      setNewShop({
+        name: '',
+        owner: '',
+        category: 'Grocery',
+        location: '',
+        phone: '',
+        imageUrl: '',
+        products: [{ name: '', price: '' }]
+      });
+    }
+  }, [showAddShop, user, myShop]);
 
   useEffect(() => {
     const q = query(collection(db, 'shops'), orderBy('createdAt', 'desc'));
@@ -112,7 +145,7 @@ export const BarniaBazar = () => {
 
     const filteredProducts = newShop.products.filter(p => p.name.trim() !== '' && p.price.trim() !== '');
     
-    const shopData = {
+    const shopData: any = {
       name: newShop.name,
       owner: newShop.owner,
       category: newShop.category,
@@ -120,17 +153,28 @@ export const BarniaBazar = () => {
       phone: newShop.phone,
       image: newShop.imageUrl || `https://picsum.photos/seed/${Math.random()}/400/300`,
       products: filteredProducts,
-      uid: user.uid,
-      createdAt: serverTimestamp()
+      uid: user.uid
     };
 
     try {
-      await addDoc(collection(db, 'shops'), shopData);
+      if (editingId) {
+        const { updateDoc, doc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'shops', editingId), {
+          ...shopData,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db, 'shops'), {
+          ...shopData,
+          createdAt: serverTimestamp()
+        });
+      }
       setIsRegistered(true);
       
       setTimeout(() => {
         setIsRegistered(false);
         setShowAddShop(false);
+        setEditingId(null);
         setNewShop({
           name: '',
           owner: '',
@@ -181,13 +225,13 @@ export const BarniaBazar = () => {
                 if (!user) {
                   setAuthModalOpen(true);
                 } else {
-                  setShowAddShop(true);
+                  setShowAddShop(!showAddShop);
                 }
               }}
-              className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10"
+              className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10 group"
             >
-              {user ? <Plus size={20} /> : <LogIn size={20} />}
-              {user ? t.bazar.register : (language === 'bn' ? 'লগইন করুন' : 'Login to Register')}
+              {user ? (myShop ? <Store size={20} className="group-hover:scale-110 transition-transform" /> : <Plus size={20} className="group-hover:rotate-90 transition-transform" />) : <LogIn size={20} />}
+              {user ? (myShop ? (language === 'bn' ? 'দোকান এডিট করুন' : 'Edit My Shop') : t.bazar.register) : (language === 'bn' ? 'লগইন করুন' : 'Login to Register')}
             </button>
           </div>
         </div>
@@ -514,7 +558,7 @@ export const BarniaBazar = () => {
                           type="submit"
                           className="w-full bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-200"
                         >
-                          Register Shop
+                          {editingId ? (language === 'bn' ? 'আপডেট করুন' : 'Update Shop') : (language === 'bn' ? 'দোকান প্রকাশ করুন' : 'Register Shop')}
                         </button>
                       </form>
                     </>

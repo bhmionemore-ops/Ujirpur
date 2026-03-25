@@ -66,19 +66,39 @@ export const InfluencerSection = () => {
     social2: '',
     social3: ''
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   if (error) throw error;
 
+  const myProfile = user ? userInfluencers.find(inf => inf.uid === user.uid) : null;
+
   useEffect(() => {
-    if (showForm && user && !newInfluencer.name) {
-      setNewInfluencer(prev => ({
-        ...prev,
-        name: user.displayName || '',
-        avatarUrl: user.photoURL || ''
-      }));
+    if (showForm && user) {
+      if (myProfile && !editingId) {
+        // Pre-fill with existing profile if editing
+        setEditingId(myProfile.id);
+        setNewInfluencer({
+          name: myProfile.name,
+          bio: myProfile.bio,
+          avatarUrl: myProfile.avatar,
+          social1: myProfile.socials[0] || '',
+          social2: myProfile.socials[1] || '',
+          social3: myProfile.socials[2] || ''
+        });
+      } else if (!newInfluencer.name && !editingId) {
+        // Pre-fill with user info for new profile
+        setNewInfluencer(prev => ({
+          ...prev,
+          name: user.displayName || '',
+          avatarUrl: user.photoURL || ''
+        }));
+      }
+    } else if (!showForm) {
+      setEditingId(null);
+      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
     }
-  }, [showForm, user]);
+  }, [showForm, user, myProfile]);
 
   const [collabForm, setCollabForm] = useState({
     fromName: '',
@@ -222,19 +242,32 @@ export const InfluencerSection = () => {
     e.preventDefault();
     if (!user) return;
 
-    const influencerData = {
+    const influencerData: any = {
       name: newInfluencer.name,
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
       avatar: newInfluencer.avatarUrl || `https://picsum.photos/seed/${Math.random()}/200/200`,
       uid: user.uid,
-      createdAt: serverTimestamp(),
       category: 'Influencer'
     };
 
     try {
-      await addDoc(collection(db, 'influencers'), influencerData);
+      if (editingId) {
+        // Update existing profile
+        const { updateDoc, doc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'influencers', editingId), {
+          ...influencerData,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create new profile
+        await addDoc(collection(db, 'influencers'), {
+          ...influencerData,
+          createdAt: serverTimestamp()
+        });
+      }
       setShowForm(false);
+      setEditingId(null);
       setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
     } catch (err) {
       try {
@@ -341,8 +374,8 @@ export const InfluencerSection = () => {
               }}
               className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/10 group"
             >
-              {user ? <UserPlus size={20} className="group-hover:rotate-12 transition-transform" /> : <LogIn size={20} />}
-              {user ? t.influencers.join : (language === 'bn' ? 'লগইন করুন' : 'Login to Join')}
+              {user ? (myProfile ? <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" /> : <UserPlus size={20} className="group-hover:rotate-12 transition-transform" />) : <LogIn size={20} />}
+              {user ? (myProfile ? (language === 'bn' ? 'প্রোফাইল এডিট করুন' : 'Edit My Profile') : t.influencers.join) : (language === 'bn' ? 'লগইন করুন' : 'Login to Join')}
             </button>
           </div>
         </div>
@@ -593,7 +626,7 @@ export const InfluencerSection = () => {
                     type="submit"
                     className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 hover:scale-105 transition-all shadow-xl shadow-brand-600/20"
                   >
-                    Publish Profile
+                    {editingId ? (language === 'bn' ? 'আপডেট করুন' : 'Update Profile') : 'Publish Profile'}
                   </button>
                 </div>
               </form>
