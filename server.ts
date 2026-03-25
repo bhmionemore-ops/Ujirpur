@@ -77,6 +77,11 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       return null;
     }
 
+    // Fallback for missing avatar
+    if (!data.avatar) {
+      data.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`;
+    }
+
     // Format social media info for description
     const socialIcons: { [key: string]: string } = {
       'instagram.com': '📸 Instagram',
@@ -130,21 +135,38 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
   }
 }
 
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string }) {
+  const escapedTitle = escapeHtml(metadata.title);
+  const escapedDescription = escapeHtml(metadata.description);
+  const escapedImage = escapeHtml(metadata.image);
+  const escapedUrl = escapeHtml(metadata.url);
+
   const metaTags = `
-    <title>${metadata.title}</title>
-    <meta name="description" content="${metadata.description}" />
-    <meta property="og:title" content="${metadata.title}" />
-    <meta property="og:description" content="${metadata.description}" />
-    <meta property="og:image" content="${metadata.image}" />
-    <meta property="og:image:secure_url" content="${metadata.image}" />
-    <meta property="og:url" content="${metadata.url}" />
+    <title>${escapedTitle}</title>
+    <meta name="description" content="${escapedDescription}" />
+    <meta property="og:title" content="${escapedTitle}" />
+    <meta property="og:description" content="${escapedDescription}" />
+    <meta property="og:image" content="${escapedImage}" />
+    <meta property="og:image:secure_url" content="${escapedImage}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="profile" />
     <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="${metadata.title}" />
-    <meta name="twitter:description" content="${metadata.description}" />
-    <meta name="twitter:image" content="${metadata.image}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapedTitle}" />
+    <meta name="twitter:description" content="${escapedDescription}" />
+    <meta name="twitter:image" content="${escapedImage}" />
+    <link rel="canonical" href="${escapedUrl}" />
   `;
 
   // Remove existing title and meta tags that we are replacing
@@ -351,6 +373,73 @@ async function startServer() {
     res.json(localDb.userInfluencers);
   });
 
+  // Meta Tag Routes (MUST be before static/vite middleware)
+  app.get("/news/:date/:tab/:index", async (req, res) => {
+    const { date, tab, index } = req.params;
+    const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    
+    let html: string;
+    if (process.env.NODE_ENV !== "production" && vite) {
+      html = await fs.readFile(path.resolve("index.html"), "utf-8");
+      html = await vite.transformIndexHtml(req.originalUrl, html);
+    } else {
+      html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+    }
+    
+    if (newsItem) {
+      const host = req.get('host');
+      const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+      const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
+      html = await injectMetaTags(html, {
+        title: newsItem.title,
+        description: newsItem.content.substring(0, 200) + "...",
+        image: newsItem.image,
+        url: fullUrl
+      });
+    }
+    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+  });
+
+  app.get("/profile/:id", async (req, res) => {
+    const userAgent = req.get('User-Agent') || '';
+    console.log(`[ProfileRoute] Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
+    
+    const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    
+    let html: string;
+    if (process.env.NODE_ENV !== "production" && vite) {
+      html = await fs.readFile(path.resolve("index.html"), "utf-8");
+      html = await vite.transformIndexHtml(req.originalUrl, html);
+    } else {
+      html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+    }
+    
+    if (profile) {
+      const host = req.get('host');
+      const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+      const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+      
+      // Ensure absolute image URL
+      let imageUrl = profile.avatar;
+      if (imageUrl && imageUrl.startsWith('/')) {
+        imageUrl = `${protocol}://${host}${imageUrl}`;
+      }
+
+      console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
+
+      html = await injectMetaTags(html, {
+        title: `${profile.name} | Ujirpur Barnia Influencer`,
+        description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
+        image: imageUrl,
+        url: fullUrl
+      });
+    } else {
+      console.warn(`[ProfileRoute] Profile not found for ID: ${req.params.id}`);
+    }
+    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+  });
+
   app.post("/api/influencers", async (req, res) => {
     const influencer = {
       ...req.body,
@@ -463,67 +552,14 @@ async function startServer() {
     }
   });
 
+  let vite: any;
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "custom", // Changed to custom to handle routes manually
     });
     app.use(vite.middlewares);
-
-    app.get("/news/:date/:tab/:index", async (req, res) => {
-      const { date, tab, index } = req.params;
-      const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
-      let html = await fs.readFile(path.resolve("index.html"), "utf-8");
-      html = await vite.transformIndexHtml(req.originalUrl, html);
-      
-      if (newsItem) {
-        const host = req.get('host');
-        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
-
-        html = await injectMetaTags(html, {
-          title: newsItem.title,
-          description: newsItem.content.substring(0, 200) + "...",
-          image: newsItem.image,
-          url: fullUrl
-        });
-      }
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
-    });
-
-    app.get("/profile/:id", async (req, res) => {
-      const userAgent = req.get('User-Agent') || '';
-      console.log(`[ProfileRoute] Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
-      
-      const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
-      let html = await fs.readFile(path.resolve("index.html"), "utf-8");
-      html = await vite.transformIndexHtml(req.originalUrl, html);
-      
-      if (profile) {
-        const host = req.get('host');
-        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
-        
-        // Ensure absolute image URL
-        let imageUrl = profile.avatar;
-        if (imageUrl && imageUrl.startsWith('/')) {
-          imageUrl = `${protocol}://${host}${imageUrl}`;
-        }
-
-        console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
-
-        html = await injectMetaTags(html, {
-          title: `${profile.name} | Ujirpur Barnia Influencer`,
-          description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
-          image: imageUrl,
-          url: fullUrl
-        });
-      } else {
-        console.warn(`[ProfileRoute] Profile not found for ID: ${req.params.id}`);
-      }
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
-    });
 
     app.get("*", async (req, res) => {
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
@@ -538,58 +574,6 @@ async function startServer() {
     });
   } else {
     app.use(express.static("dist", { index: false }));
-
-    app.get("/news/:date/:tab/:index", async (req, res) => {
-      const { date, tab, index } = req.params;
-      const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
-      let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
-      
-      if (newsItem) {
-        const host = req.get('host');
-        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
-
-        html = await injectMetaTags(html, {
-          title: newsItem.title,
-          description: newsItem.content.substring(0, 200) + "...",
-          image: newsItem.image,
-          url: fullUrl
-        });
-      }
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
-    });
-
-    app.get("/profile/:id", async (req, res) => {
-      const userAgent = req.get('User-Agent') || '';
-      console.log(`[ProfileRoute] PROD Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
-
-      const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
-      let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
-      
-      if (profile) {
-        const host = req.get('host');
-        const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-        const fullUrl = `${protocol}://${host}${req.originalUrl}`;
-        
-        // Ensure absolute image URL
-        let imageUrl = profile.avatar;
-        if (imageUrl && imageUrl.startsWith('/')) {
-          imageUrl = `${protocol}://${host}${imageUrl}`;
-        }
-
-        console.log(`[MetaTags] PROD Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
-
-        html = await injectMetaTags(html, {
-          title: `${profile.name} | Ujirpur Barnia Influencer`,
-          description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
-          image: imageUrl,
-          url: fullUrl
-        });
-      } else {
-        console.warn(`[ProfileRoute] PROD Profile not found for ID: ${req.params.id}`);
-      }
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
-    });
 
     app.get("*", async (req, res) => {
       res.sendFile(path.resolve("dist", "index.html"));

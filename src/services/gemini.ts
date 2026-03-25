@@ -58,11 +58,13 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
       For each viral topic, provide:
       - Title (Must start with "Top 1 (WB):", "Top 2 (WB):", "Top 1 (India):", etc., followed by the viral topic name)
       - Content (Detailed Viral Strategy: 
-          1. Why it's trending.
+          1. Why it's trending: Explain the cultural or social reason.
           2. Viral Hook Idea: A specific opening line or visual to grab attention.
           3. Content Creation Tips: Step-by-step advice on how to film/edit the reel or post.
           4. Viral Secret: A pro-tip to help the post go viral (e.g., specific music, transition, or timing).
-          5. Hashtags: A set of high-reach #hashtags).
+          5. Engagement Booster: A question or call-to-action to get comments.
+          6. Monetization Tip: How to potentially earn from this trend.
+          7. Hashtags: A set of high-reach #hashtags).
       - Source (The platform or source of the trend).
       - Date (The date of the trend).
       

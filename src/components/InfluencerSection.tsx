@@ -66,6 +66,7 @@ export const InfluencerSection = () => {
     social2: '',
     social3: ''
   });
+  const [uploading, setUploading] = useState(false);
 
   if (error) throw error;
 
@@ -129,9 +130,20 @@ export const InfluencerSection = () => {
     let avatarUrl = '';
     const getUsername = (u: string, domain: string) => {
       try {
-        const parts = u.split(`${domain}/`);
-        if (parts.length > 1) {
-          return parts[1].split('/')[0].split('?')[0].split('#')[0];
+        // Handle standard URLs
+        const urlObj = new URL(u.startsWith('http') ? u : `https://${u}`);
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
+        
+        if (domain === 'facebook.com') {
+          // Handle profile.php?id=...
+          const idParam = urlObj.searchParams.get('id');
+          if (idParam) return idParam;
+          // Handle facebook.com/username
+          if (pathParts.length > 0) return pathParts[0];
+        }
+        
+        if (pathParts.length > 0) {
+          return pathParts[0];
         }
       } catch (e) {}
       return null;
@@ -157,6 +169,53 @@ export const InfluencerSection = () => {
     if (avatarUrl) {
       setNewInfluencer(prev => ({ ...prev, avatarUrl }));
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert(language === 'bn' ? 'ছবিটি ২ মেগাবাইটের কম হতে হবে' : 'Image must be less than 2MB');
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Compress to JPEG with 0.7 quality
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setNewInfluencer(prev => ({ ...prev, avatarUrl: dataUrl }));
+        setUploading(false);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -413,8 +472,8 @@ export const InfluencerSection = () => {
                       </button>
                     )}
                   </div>
-                  <div className="flex gap-6 items-center p-6 bg-zinc-50 rounded-[2rem] border border-zinc-100">
-                    <div className="w-24 h-24 rounded-full bg-white flex-shrink-0 overflow-hidden border-4 border-white shadow-xl">
+                  <div className="flex flex-col md:flex-row gap-6 items-center p-6 bg-zinc-50 rounded-[2rem] border border-zinc-100">
+                    <div className="w-24 h-24 rounded-full bg-white flex-shrink-0 overflow-hidden border-4 border-white shadow-xl relative group/avatar">
                       {newInfluencer.avatarUrl ? (
                         <img 
                           src={newInfluencer.avatarUrl} 
@@ -427,30 +486,63 @@ export const InfluencerSection = () => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-200">
-                          <UserPlus size={32} />
+                          <User size={32} />
+                        </div>
+                      )}
+                      {uploading && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <RefreshCw size={20} className="text-white animate-spin" />
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <input
-                        type="text"
-                        value={newInfluencer.avatarUrl}
-                        onChange={(e) => setNewInfluencer({ ...newInfluencer, avatarUrl: e.target.value })}
-                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
-                        placeholder={t.influencers.avatarPlaceholder}
-                      />
+                    <div className="flex-1 w-full space-y-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <label className="block text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1">
+                            {language === 'bn' ? 'ছবির লিঙ্ক' : 'Image URL'}
+                          </label>
+                          <input
+                            type="text"
+                            value={newInfluencer.avatarUrl.startsWith('data:') ? '' : newInfluencer.avatarUrl}
+                            onChange={(e) => setNewInfluencer({ ...newInfluencer, avatarUrl: e.target.value })}
+                            className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                            placeholder={t.influencers.avatarPlaceholder}
+                          />
+                        </div>
+                        <div className="sm:w-1/3">
+                          <label className="block text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1">
+                            {language === 'bn' ? 'আপলোড করুন' : 'Upload File'}
+                          </label>
+                          <label className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-brand-50 border border-brand-100 text-brand-600 font-bold text-sm cursor-pointer hover:bg-brand-100 transition-all">
+                            <Globe size={16} />
+                            {language === 'bn' ? 'ফাইল' : 'File'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                      
                       <div className="flex flex-col gap-1">
-                        <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest flex items-center gap-2">
-                          <Zap size={12} />
-                          {language === 'bn' 
-                            ? 'টিপ: সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
-                            : 'Tip: Add social links for auto-photo fetch!'}
-                        </p>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                          {language === 'bn'
-                            ? 'আমরা ফেসবুক, ইনস্টাগ্রাম এবং টুইটার থেকে ছবি নিতে পারি'
-                            : 'Supports Facebook, Instagram, X/Twitter, GitHub'}
-                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {user?.photoURL && (
+                            <button
+                              type="button"
+                              onClick={() => setNewInfluencer(prev => ({ ...prev, avatarUrl: user.photoURL || '' }))}
+                              className="text-[10px] font-black text-brand-600 hover:text-brand-700 uppercase tracking-widest flex items-center gap-2 bg-brand-50 px-3 py-1.5 rounded-full"
+                            >
+                              <LogIn size={12} />
+                              {language === 'bn' ? 'গুগল প্রোফাইল' : 'Google Photo'}
+                            </button>
+                          )}
+                          <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest flex items-center gap-2 bg-brand-50 px-3 py-1.5 rounded-full">
+                            <Zap size={12} />
+                            {language === 'bn' ? 'টিপ: লিঙ্ক দিলে ছবি অটো আসবে!' : 'Tip: Links auto-fetch photo!'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
