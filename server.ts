@@ -44,16 +44,34 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
   try {
     let data: any = null;
     
-    // Try using Admin SDK first if available
-    if (adminDb) {
-      const doc = await adminDb.collection("influencers").doc(id).get();
-      if (doc.exists) {
-        data = doc.data();
-        console.log(`[MetaTags] Profile found via Admin SDK: ${data.name}`);
+    // 1. Try using Client SDK (already authenticated as server-admin)
+    if (db) {
+      try {
+        const docRef = doc(db, "influencers", id);
+        const docSnap = await getDocFromServer(docRef);
+        if (docSnap.exists()) {
+          data = docSnap.data();
+          console.log(`[MetaTags] Profile found via Client SDK: ${data.name}`);
+        }
+      } catch (clientError) {
+        console.warn(`[MetaTags] Client SDK fetch failed for ID ${id}:`, clientError);
+      }
+    }
+
+    // 2. Try using Admin SDK if available
+    if (!data && adminDb) {
+      try {
+        const doc = await adminDb.collection("influencers").doc(id).get();
+        if (doc.exists) {
+          data = doc.data();
+          console.log(`[MetaTags] Profile found via Admin SDK: ${data.name}`);
+        }
+      } catch (adminError) {
+        console.warn(`[MetaTags] Admin SDK fetch failed for ID ${id}:`, adminError);
       }
     }
     
-    // Fallback to REST API if Admin SDK failed or not available
+    // 3. Fallback to REST API
     if (!data) {
       const dbId = databaseId || '(default)';
       const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${id}`;
@@ -120,20 +138,62 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
 
 async function getNewsItem(date: string, tab: string, index: string, projectId: string, databaseId: string) {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/news/${date}`;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
+    let data: any = null;
     
-    const fields = data.fields;
-    const tabData = fields[tab]?.arrayValue?.values;
+    // 1. Try Client SDK
+    if (db) {
+      try {
+        const docRef = doc(db, "news", date);
+        const docSnap = await getDocFromServer(docRef);
+        if (docSnap.exists()) {
+          data = docSnap.data();
+          console.log(`[MetaTags] News found via Client SDK for date: ${date}`);
+        }
+      } catch (e) {
+        console.warn(`[MetaTags] Client SDK news fetch failed for date ${date}:`, e);
+      }
+    }
+
+    // 2. Fallback to REST API
+    if (!data) {
+      const dbId = databaseId || '(default)';
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/news/${date}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const restData = await response.json();
+        const fields = restData.fields;
+        if (fields) {
+          // Map REST fields to regular object
+          data = {};
+          for (const key in fields) {
+            if (fields[key].arrayValue) {
+              data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                if (v.mapValue) {
+                  const mapFields = v.mapValue.fields;
+                  const item: any = {};
+                  for (const mk in mapFields) {
+                    item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                  }
+                  return item;
+                }
+                return v.stringValue;
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (!data) return null;
+    
+    const tabData = data[tab];
     if (!tabData || !tabData[parseInt(index)]) return null;
     
-    const item = tabData[parseInt(index)].mapValue.fields;
+    const item = tabData[parseInt(index)];
     return {
-      title: item.title?.stringValue || "Ujirpur Barnia News",
-      content: item.content?.stringValue || "Latest news from our community.",
-      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200" // Generic news image
+      title: item.title || "Ujirpur Barnia News",
+      content: item.content || "Latest news from our community.",
+      image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200"
     };
   } catch (error) {
     console.error("Error fetching news for meta tags:", error);
