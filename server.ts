@@ -152,6 +152,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   const escapedUrl = escapeHtml(metadata.url);
 
   const metaTags = `
+    <!-- Meta Injected -->
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
     <meta property="og:title" content="${escapedTitle}" />
@@ -432,25 +433,26 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    if (newsItem) {
-      const host = req.get('host')?.split(':')[0]; // Strip port if present
-      const forwardedProto = req.headers['x-forwarded-proto'] as string;
-      const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
-      
-      // Auto-detect base URL with a reliable fallback
-      const detectedBaseUrl = `${protocol}://${host}`;
-      const baseUrl = process.env.APP_URL || detectedBaseUrl;
-      const fullUrl = `${baseUrl}${req.originalUrl}`;
+    const host = req.get('host')?.split(':')[0];
+    const forwardedProto = req.headers['x-forwarded-proto'] as string;
+    const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const fullUrl = `${baseUrl}${req.originalUrl}`;
 
-      console.log(`[MetaTags] Injecting tags for news: ${newsItem.title}, URL: ${fullUrl}, Protocol: ${protocol}, Host: ${host}`);
+    const metadata = newsItem ? {
+      title: newsItem.title,
+      description: newsItem.content.substring(0, 200) + "...",
+      image: newsItem.image,
+      url: fullUrl
+    } : {
+      title: "Latest News | Ujirpur Barnia",
+      description: "Read the latest updates and news from Ujirpur Barnia community.",
+      image: "https://picsum.photos/seed/barnia-news/1200/630",
+      url: fullUrl
+    };
 
-      html = await injectMetaTags(html, {
-        title: newsItem.title,
-        description: newsItem.content.substring(0, 200) + "...",
-        image: newsItem.image,
-        url: fullUrl
-      });
-    }
+    console.log(`[MetaTags] Injecting tags for news: ${metadata.title}, URL: ${fullUrl}`);
+    html = await injectMetaTags(html, metadata);
     res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
 
@@ -468,16 +470,14 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
+    const host = req.get('host')?.split(':')[0];
+    const forwardedProto = req.headers['x-forwarded-proto'] as string;
+    const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    
+    let metadata;
     if (profile) {
-      const host = req.get('host')?.split(':')[0]; // Strip port if present
-      const forwardedProto = req.headers['x-forwarded-proto'] as string;
-      const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
-      
-      // Auto-detect base URL with a reliable fallback
-      const detectedBaseUrl = `${protocol}://${host}`;
-      const baseUrl = process.env.APP_URL || detectedBaseUrl;
-      const fullUrl = `${baseUrl}${req.originalUrl}`;
-      
       // Use proxy URL for Base64 images to satisfy social media crawlers
       let imageUrl = profile.avatar;
       if (imageUrl && imageUrl.startsWith('data:image')) {
@@ -486,17 +486,23 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
-      console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}, Protocol: ${protocol}, Host: ${host}`);
-
-      html = await injectMetaTags(html, {
+      metadata = {
         title: `${profile.name} | Ujirpur Barnia Influencer`,
         description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(),
         image: imageUrl,
         url: fullUrl
-      });
+      };
     } else {
-      console.warn(`[ProfileRoute] Profile not found for ID: ${req.params.id}`);
+      metadata = {
+        title: "Influencer Profile | Ujirpur Barnia",
+        description: "View this professional influencer profile on Ujirpur Barnia Digital Hub.",
+        image: "https://picsum.photos/seed/barnia-profile/1200/630",
+        url: fullUrl
+      };
     }
+
+    console.log(`[MetaTags] Injecting tags for profile: ${metadata.title}, URL: ${fullUrl}`);
+    html = await injectMetaTags(html, metadata);
     res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
 
