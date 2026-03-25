@@ -158,6 +158,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="${escapedTitle}" />
@@ -168,6 +169,8 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta name="twitter:title" content="${escapedTitle}" />
     <meta name="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:image" content="${escapedImage}" />
+    <meta name="twitter:image:alt" content="${escapedTitle}" />
+    <meta name="twitter:url" content="${escapedUrl}" />
     <link rel="canonical" href="${escapedUrl}" />
   `;
 
@@ -186,6 +189,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     'og:image:secure_url',
     'og:image:width',
     'og:image:height',
+    'og:image:alt',
     'og:url', 
     'og:type', 
     'og:site_name',
@@ -193,6 +197,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     'twitter:title',
     'twitter:description',
     'twitter:image',
+    'twitter:image:alt',
     'twitter:url'
   ];
   
@@ -201,12 +206,14 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     const regex = new RegExp(`<meta\\s+[^>]*?(name|property)=["']${tag}["'][^>]*?\\/?>`, 'gi');
     modifiedHtml = modifiedHtml.replace(regex, "");
   });
+
+  // Remove canonical link if it exists
+  modifiedHtml = modifiedHtml.replace(/<link rel=["']canonical["'].*?\/?>/gi, "");
   
   // Inject new tags into head
-  if (modifiedHtml.includes("<head>")) {
-    return modifiedHtml.replace("<head>", `<head>${metaTags}`);
-  } else if (modifiedHtml.includes("<HEAD>")) {
-    return modifiedHtml.replace("<HEAD>", `<HEAD>${metaTags}`);
+  const headRegex = /(<head[^>]*>)/i;
+  if (headRegex.test(modifiedHtml)) {
+    return modifiedHtml.replace(headRegex, `$1${metaTags}`);
   }
   return metaTags + modifiedHtml;
 }
@@ -427,9 +434,12 @@ async function startServer() {
     
     if (newsItem) {
       const host = req.get('host');
-      const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+      const forwardedProto = req.headers['x-forwarded-proto'] as string;
+      const protocol = forwardedProto || (req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol);
       const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
       const fullUrl = `${baseUrl}${req.originalUrl}`;
+
+      console.log(`[MetaTags] Injecting tags for news: ${newsItem.title}, URL: ${fullUrl}, Protocol: ${protocol}, Host: ${host}`);
 
       html = await injectMetaTags(html, {
         title: newsItem.title,
@@ -457,7 +467,8 @@ async function startServer() {
     
     if (profile) {
       const host = req.get('host');
-      const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+      const forwardedProto = req.headers['x-forwarded-proto'] as string;
+      const protocol = forwardedProto || (req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol);
       const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
       const fullUrl = `${baseUrl}${req.originalUrl}`;
       
@@ -469,7 +480,7 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
-      console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
+      console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}, Protocol: ${protocol}, Host: ${host}`);
 
       html = await injectMetaTags(html, {
         title: `${profile.name} | Ujirpur Barnia Influencer`,
