@@ -103,7 +103,8 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
     return {
       name: data.name || "Ujirpur Barnia Profile",
       bio: data.bio || "Community member profile.",
-      avatar: data.avatar || "https://picsum.photos/seed/profile/400/400",
+      avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
+      rawAvatar: data.avatar, // Keep original for proxy
       socialInfo: socialInfo ? `\n\nConnect: ${socialInfo}` : ''
     };
   } catch (error) {
@@ -159,6 +160,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:image:secure_url" content="${escapedImage}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${escapedTitle}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="profile" />
     <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
@@ -190,16 +192,23 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     'twitter:card',
     'twitter:title',
     'twitter:description',
-    'twitter:image'
+    'twitter:image',
+    'twitter:url'
   ];
   
   tagsToRemove.forEach(tag => {
-    const regex = new RegExp(`<meta\\s+(name|property)=["']${tag}["']\\s+content=["'].*?["']\\s*\\/?>`, 'gi');
+    // More robust regex to match meta tags regardless of attribute order
+    const regex = new RegExp(`<meta\\s+[^>]*?(name|property)=["']${tag}["'][^>]*?\\/?>`, 'gi');
     modifiedHtml = modifiedHtml.replace(regex, "");
   });
   
   // Inject new tags into head
-  return modifiedHtml.replace("<head>", `<head>${metaTags}`);
+  if (modifiedHtml.includes("<head>")) {
+    return modifiedHtml.replace("<head>", `<head>${metaTags}`);
+  } else if (modifiedHtml.includes("<HEAD>")) {
+    return modifiedHtml.replace("<HEAD>", `<HEAD>${metaTags}`);
+  }
+  return metaTags + modifiedHtml;
 }
 
 const DATA_FILE = path.resolve("data.json");
@@ -374,6 +383,36 @@ async function startServer() {
   });
 
   // Meta Tag Routes (MUST be before static/vite middleware)
+  app.get("/api/image/influencer/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const profile = firebaseConfig ? await getProfileItem(id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+      
+      if (!profile || !profile.rawAvatar) {
+        return res.status(404).send("Image not found");
+      }
+
+      if (profile.rawAvatar.startsWith('data:image')) {
+        const base64Data = profile.rawAvatar.split(',')[1];
+        const img = Buffer.from(base64Data, 'base64');
+        const mimeType = profile.rawAvatar.split(';')[0].split(':')[1];
+        
+        res.writeHead(200, {
+          'Content-Type': mimeType,
+          'Content-Length': img.length,
+          'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+        });
+        res.end(img);
+      } else {
+        // If it's already a URL, redirect to it
+        res.redirect(profile.rawAvatar);
+      }
+    } catch (error) {
+      console.error("Error serving proxy image:", error);
+      res.status(500).send("Internal server error");
+    }
+  });
+
   app.get("/news/:date/:tab/:index", async (req, res) => {
     const { date, tab, index } = req.params;
     const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
@@ -389,7 +428,8 @@ async function startServer() {
     if (newsItem) {
       const host = req.get('host');
       const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-      const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const fullUrl = `${baseUrl}${req.originalUrl}`;
 
       html = await injectMetaTags(html, {
         title: newsItem.title,
@@ -418,19 +458,22 @@ async function startServer() {
     if (profile) {
       const host = req.get('host');
       const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
-      const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const fullUrl = `${baseUrl}${req.originalUrl}`;
       
-      // Ensure absolute image URL
+      // Use proxy URL for Base64 images to satisfy social media crawlers
       let imageUrl = profile.avatar;
-      if (imageUrl && imageUrl.startsWith('/')) {
-        imageUrl = `${protocol}://${host}${imageUrl}`;
+      if (imageUrl && imageUrl.startsWith('data:image')) {
+        imageUrl = `${baseUrl}/api/image/influencer/${req.params.id}`;
+      } else if (imageUrl && imageUrl.startsWith('/')) {
+        imageUrl = `${baseUrl}${imageUrl}`;
       }
 
       console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
 
       html = await injectMetaTags(html, {
         title: `${profile.name} | Ujirpur Barnia Influencer`,
-        description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
+        description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(),
         image: imageUrl,
         url: fullUrl
       });
