@@ -73,25 +73,28 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
     
     // 3. Fallback to REST API
     if (!data) {
-      const dbId = databaseId || '(default)';
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${id}`;
-      console.log(`[MetaTags] Trying REST API: ${url}`);
-      const response = await fetch(url);
-      if (response.ok) {
-        const restData = await response.json();
-        const fields = restData.fields;
-        if (fields) {
-          data = {
-            name: fields.name?.stringValue,
-            bio: fields.bio?.stringValue,
-            avatar: fields.avatar?.stringValue,
-            socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
-          };
-          console.log(`[MetaTags] Profile found via REST API: ${data.name}`);
+      const dbIds = [databaseId, '(default)'].filter(Boolean);
+      for (const dbId of dbIds) {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${id}`;
+        console.log(`[MetaTags] Trying REST API (${dbId}): ${url}`);
+        const response = await fetch(url);
+        if (response.ok) {
+          const restData = await response.json();
+          const fields = restData.fields;
+          if (fields) {
+            data = {
+              name: fields.name?.stringValue,
+              bio: fields.bio?.stringValue,
+              avatar: fields.avatar?.stringValue,
+              socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
+            };
+            console.log(`[MetaTags] Profile found via REST API (${dbId}): ${data.name}`);
+            break; // Found it!
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[MetaTags] Profile not found via REST API (${dbId}). Status: ${response.status}`);
         }
-      } else {
-        const errText = await response.text();
-        console.warn(`[MetaTags] Profile not found via REST API (Status: ${response.status}). Error: ${errText}`);
       }
     }
 
