@@ -452,9 +452,9 @@ async function startServer() {
       image: newsItem.image,
       url: fullUrl
     } : {
-      title: "Latest News | Ujirpur Barnia",
-      description: "Read the latest updates and news from Ujirpur Barnia community.",
-      image: "https://picsum.photos/seed/barnia-news/1200/630",
+      title: "Latest News | Ujirpur Barnia community",
+      description: "Stay updated with the latest news, events, and announcements from the Ujirpur Barnia community.",
+      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200&h=630",
       url: fullUrl
     };
 
@@ -502,9 +502,9 @@ async function startServer() {
       };
     } else {
       metadata = {
-        title: "Influencer Profile | Ujirpur Barnia",
-        description: "View this professional influencer profile on Ujirpur Barnia Digital Hub.",
-        image: "https://picsum.photos/seed/barnia-profile/1200/630",
+        title: "Influencer Profile | Ujirpur Barnia Digital Hub",
+        description: "Explore professional influencer profiles and collaboration opportunities in our community network.",
+        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1200&h=630",
         url: fullUrl
       };
     }
