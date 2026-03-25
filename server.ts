@@ -116,7 +116,11 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       'x.com': '🐦 X',
       'youtube.com': '📺 YouTube',
       'linkedin.com': '💼 LinkedIn',
-      'github.com': '💻 GitHub'
+      'github.com': '💻 GitHub',
+      'tiktok.com': '🎵 TikTok',
+      'pinterest.com': '📌 Pinterest',
+      'snapchat.com': '👻 Snapchat',
+      'twitch.tv': '🎮 Twitch'
     };
 
     const socialInfo = (data.socials || [])
@@ -124,14 +128,15 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
         const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
         return match ? socialIcons[match] : '🌐 Social';
       })
-      .join(' | ');
+      .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i) // Unique platforms
+      .join(' • ');
 
     return {
       name: data.name || "Ujirpur Barnia Profile",
-      bio: data.bio || "Community member profile.",
+      bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
       rawAvatar: data.avatar, // Keep original for proxy
-      socialInfo: socialInfo ? `\n\nConnect: ${socialInfo}` : ''
+      socialInfo: socialInfo || ''
     };
   } catch (error) {
     console.error(`[MetaTags] Error fetching profile for ID: ${id}:`, error);
@@ -557,9 +562,13 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
+      const bioText = profile.bio.length > 250 ? profile.bio.substring(0, 247) + "..." : profile.bio;
+      const description = `${bioText}${profile.socialInfo ? ` • Connect: ${profile.socialInfo}` : ''} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      const title = `${profile.name}${profile.socialInfo ? ` (${profile.socialInfo})` : ''} | Ujirpur Barnia Influencer`;
+
       metadata = {
-        title: `${profile.name} | Ujirpur Barnia Influencer`,
-        description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(),
+        title: title,
+        description: description,
         image: imageUrl,
         url: fullUrl
       };
