@@ -169,6 +169,14 @@ export const ProfilePage = () => {
                 <h1 className="text-4xl md:text-6xl font-black text-zinc-900 tracking-tighter mb-4 leading-none">
                   {influencer.name}
                 </h1>
+                
+                {/* Bio for mobile - visible only on small screens */}
+                <div className="block lg:hidden mb-6">
+                  <p className="text-lg font-medium text-zinc-600 leading-relaxed italic">
+                    "{influencer.bio}"
+                  </p>
+                </div>
+
                 <div className="flex flex-wrap gap-4">
                   <button 
                     onClick={() => {

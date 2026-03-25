@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
-  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User, RefreshCw
+  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User, RefreshCw,
+  Trash2, XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -10,7 +11,17 @@ import { shareContent } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
-import { Trash2, XCircle } from 'lucide-react';
+
+const getSocialIcon = (url: string) => {
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('instagram.com')) return <Instagram size={20} className="text-[#E4405F]" />;
+  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <Twitter size={20} className="text-[#1DA1F2]" />;
+  if (lowerUrl.includes('facebook.com')) return <Facebook size={20} className="text-[#1877F2]" />;
+  if (lowerUrl.includes('youtube.com')) return <Youtube size={20} className="text-[#FF0000]" />;
+  if (lowerUrl.includes('linkedin.com')) return <Linkedin size={20} className="text-[#0077B5]" />;
+  if (lowerUrl.includes('github.com')) return <Github size={20} className="text-[#181717]" />;
+  return <Globe size={20} className="text-zinc-400" />;
+};
 
 interface Influencer {
   id: string;
@@ -30,17 +41,6 @@ interface CollabRequest {
   timestamp: any;
   toUid?: string;
 }
-
-const getSocialIcon = (url: string) => {
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('instagram.com')) return <Instagram size={16} className="text-[#E4405F]" />;
-  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <Twitter size={16} className="text-[#1DA1F2]" />;
-  if (lowerUrl.includes('facebook.com')) return <Facebook size={16} className="text-[#1877F2]" />;
-  if (lowerUrl.includes('youtube.com')) return <Youtube size={16} className="text-[#FF0000]" />;
-  if (lowerUrl.includes('linkedin.com')) return <Linkedin size={16} className="text-[#0077B5]" />;
-  if (lowerUrl.includes('github.com')) return <Github size={16} className="text-[#181717]" />;
-  return <Globe size={16} className="text-zinc-400" />;
-};
 
 export const InfluencerSection = () => {
   const { t } = useLanguage();
@@ -715,7 +715,7 @@ export const InfluencerSection = () => {
                   {inf.name}
                   <ExternalLink size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                 </h4>
-                <p className="text-zinc-500 text-sm font-medium line-clamp-2 leading-relaxed">{inf.bio}</p>
+                <p className="text-zinc-500 text-sm font-medium leading-relaxed">{inf.bio}</p>
               </div>
 
               <div className="flex flex-wrap gap-3 mb-8">
@@ -725,7 +725,7 @@ export const InfluencerSection = () => {
                     href={social.startsWith('http') ? social : `https://${social}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-3 bg-zinc-50 rounded-2xl hover:bg-brand-50 text-zinc-400 hover:text-brand-600 transition-all hover:scale-110"
+                    className="p-3 bg-zinc-50 rounded-2xl hover:bg-brand-50 transition-all hover:scale-110 shadow-sm border border-zinc-100"
                     title={social}
                   >
                     {getSocialIcon(social)}

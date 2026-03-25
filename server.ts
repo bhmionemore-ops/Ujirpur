@@ -120,7 +120,8 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       'tiktok.com': '🎵 TikTok',
       'pinterest.com': '📌 Pinterest',
       'snapchat.com': '👻 Snapchat',
-      'twitch.tv': '🎮 Twitch'
+      'twitch.tv': '🎮 Twitch',
+      'threads.net': '🧵 Threads'
     };
 
     const socialInfo = (data.socials || [])
@@ -562,9 +563,9 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
-      const bioText = profile.bio.length > 250 ? profile.bio.substring(0, 247) + "..." : profile.bio;
-      const description = `${bioText}${profile.socialInfo ? ` • Connect: ${profile.socialInfo}` : ''} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-      const title = `${profile.name}${profile.socialInfo ? ` (${profile.socialInfo})` : ''} | Ujirpur Barnia Influencer`;
+      const bioText = profile.bio.length > 200 ? profile.bio.substring(0, 197) + "..." : profile.bio;
+      const description = `${profile.socialInfo ? `Connect: ${profile.socialInfo} | ` : ''}${bioText} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      const title = `${profile.name} | Ujirpur Barnia Influencer`;
 
       metadata = {
         title: title,
