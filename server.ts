@@ -40,6 +40,7 @@ let currentUpdatePromise: Promise<boolean | void> | null = null;
 
 
 async function getProfileItem(id: string, projectId: string, databaseId: string) {
+  console.log(`[MetaTags] Fetching profile for ID: ${id}`);
   try {
     let data: any = null;
     
@@ -48,6 +49,7 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       const doc = await adminDb.collection("influencers").doc(id).get();
       if (doc.exists) {
         data = doc.data();
+        console.log(`[MetaTags] Profile found via Admin SDK: ${data.name}`);
       }
     }
     
@@ -64,10 +66,16 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
           avatar: fields.avatar?.stringValue,
           socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
         };
+        console.log(`[MetaTags] Profile found via REST API: ${data.name}`);
+      } else {
+        console.warn(`[MetaTags] Profile not found via REST API (Status: ${response.status})`);
       }
     }
 
-    if (!data) return null;
+    if (!data) {
+      console.warn(`[MetaTags] No profile data found for ID: ${id}`);
+      return null;
+    }
 
     // Format social media info for description
     const socialIcons: { [key: string]: string } = {
@@ -94,7 +102,7 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       socialInfo: socialInfo ? `\n\nConnect: ${socialInfo}` : ''
     };
   } catch (error) {
-    console.error("Error fetching profile for meta tags:", error);
+    console.error(`[MetaTags] Error fetching profile for ID: ${id}:`, error);
     return null;
   }
 }
@@ -130,8 +138,6 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:description" content="${metadata.description}" />
     <meta property="og:image" content="${metadata.image}" />
     <meta property="og:image:secure_url" content="${metadata.image}" />
-    <meta property="og:image:width" content="400" />
-    <meta property="og:image:height" content="400" />
     <meta property="og:url" content="${metadata.url}" />
     <meta property="og:type" content="profile" />
     <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
@@ -166,7 +172,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   ];
   
   tagsToRemove.forEach(tag => {
-    const regex = new RegExp(`<meta (name|property)="${tag}" content=".*?"\\s*\\/?>`, 'gi');
+    const regex = new RegExp(`<meta\\s+(name|property)=["']${tag}["']\\s+content=["'].*?["']\\s*\\/?>`, 'gi');
     modifiedHtml = modifiedHtml.replace(regex, "");
   });
   
@@ -487,6 +493,9 @@ async function startServer() {
     });
 
     app.get("/profile/:id", async (req, res) => {
+      const userAgent = req.get('User-Agent') || '';
+      console.log(`[ProfileRoute] Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
+      
       const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
       html = await vite.transformIndexHtml(req.originalUrl, html);
@@ -495,13 +504,23 @@ async function startServer() {
         const host = req.get('host');
         const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
         const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+        
+        // Ensure absolute image URL
+        let imageUrl = profile.avatar;
+        if (imageUrl && imageUrl.startsWith('/')) {
+          imageUrl = `${protocol}://${host}${imageUrl}`;
+        }
+
+        console.log(`[MetaTags] Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
 
         html = await injectMetaTags(html, {
           title: `${profile.name} | Ujirpur Barnia Influencer`,
-          description: `${profile.bio}${profile.socialInfo}\n\n✨ Join our network at Ujirpur Barnia Digital Hub!`,
-          image: profile.avatar,
+          description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
+          image: imageUrl,
           url: fullUrl
         });
+      } else {
+        console.warn(`[ProfileRoute] Profile not found for ID: ${req.params.id}`);
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     });
@@ -541,6 +560,9 @@ async function startServer() {
     });
 
     app.get("/profile/:id", async (req, res) => {
+      const userAgent = req.get('User-Agent') || '';
+      console.log(`[ProfileRoute] PROD Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
+
       const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
@@ -548,13 +570,23 @@ async function startServer() {
         const host = req.get('host');
         const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
         const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+        
+        // Ensure absolute image URL
+        let imageUrl = profile.avatar;
+        if (imageUrl && imageUrl.startsWith('/')) {
+          imageUrl = `${protocol}://${host}${imageUrl}`;
+        }
+
+        console.log(`[MetaTags] PROD Injecting tags for profile: ${profile.name}, Image: ${imageUrl}, URL: ${fullUrl}`);
 
         html = await injectMetaTags(html, {
           title: `${profile.name} | Ujirpur Barnia Influencer`,
-          description: `${profile.bio}${profile.socialInfo}\n\n✨ Join our network at Ujirpur Barnia Digital Hub!`,
-          image: profile.avatar,
+          description: `${profile.bio}${profile.socialInfo} | ✨ Join our network at Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' '),
+          image: imageUrl,
           url: fullUrl
         });
+      } else {
+        console.warn(`[ProfileRoute] PROD Profile not found for ID: ${req.params.id}`);
       }
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     });

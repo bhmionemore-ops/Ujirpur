@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
-  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User
+  Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -127,17 +127,30 @@ export const InfluencerSection = () => {
     if (!url) return;
     
     let avatarUrl = '';
+    const getUsername = (u: string, domain: string) => {
+      try {
+        const parts = u.split(`${domain}/`);
+        if (parts.length > 1) {
+          return parts[1].split('/')[0].split('?')[0].split('#')[0];
+        }
+      } catch (e) {}
+      return null;
+    };
+
     if (url.includes('facebook.com/')) {
-      const username = url.split('facebook.com/')[1]?.split('/')[0]?.split('?')[0];
+      const username = getUsername(url, 'facebook.com');
       if (username) avatarUrl = `https://unavatar.io/facebook/${username}`;
     } else if (url.includes('instagram.com/')) {
-      const username = url.split('instagram.com/')[1]?.split('/')[0]?.split('?')[0];
+      const username = getUsername(url, 'instagram.com');
       if (username) avatarUrl = `https://unavatar.io/instagram/${username}`;
     } else if (url.includes('twitter.com/')) {
-      const username = url.split('twitter.com/')[1]?.split('/')[0]?.split('?')[0];
+      const username = getUsername(url, 'twitter.com');
+      if (username) avatarUrl = `https://unavatar.io/twitter/${username}`;
+    } else if (url.includes('x.com/')) {
+      const username = getUsername(url, 'x.com');
       if (username) avatarUrl = `https://unavatar.io/twitter/${username}`;
     } else if (url.includes('github.com/')) {
-      const username = url.split('github.com/')[1]?.split('/')[0]?.split('?')[0];
+      const username = getUsername(url, 'github.com');
       if (username) avatarUrl = `https://unavatar.io/github/${username}`;
     }
 
@@ -426,12 +439,19 @@ export const InfluencerSection = () => {
                         className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                         placeholder={t.influencers.avatarPlaceholder}
                       />
-                      <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest flex items-center gap-2">
-                        <Zap size={12} />
-                        {language === 'bn' 
-                          ? 'টিপ: সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
-                          : 'Tip: Add social links for auto-photo fetch!'}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest flex items-center gap-2">
+                          <Zap size={12} />
+                          {language === 'bn' 
+                            ? 'টিপ: সোশ্যাল মিডিয়া লিঙ্ক দিলে ছবি অটোমেটিক চলে আসবে!' 
+                            : 'Tip: Add social links for auto-photo fetch!'}
+                        </p>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                          {language === 'bn'
+                            ? 'আমরা ফেসবুক, ইনস্টাগ্রাম এবং টুইটার থেকে ছবি নিতে পারি'
+                            : 'Supports Facebook, Instagram, X/Twitter, GitHub'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -439,19 +459,33 @@ export const InfluencerSection = () => {
                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Social Media Pages (Up to 3)</label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[1, 2, 3].map((num) => (
-                      <input
-                        key={`social-${num}`}
-                        required={num === 1}
-                        type="text"
-                        value={(newInfluencer as any)[`social${num}`]}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewInfluencer(prev => ({ ...prev, [`social${num}`]: val }));
-                          if (!newInfluencer.avatarUrl) autoFetchAvatar(val);
-                        }}
-                        className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
-                        placeholder={t.influencers.socialPlaceholder}
-                      />
+                      <div key={`social-container-${num}`} className="relative group/social">
+                        <input
+                          required={num === 1}
+                          type="text"
+                          value={(newInfluencer as any)[`social${num}`]}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewInfluencer(prev => ({ ...prev, [`social${num}`]: val }));
+                            // Overwrite if empty or if it's the default Google photo
+                            if (!newInfluencer.avatarUrl || newInfluencer.avatarUrl === user?.photoURL) {
+                              autoFetchAvatar(val);
+                            }
+                          }}
+                          className="w-full p-4 pr-12 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                          placeholder={t.influencers.socialPlaceholder}
+                        />
+                        {(newInfluencer as any)[`social${num}`] && (
+                          <button
+                            type="button"
+                            onClick={() => autoFetchAvatar((newInfluencer as any)[`social${num}`])}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-brand-600 transition-colors"
+                            title="Sync profile picture from this link"
+                          >
+                            <RefreshCw size={16} />
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
