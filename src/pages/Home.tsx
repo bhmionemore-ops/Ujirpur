@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Store, ChevronRight } from 'lucide-react';
+import { Users, Store, ChevronRight, Facebook } from 'lucide-react';
 import { LiveNews } from '../components/LiveNews';
 import { Banner } from '../components/Banner';
 import { useLanguage } from '../LanguageContext';
@@ -67,6 +67,49 @@ export const Home = () => {
                 {t.banner.openShop}
                 <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
               </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Facebook Group Section */}
+        <div className="mt-20 mb-20 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="p-12 rounded-[3rem] bg-white border border-zinc-100 shadow-2xl shadow-zinc-200/50 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-500 via-brand-200 to-brand-500"></div>
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-brand-500/5 blur-[100px] rounded-full"></div>
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-brand-500/5 blur-[100px] rounded-full"></div>
+            
+            <div className="relative z-10">
+              <div className="w-20 h-20 rounded-3xl bg-brand-50 flex items-center justify-center mx-auto mb-8 shadow-inner">
+                <Facebook size={40} className="text-brand-600" />
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight text-zinc-900">
+                {language === 'bn' ? 'আমাদের ফেসবুক গ্রুপে যোগ দিন' : 'Join Our Facebook Community'}
+              </h2>
+              <p className="text-zinc-500 font-medium mb-12 max-w-2xl mx-auto text-lg leading-relaxed">
+                {language === 'bn' 
+                  ? 'আমাদের ফেসবুক গ্রুপে যোগ দিয়ে সর্বশেষ আপডেট পান, আপনার মতামত শেয়ার করুন এবং সবার সাথে যুক্ত থাকুন।' 
+                  : 'Get the latest updates, share your thoughts, and stay connected with everyone in our official Facebook group. Join thousands of other members!'}
+              </p>
+              
+              <motion.a 
+                href="https://www.facebook.com/groups/barniabazar/"
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative inline-flex items-center justify-center p-[4px] overflow-hidden rounded-2xl group shadow-xl shadow-brand-500/20"
+              >
+                <div className="absolute inset-[-1000%] animate-spin-slow bg-[conic-gradient(from_90deg_at_50%_50%,#F58E27_0%,#F58E27_50%,#FFFFFF_100%)]" />
+                <span className="relative inline-flex h-full w-full cursor-pointer items-center justify-center rounded-2xl bg-zinc-950 px-12 py-5 text-xl font-bold text-white backdrop-blur-3xl group-hover:bg-zinc-900 transition-all gap-4">
+                  <Facebook size={28} className="text-brand-500" />
+                  {t.banner.facebookGroup}
+                </span>
+              </motion.a>
             </div>
           </motion.div>
         </div>

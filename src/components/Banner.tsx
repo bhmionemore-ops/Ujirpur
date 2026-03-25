@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper } from 'lucide-react';
+import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
@@ -166,6 +166,22 @@ export const Banner = () => {
             <Users size={20} />
             {t.banner.influencer}
           </button>
+
+          {/* Facebook Group Button with Glowing Animation */}
+          <motion.a 
+            href="https://www.facebook.com/groups/barniabazar/"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="relative p-[3px] overflow-hidden rounded-2xl group flex items-center justify-center"
+          >
+            <div className="absolute inset-[-1000%] animate-spin-slow bg-[conic-gradient(from_90deg_at_50%_50%,#F58E27_0%,#F58E27_50%,#FFFFFF_100%)]" />
+            <span className="relative inline-flex h-full w-full cursor-pointer items-center justify-center rounded-2xl bg-zinc-950 px-8 py-4 text-lg font-bold text-white backdrop-blur-3xl group-hover:bg-zinc-900 transition-all gap-3">
+              <Facebook size={24} className="text-brand-500" />
+              {t.banner.facebookGroup}
+            </span>
+          </motion.a>
         </motion.div>
       </div>
 

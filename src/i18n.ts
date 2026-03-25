@@ -21,6 +21,7 @@ export const translations = {
       shopDesc: 'আপনার পণ্যগুলো অনলাইনে প্রদর্শন করুন এবং কাস্টমারদের সাথে যুক্ত থাকুন।',
       getStarted: 'শুরু করুন',
       openShop: 'দোকান খুলুন',
+      facebookGroup: 'ফেসবুক গ্রুপে যোগ দিন',
     },
     news: {
       title: 'লাইভ নিউজ হাব',
@@ -202,6 +203,7 @@ export const translations = {
       shopDesc: 'Display your products online and stay connected with your local customers.',
       getStarted: 'Get Started',
       openShop: 'Open Shop',
+      facebookGroup: 'Join Facebook Group',
     },
     news: {
       title: 'Live News Hub',
