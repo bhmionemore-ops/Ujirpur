@@ -563,9 +563,9 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
-      const bioText = profile.bio.length > 200 ? profile.bio.substring(0, 197) + "..." : profile.bio;
-      const description = `${profile.socialInfo ? `Connect: ${profile.socialInfo} | ` : ''}${bioText} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-      const title = `${profile.name} | Ujirpur Barnia Influencer`;
+      const bioText = profile.bio.length > 100 ? profile.bio.substring(0, 97) + "..." : profile.bio;
+      const title = `${profile.name} | ${bioText}`;
+      const description = `${profile.socialInfo ? `Connect: ${profile.socialInfo} | ` : ''}${profile.bio} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
       metadata = {
         title: title,
