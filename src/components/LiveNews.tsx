@@ -12,13 +12,13 @@ export const LiveNews = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'local' | 'westBengal' | 'india'>('local');
+  const [activeTab, setActiveTab] = useState<'local' | 'fbTrends' | 'igTrends'>('local');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [visibleCounts, setVisibleCounts] = useState({
     local: 5,
-    westBengal: 5,
-    india: 5
+    fbTrends: 6,
+    igTrends: 6
   });
 
   useEffect(() => {
@@ -182,14 +182,14 @@ export const LiveNews = () => {
   const handleSeeMore = () => {
     setVisibleCounts(prev => ({
       ...prev,
-      [activeTab]: prev[activeTab] + 5
+      [activeTab]: prev[activeTab] + (activeTab === 'local' ? 5 : 6)
     }));
   };
 
   return (
     <section id="news" className="py-20 px-4 bg-zinc-50">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 relative">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -200,26 +200,66 @@ export const LiveNews = () => {
           </motion.div>
           <h2 className="text-4xl font-bold text-zinc-900 mb-4">{t.news.title}</h2>
           <p className="text-zinc-500 max-w-2xl mx-auto">{t.news.subtitle}</p>
+          
+          {/* Refresh Button */}
+          <button 
+            onClick={async () => {
+              setLoading(true);
+              setGenerating(true);
+              try {
+                const freshNews = await fetchLiveNews(language);
+                const today = new Date().toISOString().split('T')[0]; // Simple fallback for manual refresh
+                const newsData = {
+                  ...freshNews,
+                  date: today,
+                  updatedAt: new Date().toISOString()
+                };
+                setNews(newsData);
+              } catch (e) {
+                console.error(e);
+              } finally {
+                setLoading(false);
+                setGenerating(false);
+              }
+            }}
+            className="absolute top-0 right-0 p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm group"
+            title={language === 'bn' ? 'সংবাদ রিফ্রেশ করুন' : 'Refresh News'}
+          >
+            <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+          </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
+        <div className="flex flex-wrap justify-center gap-6 mb-16">
           {[
-            { id: 'local', label: t.news.local, icon: <MapPin size={18} /> },
-            { id: 'westBengal', label: t.news.westBengal, icon: <Globe size={18} /> },
-            { id: 'india', label: t.news.india, icon: <Globe size={18} /> }
+            { id: 'local', label: t.news.local, icon: <MapPin size={18} />, color: 'from-brand-600 to-brand-500' },
+            { id: 'fbTrends', label: t.news.fbTrends, icon: <Facebook size={18} />, color: 'from-[#1877F2] to-[#0D65D9]' },
+            { id: 'igTrends', label: t.news.igTrends, icon: <Instagram size={18} />, color: 'from-[#E4405F] to-[#D62976]' }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20' 
-                  : 'bg-white text-zinc-600 hover:bg-zinc-100'
+              className={`relative group p-[2px] rounded-2xl transition-all duration-500 ${
+                activeTab === tab.id ? 'scale-110' : 'hover:scale-105'
               }`}
             >
-              {tab.icon}
-              {tab.label}
+              {/* Animated Light Circle (Glow Ring) */}
+              {activeTab === tab.id && (
+                <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                  <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0%,transparent_30%,white_50%,transparent_70%,transparent_100%)] animate-spin-fast opacity-80 blur-[2px]" />
+                </div>
+              )}
+              
+              <div className={`relative flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-500 ${
+                activeTab === tab.id 
+                  ? `bg-gradient-to-br ${tab.color} text-white shadow-[0_10px_40px_rgba(0,0,0,0.2)]` 
+                  : 'bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-100'
+              }`}>
+                <span className={`${activeTab === tab.id ? 'animate-bounce' : ''}`}>
+                  {tab.icon}
+                </span>
+                {tab.label}
+              </div>
             </button>
           ))}
         </div>

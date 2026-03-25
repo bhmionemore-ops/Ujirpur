@@ -126,11 +126,11 @@ service cloud.firestore {
     }
 
     function isValidNews(data) {
-      return hasRequiredFields(['date', 'local', 'westBengal', 'india', 'updatedAt']) &&
+      return hasRequiredFields(['date', 'local', 'fbTrends', 'igTrends', 'updatedAt']) &&
              data.date is string &&
              data.local is list &&
-             data.westBengal is list &&
-             data.india is list;
+             data.fbTrends is list &&
+             data.igTrends is list;
     }
 
     // ===============================================================
