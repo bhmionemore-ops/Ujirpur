@@ -55,20 +55,25 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
     
     // Fallback to REST API if Admin SDK failed or not available
     if (!data) {
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/influencers/${id}`;
+      const dbId = databaseId || '(default)';
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${id}`;
+      console.log(`[MetaTags] Trying REST API: ${url}`);
       const response = await fetch(url);
       if (response.ok) {
         const restData = await response.json();
         const fields = restData.fields;
-        data = {
-          name: fields.name?.stringValue,
-          bio: fields.bio?.stringValue,
-          avatar: fields.avatar?.stringValue,
-          socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
-        };
-        console.log(`[MetaTags] Profile found via REST API: ${data.name}`);
+        if (fields) {
+          data = {
+            name: fields.name?.stringValue,
+            bio: fields.bio?.stringValue,
+            avatar: fields.avatar?.stringValue,
+            socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
+          };
+          console.log(`[MetaTags] Profile found via REST API: ${data.name}`);
+        }
       } else {
-        console.warn(`[MetaTags] Profile not found via REST API (Status: ${response.status})`);
+        const errText = await response.text();
+        console.warn(`[MetaTags] Profile not found via REST API (Status: ${response.status}). Error: ${errText}`);
       }
     }
 
@@ -155,6 +160,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <!-- Meta Injected -->
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
+    <meta property="fb:app_id" content="966242223397117" />
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
     <meta property="og:image:type" content="image/jpeg" />
