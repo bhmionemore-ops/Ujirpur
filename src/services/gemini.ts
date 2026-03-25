@@ -71,6 +71,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
         "items": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
       }
       
+      Keep each "content" section under 250 words to ensure the data fits.
       IMPORTANT: All text must be in ${langName}.`
       : `Find the latest 5 news items for: ${category} from ${location}. 
       Focus on recent events from the last 24-48 hours. Today's date is ${today}.
@@ -94,15 +95,27 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       },
     });
 
     try {
-      const parsed = JSON.parse(response.text || "{\"items\": []}");
+      const text = response.text || "{\"items\": []}";
+      // Basic cleanup in case of minor AI formatting issues
+      const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+      const parsed = JSON.parse(cleanedText);
       return parsed.items || [];
     } catch (e) {
       console.error(`Failed to parse ${category} news:`, e);
+      // If parsing fails, try to extract items array using regex as a fallback
+      try {
+        const match = response.text?.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+      } catch (innerError) {
+        console.error("Fallback parsing also failed:", innerError);
+      }
       return [];
     }
   };
