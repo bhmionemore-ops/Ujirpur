@@ -155,22 +155,22 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <!-- Meta Injected -->
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
-    <meta property="og:title" content="${escapedTitle}" />
-    <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="${escapedTitle}" />
+    <meta property="og:title" content="${escapedTitle}" />
+    <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="profile" />
     <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${escapedTitle}" />
-    <meta name="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
+    <meta name="twitter:title" content="${escapedTitle}" />
+    <meta name="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:url" content="${escapedUrl}" />
     <link rel="canonical" href="${escapedUrl}" />
   `;
@@ -435,7 +435,8 @@ async function startServer() {
     
     const host = req.get('host')?.split(':')[0];
     const forwardedProto = req.headers['x-forwarded-proto'] as string;
-    const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+    // Force HTTPS for social sharing links as required by platforms
+    const protocol = 'https';
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const fullUrl = `${baseUrl}${req.originalUrl}`;
 
@@ -472,7 +473,8 @@ async function startServer() {
     
     const host = req.get('host')?.split(':')[0];
     const forwardedProto = req.headers['x-forwarded-proto'] as string;
-    const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+    // Force HTTPS for social sharing links as required by platforms
+    const protocol = 'https';
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const fullUrl = `${baseUrl}${req.originalUrl}`;
     
