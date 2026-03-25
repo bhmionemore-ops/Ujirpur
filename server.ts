@@ -433,10 +433,13 @@ async function startServer() {
     }
     
     if (newsItem) {
-      const host = req.get('host');
+      const host = req.get('host')?.split(':')[0]; // Strip port if present
       const forwardedProto = req.headers['x-forwarded-proto'] as string;
-      const protocol = forwardedProto || (req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol);
-      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+      
+      // Auto-detect base URL with a reliable fallback
+      const detectedBaseUrl = `${protocol}://${host}`;
+      const baseUrl = process.env.APP_URL || detectedBaseUrl;
       const fullUrl = `${baseUrl}${req.originalUrl}`;
 
       console.log(`[MetaTags] Injecting tags for news: ${newsItem.title}, URL: ${fullUrl}, Protocol: ${protocol}, Host: ${host}`);
@@ -466,10 +469,13 @@ async function startServer() {
     }
     
     if (profile) {
-      const host = req.get('host');
+      const host = req.get('host')?.split(':')[0]; // Strip port if present
       const forwardedProto = req.headers['x-forwarded-proto'] as string;
-      const protocol = forwardedProto || (req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol);
-      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const protocol = forwardedProto || (host?.includes('.run.app') ? 'https' : req.protocol);
+      
+      // Auto-detect base URL with a reliable fallback
+      const detectedBaseUrl = `${protocol}://${host}`;
+      const baseUrl = process.env.APP_URL || detectedBaseUrl;
       const fullUrl = `${baseUrl}${req.originalUrl}`;
       
       // Use proxy URL for Base64 images to satisfy social media crawlers
