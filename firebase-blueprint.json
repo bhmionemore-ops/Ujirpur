@@ -100,11 +100,11 @@
       "properties": {
         "date": { "type": "string", "format": "date" },
         "local": { "type": "array", "items": { "$ref": "news_item" } },
-        "westBengal": { "type": "array", "items": { "$ref": "news_item" } },
-        "india": { "type": "array", "items": { "$ref": "news_item" } },
+        "fbTrends": { "type": "array", "items": { "$ref": "news_item" } },
+        "igTrends": { "type": "array", "items": { "$ref": "news_item" } },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["date", "local", "westBengal", "india", "updatedAt"]
+      "required": ["date", "local", "fbTrends", "igTrends", "updatedAt"]
     },
     "news_item": {
       "title": "News Item",

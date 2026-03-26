@@ -28,7 +28,13 @@ service cloud.firestore {
     // Fields: fromName, toInfluencerId, toInfluencerName, message, timestamp, toUid, fromUid
     //
     // Collection: news
-    // Fields: date, local, westBengal, india, updatedAt
+    // Document ID: date string (YYYY-MM-DD)
+    // Fields:
+    //   - date: string (required) - The date of the news
+    //   - local: list (required) - Local news items
+    //   - fbTrends: list (required) - Facebook trends
+    //   - igTrends: list (required) - Instagram trends
+    //   - updatedAt: string (required) - ISO timestamp
     //
     // ===============================================================
 
@@ -58,7 +64,8 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && (
         isServerAdmin() ||
-        request.auth.token.admin == true
+        request.auth.token.admin == true ||
+        (request.auth.token.email == "okbgmi611@gmail.com" && request.auth.token.email_verified == true)
       );
     }
 
@@ -130,7 +137,8 @@ service cloud.firestore {
              data.date is string &&
              data.local is list &&
              data.fbTrends is list &&
-             data.igTrends is list;
+             data.igTrends is list &&
+             data.updatedAt is string;
     }
 
     // ===============================================================
@@ -195,7 +203,7 @@ service cloud.firestore {
       // Allow creation by anyone if it's valid news data for that specific day
       // This allows the first visitor of the day to trigger and save the AI generation
       allow create: if isValidNews(request.resource.data) && newsId == request.resource.data.date;
-      allow update: if isAuthenticated() && isValidNews(request.resource.data);
+      allow update: if (isAuthenticated() || isAdmin()) && isValidNews(request.resource.data);
       allow delete: if isAdmin();
     }
 

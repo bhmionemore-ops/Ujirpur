@@ -3,7 +3,7 @@ import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Fa
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { fetchLiveNews } from '../services/gemini';
-import { db } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export const LiveNews = () => {
@@ -89,8 +89,12 @@ export const LiveNews = () => {
             console.log("News saved successfully");
           } catch (setErr: any) {
             console.error("Failed to save news to Firestore:", setErr);
-            // If we can't save it, we can still show it to the current user
-            // but we should warn them or log it
+            // Use our standard error handler for better diagnostics
+            try {
+              handleFirestoreError(setErr, OperationType.WRITE, `news/${today}`);
+            } catch (handledErr) {
+              // We already logged it, so we can just keep going to show the news to the user
+            }
           }
           setNews(newsData);
           setGenerating(false);
