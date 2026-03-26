@@ -1,9 +1,23 @@
 import { toast } from 'sonner';
 
 export const shareContent = async (title: string, text: string, url: string = window.location.href) => {
-  // Automatically convert private dev URLs to public shared URLs for social media
+  // Use APP_URL if set, otherwise use current URL
   let shareUrl = url;
-  if (shareUrl.includes('ais-dev-')) {
+  const configuredAppUrl = process.env.APP_URL;
+
+  // If we have a configured APP_URL, replace the current origin with it
+  if (configuredAppUrl && !shareUrl.startsWith(configuredAppUrl)) {
+    try {
+      const currentUrl = new URL(shareUrl);
+      const baseUrl = new URL(configuredAppUrl);
+      shareUrl = `${baseUrl.origin}${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+    } catch (e) {
+      console.error('Failed to construct share URL with APP_URL:', e);
+    }
+  }
+
+  // Fallback for internal dev URLs if no custom domain is configured
+  if (!configuredAppUrl && shareUrl.includes('ais-dev-')) {
     shareUrl = shareUrl.replace('ais-dev-', 'ais-pre-');
   }
 
