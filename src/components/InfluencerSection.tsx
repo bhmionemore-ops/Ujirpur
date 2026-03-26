@@ -14,12 +14,14 @@ import { useFirebase } from '../FirebaseContext';
 
 const getSocialIcon = (url: string) => {
   const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('instagram.com')) return <Instagram size={20} className="text-[#E4405F]" />;
-  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <Twitter size={20} className="text-[#1DA1F2]" />;
-  if (lowerUrl.includes('facebook.com')) return <Facebook size={20} className="text-[#1877F2]" />;
-  if (lowerUrl.includes('youtube.com')) return <Youtube size={20} className="text-[#FF0000]" />;
-  if (lowerUrl.includes('linkedin.com')) return <Linkedin size={20} className="text-[#0077B5]" />;
-  if (lowerUrl.includes('github.com')) return <Github size={20} className="text-[#181717]" />;
+  const iconSize = "20px";
+  
+  if (lowerUrl.includes('instagram.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/instagram.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(31%) sepia(87%) saturate(2853%) hue-rotate(326deg) brightness(95%) contrast(92%)' }} alt="Instagram" />;
+  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/x.svg" style={{ width: iconSize, height: iconSize }} alt="X" />;
+  if (lowerUrl.includes('facebook.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/facebook.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(33%) sepia(91%) saturate(1914%) hue-rotate(202deg) brightness(97%) contrast(94%)' }} alt="Facebook" />;
+  if (lowerUrl.includes('youtube.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/youtube.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(12%) sepia(100%) saturate(7483%) hue-rotate(359deg) brightness(95%) contrast(117%)' }} alt="YouTube" />;
+  if (lowerUrl.includes('linkedin.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(34%) sepia(98%) saturate(1471%) hue-rotate(180deg) brightness(92%) contrast(101%)' }} alt="LinkedIn" />;
+  if (lowerUrl.includes('github.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/github.svg" style={{ width: iconSize, height: iconSize }} alt="GitHub" />;
   return <Globe size={20} className="text-zinc-400" />;
 };
 

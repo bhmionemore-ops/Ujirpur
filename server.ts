@@ -108,28 +108,37 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       data.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`;
     }
 
-    // Format social media info for description
+    // Format social media info for description - using cleaner emojis for "real" feel
     const socialIcons: { [key: string]: string } = {
-      'instagram.com': '📸 Instagram',
-      'facebook.com': '📘 Facebook',
-      'twitter.com': '🐦 Twitter',
-      'x.com': '🐦 X',
-      'youtube.com': '📺 YouTube',
-      'linkedin.com': '💼 LinkedIn',
-      'github.com': '💻 GitHub',
-      'tiktok.com': '🎵 TikTok',
-      'pinterest.com': '📌 Pinterest',
-      'snapchat.com': '👻 Snapchat',
-      'twitch.tv': '🎮 Twitch',
-      'threads.net': '🧵 Threads'
+      'instagram.com': '📸',
+      'facebook.com': '🟦',
+      'twitter.com': '🐦',
+      'x.com': '🐦',
+      'youtube.com': '🟥',
+      'linkedin.com': '💼',
+      'github.com': '💻',
+      'tiktok.com': '🎵',
+      'pinterest.com': '📌',
+      'snapchat.com': '👻',
+      'twitch.tv': '🎮',
+      'threads.net': '🧵'
     };
 
+    const socialPlatforms = (data.socials || [])
+      .map((url: string) => {
+        const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
+        return match ? socialIcons[match] : '🌐';
+      })
+      .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i); // Unique platforms
+
+    const socialIconsStr = socialPlatforms.join(' ');
     const socialInfo = (data.socials || [])
       .map((url: string) => {
         const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
-        return match ? socialIcons[match] : '🌐 Social';
+        const name = match ? match.split('.')[0].charAt(0).toUpperCase() + match.split('.')[0].slice(1) : 'Social';
+        return match ? `${socialIcons[match]} ${name}` : '🌐 Social';
       })
-      .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i) // Unique platforms
+      .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
       .join(' • ');
 
     return {
@@ -137,7 +146,8 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
       rawAvatar: data.avatar, // Keep original for proxy
-      socialInfo: socialInfo || ''
+      socialInfo: socialInfo || '',
+      socialIconsStr: socialIconsStr || ''
     };
   } catch (error) {
     console.error(`[MetaTags] Error fetching profile for ID: ${id}:`, error);
@@ -563,9 +573,10 @@ async function startServer() {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
 
-      const bioText = profile.bio.length > 100 ? profile.bio.substring(0, 97) + "..." : profile.bio;
-      const title = `${profile.name} | ${bioText}`;
-      const description = `${profile.socialInfo ? `Connect: ${profile.socialInfo} | ` : ''}${profile.bio} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      const bioText = profile.bio.length > 60 ? profile.bio.substring(0, 57) + "..." : profile.bio;
+      // Put bio and social icons in the title so they are visible on mobile
+      const title = `${profile.name} ✅ | ${bioText} ${profile.socialIconsStr}`;
+      const description = `${profile.bio} | Connect: ${profile.socialInfo} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
       metadata = {
         title: title,
