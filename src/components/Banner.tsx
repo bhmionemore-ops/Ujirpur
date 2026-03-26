@@ -49,6 +49,26 @@ const SLIDES = [
   }
 ];
 
+const Swastika = ({ size = 16, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M12 12V4h8M12 12h8v8M12 12v8H4M12 12H4V4" />
+    <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const Banner = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -210,9 +230,12 @@ export const Banner = () => {
 
           <button 
             onClick={() => handleNavigation('/ponjika')}
-            className="group relative px-8 py-4 rounded-2xl bg-brand-50 text-brand-600 font-bold text-lg hover:bg-brand-100 hover:scale-105 transition-all flex items-center gap-3 border border-brand-200"
+            className="group relative px-8 py-4 rounded-2xl bg-brand-50 text-brand-600 font-bold text-lg hover:bg-brand-100 hover:scale-105 transition-all flex items-center gap-4 border border-brand-200 overflow-hidden"
           >
-            <Calendar size={20} />
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 border border-brand-500/30 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
+              <Swastika size={20} className="text-brand-600" />
+            </div>
             {t.nav.ponjika}
           </button>
 

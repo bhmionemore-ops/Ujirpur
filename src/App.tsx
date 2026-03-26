@@ -11,7 +11,27 @@ import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar } from 'lucide-react';
+
+const Swastika = ({ size = 16, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M12 12V4h8M12 12h8v8M12 12v8H4M12 12H4V4" />
+    <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
 
 import { Toaster } from 'sonner';
 
@@ -49,13 +69,19 @@ function AppContent() {
                 { to: '/', label: t.nav.news },
                 { to: '/bazar', label: t.nav.bazar },
                 { to: '/influencers', label: t.nav.influencers },
-                { to: '/ponjika', label: t.nav.ponjika },
+                { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
               ].map((link) => (
                 <Link 
                   key={link.to}
                   to={link.to} 
-                  className={`hover:text-brand-600 transition-all relative group py-2 ${location.pathname === link.to ? 'text-brand-600' : ''}`}
+                  className={`hover:text-brand-600 transition-all relative group py-2 flex items-center gap-2 ${location.pathname === link.to ? 'text-brand-600' : ''}`}
                 >
+                  {link.isPonjika && (
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute inset-0 border border-brand-500/30 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
+                      <Swastika size={14} className="text-brand-600" />
+                    </div>
+                  )}
                   {link.label}
                   <span className={`absolute bottom-0 left-0 h-0.5 bg-brand-600 transition-all duration-300 ${location.pathname === link.to ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
                 </Link>
@@ -143,16 +169,22 @@ function AppContent() {
               { to: '/', label: t.nav.news },
               { to: '/bazar', label: t.nav.bazar },
               { to: '/influencers', label: t.nav.influencers },
-              { to: '/ponjika', label: t.nav.ponjika },
+              { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
               <Link 
                 key={link.to}
                 to={link.to} 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${
                   location.pathname === link.to ? 'bg-brand-50 text-brand-600' : 'text-zinc-500 hover:bg-zinc-50'
                 }`}
               >
+                {link.isPonjika && (
+                  <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center relative">
+                    <div className="absolute inset-0 border border-brand-500/30 rounded-full animate-spin-slow" style={{ borderStyle: 'dashed' }} />
+                    <Swastika size={14} className="text-brand-600" />
+                  </div>
+                )}
                 {link.label}
               </Link>
             ))}

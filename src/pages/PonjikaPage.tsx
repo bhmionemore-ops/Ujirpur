@@ -11,6 +11,26 @@ import { Banner } from '../components/Banner';
 import { toast } from 'sonner';
 import { getBengaliDate, toBengaliNumber } from '../utils/bengaliDate';
 
+const Swastika = ({ size = 16, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M12 12V4h8M12 12h8v8M12 12v8H4M12 12H4V4" />
+    <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="8" r="1" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="16" r="1" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const PonjikaPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -132,9 +152,21 @@ export const PonjikaPage = () => {
     const daysInMonth = endOfMonth.getDate();
     const startDay = startOfMonth.getDay();
     
+    // Get Bengali month for the header
+    const firstDayBengali = getBengaliDate(startOfMonth);
+    const lastDayBengali = getBengaliDate(endOfMonth);
+    
+    const bengaliMonthHeader = firstDayBengali.month === lastDayBengali.month 
+      ? firstDayBengali.month 
+      : `${firstDayBengali.month}/${lastDayBengali.month}`;
+
+    const bengaliMonthHeaderEn = firstDayBengali.monthEn === lastDayBengali.monthEn 
+      ? firstDayBengali.monthEn 
+      : `${firstDayBengali.monthEn}/${lastDayBengali.monthEn}`;
+
     const days = [];
     for (let i = 0; i < startDay; i++) {
-      days.push(<div key={`empty-${i}`} className="h-12 md:h-16" />);
+      days.push(<div key={`empty-${i}`} className="h-14 md:h-20" />);
     }
     
     for (let i = 1; i <= daysInMonth; i++) {
@@ -143,19 +175,28 @@ export const PonjikaPage = () => {
       const isToday = i === currentDate.getDate();
       
       days.push(
-        <div 
+        <motion.div 
           key={i} 
-          className={`h-12 md:h-16 flex flex-col items-center justify-center rounded-xl border transition-all ${
+          whileHover={{ scale: 1.05, y: -5 }}
+          className={`h-14 md:h-20 flex flex-col items-center justify-center rounded-2xl border-2 transition-all cursor-default relative overflow-hidden ${
             isToday 
-              ? 'bg-brand-500 text-white border-brand-600 shadow-lg shadow-brand-500/20 scale-105 z-10' 
-              : 'bg-white border-zinc-100 hover:border-brand-200 hover:bg-brand-50/30'
+              ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white border-brand-400 shadow-[0_10px_20px_rgba(242,125,38,0.3)] z-10' 
+              : 'bg-white border-zinc-100 hover:border-brand-300 hover:shadow-xl shadow-sm'
           }`}
         >
-          <span className="text-xs md:text-sm font-black">{language === 'bn' ? toBengaliNumber(i) : i}</span>
-          <span className={`text-[8px] md:text-[10px] font-bold ${isToday ? 'text-white/80' : 'text-zinc-400'}`}>
+          {isToday && (
+            <div className="absolute -top-2 -right-2 w-8 h-8 bg-white/20 rounded-full blur-lg" />
+          )}
+          <span className="text-sm md:text-lg font-black leading-none mb-1">
+            {language === 'bn' ? toBengaliNumber(i) : i}
+          </span>
+          <span className={`text-[9px] md:text-[11px] font-bold ${isToday ? 'text-white/90' : 'text-brand-500/70'}`}>
             {language === 'bn' ? toBengaliNumber(bDate.day) : bDate.day}
           </span>
-        </div>
+          {!isToday && (
+            <div className="absolute bottom-1 right-1 w-1 h-1 rounded-full bg-zinc-100" />
+          )}
+        </motion.div>
       );
     }
 
@@ -164,28 +205,54 @@ export const PonjikaPage = () => {
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-      <div className="bg-white rounded-[3.5rem] p-8 md:p-12 border-2 border-zinc-100 shadow-xl shadow-brand-900/5">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-xl font-black text-zinc-900 flex items-center gap-4">
-            <Calendar className="text-brand-500" />
-            {currentDate.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-brand-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{language === 'bn' ? 'আজ' : 'Today'}</span>
+      <div className="bg-white rounded-[4rem] p-8 md:p-12 border-4 border-zinc-900 shadow-[20px_20px_0px_0px_rgba(242,125,38,0.1)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 via-brand-500 to-emerald-500" />
+        
+        <div className="flex flex-col gap-4 mb-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center border-2 border-brand-100 relative overflow-hidden">
+                <div className="absolute inset-0 border border-brand-500/10 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
+                <Swastika size={20} className="text-brand-500" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-zinc-900 tracking-tighter">
+                  {currentDate.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' })}
+                </h3>
+                <p className="text-sm font-bold text-brand-600 tracking-tight">
+                  {language === 'bn' 
+                    ? `${bengaliMonthHeader} ${toBengaliNumber(firstDayBengali.year)}` 
+                    : `${bengaliMonthHeaderEn} ${firstDayBengali.year}`}
+                </p>
+              </div>
+            </div>
+            <div className="hidden md:flex flex-col items-end">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-1">{language === 'bn' ? 'আজ' : 'Today'}</span>
+              <div className="px-4 py-2 bg-brand-500 text-white rounded-xl font-black text-xs shadow-lg shadow-brand-500/20">
+                {language === 'bn' ? toBengaliNumber(currentDate.getDate()) : currentDate.getDate()}
+              </div>
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-2 md:gap-4">
-          {weekDays.map(day => (
-            <div key={day} className="text-center text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4">
+
+        <div className="grid grid-cols-7 gap-3 md:gap-5">
+          {weekDays.map((day, idx) => (
+            <div key={day} className={`text-center text-[10px] font-black uppercase tracking-widest mb-4 ${idx === 0 ? 'text-rose-500' : 'text-zinc-400'}`}>
               {day}
             </div>
           ))}
           {days}
         </div>
-        <div className="mt-8 pt-8 border-t border-zinc-100 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-400">
-          <span>{language === 'bn' ? 'ইংরেজি তারিখ' : 'English Date'}</span>
-          <span>{language === 'bn' ? 'বাংলা তারিখ' : 'Bengali Date'}</span>
+
+        <div className="mt-10 pt-8 border-t-2 border-zinc-50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-zinc-200" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{language === 'bn' ? 'ইংরেজি' : 'English'}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-brand-500">{language === 'bn' ? 'বাংলা' : 'Bengali'}</span>
+            <div className="w-2 h-2 rounded-full bg-brand-500" />
+          </div>
         </div>
       </div>
     );
@@ -237,10 +304,12 @@ export const PonjikaPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-brand-50 text-brand-700 font-black text-xs uppercase tracking-widest mb-6 border border-brand-100 shadow-sm"
+              className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-brand-50 text-brand-700 font-black text-xs uppercase tracking-widest mb-8 border border-brand-100 shadow-sm relative overflow-hidden group"
             >
-              <Sparkles size={16} className="animate-pulse" />
-              {t.nav.ponjika}
+              <div className="absolute inset-0 border-2 border-brand-500/10 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
+              <Swastika size={18} className="text-brand-600 animate-pulse" />
+              <span className="relative z-10">{t.nav.ponjika}</span>
+              <Swastika size={18} className="text-brand-600 animate-pulse" />
             </motion.div>
             <h1 className="text-6xl md:text-9xl font-black text-zinc-900 mb-6 tracking-tighter leading-[0.8] uppercase">
               {t.ponjika?.title}
