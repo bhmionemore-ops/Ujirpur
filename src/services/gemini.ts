@@ -5,9 +5,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 export async function generateChatReply(message: string, history: { text: string; isBot: boolean }[], language: 'bn' | 'en' = 'en'): Promise<string> {
   const langName = language === 'bn' ? 'Bengali' : 'English';
   
-  const systemInstruction = `You are the AI assistant for the "Ujirpur Barnia Digital Hub" website.
+  const systemInstruction = `You are the AI assistant for the "Barnia Digital Hub" website.
   Website Info:
-  - Location: Ujirpur Barnia, Nadia, West Bengal, India.
+  - Location: Barnia, Nadia, West Bengal, India.
   - Features: Barnia Bazar (market prices), Influencer Network, and Collaboration Hub.
   - Contact Email: ujirpur.barnia6@gmail.com
   - Facebook: https://www.facebook.com/share/r/1HbN6N3EBa/
@@ -124,7 +124,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
 
   try {
     const [local, fbTrends, igTrends] = await Promise.all([
-      generateCategoryNews("Local News", "Ujirpur Barnia, Nadia, West Bengal"),
+      generateCategoryNews("Local News", "Barnia, Nadia, West Bengal"),
       generateCategoryNews("Facebook", "India and West Bengal", true),
       generateCategoryNews("Instagram", "India and West Bengal", true)
     ]);

@@ -695,7 +695,7 @@ export const InfluencerSection = () => {
                   <button 
                     onClick={() => {
                       const shareUrl = `${window.location.origin}/profile/${inf.id}`;
-                      shareContent(inf.name, `Check out ${inf.name} on Ujirpur Barnia Influencer Network: ${inf.bio}`, shareUrl);
+                      shareContent(inf.name, `Check out ${inf.name} on Barnia Influencer Network: ${inf.bio}`, shareUrl);
                     }}
                     className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
                   >

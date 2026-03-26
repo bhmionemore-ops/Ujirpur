@@ -50,7 +50,7 @@ export const translations = {
       ponjika: 'পঞ্জিকা',
     },
     banner: {
-      title: 'উজিরপুর বার্নিয়া ডিজিটাল হাব',
+      title: 'বার্নিয়া ডিজিটাল হাব',
       subtitle: 'নদীয়ার হৃদস্পন্দনের সাথে যুক্ত থাকুন। বাজার দর এবং স্থানীয় প্রতিভা - সব এক জায়গায়।',
       cta: 'বাজার দেখুন',
       influencer: 'ইনফ্লুয়েন্সার',
@@ -66,8 +66,8 @@ export const translations = {
     },
     news: {
       title: 'ভাইরাল ট্রেন্ড হাব',
-      subtitle: 'উজিরপুর বার্নিয়া নিউজ এবং ইনফ্লুয়েন্সারদের জন্য আজকের ভাইরাল টপিক ও টিপস।',
-      local: 'স্থানীয় সংবাদ (উজিরপুর বার্নিয়া)',
+      subtitle: 'বার্নিয়া নিউজ এবং ইনফ্লুয়েন্সারদের জন্য আজকের ভাইরাল টপিক ও টিপস।',
+      local: 'স্থানীয় সংবাদ (বার্নিয়া)',
       fbTrends: 'ফেসবুক ভাইরাল টিপস',
       igTrends: 'ইনস্টাগ্রাম ভাইরাল টিপস',
       source: 'সূত্র',
@@ -129,7 +129,7 @@ export const translations = {
       send: 'পাঠান',
     },
     footer: {
-      about: 'উজিরপুর বার্নিয়ার ডিজিটাল প্রাণকেন্দ্র। আমরা ক্রিয়েটরদের আমাদের সম্প্রদায়ের ভবিষ্যৎ গড়ে তোলার জন্য একটি প্ল্যাটফর্ম প্রদান করি।',
+      about: 'বার্নিয়ার ডিজিটাল প্রাণকেন্দ্র। আমরা ক্রিয়েটরদের আমাদের সম্প্রদায়ের ভবিষ্যৎ গড়ে তোলার জন্য একটি প্ল্যাটফর্ম প্রদান করি।',
       links: 'দ্রুত লিঙ্ক',
       contact: 'যোগাযোগ করুন',
       rights: 'সর্বস্বত্ব সংরক্ষিত।',
@@ -137,7 +137,7 @@ export const translations = {
     },
     whyJoin: {
       title: 'আমাদের সাথে কেন যুক্ত হবেন?',
-      subtitle: 'উজিরপুর বার্নিয়া ডিজিটাল হাবের অংশ হওয়ার সুবিধাগুলো জানুন।',
+      subtitle: 'বার্নিয়া ডিজিটাল হাবের অংশ হওয়ার সুবিধাগুলো জানুন।',
       influencers: {
         title: 'ইনফ্লুয়েন্সার হিসেবে',
         description: 'আপনার প্রতিভা সবার সামনে তুলে ধরুন, অন্যান্য ক্রিয়েটরদের সাথে সহযোগিতা করুন এবং আপনার ফলোয়ার বাড়ান।',
@@ -202,7 +202,7 @@ export const translations = {
         chatWith: 'অর্জুন দাসের সাথে চ্যাট করুন',
         online: 'অনলাইন',
         messages: [
-          { text: 'হাই! আমি আপনার প্রোফাইল দেখেছি। আপনি কি উজিরপুর স্থানীয় বাজার সম্পর্কে একটি ভিডিওতে সহযোগিতা করতে চান?', isMe: false },
+          { text: 'হাই! আমি আপনার প্রোফাইল দেখেছি। আপনি কি বার্নিয়া স্থানীয় বাজার সম্পর্কে একটি ভিডিওতে সহযোগিতা করতে চান?', isMe: false },
           { text: 'এটি দারুণ শোনাচ্ছে! আমি আগামী সপ্তাহে ওই এলাকা পরিদর্শনের পরিকল্পনা করছি।', isMe: true }
         ],
         campaigns: [
@@ -265,7 +265,7 @@ export const translations = {
       ponjika: 'Ponjika',
     },
     banner: {
-      title: 'Ujirpur Barnia Digital Hub',
+      title: 'Barnia Digital Hub',
       subtitle: 'Stay connected with the heartbeat of Nadia. Market prices, and local talent - all in one place.',
       cta: 'Explore Bazar',
       influencer: 'INFLUENCER',
@@ -282,7 +282,7 @@ export const translations = {
     news: {
       title: 'Viral Trend Hub',
       subtitle: 'Local news and daily viral topics with expert tips for influencers to grow.',
-      local: 'Local News (Ujirpur Barnia)',
+      local: 'Local News (Barnia)',
       fbTrends: 'Facebook Viral Tips',
       igTrends: 'Instagram Viral Tips',
       source: 'Source',
@@ -344,7 +344,7 @@ export const translations = {
       send: 'Send',
     },
     footer: {
-      about: 'The digital heart of Ujirpur Barnia. We provide a platform for creators to connect and build the future of our community.',
+      about: 'The digital heart of Barnia. We provide a platform for creators to connect and build the future of our community.',
       links: 'Quick Links',
       contact: 'Contact Us',
       rights: 'All rights reserved.',
@@ -352,7 +352,7 @@ export const translations = {
     },
     whyJoin: {
       title: 'Why Join Us?',
-      subtitle: 'Discover the benefits of being part of the Ujirpur Barnia Digital Hub.',
+      subtitle: 'Discover the benefits of being part of the Barnia Digital Hub.',
       influencers: {
         title: 'As an Influencer',
         description: 'Showcase your talent, collaborate with other creators, and grow your audience within the community.',
@@ -373,7 +373,7 @@ export const translations = {
         chatWith: 'Chat with Arjun Das',
         online: 'Online',
         messages: [
-          { text: 'Hey! I saw your profile. Would you like to collaborate on a video about the Ujirpur local market?', isMe: false },
+          { text: 'Hey! I saw your profile. Would you like to collaborate on a video about the Barnia local market?', isMe: false },
           { text: 'That sounds amazing! I\'ve been planning to visit that area next week.', isMe: true }
         ],
         campaigns: [

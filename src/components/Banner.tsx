@@ -8,7 +8,7 @@ const SLIDES = [
   {
     url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=1920",
     title: "Live News Hub",
-    subtitle: "Stay updated with the latest news from Ujirpur Barnia and beyond.",
+    subtitle: "Stay updated with the latest news from Barnia and beyond.",
     path: "/",
     icon: <Newspaper size={20} />,
     labelKey: 'news'

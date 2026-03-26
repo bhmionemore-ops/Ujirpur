@@ -142,7 +142,7 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       .join(' • ');
 
     return {
-      name: data.name || "Ujirpur Barnia Profile",
+      name: data.name || "Barnia Profile",
       bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
       rawAvatar: data.avatar, // Keep original for proxy
@@ -210,7 +210,7 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     
     const item = tabData[parseInt(index)];
     return {
-      title: item.title || "Ujirpur Barnia News",
+      title: item.title || "Barnia News",
       content: item.content || "Latest news from our community.",
       image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200"
     };
@@ -250,7 +250,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="profile" />
-    <meta property="og:site_name" content="Ujirpur Barnia Digital Hub" />
+    <meta property="og:site_name" content="Barnia Digital Hub" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
@@ -531,8 +531,8 @@ async function startServer() {
       image: newsItem.image,
       url: fullUrl
     } : {
-      title: "Latest News | Ujirpur Barnia community",
-      description: "Stay updated with the latest news, events, and announcements from the Ujirpur Barnia community.",
+      title: "Latest News | Barnia community",
+      description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
       image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200&h=630",
       url: fullUrl
     };
@@ -576,7 +576,7 @@ async function startServer() {
       const bioText = profile.bio.length > 60 ? profile.bio.substring(0, 57) + "..." : profile.bio;
       // Put bio and social icons in the title so they are visible on mobile
       const title = `${profile.name} ✅ | ${bioText} ${profile.socialIconsStr}`;
-      const description = `${profile.bio} | Connect: ${profile.socialInfo} | ✨ Join Ujirpur Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      const description = `${profile.bio} | Connect: ${profile.socialInfo} | ✨ Join Barnia Digital Hub!`.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
       metadata = {
         title: title,
@@ -586,7 +586,7 @@ async function startServer() {
       };
     } else {
       metadata = {
-        title: "Influencer Profile | Ujirpur Barnia Digital Hub",
+        title: "Influencer Profile | Barnia Digital Hub",
         description: "Explore professional influencer profiles and collaboration opportunities in our community network.",
         image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1200&h=630",
         url: fullUrl

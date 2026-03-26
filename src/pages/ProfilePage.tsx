@@ -199,7 +199,7 @@ export const ProfilePage = () => {
                         .filter((v, i, a) => a.indexOf(v) === i)
                         .join(' ');
                       
-                      const shareText = `${influencer.bio}\n\nConnect: ${platforms}\n\nCheck out ${influencer.name} on Ujirpur Barnia Influencer Network!`;
+                      const shareText = `${influencer.bio}\n\nConnect: ${platforms}\n\nCheck out ${influencer.name} on Barnia Influencer Network!`;
                       shareContent(`${influencer.name} ✅`, shareText, shareUrl);
                     }}
                     className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-100 text-zinc-600 hover:bg-brand-50 hover:text-brand-600 transition-all text-xs font-black uppercase tracking-widest"

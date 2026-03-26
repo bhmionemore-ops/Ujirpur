@@ -628,7 +628,7 @@ export const PonjikaPage = () => {
             ))}
           </div>
           <p className="text-zinc-400 font-black uppercase tracking-[0.8em] text-xs">Barnia Digital Ponjika</p>
-          <p className="text-zinc-300 font-bold text-[10px] mt-4">© 2026 Ujirpur Barnia Digital Hub. All Rights Reserved.</p>
+          <p className="text-zinc-300 font-bold text-[10px] mt-4">© 2026 Barnia Digital Hub. All Rights Reserved.</p>
         </div>
       </div>
 

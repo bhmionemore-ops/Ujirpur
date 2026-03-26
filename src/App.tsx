@@ -58,7 +58,7 @@ function AppContent() {
               <span className="text-white font-black text-2xl tracking-tighter">UB</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-600">Ujirpur Barnia</span>
+              <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-600">Barnia</span>
               <span className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
             </div>
           </Link>
@@ -223,7 +223,7 @@ function AppContent() {
                   <span className="text-white font-black text-2xl tracking-tighter">UB</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold tracking-tight text-xl leading-none">Ujirpur Barnia</span>
+                  <span className="font-bold tracking-tight text-xl leading-none">Barnia</span>
                   <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
                 </div>
               </div>
@@ -247,7 +247,7 @@ function AppContent() {
                   <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
                     <MapPin size={18} className="text-brand-500" />
                   </div>
-                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">Ujirpur Barnia, Nadia, WB, India</span>
+                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">Barnia, Nadia, WB, India</span>
                 </li>
                 <li className="flex items-start gap-4 group">
                   <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
@@ -293,7 +293,7 @@ function AppContent() {
 
           <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
-              © {new Date().getFullYear()} Ujirpur Barnia Nadia. {t.footer.rights}
+              © {new Date().getFullYear()} Barnia Nadia. {t.footer.rights}
             </div>
             <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
               <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
