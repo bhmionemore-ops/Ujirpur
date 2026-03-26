@@ -1,14 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BarniaBazar } from '../components/BarniaBazar';
 import { motion } from 'motion/react';
 import { Store, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { Banner } from '../components/Banner';
 
 export const BarniaBazarPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
+
+  useEffect(() => {
+    if (location.state?.scrollToContent) {
+      const element = document.getElementById('content');
+      if (element) {
+        const offset = 80;
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = element.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        const offsetPosition = elementPosition - offset;
+        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+      }
+    }
+  }, [location]);
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24">
@@ -23,7 +38,7 @@ export const BarniaBazarPage = () => {
           {language === 'bn' ? 'হোম পেজে ফিরে যান' : 'Back to Home'}
         </button>
 
-        <div className="mb-16">
+        <div id="content" className="mb-16">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
