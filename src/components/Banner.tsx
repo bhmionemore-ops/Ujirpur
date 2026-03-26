@@ -56,15 +56,51 @@ export const Banner = () => {
   const next = () => setCurrent((prev) => (prev + 1) % SLIDES.length);
   const prev = () => setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
 
+  const scrollToNews = () => {
+    const newsSection = document.getElementById('news');
+    if (newsSection) {
+      const offset = 80; // Account for header
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = newsSection.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    } else {
+      navigate('/');
+      setTimeout(() => {
+        const newsSectionAfterNav = document.getElementById('news');
+        if (newsSectionAfterNav) {
+          const offset = 80;
+          const bodyRect = document.body.getBoundingClientRect().top;
+          const elementRect = newsSectionAfterNav.getBoundingClientRect().top;
+          const elementPosition = elementRect - bodyRect;
+          const offsetPosition = elementPosition - offset;
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  };
+
   return (
     <div className="relative h-[600px] w-full overflow-hidden bg-zinc-950">
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '-100%', opacity: 0 }}
+          transition={{ 
+            duration: 0.8, 
+            ease: [0.4, 0, 0.2, 1],
+            opacity: { duration: 0.4 }
+          }}
           className="absolute inset-0"
         >
           <img
@@ -144,7 +180,7 @@ export const Banner = () => {
           className="flex flex-wrap justify-center gap-4 mt-12"
         >
           <button 
-            onClick={() => navigate('/')}
+            onClick={scrollToNews}
             className="group relative px-8 py-4 rounded-2xl bg-brand-600 text-white font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3"
           >
             <Newspaper size={20} />
