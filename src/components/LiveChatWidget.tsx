@@ -37,7 +37,7 @@ export const LiveChatWidget = () => {
         })) as any[];
         
         if (items.length === 0) {
-          setMessages([{ text: t.data.chat.welcome, isBot: true }]);
+          setMessages([{ text: t.chat.welcome, isBot: true }]);
         } else {
           setMessages(items);
         }
@@ -51,7 +51,7 @@ export const LiveChatWidget = () => {
       
       return () => unsub();
     }
-  }, [isOpen, t.data.chat.welcome]);
+  }, [isOpen, t.chat.welcome]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,10 +108,10 @@ export const LiveChatWidget = () => {
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-brand-500 rounded-full shadow-sm animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold tracking-tight">{t.data.chat.support}</h4>
+                  <h4 className="text-sm font-bold tracking-tight">{t.chat.support}</h4>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                    <p className="text-[10px] font-medium opacity-90 uppercase tracking-wider">{t.data.chat.assistant}</p>
+                    <p className="text-[10px] font-medium opacity-90 uppercase tracking-wider">{t.chat.assistant}</p>
                   </div>
                 </div>
               </div>

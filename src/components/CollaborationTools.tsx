@@ -63,7 +63,7 @@ export const CollaborationTools = () => {
       if (needsContact) {
         setTimeout(async () => {
           await addDoc(collection(db, 'messages'), {
-            text: t.data.chat.contactInfo,
+            text: t.chat.contactInfo,
             senderId: 'system',
             senderName: 'Assistant',
             createdAt: serverTimestamp()

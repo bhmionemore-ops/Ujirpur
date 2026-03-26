@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook } from 'lucide-react';
+import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
@@ -38,6 +38,14 @@ const SLIDES = [
     path: "/influencers",
     icon: <Zap size={20} />,
     labelKey: 'collab'
+  },
+  {
+    url: "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?auto=format&fit=crop&q=80&w=1920",
+    title: "Bengali Ponjika",
+    subtitle: "Check daily Tithi, Nakshatra, and special festivals in our digital Panjika.",
+    path: "/ponjika",
+    icon: <Calendar size={20} />,
+    labelKey: 'ponjika'
   }
 ];
 
@@ -154,7 +162,8 @@ export const Banner = () => {
               current === 0 ? 'লাইভ নিউজ হাব' : 
               current === 1 ? 'বার্নিয়া বাজার' : 
               current === 2 ? 'ইনফ্লুয়েন্সার নেটওয়ার্ক' :
-              'সহযোগিতা হাব'
+              current === 3 ? 'সহযোগিতা হাব' :
+              'বাংলা পঞ্জিকা'
             ) : SLIDES[current].title}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed text-3d">
@@ -162,7 +171,8 @@ export const Banner = () => {
               current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
               current === 1 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
               current === 2 ? 'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।' :
-              'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।'
+              current === 3 ? 'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।' :
+              'আমাদের ডিজিটাল পঞ্জিকায় প্রতিদিনের তিথি, নক্ষত্র এবং বিশেষ উৎসবগুলি দেখুন।'
             ) : SLIDES[current].subtitle}
           </p>
         </motion.div>
@@ -196,6 +206,14 @@ export const Banner = () => {
           >
             <Users size={20} />
             {t.banner.influencer}
+          </button>
+
+          <button 
+            onClick={() => handleNavigation('/ponjika')}
+            className="group relative px-8 py-4 rounded-2xl bg-brand-50 text-brand-600 font-bold text-lg hover:bg-brand-100 hover:scale-105 transition-all flex items-center gap-3 border border-brand-200"
+          >
+            <Calendar size={20} />
+            {t.nav.ponjika}
           </button>
 
           {/* Facebook Group Button with Glowing Animation */}

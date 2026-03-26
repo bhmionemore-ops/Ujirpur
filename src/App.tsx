@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
+import { PonjikaPage } from './pages/PonjikaPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ShopProfilePage } from './pages/ShopProfilePage';
 import { AuthModal } from './components/AuthModal';
@@ -48,6 +49,7 @@ function AppContent() {
                 { to: '/', label: t.nav.news },
                 { to: '/bazar', label: t.nav.bazar },
                 { to: '/influencers', label: t.nav.influencers },
+                { to: '/ponjika', label: t.nav.ponjika },
               ].map((link) => (
                 <Link 
                   key={link.to}
@@ -141,6 +143,7 @@ function AppContent() {
               { to: '/', label: t.nav.news },
               { to: '/bazar', label: t.nav.bazar },
               { to: '/influencers', label: t.nav.influencers },
+              { to: '/ponjika', label: t.nav.ponjika },
             ].map((link) => (
               <Link 
                 key={link.to}
@@ -164,6 +167,7 @@ function AppContent() {
           <Route path="/bazar" element={<BarniaBazarPage />} />
           <Route path="/profile/:id" element={<ProfilePage />} />
           <Route path="/shop/:id" element={<ShopProfilePage />} />
+          <Route path="/ponjika" element={<PonjikaPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>
@@ -235,6 +239,7 @@ function AppContent() {
                   { to: '/', label: t.nav.news },
                   { to: '/bazar', label: t.nav.bazar },
                   { to: '/influencers', label: t.nav.influencers },
+                  { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (
                   <Link 
                     key={link.to}

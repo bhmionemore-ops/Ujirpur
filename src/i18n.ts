@@ -2,11 +2,52 @@ export type Language = 'bn' | 'en';
 
 export const translations = {
   bn: {
+    chat: {
+      welcome: 'হ্যালো! আমরা আপনাকে আজ কীভাবে সাহায্য করতে পারি? এখানে পাঠানো যেকোনো বার্তা সরাসরি আমাদের অ্যাডমিনের কাছে যায়।',
+      contactInfo: 'আপনি সরাসরি আমাদের ইমেইল ujirpur.barnia6@gmail.com অথবা আমাদের সোশ্যাল মিডিয়া হ্যান্ডেলে যোগাযোগ করতে পারেন: ফেসবুক (https://www.facebook.com/share/r/1HbN6N3EBa/) এবং ইনস্টাগ্রাম (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5)।',
+      support: 'লাইভ সাপোর্ট',
+      assistant: 'স্বয়ংক্রিয় সহকারী',
+      delivered: 'বার্তা অ্যাডমিনের কাছে পৌঁছেছে!',
+      genericReply: 'আপনার বার্তার জন্য ধন্যবাদ! আমাদের অ্যাডমিন শীঘ্রই আপনার সাথে যোগাযোগ করবেন। ততক্ষণ পর্যন্ত, আমাদের বাজার এবং ইনফ্লুয়েন্সার বিভাগগুলি দেখতে পারেন।',
+    },
+    ponjika: {
+      title: 'বাংলা পঞ্জিকা',
+      subtitle: 'আজকের পূর্ণাঙ্গ পঞ্জিকা (সূর্য সিদ্ধান্ত ভিত্তিক) - তিথি, নক্ষত্র, যোগ এবং আরও অনেক কিছু।',
+      today: 'আজকের পঞ্জিকা',
+      date: 'তারিখ',
+      tithi: 'তিথি',
+      nakshatra: 'নক্ষত্র',
+      yoga: 'যোগ',
+      karana: 'করণ',
+      sunrise: 'সূর্যোদয়',
+      sunset: 'সূর্যাস্ত',
+      moonrise: 'চন্দ্রোদয়',
+      moonset: 'চন্দ্রাস্ত',
+      festivals: 'উৎসব ও বিশেষ দিন',
+      loading: 'পঞ্জিকা লোড হচ্ছে...',
+      auspicious: 'শুভ সময় (অমৃত যোগ)',
+      inauspicious: 'অশুভ সময় (বর্জ্যম/রাহু কাল)',
+      rashi: 'রাশি',
+      brahmaMuhurta: 'ব্রহ্ম মুহূর্ত',
+      abhijitMuhurta: 'অভিজিৎ মুহূর্ত',
+      barabela: 'বারবেলা',
+      kalabela: 'কালবেলা',
+      kalratri: 'কালরাত্রি',
+      month: 'মাস',
+      year: 'বঙ্গাব্দ',
+      day: 'বার',
+      monthlyHighlights: 'এই মাসের বিশেষ দিন',
+      horoscope: 'আজকের রাশিফল',
+      method: 'পদ্ধতি',
+      backToHome: 'হোম পেজে ফিরে যান',
+      shareLink: 'লিঙ্ক কপি করা হয়েছে!',
+    },
     nav: {
       bazar: 'বাজার',
       influencers: 'ইনফ্লুয়েন্সার',
       collab: 'সহযোগিতা',
       news: 'সংবাদ',
+      ponjika: 'পঞ্জিকা',
     },
     banner: {
       title: 'উজিরপুর বার্নিয়া ডিজিটাল হাব',
@@ -173,22 +214,55 @@ export const translations = {
           { title: 'নদীয়ার স্ট্রিট ফুড গাইড', partners: ['প্রিয়া', 'রাহুল'], progress: 30 }
         ]
       },
-      chat: {
-        welcome: 'হ্যালো! আমরা আপনাকে আজ কীভাবে সাহায্য করতে পারি? এখানে পাঠানো যেকোনো বার্তা সরাসরি আমাদের অ্যাডমিনের কাছে যায়।',
-        contactInfo: 'আপনি সরাসরি আমাদের ইমেইল ujirpur.barnia6@gmail.com অথবা আমাদের সোশ্যাল মিডিয়া হ্যান্ডেলে যোগাযোগ করতে পারেন: ফেসবুক (https://www.facebook.com/share/r/1HbN6N3EBa/) এবং ইনস্টাগ্রাম (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5)।',
-        support: 'লাইভ সাপোর্ট',
-        assistant: 'স্বয়ংক্রিয় সহকারী',
-        delivered: 'বার্তা অ্যাডমিনের কাছে পৌঁছেছে!',
-        genericReply: 'আপনার বার্তার জন্য ধন্যবাদ! আমাদের অ্যাডমিন শীঘ্রই আপনার সাথে যোগাযোগ করবেন। ততক্ষণ পর্যন্ত, আমাদের বাজার এবং ইনফ্লুয়েন্সার বিভাগগুলি দেখতে পারেন।',
-      }
-    }
+    },
   },
   en: {
+    chat: {
+      welcome: 'Hello! How can we help you today? Any messages sent here go directly to our admin.',
+      contactInfo: 'You can contact us directly at ujirpur.barnia6@gmail.com or via our social media: Facebook (https://www.facebook.com/share/r/1HbN6N3EBa/) and Instagram (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5).',
+      support: 'Live Support',
+      assistant: 'Automated Assistant',
+      delivered: 'Message delivered to admin!',
+      genericReply: 'Thank you for your message! Our admin will get back to you shortly. In the meantime, feel free to explore our Bazar and Influencer sections.',
+    },
+    ponjika: {
+      title: 'Bengali Ponjika',
+      subtitle: 'Complete daily Panjika (Surya Siddhanta based) - Tithi, Nakshatra, Yoga, and more.',
+      today: 'Today\'s Ponjika',
+      date: 'Date',
+      tithi: 'Tithi',
+      nakshatra: 'Nakshatra',
+      yoga: 'Yoga',
+      karana: 'Karana',
+      sunrise: 'Sunrise',
+      sunset: 'Sunset',
+      moonrise: 'Moonrise',
+      moonset: 'Moonset',
+      festivals: 'Festivals & Special Days',
+      loading: 'Loading Ponjika...',
+      auspicious: 'Auspicious Times (Amrita Yoga)',
+      inauspicious: 'Inauspicious Times (Varjyam/Rahu Kaal)',
+      rashi: 'Zodiac (Rashi)',
+      brahmaMuhurta: 'Brahma Muhurta',
+      abhijitMuhurta: 'Abhijit Muhurta',
+      barabela: 'Barabela',
+      kalabela: 'Kalabela',
+      kalratri: 'Kalratri',
+      month: 'Month',
+      year: 'Bengali Year',
+      day: 'Day',
+      monthlyHighlights: 'Monthly Highlights',
+      horoscope: 'Daily Horoscope',
+      method: 'Method',
+      backToHome: 'Back to Home',
+      shareLink: 'Link copied to clipboard!',
+    },
     nav: {
       bazar: 'Bazar',
       influencers: 'Influencers',
       collab: 'Collaborate',
       news: 'News',
+      ponjika: 'Ponjika',
     },
     banner: {
       title: 'Ujirpur Barnia Digital Hub',
@@ -311,14 +385,6 @@ export const translations = {
           { title: 'Nadia Street Food Guide', partners: ['Priya', 'Rahul'], progress: 30 }
         ]
       },
-      chat: {
-        welcome: 'Hello! How can we help you today? Any messages sent here go directly to our admin.',
-        contactInfo: 'You can contact us directly at ujirpur.barnia6@gmail.com or via our social media: Facebook (https://www.facebook.com/share/r/1HbN6N3EBa/) and Instagram (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5).',
-        support: 'Live Support',
-        assistant: 'Automated Assistant',
-        delivered: 'Message delivered to admin!',
-        genericReply: 'Thank you for your message! Our admin will get back to you shortly. In the meantime, feel free to explore our Bazar and Influencer sections.',
-      }
-    }
+    },
   }
 };
