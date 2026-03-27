@@ -25,10 +25,16 @@ const Swastika = ({ size = 16, className = "" }) => (
 import { LiveNews } from '../components/LiveNews';
 import { Banner } from '../components/Banner';
 import { useLanguage } from '../LanguageContext';
+import { useTracking } from '../TrackingContext';
 
 export const Home = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const { logEvent } = useTracking();
+
+  React.useEffect(() => {
+    logEvent('view_home');
+  }, []);
 
   return (
     <div className="space-y-12 pb-20">
@@ -149,6 +155,7 @@ export const Home = () => {
                 href="https://www.facebook.com/groups/barniabazar/"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => logEvent('click_facebook_group')}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative inline-flex items-center justify-center p-[4px] overflow-hidden rounded-2xl group shadow-xl shadow-brand-500/20"

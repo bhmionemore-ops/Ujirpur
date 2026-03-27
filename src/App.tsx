@@ -9,13 +9,14 @@ import { ShopProfilePage } from './pages/ShopProfilePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { LogoFixerPage } from './pages/LogoFixerPage';
+import { AdminAnalytics } from './pages/AdminAnalytics';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
 import { InstallPrompt } from './components/InstallPrompt';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar, Activity } from 'lucide-react';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -38,10 +39,11 @@ const Swastika = ({ size = 16, className = "" }) => (
 );
 
 import { Toaster } from 'sonner';
+import { TrackingProvider, useTracking } from './TrackingContext';
 
 function AppContent() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, signOut, isAuthModalOpen, setAuthModalOpen } = useFirebase();
+  const { user, signOut, isAuthModalOpen, setAuthModalOpen, isAdmin } = useFirebase();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -138,6 +140,16 @@ function AppContent() {
                         <p className="text-xs font-bold text-zinc-900 truncate">{user.displayName || 'User'}</p>
                         <p className="text-[10px] text-zinc-500 truncate font-medium">{user.email}</p>
                       </div>
+                      {isAdmin && (
+                        <Link 
+                          to="/admin/analytics"
+                          onClick={() => setShowUserMenu(false)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors"
+                        >
+                          <Activity size={16} className="text-brand-600" />
+                          Analytics
+                        </Link>
+                      )}
                       <button 
                         onClick={() => {
                           signOut();
@@ -212,6 +224,7 @@ function AppContent() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/logo-fixer" element={<LogoFixerPage />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>
@@ -327,7 +340,9 @@ function AppContent() {
 export default function App() {
   return (
     <Router>
-      <AppContent />
+      <TrackingProvider>
+        <AppContent />
+      </TrackingProvider>
     </Router>
   );
 }

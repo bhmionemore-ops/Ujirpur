@@ -3,6 +3,7 @@ import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
+import { useTracking } from '../TrackingContext';
 import { shareContent } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -28,6 +29,7 @@ interface Shop {
 export const BarniaBazar = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { logEvent } = useTracking();
   const { user, signIn, isAdmin, setAuthModalOpen } = useFirebase();
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +121,7 @@ export const BarniaBazar = () => {
   }, [shops]);
 
   useEffect(() => {
+    logEvent('view_bazar');
     const q = query(collection(db, 'shops'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
@@ -302,7 +305,10 @@ export const BarniaBazar = () => {
                 whileHover={{ y: -10 }}
                 className="group bg-white rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
               >
-                <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => setSelectedShop(shop)}>
+                <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => {
+                  setSelectedShop(shop);
+                  logEvent('view_shop', { shopId: shop.id, shopName: shop.name });
+                }}>
                   <img
                     src={shop.image}
                     alt={shop.name}
@@ -351,7 +357,10 @@ export const BarniaBazar = () => {
                   </div>
 
                   <button 
-                    onClick={() => navigate(`/shop/${shop.id}`)}
+                    onClick={() => {
+                      navigate(`/shop/${shop.id}`);
+                      logEvent('view_shop_profile', { shopId: shop.id, shopName: shop.name });
+                    }}
                     className="w-full py-3 mb-6 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-600 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
                     <ExternalLink size={14} />
@@ -670,6 +679,7 @@ export const BarniaBazar = () => {
                   <div className="flex gap-4 mt-8">
                     <a 
                       href={`tel:${selectedShop.phone}`}
+                      onClick={() => logEvent('call_shop', { shopId: selectedShop.id, shopName: selectedShop.name })}
                       className="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
                     >
                       <Phone size={20} />

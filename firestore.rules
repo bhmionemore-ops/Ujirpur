@@ -207,6 +207,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /visitor_sessions/{sessionId} {
+      // Allow anyone to create a session
+      allow create: if true; 
+      // Allow updates to the same session (lastSeen, duration, events)
+      allow update: if true; 
+      // Only admins can read all sessions
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /system/{docId} {
       allow read: if true; // Publicly viewable status
       allow write: if isAdmin();

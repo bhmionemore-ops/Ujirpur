@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
+import { useTracking } from '../TrackingContext';
 import { Banner } from '../components/Banner';
 import { toast } from 'sonner';
 import { getBengaliDate, toBengaliNumber } from '../utils/bengaliDate';
@@ -35,10 +36,12 @@ export const PonjikaPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
+  const { logEvent } = useTracking();
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
+    logEvent('view_ponjika');
     const timer = setTimeout(() => setLoading(false), 1200);
     
     // Update date every minute to handle day change
@@ -68,6 +71,7 @@ export const PonjikaPage = () => {
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
+    logEvent('share_ponjika');
     toast.success(t.ponjika?.shareLink);
   };
 

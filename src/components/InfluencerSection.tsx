@@ -11,6 +11,7 @@ import { shareContent } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
+import { useTracking } from '../TrackingContext';
 
 const getSocialIcon = (url: string) => {
   const lowerUrl = url.toLowerCase();
@@ -48,6 +49,7 @@ export const InfluencerSection = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
+  const { logEvent } = useTracking();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const influencers = userInfluencers;
@@ -322,6 +324,8 @@ export const InfluencerSection = () => {
         toUid: influencer.uid || null,
         fromUid: user?.uid || null
       });
+      
+      logEvent(`collab_request: to ${influencer.name}`);
       
       setRequestSentId(influencer.id);
       setCollabForm({ fromName: '', message: '' });

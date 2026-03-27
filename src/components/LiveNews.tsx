@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
+import { useTracking } from '../TrackingContext';
 import { fetchLiveNews } from '../services/gemini';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export const LiveNews = () => {
   const { t, language } = useLanguage();
+  const { logEvent } = useTracking();
   const [news, setNews] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -146,9 +148,10 @@ export const LiveNews = () => {
     return shareUrl;
   };
 
-  const copyToClipboard = (url: string) => {
+  const copyToClipboard = (url: string, item: any) => {
     navigator.clipboard.writeText(url);
     setCopied(true);
+    logEvent('share_news', { title: item.title, method: 'copy_link' });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -295,6 +298,7 @@ export const LiveNews = () => {
                         href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => logEvent('share_news', { title: item.title, method: 'facebook' })}
                         className="p-2 rounded-xl bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-all"
                         title={t.news.shareOnFacebook}
                       >
@@ -304,13 +308,14 @@ export const LiveNews = () => {
                         href={`https://wa.me/?text=${encodeURIComponent(item.title + ' ' + shareUrl)}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => logEvent('share_news', { title: item.title, method: 'whatsapp' })}
                         className="p-2 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all"
                         title={t.news.shareOnWhatsApp}
                       >
                         <MessageCircle size={14} />
                       </a>
                       <button 
-                        onClick={() => copyToClipboard(shareUrl)}
+                        onClick={() => copyToClipboard(shareUrl, item)}
                         className="p-2 rounded-xl bg-zinc-100 text-zinc-600 hover:bg-zinc-800 hover:text-white transition-all"
                         title={t.news.copyLink}
                       >
@@ -335,6 +340,7 @@ export const LiveNews = () => {
                     <button 
                       onClick={() => {
                         setSelectedItem({...item, index: i});
+                        logEvent('view_news_item', { title: item.title });
                         window.history.pushState({}, '', shareUrl);
                       }}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 text-white font-bold text-xs hover:bg-brand-500 transition-all"
@@ -416,14 +422,14 @@ export const LiveNews = () => {
                         WhatsApp
                       </a>
                       <button 
-                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index))}
+                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index), selectedItem)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E4405F]/10 text-[#E4405F] text-[10px] font-bold hover:bg-[#E4405F] hover:text-white transition-all"
                       >
                         <Instagram size={12} />
                         Instagram
                       </button>
                       <button 
-                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index))}
+                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index), selectedItem)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10px] font-bold hover:bg-zinc-800 hover:text-white transition-all"
                       >
                         {copied ? <Check size={12} className="text-green-600" /> : <Link size={12} />}

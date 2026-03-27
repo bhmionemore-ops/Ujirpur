@@ -117,6 +117,23 @@
         "date": { "type": "string" }
       },
       "required": ["title", "content", "source", "date"]
+    },
+    "visitor_session": {
+      "title": "Visitor Session",
+      "description": "A single visitor session tracking location and duration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "referrer": { "type": "string" },
+        "events": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "startTime", "lastSeen"]
     }
   },
   "firestore": {
@@ -151,6 +168,10 @@
     "/news/{newsId}": {
       "schema": "news",
       "description": "Daily news articles."
+    },
+    "/visitor_sessions/{sessionId}": {
+      "schema": "visitor_session",
+      "description": "Tracking of visitor sessions for analytics."
     }
   }
 }

@@ -5,10 +5,12 @@ import { useLanguage } from '../LanguageContext';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
+import { useTracking } from '../TrackingContext';
 
 export const CollaborationTools = () => {
   const { t, language } = useLanguage();
   const { user, signIn, setAuthModalOpen } = useFirebase();
+  const { logEvent } = useTracking();
   const [activeTab, setActiveTab] = useState<'messages' | 'planning' | 'projects'>('messages');
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -52,6 +54,8 @@ export const CollaborationTools = () => {
         senderName: user.displayName || 'User',
         createdAt: serverTimestamp()
       });
+
+      logEvent(`sent_message: ${messageText.substring(0, 20)}...`);
 
       // Automated reply logic
       const contactKeywords = [
@@ -124,7 +128,10 @@ export const CollaborationTools = () => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                logEvent(`view_tab: ${tab.id}`);
+              }}
               className={`flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all group ${
                 activeTab === tab.id 
                   ? 'bg-zinc-900 text-white shadow-xl shadow-zinc-900/20 scale-[1.02]' 
