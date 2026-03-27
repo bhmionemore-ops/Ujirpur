@@ -6,6 +6,8 @@ import { BarniaBazarPage } from './pages/BarniaBazarPage';
 import { PonjikaPage } from './pages/PonjikaPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ShopProfilePage } from './pages/ShopProfilePage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -200,6 +202,8 @@ function AppContent() {
           <Route path="/profile/:id" element={<ProfilePage />} />
           <Route path="/shop/:id" element={<ShopProfilePage />} />
           <Route path="/ponjika" element={<PonjikaPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>
@@ -296,8 +300,8 @@ function AppContent() {
               © {new Date().getFullYear()} Barnia Nadia. {t.footer.rights}
             </div>
             <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
