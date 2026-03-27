@@ -327,6 +327,29 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // SEO Files - MUST be at the very top to avoid being caught by catch-all routes
+  app.get("/robots.txt", async (req, res) => {
+    try {
+      console.log(`[SEO] Request for robots.txt from ${req.ip}`);
+      const content = await fs.readFile(path.resolve("robots.txt"), "utf-8");
+      res.status(200).set("Content-Type", "text/plain").send(content);
+    } catch (error) {
+      console.error("[SEO] Error serving robots.txt:", error);
+      res.status(404).send("robots.txt not found");
+    }
+  });
+
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      console.log(`[SEO] Request for sitemap.xml from ${req.ip}`);
+      const content = await fs.readFile(path.resolve("sitemap.xml"), "utf-8");
+      res.status(200).set("Content-Type", "application/xml").send(content);
+    } catch (error) {
+      console.error("[SEO] Error serving sitemap.xml:", error);
+      res.status(404).send("sitemap.xml not found");
+    }
+  });
+
   let firebaseConfig: any = null;
   try {
     const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
@@ -454,15 +477,6 @@ async function startServer() {
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  // SEO Files
-  app.get("/robots.txt", (req, res) => {
-    res.sendFile(path.resolve("robots.txt"));
-  });
-
-  app.get("/sitemap.xml", (req, res) => {
-    res.sendFile(path.resolve("sitemap.xml"));
   });
 
   // Load initial data
