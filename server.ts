@@ -229,11 +229,12 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string }) {
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
   const escapedImage = escapeHtml(metadata.image);
   const escapedUrl = escapeHtml(metadata.url);
+  const type = metadata.type || 'website';
 
   const metaTags = `
     <!-- Meta Injected -->
@@ -249,8 +250,10 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:title" content="${escapedTitle}" />
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
-    <meta property="og:type" content="profile" />
+    <meta property="og:type" content="${type}" />
     <meta property="og:site_name" content="Barnia Digital Hub" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="bn_BD" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
@@ -552,12 +555,14 @@ async function startServer() {
       title: newsItem.title,
       description: newsItem.content.substring(0, 200) + "...",
       image: newsItem.image,
-      url: fullUrl
+      url: fullUrl,
+      type: 'article'
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
       image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200&h=630",
-      url: fullUrl
+      url: fullUrl,
+      type: 'article'
     };
 
     console.log(`[MetaTags] Injecting tags for news: ${metadata.title}, URL: ${fullUrl}`);
@@ -605,14 +610,16 @@ async function startServer() {
         title: title,
         description: description,
         image: imageUrl,
-        url: fullUrl
+        url: fullUrl,
+        type: 'profile'
       };
     } else {
       metadata = {
         title: "Influencer Profile | Barnia Digital Hub",
         description: "Explore professional influencer profiles and collaboration opportunities in our community network.",
         image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1200&h=630",
-        url: fullUrl
+        url: fullUrl,
+        type: 'profile'
       };
     }
 
@@ -782,6 +789,21 @@ async function startServer() {
     app.get("*", async (req, res) => {
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
       html = await vite.transformIndexHtml(req.originalUrl, html);
+      
+      const host = req.get('host')?.split(':')[0];
+      const protocol = 'https';
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const fullUrl = `${baseUrl}${req.originalUrl}`;
+      
+      const metadata = {
+        title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
+        description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
+        image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        url: fullUrl,
+        type: 'website'
+      };
+      
+      html = await injectMetaTags(html, metadata);
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     });
 
@@ -794,7 +816,23 @@ async function startServer() {
     app.use(express.static("dist", { index: false }));
 
     app.get("*", async (req, res) => {
-      res.sendFile(path.resolve("dist", "index.html"));
+      let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+      
+      const host = req.get('host')?.split(':')[0];
+      const protocol = 'https';
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const fullUrl = `${baseUrl}${req.originalUrl}`;
+      
+      const metadata = {
+        title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
+        description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
+        image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        url: fullUrl,
+        type: 'website'
+      };
+      
+      html = await injectMetaTags(html, metadata);
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
     });
   }
 
