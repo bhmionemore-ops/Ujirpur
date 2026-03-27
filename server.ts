@@ -235,11 +235,13 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   const escapedImage = escapeHtml(metadata.image);
   const escapedUrl = escapeHtml(metadata.url);
   const type = metadata.type || 'website';
+  const updatedTime = new Date().toISOString();
 
   const metaTags = `
     <!-- Meta Injected -->
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta property="fb:app_id" content="966242223397117" />
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
@@ -254,12 +256,18 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:site_name" content="Barnia Digital Hub" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
+    <meta property="og:updated_time" content="${updatedTime}" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta property="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="${escapedImage}" />
+    <meta property="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
     <meta name="twitter:title" content="${escapedTitle}" />
+    <meta property="twitter:title" content="${escapedTitle}" />
     <meta name="twitter:description" content="${escapedDescription}" />
+    <meta property="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:url" content="${escapedUrl}" />
+    <meta property="twitter:url" content="${escapedUrl}" />
     <link rel="canonical" href="${escapedUrl}" />
   `;
 
