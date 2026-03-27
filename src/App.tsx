@@ -8,6 +8,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ShopProfilePage } from './pages/ShopProfilePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
+import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -204,6 +205,7 @@ function AppContent() {
           <Route path="/ponjika" element={<PonjikaPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/logo-fixer" element={<LogoFixerPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>
