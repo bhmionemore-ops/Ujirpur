@@ -108,6 +108,36 @@ export const InfluencerSection = () => {
   });
 
   useEffect(() => {
+    if (userInfluencers.length > 0) {
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      const structuredData = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": userInfluencers.map((inf, index) => ({
+          "@type": "ListItem",
+          "position": index + 1,
+          "item": {
+            "@type": "Person",
+            "name": inf.name,
+            "description": inf.bio,
+            "image": inf.avatar,
+            "sameAs": inf.socials
+          }
+        }))
+      };
+      script.text = JSON.stringify(structuredData);
+      document.head.appendChild(script);
+      return () => {
+        const existingScript = document.querySelector('script[type="application/ld+json"]');
+        if (existingScript && existingScript.textContent?.includes('Person')) {
+          document.head.removeChild(existingScript);
+        }
+      };
+    }
+  }, [userInfluencers]);
+
+  useEffect(() => {
     // Listen to influencers
     const qInf = query(collection(db, 'influencers'), orderBy('createdAt', 'desc'));
     const unsubInf = onSnapshot(qInf, (snapshot) => {

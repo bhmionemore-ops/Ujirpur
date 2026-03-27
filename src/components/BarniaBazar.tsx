@@ -84,6 +84,41 @@ export const BarniaBazar = () => {
   }, [showAddShop, user, myShop]);
 
   useEffect(() => {
+    if (shops.length > 0) {
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      const structuredData = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": shops.map((shop, index) => ({
+          "@type": "ListItem",
+          "position": index + 1,
+          "item": {
+            "@type": "LocalBusiness",
+            "name": shop.name,
+            "image": shop.image,
+            "telephone": shop.phone,
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": shop.location,
+              "addressRegion": "West Bengal",
+              "addressCountry": "IN"
+            }
+          }
+        }))
+      };
+      script.text = JSON.stringify(structuredData);
+      document.head.appendChild(script);
+      return () => {
+        const existingScript = document.querySelector('script[type="application/ld+json"]');
+        if (existingScript && existingScript.textContent?.includes('LocalBusiness')) {
+          document.head.removeChild(existingScript);
+        }
+      };
+    }
+  }, [shops]);
+
+  useEffect(() => {
     const q = query(collection(db, 'shops'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
