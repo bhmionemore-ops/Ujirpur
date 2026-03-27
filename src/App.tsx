@@ -57,8 +57,13 @@ function AppContent() {
       <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-4 group cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-500 flex items-center justify-center shadow-[0_8px_20px_rgba(245,142,39,0.3)] border border-white/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-              <span className="text-white font-black text-2xl tracking-tighter">UB</span>
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(245,142,39,0.3)] border border-white/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+              <img 
+                src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                alt="Barnia Logo" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-600">Barnia</span>
@@ -225,8 +230,13 @@ function AppContent() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-16 mb-20">
             <div className="md:col-span-5">
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-500 flex items-center justify-center shadow-lg border border-white/10">
-                  <span className="text-white font-black text-2xl tracking-tighter">UB</span>
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg border border-white/10">
+                  <img 
+                    src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                    alt="Barnia Logo" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold tracking-tight text-xl leading-none">Barnia</span>
