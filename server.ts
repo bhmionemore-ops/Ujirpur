@@ -798,7 +798,7 @@ async function startServer() {
       const metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
         description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
-        image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'website'
       };
@@ -826,7 +826,7 @@ async function startServer() {
       const metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
         description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
-        image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'website'
       };
