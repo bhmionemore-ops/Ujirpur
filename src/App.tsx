@@ -12,6 +12,7 @@ import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
+import { InstallPrompt } from './components/InstallPrompt';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
 import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar } from 'lucide-react';
@@ -218,6 +219,7 @@ function AppContent() {
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
       <LiveChatWidget />
+      <InstallPrompt />
       <Toaster position="top-center" richColors />
 
       {/* Footer */}

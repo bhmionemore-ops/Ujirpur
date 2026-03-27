@@ -3,29 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ujirpur Barnia Digital Hub | Community Platform</title>
-    <meta name="description" content="Ujirpur Barnia Digital Hub - Market prices at Barnia Bazar, and influencer collaboration in Ujirpur, Barnia, Nadia, West Bengal." />
-    <meta name="keywords" content="ujirpur, uzirpur, barnia, barnia-bazar, Nadia, West Bengal, digital hub, Barnia market" />
+    <title>Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika</title>
+    <meta name="description" content="Barnia Digital Hub - The official community platform for Barnia, Ujirpur, Nadia. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika." />
+    <meta name="keywords" content="barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f58e27" />
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Ujirpur Barnia Digital Hub | Community Platform" />
-    <meta property="og:description" content="Market prices at Barnia Bazar, and influencer collaboration in Ujirpur, Barnia, Nadia, West Bengal." />
-    <meta property="og:image" content="https://picsum.photos/seed/barnia-hub/1200/630" />
+    <meta property="og:title" content="Barnia Digital Hub | Community Platform for Barnia & Ujirpur" />
+    <meta property="og:description" content="Connect with the heartbeat of Nadia. Daily market prices at Barnia Bazar, local influencers, and Bengali Ponjika." />
+    <meta property="og:image" content="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Ujirpur Barnia Digital Hub | Community Platform" />
-    <meta property="twitter:description" content="Market prices at Barnia Bazar, and influencer collaboration in Ujirpur, Barnia, Nadia, West Bengal." />
-    <meta property="twitter:image" content="https://picsum.photos/seed/barnia-hub/1200/630" />
+    <meta property="twitter:title" content="Barnia Digital Hub | Barnia Bazar & Influencers" />
+    <meta property="twitter:description" content="The official community platform for Barnia, Ujirpur, Nadia. Market prices, influencers, and more." />
+    <meta property="twitter:image" content="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Ujirpur Barnia Digital Hub",
-        "description": "Community platform for Ujirpur Barnia Nadia, West Bengal.",
-        "keywords": "ujirpur, uzirpur, barnia, barnia-bazar, Nadia"
+        "@type": "CommunityHub",
+        "name": "Barnia Digital Hub",
+        "alternateName": "Barnia Bazar Hub",
+        "description": "The official community platform for Barnia, Ujirpur, Nadia, West Bengal.",
+        "url": "https://barnia.in",
+        "logo": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Barnia",
+          "addressRegion": "Nadia, West Bengal",
+          "addressCountry": "IN"
+        },
+        "keywords": "barnia, ujirpur, barnia bazar, nadia, west bengal, influencer, market prices"
+      }
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
       }
     </script>
   </head>

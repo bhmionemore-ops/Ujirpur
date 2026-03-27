@@ -162,6 +162,24 @@ export const Home = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Hidden SEO Keywords Section */}
+        <div className="sr-only" aria-hidden="true">
+          <h2>Barnia Digital Hub - Community Platform for Nadia</h2>
+          <p>
+            Welcome to the official digital hub for Barnia, Ujirpur, and the surrounding areas in Nadia, West Bengal. 
+            Our platform is designed to connect the local community through Barnia Bazar market prices, 
+            local influencer collaborations, and daily Bengali Ponjika updates.
+          </p>
+          <ul>
+            <li>Barnia Bazar Daily Market Prices</li>
+            <li>Ujirpur Community Updates</li>
+            <li>Nadia Influencer Network</li>
+            <li>Bengali Ponjika and Festivals</li>
+            <li>Thatta Local News</li>
+            <li>Barnia Digital Hub Official Website</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

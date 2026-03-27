@@ -456,6 +456,15 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // SEO Files
+  app.get("/robots.txt", (req, res) => {
+    res.sendFile(path.resolve("robots.txt"));
+  });
+
+  app.get("/sitemap.xml", (req, res) => {
+    res.sendFile(path.resolve("sitemap.xml"));
+  });
+
   // Load initial data
   let localDb = await loadData();
 
@@ -594,6 +603,43 @@ async function startServer() {
     }
 
     console.log(`[MetaTags] Injecting tags for profile: ${metadata.title}, URL: ${fullUrl}`);
+    html = await injectMetaTags(html, metadata);
+    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+  });
+
+  // Generic Meta Tag Injection for other routes
+  app.get(["/bazar", "/influencers", "/ponjika"], async (req, res) => {
+    let html: string;
+    if (process.env.NODE_ENV !== "production" && vite) {
+      html = await fs.readFile(path.resolve("index.html"), "utf-8");
+      html = await vite.transformIndexHtml(req.originalUrl, html);
+    } else {
+      html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+    }
+
+    const host = req.get('host')?.split(':')[0];
+    const protocol = 'https';
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const fullUrl = `${baseUrl}${req.originalUrl}`;
+
+    let metadata = {
+      title: "Barnia Digital Hub | Community Platform",
+      description: "Connect with Barnia, Ujirpur, and Nadia. Check Barnia Bazar market prices and local influencers.",
+      image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+      url: fullUrl
+    };
+
+    if (req.originalUrl.includes("/bazar")) {
+      metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
+      metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
+    } else if (req.originalUrl.includes("/influencers")) {
+      metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
+      metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
+    } else if (req.originalUrl.includes("/ponjika")) {
+      metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
+      metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
+    }
+
     html = await injectMetaTags(html, metadata);
     res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
