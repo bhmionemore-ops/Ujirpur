@@ -10,7 +10,7 @@ import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
 import { Banner } from '../components/Banner';
 import { toast } from 'sonner';
-import { getBengaliDate, toBengaliNumber } from '../utils/bengaliDate';
+import { getBengaliDate, toBengaliNumber, getAlmanacData } from '../utils/bengaliDate';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -76,6 +76,7 @@ export const PonjikaPage = () => {
   };
 
   const bDate = getBengaliDate(currentDate);
+  const almanac = getAlmanacData(currentDate);
 
   // Comprehensive Mock data for Ponjika
   const ponjikaData = {
@@ -84,15 +85,15 @@ export const PonjikaPage = () => {
     day: language === 'bn' ? bDate.dayName : bDate.dayNameEn,
     month: language === 'bn' ? bDate.month : bDate.monthEn,
     year: language === 'bn' ? toBengaliNumber(bDate.year) : bDate.year.toString(),
-    tithi: language === 'bn' ? 'শুক্লা অষ্টমী (সকাল ০৮:৩৪ পর্যন্ত), তারপর নবমী' : 'Shukla Ashtami (until 08:34 AM), then Navami',
-    nakshatra: language === 'bn' ? 'আদ্রা (সকাল ০৭:৪৪ পর্যন্ত), তারপর পুনর্বসু' : 'Ardra (until 07:44 AM), then Punarvasu',
-    yoga: language === 'bn' ? 'সৌভাগ্য' : 'Saubhagya',
-    karana: language === 'bn' ? 'কৌলব' : 'Kaulava',
-    rashi: language === 'bn' ? 'মিথুন' : 'Mithuna (Gemini)',
-    sunrise: '05:45 AM',
-    sunset: '05:55 PM',
-    moonrise: '11:45 AM',
-    moonset: '01:30 AM',
+    tithi: language === 'bn' ? almanac.tithi : almanac.tithiEn,
+    nakshatra: language === 'bn' ? almanac.nakshatra : almanac.nakshatraEn,
+    yoga: language === 'bn' ? almanac.yoga : almanac.yogaEn,
+    karana: language === 'bn' ? almanac.karana : almanac.karanaEn,
+    rashi: language === 'bn' ? almanac.rashi : almanac.rashiEn,
+    sunrise: almanac.sunrise,
+    sunset: almanac.sunset,
+    moonrise: almanac.moonrise,
+    moonset: almanac.moonset,
     brahmaMuhurta: '04:55 AM - 05:45 AM',
     abhijitMuhurta: '11:48 AM - 12:38 PM',
     amritaYoga: language === 'bn' ? 'সকাল ০৬:৩০ - ০৮:১৫, রাত ১০:২০ - ১২:০০' : '06:30 AM - 08:15 AM, 10:20 PM - 12:00 AM',
@@ -121,7 +122,7 @@ export const PonjikaPage = () => {
       { id: 6, date: '20 Chaitra (April 3)', event: 'Good Friday' },
       { id: 7, date: '30 Chaitra (April 13)', event: 'Chaitra Sankranti & Neel Puja' },
     ],
-    zodiacPredictions: language === 'bn' ? [
+    zodiacPredictions: (language === 'bn' ? [
       { sign: 'মেষ', text: 'আজ আপনার জন্য শুভ দিন। নতুন কাজে হাত দিতে পারেন।' },
       { sign: 'বৃষ', text: 'আর্থিক লেনদেনে সতর্ক থাকুন। পরিবারের সাথে সময় কাটান।' },
       { sign: 'মিথুন', text: 'ব্যবসায় উন্নতির যোগ রয়েছে। স্বাস্থ্যের প্রতি নজর দিন।' },
@@ -147,7 +148,38 @@ export const PonjikaPage = () => {
       { sign: 'Capricorn', text: 'Concentration in work will increase. You will get blessings from elders.' },
       { sign: 'Aquarius', text: 'Unexpected gain may occur. New opportunities will come.' },
       { sign: 'Pisces', text: 'Be patient, success will come. Focus on religious work.' },
-    ]
+    ]).map((pred, i) => {
+      // Deterministic shuffle/variation based on date
+      const seed = currentDate.getDate() + currentDate.getMonth() + i;
+      const variations = language === 'bn' ? [
+        'আজ আপনার জন্য শুভ দিন।',
+        'আর্থিক লেনদেনে সতর্ক থাকুন।',
+        'ব্যবসায় উন্নতির যোগ রয়েছে।',
+        'মানসিক শান্তি বজায় থাকবে।',
+        'কর্মক্ষেত্রে সাফল্যের যোগ।',
+        'ভ্রমণের পরিকল্পনা হতে পারে।',
+        'বিদ্যার্থীদের জন্য শুভ সময়।',
+        'শরীরের প্রতি যত্ন নিন।',
+        'পুরানো বন্ধুর সাথে দেখা হতে পারে।',
+        'কাজে একাগ্রতা বাড়বে।',
+        'অপ্রত্যাশিত লাভ হতে পারে।',
+        'ধৈর্য ধরুন, সাফল্য আসবেই।'
+      ] : [
+        'A good day for you.',
+        'Be careful with financial transactions.',
+        'Possibility of business growth.',
+        'Mental peace will prevail.',
+        'Success in the workplace.',
+        'Travel plans may be made.',
+        'A good time for students.',
+        'Take care of your health.',
+        'You may meet an old friend.',
+        'Concentration in work will increase.',
+        'Unexpected gain may occur.',
+        'Be patient, success will come.'
+      ];
+      return { ...pred, text: variations[seed % variations.length] };
+    })
   };
 
   const CalendarComponent = () => {
@@ -182,7 +214,12 @@ export const PonjikaPage = () => {
         <motion.div 
           key={i} 
           whileHover={{ scale: 1.05, y: -5 }}
-          className={`h-14 md:h-20 flex flex-col items-center justify-center rounded-2xl border-2 transition-all cursor-default relative overflow-hidden ${
+          onClick={() => {
+            const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+            setCurrentDate(newDate);
+            logEvent('view_ponjika_date', { date: newDate.toISOString() });
+          }}
+          className={`h-14 md:h-20 flex flex-col items-center justify-center rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden ${
             isToday 
               ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white border-brand-400 shadow-[0_10px_20px_rgba(242,125,38,0.3)] z-10' 
               : 'bg-white border-zinc-100 hover:border-brand-300 hover:shadow-xl shadow-sm'
@@ -230,11 +267,34 @@ export const PonjikaPage = () => {
                 </p>
               </div>
             </div>
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-1">{language === 'bn' ? 'আজ' : 'Today'}</span>
-              <div className="px-4 py-2 bg-brand-500 text-white rounded-xl font-black text-xs shadow-lg shadow-brand-500/20">
-                {language === 'bn' ? toBengaliNumber(currentDate.getDate()) : currentDate.getDate()}
-              </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => {
+                  const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                  setCurrentDate(newDate);
+                }}
+                className="p-2 rounded-xl border-2 border-zinc-100 hover:border-brand-500 hover:text-brand-600 transition-all bg-white shadow-sm"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button 
+                onClick={() => {
+                  const newDate = new Date();
+                  setCurrentDate(newDate);
+                }}
+                className="px-3 py-2 rounded-xl border-2 border-zinc-100 hover:border-brand-500 hover:text-brand-600 transition-all bg-white shadow-sm text-[10px] font-black uppercase tracking-widest"
+              >
+                {language === 'bn' ? 'আজ' : 'Today'}
+              </button>
+              <button 
+                onClick={() => {
+                  const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+                  setCurrentDate(newDate);
+                }}
+                className="p-2 rounded-xl border-2 border-zinc-100 hover:border-brand-500 hover:text-brand-600 transition-all bg-white shadow-sm rotate-180"
+              >
+                <ChevronLeft size={18} />
+              </button>
             </div>
           </div>
         </div>
