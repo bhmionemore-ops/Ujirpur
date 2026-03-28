@@ -60,7 +60,8 @@ export const AdminAnalytics = () => {
     );
   }
 
-  const getDuration = (start: Timestamp, end: Timestamp) => {
+  const getDuration = (start: Timestamp | null, end: Timestamp | null) => {
+    if (!start || !end) return '0s';
     const diff = end.toMillis() - start.toMillis();
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -69,11 +70,25 @@ export const AdminAnalytics = () => {
   };
 
   const countries = sessions.reduce((acc, s) => {
-    acc[s.country] = (acc[s.country] || 0) + 1;
+    if (s.country) {
+      acc[s.country] = (acc[s.country] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
 
   const sortedCountries = Object.entries(countries).sort((a: any, b: any) => b[1] - a[1]);
+
+  const activeNowCount = sessions.filter(s => {
+    if (!s.lastSeen) return false;
+    return Date.now() - s.lastSeen.toMillis() < 60000;
+  }).length;
+
+  const avgDuration = sessions.length > 0 
+    ? getDuration(
+        Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.startTime?.toMillis() || 0), 0) / sessions.length),
+        Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.lastSeen?.toMillis() || 0), 0) / sessions.length)
+      )
+    : '0s';
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-32 pb-20 px-4">
@@ -90,9 +105,7 @@ export const AdminAnalytics = () => {
               </div>
               <div>
                 <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Active Now</p>
-                <p className="text-xl font-bold text-zinc-900">
-                  {sessions.filter(s => Date.now() - s.lastSeen.toMillis() < 60000).length}
-                </p>
+                <p className="text-xl font-bold text-zinc-900">{activeNowCount}</p>
               </div>
             </div>
           </div>
@@ -119,14 +132,7 @@ export const AdminAnalytics = () => {
               <Clock size={24} className="text-purple-600" />
             </div>
             <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Avg. Duration</p>
-            <p className="text-3xl font-black text-zinc-900">
-              {sessions.length > 0 
-                ? getDuration(
-                    Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.startTime as any).toMillis(), 0) / sessions.length),
-                    Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.lastSeen as any).toMillis(), 0) / sessions.length)
-                  )
-                : '0s'}
-            </p>
+            <p className="text-3xl font-black text-zinc-900">{avgDuration}</p>
           </div>
         </div>
 
