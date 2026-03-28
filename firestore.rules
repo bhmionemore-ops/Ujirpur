@@ -203,18 +203,22 @@ service cloud.firestore {
       // Allow creation by anyone if it's valid news data for that specific day
       // This allows the first visitor of the day to trigger and save the AI generation
       allow create: if isValidNews(request.resource.data) && newsId == request.resource.data.date;
-      allow update: if (isAuthenticated() || isAdmin()) && isValidNews(request.resource.data);
+      // Allow update by anyone for a short window (10 mins) to handle race conditions during initialization
+      // or if the user is an admin.
+      allow update: if isValidNews(request.resource.data) && (
+        isAdmin() || 
+        (request.time < resource.createTime + duration.value(10, 'm'))
+      );
       allow delete: if isAdmin();
     }
 
     match /visitor_sessions/{sessionId} {
-      // Allow anyone to create a session
-      allow create: if true; 
-      // Allow updates to the same session (lastSeen, duration, events)
-      allow update: if true; 
-      // Only admins can read all sessions
-      allow read: if isAdmin();
-      allow delete: if isAdmin();
+      // Allow anyone to create or update their own session
+      allow create, update: if true; 
+      // Allow anyone to read their own session if they have the ID
+      allow get: if true;
+      // Only admins can list all sessions or delete them
+      allow list, delete: if isAdmin();
     }
 
     match /system/{docId} {

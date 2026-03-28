@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { db } from './firebase';
-import { serverTimestamp, setDoc, doc, arrayUnion } from 'firebase/firestore';
+import { serverTimestamp, setDoc, doc, arrayUnion, getDoc } from 'firebase/firestore';
 import { useFirebase } from './FirebaseContext';
 
 interface TrackingContextType {
@@ -25,32 +25,58 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const initSession = async () => {
       try {
-        // Get IP/Location info
-        const geoResponse = await fetch('https://ipapi.co/json/');
-        const geoData = await geoResponse.json();
+        const docRef = doc(db, 'visitor_sessions', sessionId!);
+        const docSnap = await getDoc(docRef);
 
-        const sessionData = {
-          id: sessionId,
-          startTime: serverTimestamp(),
-          lastSeen: serverTimestamp(),
-          country: geoData.country_name || 'Unknown',
-          city: geoData.city || 'Unknown',
-          ip: geoData.ip || 'Unknown',
-          userAgent: navigator.userAgent,
-          referrer: document.referrer || 'Direct',
-          events: ['session_start'],
-          uid: user?.uid || null,
-          email: user?.email || null
-        };
+        if (!docSnap.exists()) {
+          // Get IP/Location info
+          try {
+            const geoResponse = await fetch('https://ipapi.co/json/');
+            const geoData = await geoResponse.json();
 
-        await setDoc(doc(db, 'visitor_sessions', sessionId!), sessionData);
+            const sessionData = {
+              id: sessionId,
+              startTime: serverTimestamp(),
+              lastSeen: serverTimestamp(),
+              country: geoData.country_name || 'Unknown',
+              city: geoData.city || 'Unknown',
+              ip: geoData.ip || 'Unknown',
+              userAgent: navigator.userAgent,
+              referrer: document.referrer || 'Direct',
+              events: ['session_start'],
+              uid: user?.uid || null,
+              email: user?.email || null
+            };
+
+            await setDoc(docRef, sessionData);
+          } catch (geoErr) {
+            // Fallback if geo info fails
+            await setDoc(docRef, {
+              id: sessionId,
+              startTime: serverTimestamp(),
+              lastSeen: serverTimestamp(),
+              userAgent: navigator.userAgent,
+              referrer: document.referrer || 'Direct',
+              events: ['session_start'],
+              uid: user?.uid || null,
+              email: user?.email || null
+            });
+          }
+        } else {
+          // Just update lastSeen
+          await setDoc(docRef, { lastSeen: serverTimestamp() }, { merge: true });
+        }
 
         // 2. Start heartbeat to track duration
         intervalRef.current = setInterval(async () => {
           if (sessionIdRef.current) {
-            await setDoc(doc(db, 'visitor_sessions', sessionIdRef.current), {
-              lastSeen: serverTimestamp()
-            }, { merge: true });
+            try {
+              await setDoc(doc(db, 'visitor_sessions', sessionIdRef.current), {
+                lastSeen: serverTimestamp()
+              }, { merge: true });
+            } catch (e) {
+              console.warn('Heartbeat failed:', e);
+            }
           }
         }, 30000); // Every 30 seconds
 
@@ -80,12 +106,16 @@ export const TrackingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (sessionIdRef.current) {
       try {
         const eventData = params ? `${eventName}: ${JSON.stringify(params)}` : eventName;
-        await setDoc(doc(db, 'visitor_sessions', sessionIdRef.current), {
+        const docRef = doc(db, 'visitor_sessions', sessionIdRef.current);
+        
+        await setDoc(docRef, {
           events: arrayUnion(eventData),
           lastSeen: serverTimestamp()
         }, { merge: true });
-      } catch (error) {
-        console.error('Error logging event:', error);
+      } catch (error: any) {
+        // If it fails because the document doesn't exist (even with merge: true, some SDK versions/configs might complain)
+        // or if it's a permission error, we log it but don't crash.
+        console.warn('Error logging event to Firestore:', error.message);
       }
     }
   };

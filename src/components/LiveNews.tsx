@@ -90,12 +90,19 @@ export const LiveNews = () => {
             await setDoc(newsDocRef, newsData);
             console.log("News saved successfully");
           } catch (setErr: any) {
-            console.error("Failed to save news to Firestore:", setErr);
-            // Use our standard error handler for better diagnostics
-            try {
-              handleFirestoreError(setErr, OperationType.WRITE, `news/${today}`);
-            } catch (handledErr) {
-              // We already logged it, so we can just keep going to show the news to the user
+            // If it fails with permission error, it might be because someone else 
+            // already created it (race condition). Let's check if it exists now.
+            const checkSnap = await getDoc(newsDocRef);
+            if (checkSnap.exists()) {
+              console.log("News was already saved by another user, using that instead.");
+              newsData = checkSnap.data();
+            } else {
+              console.error("Failed to save news to Firestore:", setErr);
+              try {
+                handleFirestoreError(setErr, OperationType.WRITE, `news/${today}`);
+              } catch (handledErr) {
+                // We already logged it, so we can just keep going to show the news to the user
+              }
             }
           }
           setNews(newsData);
