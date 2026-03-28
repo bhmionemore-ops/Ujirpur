@@ -96,17 +96,17 @@ service cloud.firestore {
     }
 
     function isValidInfluencer(data) {
-      return hasRequiredFields(['name', 'category', 'bio', 'uid']) &&
+      return hasRequiredFields(['name', 'category', 'bio']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.bio is string && data.bio.size() > 0 && data.bio.size() < 1000 &&
-             data.uid == request.auth.uid;
+             (isAdmin() || (hasRequiredFields(['uid']) && data.uid == request.auth.uid));
     }
 
     function isValidShop(data) {
-      return hasRequiredFields(['name', 'category', 'description', 'uid']) &&
+      return hasRequiredFields(['name', 'category', 'location', 'phone']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.description is string && data.description.size() > 0 && data.description.size() < 1000 &&
-             data.uid == request.auth.uid;
+             data.location is string && data.location.size() > 0 && data.location.size() < 500 &&
+             (isAdmin() || (hasRequiredFields(['uid']) && data.uid == request.auth.uid));
     }
 
     function isValidMessage(data) {

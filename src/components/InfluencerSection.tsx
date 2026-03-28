@@ -12,6 +12,8 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
 import { useTracking } from '../TrackingContext';
+import { seedDatabase } from '../utils/seedData';
+import { toast } from 'sonner';
 
 const getSocialIcon = (url: string) => {
   const lowerUrl = url.toLowerCase();
@@ -70,6 +72,7 @@ export const InfluencerSection = () => {
     social2: '',
     social3: ''
   });
+  const [seeding, setSeeding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -392,6 +395,20 @@ export const InfluencerSection = () => {
     }
   };
 
+  const handleSeed = async () => {
+    if (!isAdmin) return;
+    setSeeding(true);
+    try {
+      await seedDatabase();
+      toast.success(language === 'bn' ? 'সফলভাবে ডেটা যোগ করা হয়েছে!' : 'Data seeded successfully!');
+    } catch (err) {
+      toast.error(language === 'bn' ? 'ডেটা যোগ করতে সমস্যা হয়েছে' : 'Failed to seed data');
+      console.error(err);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="relative">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
@@ -420,6 +437,17 @@ export const InfluencerSection = () => {
                     {requests.length}
                   </span>
                 )}
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className="bg-zinc-100 text-zinc-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                title="Seed 30 Demo Profiles"
+              >
+                {seeding ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+                {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? 'সিড ডেটা' : 'Seed Data')}
               </button>
             )}
             <button
@@ -715,13 +743,26 @@ export const InfluencerSection = () => {
                   {language === 'bn' ? 'লগইন করে যোগ দিন' : 'Login to Join'}
                 </button>
               ) : (
-                <button 
-                  onClick={() => setShowForm(true)}
-                  className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3 mx-auto shadow-xl shadow-brand-600/20"
-                >
-                  <UserPlus size={20} />
-                  {t.influencers.join}
-                </button>
+                <div className="flex flex-col gap-4 items-center">
+                  <button 
+                    onClick={() => setShowForm(true)}
+                    className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3 mx-auto shadow-xl shadow-brand-600/20"
+                  >
+                    <UserPlus size={20} />
+                    {t.influencers.join}
+                  </button>
+                  
+                  {isAdmin && (
+                    <button 
+                      onClick={handleSeed}
+                      disabled={seeding}
+                      className="bg-zinc-100 text-zinc-600 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {seeding ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                      {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? '৩০টি ডেমো প্রোফাইল যোগ করুন' : 'Seed 30 Demo Profiles')}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -735,7 +776,7 @@ export const InfluencerSection = () => {
               <div className="absolute top-0 left-0 w-full h-1 bg-zinc-50 group-hover:bg-brand-600 transition-colors"></div>
               
               <div className="flex justify-between items-start mb-8">
-                <div className="relative">
+                <div className="relative cursor-pointer" onClick={() => navigate(`/profile/${inf.id}`)}>
                   <div className="absolute inset-0 bg-brand-600 blur-2xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full"></div>
                   <img
                     src={inf.avatar}

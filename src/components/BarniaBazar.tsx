@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera, LogIn, CheckCircle, ExternalLink } from 'lucide-react';
+import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera, LogIn, CheckCircle, ExternalLink, RefreshCw, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
@@ -8,6 +8,8 @@ import { shareContent } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
+import { seedDatabase } from '../utils/seedData';
+import { toast } from 'sonner';
 
 interface Product {
   name: string;
@@ -50,6 +52,7 @@ export const BarniaBazar = () => {
     products: [{ name: '', price: '' }]
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   if (error) throw error;
 
@@ -254,6 +257,20 @@ export const BarniaBazar = () => {
     }
   };
 
+  const handleSeed = async () => {
+    if (!isAdmin) return;
+    setSeeding(true);
+    try {
+      await seedDatabase();
+      toast.success(language === 'bn' ? 'সফলভাবে ডেটা যোগ করা হয়েছে!' : 'Data seeded successfully!');
+    } catch (err) {
+      toast.error(language === 'bn' ? 'ডেটা যোগ করতে সমস্যা হয়েছে' : 'Failed to seed data');
+      console.error(err);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const filteredShops = Array.from(new Map<string, Shop>(shops.map(shop => [shop.id, shop])).values()).filter(shop => 
     shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -270,6 +287,17 @@ export const BarniaBazar = () => {
         </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            {isAdmin && (
+              <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className="bg-zinc-100 text-zinc-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                title="Seed 17 Demo Shops"
+              >
+                {seeding ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+                {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? 'সিড ডেটা' : 'Seed Data')}
+              </button>
+            )}
             <div className="relative group flex-1 sm:flex-none">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-600 transition-colors" size={20} />
               <input
@@ -314,9 +342,20 @@ export const BarniaBazar = () => {
             <h3 className="text-3xl font-black text-zinc-900 mb-4 tracking-tight">
               {language === 'bn' ? 'কোন দোকান পাওয়া যায়নি' : 'No shops found'}
             </h3>
-            <p className="text-zinc-500 max-w-md mx-auto">
+            <p className="text-zinc-500 max-w-md mx-auto mb-10">
               {searchQuery ? (language === 'bn' ? 'আপনার অনুসন্ধানের সাথে মেলে এমন কিছু পাওয়া যায়নি' : 'Try adjusting your search query') : (language === 'bn' ? 'প্রথম দোকানটি নথিভুক্ত করুন!' : 'Be the first to register a shop!')}
             </p>
+            
+            {isAdmin && !searchQuery && (
+              <button 
+                onClick={handleSeed}
+                disabled={seeding}
+                className="bg-zinc-100 text-zinc-600 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50 mx-auto"
+              >
+                {seeding ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? '১৭টি ডেমো দোকান যোগ করুন' : 'Seed 17 Demo Shops')}
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -328,7 +367,7 @@ export const BarniaBazar = () => {
                 className="group bg-white rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
               >
                 <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => {
-                  setSelectedShop(shop);
+                  navigate(`/shop/${shop.id}`);
                   logEvent('view_shop', { shopId: shop.id, shopName: shop.name });
                 }}>
                   <img
@@ -357,7 +396,7 @@ export const BarniaBazar = () => {
                 
                 <div className="p-10 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-3xl font-black text-zinc-900 cursor-pointer group-hover:text-brand-600 transition-colors tracking-tight leading-tight" onClick={() => setSelectedShop(shop)}>
+                    <h3 className="text-3xl font-black text-zinc-900 cursor-pointer group-hover:text-brand-600 transition-colors tracking-tight leading-tight" onClick={() => navigate(`/shop/${shop.id}`)}>
                       {shop.name}
                     </h3>
                     <button 
