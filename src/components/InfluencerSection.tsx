@@ -147,7 +147,29 @@ export const InfluencerSection = () => {
         id: doc.id,
         ...doc.data()
       })) as Influencer[];
-      setUserInfluencers(items);
+      
+      // Sort: 
+      // 1. Current user's profile first
+      // 2. Real profiles (not seed) next
+      // 3. Seed profiles last
+      const sorted = [...items].sort((a, b) => {
+        // If current user is logged in, prioritize their profile
+        if (user) {
+          if (a.uid === user.uid) return -1;
+          if (b.uid === user.uid) return 1;
+        }
+        
+        // Prioritize non-seed profiles
+        const aIsSeed = (a as any).isSeed === true;
+        const bIsSeed = (b as any).isSeed === true;
+        
+        if (!aIsSeed && bIsSeed) return -1;
+        if (aIsSeed && !bIsSeed) return 1;
+        
+        return 0; // Maintain createdAt desc order from query
+      });
+
+      setUserInfluencers(sorted);
     }, (error) => {
       try {
         handleFirestoreError(error, OperationType.LIST, 'influencers');

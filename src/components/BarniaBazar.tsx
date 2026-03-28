@@ -128,7 +128,29 @@ export const BarniaBazar = () => {
         id: doc.id,
         ...doc.data()
       })) as Shop[];
-      setShops(items);
+      
+      // Sort: 
+      // 1. Current user's shop first
+      // 2. Real shops (not seed) next
+      // 3. Seed shops last
+      const sorted = [...items].sort((a, b) => {
+        // If current user is logged in, prioritize their shop
+        if (user) {
+          if (a.uid === user.uid) return -1;
+          if (b.uid === user.uid) return 1;
+        }
+        
+        // Prioritize non-seed shops
+        const aIsSeed = (a as any).isSeed === true;
+        const bIsSeed = (b as any).isSeed === true;
+        
+        if (!aIsSeed && bIsSeed) return -1;
+        if (aIsSeed && !bIsSeed) return 1;
+        
+        return 0; // Maintain createdAt desc order from query
+      });
+
+      setShops(sorted);
       setLoading(false);
     }, (error) => {
       try {

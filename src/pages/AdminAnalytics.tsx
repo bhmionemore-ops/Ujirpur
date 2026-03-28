@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
+import { seedDatabase } from '../utils/seedData';
+import { toast } from 'sonner';
 
 interface VisitorSession {
   id: string;
@@ -34,6 +36,21 @@ export const AdminAnalytics = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    if (!confirm("Are you sure you want to seed the database with 30 influencers and 17 shops? This will only run if seed data doesn't exist yet.")) return;
+    setSeeding(true);
+    try {
+      await seedDatabase();
+      toast.success("Database seeded successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error seeding database.");
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -135,6 +152,14 @@ export const AdminAnalytics = () => {
             <p className="text-zinc-500 font-medium">Real-time monitoring of website traffic and user behavior.</p>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/10 disabled:opacity-50"
+            >
+              {seeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
+              {seeding ? 'Seeding...' : 'Seed Data'}
+            </button>
             <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
                 <Activity size={20} className="text-green-600" />
