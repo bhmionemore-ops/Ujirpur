@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -20,17 +20,27 @@ interface VisitorSession {
   email?: string;
 }
 
+interface ChatMessage {
+  id: string;
+  text: string;
+  sessionId: string;
+  isBot: boolean;
+  createdAt: Timestamp;
+}
+
 export const AdminAnalytics = () => {
   const { isAdmin } = useFirebase();
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
 
-    const q = query(collection(db, 'visitor_sessions'), orderBy('lastSeen', 'desc'), limit(100));
-    const unsub = onSnapshot(q, (snapshot) => {
+    // Fetch visitor sessions
+    const qSessions = query(collection(db, 'visitor_sessions'), orderBy('lastSeen', 'desc'), limit(100));
+    const unsubSessions = onSnapshot(qSessions, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VisitorSession));
       setSessions(docs);
       setLoading(false);
@@ -43,7 +53,19 @@ export const AdminAnalytics = () => {
       setLoading(false);
     });
 
-    return () => unsub();
+    // Fetch chat messages
+    const qChats = query(collection(db, 'support_messages'), orderBy('createdAt', 'desc'), limit(500));
+    const unsubChats = onSnapshot(qChats, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+      setChatMessages(docs);
+    }, (err) => {
+      console.error("Error fetching chats:", err);
+    });
+
+    return () => {
+      unsubSessions();
+      unsubChats();
+    };
   }, [isAdmin]);
 
   if (!isAdmin) {
@@ -89,6 +111,20 @@ export const AdminAnalytics = () => {
         Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.lastSeen?.toMillis() || 0), 0) / sessions.length)
       )
     : '0s';
+
+  // Group chat messages by session
+  const chatSessions = chatMessages.reduce((acc, msg) => {
+    if (!acc[msg.sessionId]) {
+      acc[msg.sessionId] = [];
+    }
+    acc[msg.sessionId].push(msg);
+    return acc;
+  }, {} as Record<string, ChatMessage[]>);
+
+  // Sort messages within each session by time (asc)
+  Object.keys(chatSessions).forEach(sid => {
+    chatSessions[sid].sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
+  });
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-32 pb-20 px-4">
@@ -136,7 +172,7 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Recent Visitors */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
@@ -222,6 +258,63 @@ export const AdminAnalytics = () => {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Live Chat History */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+            <MessageSquare size={20} className="text-brand-600" />
+            Live Chat History
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {(Object.entries(chatSessions) as [string, ChatMessage[]][]).map(([sid, msgs]) => {
+              const session = sessions.find(s => s.id === sid);
+              return (
+                <div key={sid} className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                  <div className="p-4 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600">
+                        <User size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-zinc-900">
+                          {session?.email || `Guest (${sid.substring(0, 6)})`}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-medium">
+                          {session?.city || 'Unknown'}, {session?.country || 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      {msgs.length} Messages
+                    </span>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-zinc-50/30">
+                    {msgs.map((m) => (
+                      <div key={m.id} className={`flex ${m.isBot ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm border ${
+                          m.isBot 
+                            ? 'bg-white text-zinc-700 border-zinc-200/50 rounded-tl-none' 
+                            : 'bg-brand-600 text-white border-brand-400/30 rounded-tr-none font-medium'
+                        }`}>
+                          {m.text}
+                          <p className={`text-[8px] mt-1 opacity-60 ${m.isBot ? 'text-zinc-400' : 'text-white'}`}>
+                            {m.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {Object.keys(chatSessions).length === 0 && (
+              <div className="md:col-span-2 bg-white p-12 rounded-3xl border border-zinc-200 border-dashed text-center">
+                <MessageSquare size={48} className="text-zinc-200 mx-auto mb-4" />
+                <p className="text-zinc-500 font-medium">No chat history found yet.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
