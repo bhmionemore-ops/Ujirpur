@@ -218,8 +218,8 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/influencers" element={<InfluencerPage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
-          <Route path="/profile/:id" element={<ProfilePage />} />
-          <Route path="/shop/:id" element={<ShopProfilePage />} />
+          <Route path="/profile/:slug" element={<ProfilePage />} />
+          <Route path="/shop/:slug" element={<ShopProfilePage />} />
           <Route path="/ponjika" element={<PonjikaPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />

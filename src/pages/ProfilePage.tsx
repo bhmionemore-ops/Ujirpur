@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 import { 
   Instagram, Twitter, Facebook, Youtube, Linkedin, Github, Globe, 
   ChevronLeft, Share2, MessageSquare, Send, CheckCircle, Zap
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
 import { shareContent } from '../utils';
 
 interface Influencer {
   id: string;
+  slug: string;
   name: string;
   bio: string;
   socials: string[];
@@ -32,7 +34,7 @@ const getSocialIcon = (url: string) => {
 };
 
 export const ProfilePage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { user } = useFirebase();
@@ -48,24 +50,34 @@ export const ProfilePage = () => {
 
   useEffect(() => {
     const fetchInfluencer = async () => {
-      if (!id) return;
+      if (!slug) return;
       try {
-        const docRef = doc(db, 'influencers', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        // Try fetching by slug first
+        const q = query(collection(db, 'influencers'), where('slug', '==', slug));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const docSnap = querySnapshot.docs[0];
           setInfluencer({ id: docSnap.id, ...docSnap.data() } as Influencer);
         } else {
-          setError(new Error('Influencer not found'));
+          // Fallback to ID for backward compatibility
+          const docRef = doc(db, 'influencers', slug);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setInfluencer({ id: docSnap.id, ...docSnap.data() } as Influencer);
+          } else {
+            setError(new Error('Influencer not found'));
+          }
         }
       } catch (err) {
-        setError(handleFirestoreError(err, OperationType.GET, `influencers/${id}`));
+        setError(handleFirestoreError(err, OperationType.GET, `influencers/${slug}`));
       } finally {
         setLoading(false);
       }
     };
 
     fetchInfluencer();
-  }, [id]);
+  }, [slug]);
 
   const handleCollabRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +138,45 @@ export const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
+      <Helmet>
+        <title>{`${influencer.name} | Barnia Influencer Network - Best Creator in Tehatta`}</title>
+        <meta name="description" content={`${influencer.name} is a top influencer in Tehatta, Nadia. Bio: ${influencer.bio}. Connect with ${influencer.name} on Barnia Influencer Network.`} />
+        <meta name="keywords" content={`${influencer.name}, Influencer, Barnia, Tehatta, Nadia, West Bengal, Content Creator, Social Media, ${influencer.socials.join(', ')}`} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="profile" />
+        <meta property="og:title" content={`${influencer.name} | Barnia Influencer Network`} />
+        <meta property="og:description" content={`Check out ${influencer.name} on Barnia Influencer Network. Top creator in Tehatta, Nadia.`} />
+        <meta property="og:image" content={influencer.avatar} />
+        <meta property="og:url" content={window.location.href} />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:title" content={`${influencer.name} | Barnia Influencer Network`} />
+        <meta property="twitter:description" content={`Check out ${influencer.name} on Barnia Influencer Network. Top creator in Tehatta, Nadia.`} />
+        <meta property="twitter:image" content={influencer.avatar} />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "name": influencer.name,
+            "description": influencer.bio,
+            "image": influencer.avatar,
+            "url": window.location.href,
+            "sameAs": influencer.socials,
+            "jobTitle": "Content Creator",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Tehatta",
+              "addressRegion": "West Bengal",
+              "addressCountry": "IN"
+            }
+          })}
+        </script>
+      </Helmet>
+
       {/* Decorative Background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full animate-pulse"></div>

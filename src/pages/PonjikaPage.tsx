@@ -10,6 +10,7 @@ import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
 import { Banner } from '../components/Banner';
 import { toast } from 'sonner';
+import { shareContent } from '../utils';
 import { getBengaliDate, toBengaliNumber, getAlmanacData } from '../utils/bengaliDate';
 
 const Swastika = ({ size = 16, className = "" }) => (
@@ -70,9 +71,12 @@ export const PonjikaPage = () => {
   }, [location, currentDate]);
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+    shareContent(
+      t.ponjika?.title || 'Bengali Ponjika',
+      t.ponjika?.subtitle || 'Daily Bengali Almanac',
+      window.location.href
+    );
     logEvent('share_ponjika');
-    toast.success(t.ponjika?.shareLink);
   };
 
   const bDate = getBengaliDate(currentDate);

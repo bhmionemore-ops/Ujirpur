@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
-import { shareContent } from '../utils';
+import { shareContent, slugify } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
 import { seedDatabase } from '../utils/seedData';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ interface Product {
 
 interface Shop {
   id: string;
+  slug: string;
   name: string;
   owner: string;
   category: string;
@@ -87,6 +88,37 @@ export const BarniaBazar = () => {
       });
     }
   }, [showAddShop, user, myShop]);
+
+  useEffect(() => {
+    const migrateShops = async () => {
+      if (loading || shops.length === 0) return;
+      
+      const shopsWithoutSlug = shops.filter(s => !s.slug);
+      if (shopsWithoutSlug.length > 0) {
+        const { updateDoc, doc } = await import('firebase/firestore');
+        for (const shop of shopsWithoutSlug) {
+          let baseSlug = slugify(shop.name);
+          let uniqueSlug = baseSlug;
+          let counter = 1;
+          let isUnique = false;
+
+          while (!isUnique) {
+            const q = query(collection(db, 'shops'), where('slug', '==', uniqueSlug));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+              isUnique = true;
+            } else {
+              uniqueSlug = `${baseSlug}-${counter}`;
+              counter++;
+            }
+          }
+          await updateDoc(doc(db, 'shops', shop.id), { slug: uniqueSlug });
+        }
+      }
+    };
+
+    migrateShops();
+  }, [shops, loading]);
 
   useEffect(() => {
     if (shops.length > 0) {
@@ -208,8 +240,25 @@ export const BarniaBazar = () => {
 
     const filteredProducts = newShop.products.filter(p => p.name.trim() !== '' && p.price.trim() !== '');
     
+    let baseSlug = slugify(newShop.name);
+    let uniqueSlug = baseSlug;
+    let counter = 1;
+
+    // Check for uniqueness
+    const checkSlugUnique = async (s: string) => {
+      const q = query(collection(db, 'shops'), where('slug', '==', s));
+      const snapshot = await getDocs(q);
+      return snapshot.empty || (editingId && snapshot.docs[0].id === editingId);
+    };
+
+    while (!(await checkSlugUnique(uniqueSlug))) {
+      uniqueSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
     const shopData: any = {
       name: newShop.name,
+      slug: uniqueSlug,
       owner: newShop.owner,
       category: newShop.category,
       location: newShop.location,
@@ -367,7 +416,7 @@ export const BarniaBazar = () => {
                 className="group bg-white rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all overflow-hidden flex flex-col"
               >
                 <div className="aspect-[4/3] overflow-hidden relative cursor-pointer" onClick={() => {
-                  navigate(`/shop/${shop.id}`);
+                  navigate(`/shop/${shop.slug || shop.id}`);
                   logEvent('view_shop', { shopId: shop.id, shopName: shop.name });
                 }}>
                   <img
@@ -396,12 +445,12 @@ export const BarniaBazar = () => {
                 
                 <div className="p-10 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-3xl font-black text-zinc-900 cursor-pointer group-hover:text-brand-600 transition-colors tracking-tight leading-tight" onClick={() => navigate(`/shop/${shop.id}`)}>
+                    <h3 className="text-3xl font-black text-zinc-900 cursor-pointer group-hover:text-brand-600 transition-colors tracking-tight leading-tight" onClick={() => navigate(`/shop/${shop.slug || shop.id}`)}>
                       {shop.name}
                     </h3>
                     <button 
                       onClick={() => {
-                        const shareUrl = `${window.location.origin}/shop/${shop.id}`;
+                        const shareUrl = `${window.location.origin}/shop/${shop.slug || shop.id}`;
                         shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`, shareUrl);
                       }}
                       className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
@@ -419,7 +468,7 @@ export const BarniaBazar = () => {
 
                   <button 
                     onClick={() => {
-                      navigate(`/shop/${shop.id}`);
+                      navigate(`/shop/${shop.slug || shop.id}`);
                       logEvent('view_shop_profile', { shopId: shop.id, shopName: shop.name });
                     }}
                     className="w-full py-3 mb-6 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-600 hover:text-white transition-all flex items-center justify-center gap-2"
@@ -747,7 +796,7 @@ export const BarniaBazar = () => {
                       {language === 'bn' ? 'কল করুন' : 'Call Owner'}
                     </a>
                     <button 
-                      onClick={() => navigate(`/shop/${selectedShop.id}`)}
+                      onClick={() => navigate(`/shop/${selectedShop.slug || selectedShop.id}`)}
                       className="flex-1 bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
                     >
                       <ExternalLink size={20} />

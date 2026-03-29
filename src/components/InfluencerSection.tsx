@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
-import { shareContent } from '../utils';
+import { shareContent, slugify } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
 import { useTracking } from '../TrackingContext';
 import { seedDatabase } from '../utils/seedData';
@@ -30,6 +30,7 @@ const getSocialIcon = (url: string) => {
 
 interface Influencer {
   id: string;
+  slug: string;
   name: string;
   bio: string;
   socials: string[];
@@ -53,6 +54,7 @@ export const InfluencerSection = () => {
   const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
   const { logEvent } = useTracking();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const influencers = userInfluencers;
 
@@ -111,6 +113,37 @@ export const InfluencerSection = () => {
     fromName: '',
     message: ''
   });
+
+  useEffect(() => {
+    const migrateInfluencers = async () => {
+      if (loading || userInfluencers.length === 0) return;
+      
+      const influencersWithoutSlug = userInfluencers.filter(i => !i.slug);
+      if (influencersWithoutSlug.length > 0) {
+        const { updateDoc, doc } = await import('firebase/firestore');
+        for (const inf of influencersWithoutSlug) {
+          let baseSlug = slugify(inf.name);
+          let uniqueSlug = baseSlug;
+          let counter = 1;
+          let isUnique = false;
+
+          while (!isUnique) {
+            const q = query(collection(db, 'influencers'), where('slug', '==', uniqueSlug));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+              isUnique = true;
+            } else {
+              uniqueSlug = `${baseSlug}-${counter}`;
+              counter++;
+            }
+          }
+          await updateDoc(doc(db, 'influencers', inf.id), { slug: uniqueSlug });
+        }
+      }
+    };
+
+    migrateInfluencers();
+  }, [userInfluencers, loading]);
 
   useEffect(() => {
     if (userInfluencers.length > 0) {
@@ -173,12 +206,14 @@ export const InfluencerSection = () => {
       });
 
       setUserInfluencers(sorted);
+      setLoading(false);
     }, (error) => {
       try {
         handleFirestoreError(error, OperationType.LIST, 'influencers');
       } catch (e) {
         setError(e as Error);
       }
+      setLoading(false);
     });
 
     // Listen to collab requests (only if logged in)
@@ -191,9 +226,11 @@ export const InfluencerSection = () => {
           ...doc.data()
         })) as CollabRequest[];
         setRequests(items);
+        setLoading(false);
       }, (error) => {
         // Silently fail if collection doesn't exist or rules deny
         console.warn("Collab requests listener error:", error);
+        setLoading(false);
       });
     }
 
@@ -309,6 +346,24 @@ export const InfluencerSection = () => {
       uid: user.uid,
       category: 'Influencer'
     };
+
+    let baseSlug = slugify(newInfluencer.name);
+    let uniqueSlug = baseSlug;
+    let counter = 1;
+
+    // Check for uniqueness
+    const checkSlugUnique = async (s: string) => {
+      const q = query(collection(db, 'influencers'), where('slug', '==', s));
+      const snapshot = await getDocs(q);
+      return snapshot.empty || (editingId && snapshot.docs[0].id === editingId);
+    };
+
+    while (!(await checkSlugUnique(uniqueSlug))) {
+      uniqueSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    influencerData.slug = uniqueSlug;
 
     try {
       if (editingId) {
@@ -776,7 +831,7 @@ export const InfluencerSection = () => {
               <div className="absolute top-0 left-0 w-full h-1 bg-zinc-50 group-hover:bg-brand-600 transition-colors"></div>
               
               <div className="flex justify-between items-start mb-8">
-                <div className="relative cursor-pointer" onClick={() => navigate(`/profile/${inf.id}`)}>
+                <div className="relative cursor-pointer" onClick={() => navigate(`/profile/${inf.slug || inf.id}`)}>
                   <div className="absolute inset-0 bg-brand-600 blur-2xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full"></div>
                   <img
                     src={inf.avatar}
@@ -791,7 +846,7 @@ export const InfluencerSection = () => {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => {
-                      const shareUrl = `${window.location.origin}/profile/${inf.id}`;
+                      const shareUrl = `${window.location.origin}/profile/${inf.slug || inf.id}`;
                       shareContent(inf.name, `Check out ${inf.name} on Barnia Influencer Network: ${inf.bio}`, shareUrl);
                     }}
                     className="p-3 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all"
@@ -809,7 +864,7 @@ export const InfluencerSection = () => {
                 </div>
               </div>
 
-              <div className="mb-6 cursor-pointer" onClick={() => navigate(`/profile/${inf.id}`)}>
+              <div className="mb-6 cursor-pointer" onClick={() => navigate(`/profile/${inf.slug || inf.id}`)}>
                 <h4 className="text-2xl font-black text-zinc-900 group-hover:text-brand-600 transition-colors tracking-tight leading-tight mb-2 flex items-center gap-2">
                   {inf.name}
                   <ExternalLink size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -834,7 +889,7 @@ export const InfluencerSection = () => {
               
               <div className="mt-auto space-y-3">
                 <button 
-                  onClick={() => navigate(`/profile/${inf.id}`)}
+                  onClick={() => navigate(`/profile/${inf.slug || inf.id}`)}
                   className="w-full py-4 bg-white text-zinc-900 border-4 border-zinc-100 rounded-[1.5rem] text-xs font-black uppercase tracking-widest hover:border-brand-600 hover:text-brand-600 transition-all flex items-center justify-center gap-3 shadow-sm"
                 >
                   <User size={18} />

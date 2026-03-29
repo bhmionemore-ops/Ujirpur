@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 import { 
   Store, MapPin, Phone, ShoppingBag, Tag, ChevronLeft, Share2, 
   MessageSquare, CheckCircle, Zap, ExternalLink
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
 import { shareContent } from '../utils';
@@ -18,6 +19,7 @@ interface Product {
 
 interface Shop {
   id: string;
+  slug: string;
   name: string;
   owner: string;
   category: string;
@@ -29,7 +31,7 @@ interface Shop {
 }
 
 export const ShopProfilePage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { user } = useFirebase();
@@ -39,24 +41,34 @@ export const ShopProfilePage = () => {
 
   useEffect(() => {
     const fetchShop = async () => {
-      if (!id) return;
+      if (!slug) return;
       try {
-        const docRef = doc(db, 'shops', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        // Try fetching by slug first
+        const q = query(collection(db, 'shops'), where('slug', '==', slug));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const docSnap = querySnapshot.docs[0];
           setShop({ id: docSnap.id, ...docSnap.data() } as Shop);
         } else {
-          setError(new Error('Shop not found'));
+          // Fallback to ID for backward compatibility
+          const docRef = doc(db, 'shops', slug);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setShop({ id: docSnap.id, ...docSnap.data() } as Shop);
+          } else {
+            setError(new Error('Shop not found'));
+          }
         }
       } catch (err) {
-        setError(handleFirestoreError(err, OperationType.GET, `shops/${id}`));
+        setError(handleFirestoreError(err, OperationType.GET, `shops/${slug}`));
       } finally {
         setLoading(false);
       }
     };
 
     fetchShop();
-  }, [id]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -93,6 +105,65 @@ export const ShopProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
+      <Helmet>
+        <title>{`${shop.name} | Barnia Bazar - Best ${shop.category} in Tehatta, Nadia`}</title>
+        <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products: ${shop.products.map(p => p.name).join(', ')}. Contact: ${shop.phone}`} />
+        <meta name="keywords" content={`${shop.name}, ${shop.category}, Barnia Bazar, Tehatta, Nadia, West Bengal, Shopping, ${shop.products.map(p => p.name).join(', ')}`} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="business.business" />
+        <meta property="og:title" content={`${shop.name} | Barnia Bazar`} />
+        <meta property="og:description" content={`Check out ${shop.name} at Barnia Bazar. Best ${shop.category} in Tehatta, Nadia.`} />
+        <meta property="og:image" content={shop.image} />
+        <meta property="og:url" content={window.location.href} />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:title" content={`${shop.name} | Barnia Bazar`} />
+        <meta property="twitter:description" content={`Check out ${shop.name} at Barnia Bazar. Best ${shop.category} in Tehatta, Nadia.`} />
+        <meta property="twitter:image" content={shop.image} />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            "name": shop.name,
+            "image": shop.image,
+            "@id": window.location.href,
+            "url": window.location.href,
+            "telephone": shop.phone,
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Barnia Bazar",
+              "addressLocality": "Tehatta",
+              "addressRegion": "West Bengal",
+              "postalCode": "741160",
+              "addressCountry": "IN"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 23.7333,
+              "longitude": 88.5167
+            },
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ],
+              "opens": "09:00",
+              "closes": "21:00"
+            }
+          })}
+        </script>
+      </Helmet>
+
       {/* Decorative Background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full animate-pulse"></div>

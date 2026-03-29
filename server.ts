@@ -39,67 +39,62 @@ let currentUpdatePromise: Promise<boolean | void> | null = null;
 
 
 
-async function getProfileItem(id: string, projectId: string, databaseId: string) {
-  console.log(`[MetaTags] Fetching profile for ID: ${id}`);
+async function getShopItem(idOrSlug: string, projectId: string, databaseId: string) {
+  console.log(`[MetaTags] Fetching shop for ID/Slug: ${idOrSlug}`);
   try {
     let data: any = null;
     
-    // 1. Try using Client SDK (already authenticated as server-admin)
-    if (db) {
-      try {
-        const docRef = doc(db, "influencers", id);
-        const docSnap = await getDocFromServer(docRef);
-        if (docSnap.exists()) {
-          data = docSnap.data();
-          console.log(`[MetaTags] Profile found via Client SDK: ${data.name}`);
+    if (adminDb) {
+      // Try fetching by slug first
+      const shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+      if (!shopsBySlug.empty) {
+        data = shopsBySlug.docs[0].data();
+      } else {
+        // Fallback to ID
+        const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
+        if (shopById.exists) {
+          data = shopById.data();
         }
-      } catch (clientError) {
-        console.warn(`[MetaTags] Client SDK fetch failed for ID ${id}:`, clientError);
       }
     }
 
-    // 2. Try using Admin SDK if available
-    if (!data && adminDb) {
-      try {
-        const doc = await adminDb.collection("influencers").doc(id).get();
-        if (doc.exists) {
-          data = doc.data();
-          console.log(`[MetaTags] Profile found via Admin SDK: ${data.name}`);
-        }
-      } catch (adminError) {
-        console.warn(`[MetaTags] Admin SDK fetch failed for ID ${id}:`, adminError);
-      }
-    }
+    if (!data) return null;
+
+    return {
+      name: data.name || "Barnia Shop",
+      category: data.category || "General",
+      location: data.location || "Barnia Bazar",
+      image: data.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1200",
+      phone: data.phone || "",
+      products: data.products || []
+    };
+  } catch (error) {
+    console.error(`[MetaTags] Error fetching shop for ${idOrSlug}:`, error);
+    return null;
+  }
+}
+
+async function getProfileItem(idOrSlug: string, projectId: string, databaseId: string) {
+  console.log(`[MetaTags] Fetching profile for ID/Slug: ${idOrSlug}`);
+  try {
+    let data: any = null;
     
-    // 3. Fallback to REST API
-    if (!data) {
-      const dbIds = [databaseId, '(default)'].filter(Boolean);
-      for (const dbId of dbIds) {
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${id}`;
-        console.log(`[MetaTags] Trying REST API (${dbId}): ${url}`);
-        const response = await fetch(url);
-        if (response.ok) {
-          const restData = await response.json();
-          const fields = restData.fields;
-          if (fields) {
-            data = {
-              name: fields.name?.stringValue,
-              bio: fields.bio?.stringValue,
-              avatar: fields.avatar?.stringValue,
-              socials: fields.socials?.arrayValue?.values?.map((v: any) => v.stringValue) || []
-            };
-            console.log(`[MetaTags] Profile found via REST API (${dbId}): ${data.name}`);
-            break; // Found it!
-          }
-        } else {
-          const errText = await response.text();
-          console.warn(`[MetaTags] Profile not found via REST API (${dbId}). Status: ${response.status}`);
+    if (adminDb) {
+      // Try fetching by slug first
+      const influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+      if (!influencersBySlug.empty) {
+        data = influencersBySlug.docs[0].data();
+      } else {
+        // Fallback to ID
+        const influencerById = await adminDb.collection("influencers").doc(idOrSlug).get();
+        if (influencerById.exists) {
+          data = influencerById.data();
         }
       }
     }
 
     if (!data) {
-      console.warn(`[MetaTags] No profile data found for ID: ${id}`);
+      console.warn(`[MetaTags] No profile data found for ID/Slug: ${idOrSlug}`);
       return null;
     }
 
@@ -147,10 +142,11 @@ async function getProfileItem(id: string, projectId: string, databaseId: string)
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
       rawAvatar: data.avatar, // Keep original for proxy
       socialInfo: socialInfo || '',
-      socialIconsStr: socialIconsStr || ''
+      socialIconsStr: socialIconsStr || '',
+      socials: data.socials || []
     };
   } catch (error) {
-    console.error(`[MetaTags] Error fetching profile for ID: ${id}:`, error);
+    console.error(`[MetaTags] Error fetching profile for ${idOrSlug}:`, error);
     return null;
   }
 }
@@ -229,13 +225,15 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number }) {
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
   const escapedImage = escapeHtml(metadata.image);
   const escapedUrl = escapeHtml(metadata.url);
   const type = metadata.type || 'website';
   const updatedTime = new Date().toISOString();
+  const imageWidth = metadata.imageWidth || 1200;
+  const imageHeight = metadata.imageHeight || 630;
 
   const metaTags = `
     <!-- Meta Injected -->
@@ -247,8 +245,8 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
     <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:image:width" content="${imageWidth}" />
+    <meta property="og:image:height" content="${imageHeight}" />
     <meta property="og:image:alt" content="${escapedTitle}" />
     <meta property="og:title" content="${escapedTitle}" />
     <meta property="og:description" content="${escapedDescription}" />
@@ -259,16 +257,11 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:locale:alternate" content="bn_BD" />
     <meta property="og:updated_time" content="${updatedTime}" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta property="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="${escapedImage}" />
-    <meta property="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
     <meta name="twitter:title" content="${escapedTitle}" />
-    <meta property="twitter:title" content="${escapedTitle}" />
     <meta name="twitter:description" content="${escapedDescription}" />
-    <meta property="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:url" content="${escapedUrl}" />
-    <meta property="twitter:url" content="${escapedUrl}" />
     <link rel="canonical" href="${escapedUrl}" />
   `;
 
@@ -340,25 +333,118 @@ async function startServer() {
   const PORT = 3000;
 
   // SEO Files - MUST be at the very top to avoid being caught by catch-all routes
-  app.get("/robots.txt", async (req, res) => {
+  app.get("/robots.txt", (req, res) => {
+    const protocol = 'https';
+    const host = req.get('host')?.split(':')[0];
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    
+    const robots = [
+      "User-agent: *",
+      "Allow: /",
+      "Allow: /api/image/",
+      "Disallow: /api/",
+      "Disallow: /admin/",
+      `Sitemap: ${baseUrl}/sitemap.xml`,
+      "Host: barnia.in"
+    ].join("\n");
+    
+    res.status(200).set("Content-Type", "text/plain").send(robots);
+  });
+
+  app.get("/manifest.json", async (req, res) => {
     try {
-      console.log(`[SEO] Request for robots.txt from ${req.ip}`);
-      const content = await fs.readFile(path.resolve("robots.txt"), "utf-8");
-      res.status(200).set("Content-Type", "text/plain").send(content);
-    } catch (error) {
-      console.error("[SEO] Error serving robots.txt:", error);
-      res.status(404).send("robots.txt not found");
+      const data = await fs.readFile(path.resolve("manifest.json"), "utf-8");
+      res.status(200).set("Content-Type", "application/json").send(data);
+    } catch (e) {
+      res.status(404).send("Not found");
+    }
+  });
+
+  app.get("/sw.js", async (req, res) => {
+    try {
+      const data = await fs.readFile(path.resolve("sw.js"), "utf-8");
+      res.status(200).set("Content-Type", "application/javascript").send(data);
+    } catch (e) {
+      res.status(404).send("Not found");
     }
   });
 
   app.get("/sitemap.xml", async (req, res) => {
     try {
-      console.log(`[SEO] Request for sitemap.xml from ${req.ip}`);
-      const content = await fs.readFile(path.resolve("sitemap.xml"), "utf-8");
-      res.status(200).set("Content-Type", "application/xml").send(content);
+      const protocol = 'https';
+      const host = req.get('host')?.split(':')[0];
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      
+      let urls = [
+        { loc: `${baseUrl}/`, changefreq: 'daily', priority: '1.0' },
+        { loc: `${baseUrl}/bazar`, changefreq: 'daily', priority: '0.9' },
+        { loc: `${baseUrl}/influencers`, changefreq: 'daily', priority: '0.9' },
+        { loc: `${baseUrl}/ponjika`, changefreq: 'weekly', priority: '0.7' },
+        { loc: `${baseUrl}/chat`, changefreq: 'always', priority: '0.5' },
+      ];
+
+      if (adminDb) {
+        // Fetch shops
+        const shopsSnap = await adminDb.collection("shops").get();
+        shopsSnap.forEach((doc: any) => {
+          const shop = doc.data();
+          const slug = shop.slug || doc.id;
+          urls.push({
+            loc: `${baseUrl}/shop/${slug}`,
+            changefreq: 'weekly',
+            priority: '0.8'
+          });
+        });
+
+        // Fetch influencers
+        const influencersSnap = await adminDb.collection("influencers").get();
+        influencersSnap.forEach((doc: any) => {
+          const influencer = doc.data();
+          const slug = influencer.slug || doc.id;
+          urls.push({
+            loc: `${baseUrl}/profile/${slug}`,
+            changefreq: 'weekly',
+            priority: '0.8'
+          });
+        });
+
+        // Fetch news dates for sitemap
+        const newsSnap = await adminDb.collection("news").orderBy("__name__", "desc").limit(10).get();
+        newsSnap.forEach((doc: any) => {
+          const date = doc.id;
+          const data = doc.data();
+          // Add top news items from each tab
+          ['top', 'local', 'sports'].forEach(tab => {
+            if (data[tab] && data[tab].length > 0) {
+              data[tab].forEach((_: any, index: number) => {
+                if (index < 3) { // Only first 3 news items per tab to avoid sitemap bloat
+                  urls.push({
+                    loc: `${baseUrl}/news/${date}/${tab}/${index}`,
+                    changefreq: 'monthly',
+                    priority: '0.6'
+                  });
+                }
+              });
+            }
+          });
+        });
+      }
+
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  ${urls.map(url => `
+  <url>
+    <loc>${url.loc}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>${url.changefreq}</changefreq>
+    <priority>${url.priority}</priority>
+  </url>`).join('')}
+</urlset>`;
+
+      res.status(200).set("Content-Type", "application/xml").send(sitemap);
     } catch (error) {
-      console.error("[SEO] Error serving sitemap.xml:", error);
-      res.status(404).send("sitemap.xml not found");
+      console.error("[SEO] Error generating sitemap.xml:", error);
+      res.status(500).send("Error generating sitemap");
     }
   });
 
@@ -513,7 +599,10 @@ async function startServer() {
   // Meta Tag Routes (MUST be before static/vite middleware)
   app.get("/api/image/influencer/:id", async (req, res) => {
     try {
-      const { id } = req.params;
+      let { id } = req.params;
+      // Remove extension if present (e.g. .jpg)
+      id = id.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+      
       const profile = firebaseConfig ? await getProfileItem(id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       
       if (!profile || !profile.rawAvatar) {
@@ -521,14 +610,18 @@ async function startServer() {
       }
 
       if (profile.rawAvatar.startsWith('data:image')) {
-        const base64Data = profile.rawAvatar.split(',')[1];
+        const parts = profile.rawAvatar.split(',');
+        if (parts.length < 2) return res.status(400).send("Invalid image data");
+        
+        const base64Data = parts[1];
         const img = Buffer.from(base64Data, 'base64');
-        const mimeType = profile.rawAvatar.split(';')[0].split(':')[1];
+        const mimeType = profile.rawAvatar.split(';')[0].split(':')[1] || 'image/jpeg';
         
         res.writeHead(200, {
           'Content-Type': mimeType,
           'Content-Length': img.length,
-          'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+          'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+          'X-Content-Type-Options': 'nosniff'
         });
         res.end(img);
       } else {
@@ -579,9 +672,107 @@ async function startServer() {
     res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
 
+  app.get("/shop/:slug", async (req, res) => {
+    const { slug } = req.params;
+    console.log(`[ShopRoute] Request for Slug: ${slug}`);
+    
+    const shop = firebaseConfig ? await getShopItem(slug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    
+    let html: string;
+    if (process.env.NODE_ENV !== "production" && vite) {
+      html = await fs.readFile(path.resolve("index.html"), "utf-8");
+      html = await vite.transformIndexHtml(req.originalUrl, html);
+    } else {
+      html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+    }
+    
+    const host = req.get('host')?.split(':')[0];
+    const protocol = 'https';
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    
+    let metadata;
+    if (shop) {
+      const productList = shop.products.map((p: any) => p.name).join(', ');
+      const title = `${shop.name} | Barnia Bazar - Best ${shop.category} in Tehatta`;
+      const description = `Visit ${shop.name} at Barnia Bazar. Best ${shop.category} in Tehatta, Nadia. Products: ${productList}. Contact: ${shop.phone}`;
+
+      metadata = {
+        title: title,
+        description: description,
+        image: shop.image,
+        url: fullUrl,
+        type: 'business.business',
+        imageWidth: 1200,
+        imageHeight: 630
+      };
+
+      // Add LocalBusiness and Breadcrumb Structured Data
+      const shopSchema = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": shop.name,
+        "image": shop.image,
+        "@id": fullUrl,
+        "url": fullUrl,
+        "telephone": shop.phone,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Barnia Bazar",
+          "addressLocality": "Tehatta",
+          "addressRegion": "West Bengal",
+          "postalCode": "741160",
+          "addressCountry": "IN"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 23.7333,
+          "longitude": 88.5167
+        }
+      };
+      const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": baseUrl
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Barnia Bazar",
+            "item": `${baseUrl}/bazar`
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": shop.name,
+            "item": fullUrl
+          }
+        ]
+      };
+      html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(shopSchema)}</script><script type="application/ld+json">${JSON.stringify(breadcrumbSchema)}</script></head>`);
+    } else {
+      metadata = {
+        title: "Shop Profile | Barnia Bazar",
+        description: "Explore local shops and market prices at Barnia Bazar, Nadia.",
+        image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1200&h=630",
+        url: fullUrl,
+        type: 'website'
+      };
+    }
+
+    console.log(`[MetaTags] Injecting tags for shop: ${metadata.title}, URL: ${fullUrl}`);
+    html = await injectMetaTags(html, metadata);
+    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+  });
+
   app.get("/profile/:id", async (req, res) => {
     const userAgent = req.get('User-Agent') || '';
-    console.log(`[ProfileRoute] Request for ID: ${req.params.id}, User-Agent: ${userAgent}`);
+    console.log(`[ProfileRoute] Request for ID/Slug: ${req.params.id}, User-Agent: ${userAgent}`);
     
     const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
     
@@ -594,8 +785,6 @@ async function startServer() {
     }
     
     const host = req.get('host')?.split(':')[0];
-    const forwardedProto = req.headers['x-forwarded-proto'] as string;
-    // Force HTTPS for social sharing links as required by platforms
     const protocol = 'https';
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const fullUrl = `${baseUrl}${req.originalUrl}`;
@@ -603,9 +792,10 @@ async function startServer() {
     let metadata;
     if (profile) {
       // Use proxy URL for Base64 images to satisfy social media crawlers
+      // Adding .jpg extension helps Facebook recognize it as an image
       let imageUrl = profile.avatar;
       if (imageUrl && imageUrl.startsWith('data:image')) {
-        imageUrl = `${baseUrl}/api/image/influencer/${req.params.id}`;
+        imageUrl = `${baseUrl}/api/image/influencer/${req.params.id}.jpg`;
       } else if (imageUrl && imageUrl.startsWith('/')) {
         imageUrl = `${baseUrl}${imageUrl}`;
       }
@@ -620,8 +810,53 @@ async function startServer() {
         description: description,
         image: imageUrl,
         url: fullUrl,
-        type: 'profile'
+        type: 'profile',
+        imageWidth: 1200,
+        imageHeight: 630
       };
+
+      // Add Person and Breadcrumb Structured Data
+      const personSchema = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": profile.name,
+        "description": profile.bio,
+        "image": imageUrl,
+        "url": fullUrl,
+        "sameAs": profile.socials || [],
+        "jobTitle": "Content Creator",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Tehatta",
+          "addressRegion": "West Bengal",
+          "addressCountry": "IN"
+        }
+      };
+      const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": baseUrl
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Influencers",
+            "item": `${baseUrl}/influencers`
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": profile.name,
+            "item": fullUrl
+          }
+        ]
+      };
+      html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(personSchema)}</script><script type="application/ld+json">${JSON.stringify(breadcrumbSchema)}</script></head>`);
     } else {
       metadata = {
         title: "Influencer Profile | Barnia Digital Hub",
@@ -638,7 +873,7 @@ async function startServer() {
   });
 
   // Generic Meta Tag Injection for other routes
-  app.get(["/bazar", "/influencers", "/ponjika"], async (req, res) => {
+  app.get(["/", "/bazar", "/influencers", "/ponjika"], async (req, res) => {
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
       html = await fs.readFile(path.resolve("index.html"), "utf-8");
@@ -656,7 +891,10 @@ async function startServer() {
       title: "Barnia Digital Hub | Community Platform",
       description: "Connect with Barnia, Ujirpur, and Nadia. Check Barnia Bazar market prices and local influencers.",
       image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
-      url: fullUrl
+      url: fullUrl,
+      type: 'website',
+      imageWidth: 1200,
+      imageHeight: 630
     };
 
     if (req.originalUrl.includes("/bazar")) {
@@ -671,6 +909,34 @@ async function startServer() {
     }
 
     html = await injectMetaTags(html, metadata);
+
+    // Add WebSite and Organization Structured Data for Home Page
+    if (req.originalUrl === "/" || req.originalUrl === "") {
+      const websiteSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Barnia Digital Hub",
+        "url": baseUrl,
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": `${baseUrl}/bazar?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+        }
+      };
+      const orgSchema = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Barnia Digital Hub",
+        "url": baseUrl,
+        "logo": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+        "sameAs": [
+          "https://www.facebook.com/barnia.in",
+          "https://www.instagram.com/barnia.in"
+        ]
+      };
+      html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(websiteSchema)}</script><script type="application/ld+json">${JSON.stringify(orgSchema)}</script></head>`);
+    }
+
     res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
 
