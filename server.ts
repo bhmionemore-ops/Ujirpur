@@ -345,6 +345,15 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Domain Redirect Middleware
+  app.use((req, res, next) => {
+    const host = req.get('host');
+    if (host && host.includes('barnia.onrender.com')) {
+      return res.redirect(301, `https://barnia.in${req.originalUrl}`);
+    }
+    next();
+  });
+
   // SEO Files - MUST be at the very top to avoid being caught by catch-all routes
   app.get("/robots.txt", (req, res) => {
     const protocol = 'https';
