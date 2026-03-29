@@ -357,8 +357,7 @@ async function startServer() {
   // SEO Files - MUST be at the very top to avoid being caught by catch-all routes
   app.get("/robots.txt", (req, res) => {
     const protocol = 'https';
-    const host = req.get('host')?.split(':')[0];
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const baseUrl = "https://barnia.in";
     
     const robots = [
       "User-agent: *",
@@ -394,8 +393,7 @@ async function startServer() {
   app.get("/sitemap.xml", async (req, res) => {
     try {
       const protocol = 'https';
-      const host = req.get('host')?.split(':')[0];
-      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const baseUrl = "https://barnia.in";
       
       let urls = [
         { loc: `${baseUrl}/`, changefreq: 'daily', priority: '1.0' },
@@ -647,11 +645,7 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const host = req.get('host')?.split(':')[0];
-    const forwardedProto = req.headers['x-forwarded-proto'] as string;
-    // Force HTTPS for social sharing links as required by platforms
-    const protocol = 'https';
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const baseUrl = "https://barnia.in";
     const fullUrl = `${baseUrl}${req.originalUrl}`;
 
     const metadata = newsItem ? {
@@ -687,9 +681,7 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const host = req.get('host')?.split(':')[0];
-    const protocol = 'https';
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const baseUrl = "https://barnia.in";
     const fullUrl = `${baseUrl}${req.originalUrl}`;
     
     let metadata;
@@ -785,9 +777,7 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const host = req.get('host')?.split(':')[0];
-    const protocol = 'https';
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const baseUrl = "https://barnia.in";
     const fullUrl = `${baseUrl}${req.originalUrl}`;
     
     let metadata;
@@ -883,9 +873,7 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
 
-    const host = req.get('host')?.split(':')[0];
-    const protocol = 'https';
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const baseUrl = "https://barnia.in";
     const fullUrl = `${baseUrl}${req.originalUrl}`;
 
     let metadata = {
@@ -1066,9 +1054,7 @@ async function startServer() {
       let html = await fs.readFile(path.resolve("index.html"), "utf-8");
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
-      const host = req.get('host')?.split(':')[0];
-      const protocol = 'https';
-      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const baseUrl = "https://barnia.in";
       const fullUrl = `${baseUrl}${req.originalUrl}`;
       
       const metadata = {
@@ -1094,9 +1080,7 @@ async function startServer() {
     app.get("*", async (req, res) => {
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
-      const host = req.get('host')?.split(':')[0];
-      const protocol = 'https';
-      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const baseUrl = "https://barnia.in";
       const fullUrl = `${baseUrl}${req.originalUrl}`;
       
       const metadata = {
