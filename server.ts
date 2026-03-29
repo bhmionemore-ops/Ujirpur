@@ -241,6 +241,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta name="description" content="${escapedDescription}" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
+    <meta name="facebook-domain-verification" content="w2yc7on06ekg1mxdf2mnuyz1g8bhhr" />
     <meta property="fb:app_id" content="966242223397117" />
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
