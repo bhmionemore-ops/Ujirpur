@@ -10,8 +10,7 @@ import admin from "firebase-admin";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { 
-  getAuth, 
-  signInWithCustomToken 
+  getAuth
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -155,8 +154,21 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
   try {
     let data: any = null;
     
-    // 1. Try Client SDK
-    if (db) {
+    // 1. Try Admin SDK (preferred on server)
+    if (adminDb) {
+      try {
+        const docSnap = await adminDb.collection("news").doc(date).get();
+        if (docSnap.exists) {
+          data = docSnap.data();
+          console.log(`[MetaTags] News found via Admin SDK for date: ${date}`);
+        }
+      } catch (e) {
+        console.warn(`[MetaTags] Admin SDK news fetch failed for date ${date}:`, e);
+      }
+    }
+
+    // 2. Try Client SDK (fallback)
+    if (!data && db) {
       try {
         const docRef = doc(db, "news", date);
         const docSnap = await getDocFromServer(docRef);
@@ -493,31 +505,10 @@ async function startServer() {
       console.error("Failed to create Admin Firestore instance:", dbError);
     }
 
-    // Sign in as the server admin using a custom token to satisfy security rules
-    try {
-      const customToken = await admin.auth().createCustomToken("server-admin", {
-        admin: true,
-        email: "okbgmi611@gmail.com",
-        email_verified: true
-      });
-      await signInWithCustomToken(clientAuth, customToken);
-      const user = clientAuth.currentUser;
-      console.log(`Server authenticated as 'server-admin' (UID: ${user?.uid})`);
-      
-      // Log token claims for debugging
-      const idTokenResult = await user?.getIdTokenResult();
-      console.log("Server Admin Token Claims:", JSON.stringify(idTokenResult?.claims));
-      
-      // Force a refresh of the auth state to ensure it's propagated
-      await user?.getIdToken(true);
-    } catch (authError) {
-      console.error("Server authentication failed:", authError);
-    }
-      
-      console.log(`Firebase SDKs initialized. Project: ${firebaseConfig.projectId}, Database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
-    } catch (error) {
-      console.error("Firebase initialization failed:", error);
-    }
+    console.log(`Firebase SDKs initialized. Project: ${firebaseConfig.projectId}, Database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+  }
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));

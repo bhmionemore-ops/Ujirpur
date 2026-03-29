@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2 } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
 import { seedDatabase } from '../utils/seedData';
 import { toast } from 'sonner';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { format } from 'date-fns';
 
 interface VisitorSession {
   id: string;
@@ -119,7 +121,7 @@ export const AdminAnalytics = () => {
 
   const activeNowCount = sessions.filter(s => {
     if (!s.lastSeen) return false;
-    return Date.now() - s.lastSeen.toMillis() < 60000;
+    return Date.now() - (s.lastSeen?.toMillis() || 0) < 60000;
   }).length;
 
   const avgDuration = sessions.length > 0 
@@ -140,8 +142,28 @@ export const AdminAnalytics = () => {
 
   // Sort messages within each session by time (asc)
   Object.keys(chatSessions).forEach(sid => {
-    chatSessions[sid].sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
+    chatSessions[sid].sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
   });
+
+  // Daily Traffic Data
+  const dailyTraffic = sessions.reduce((acc, s) => {
+    if (!s.startTime) return acc;
+    try {
+      const date = format(s.startTime.toDate(), 'MMM dd');
+      acc[date] = (acc[date] || 0) + 1;
+    } catch (e) {
+      console.warn("Error formatting date for session:", s.id, e);
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const sortedChartData = Object.entries(dailyTraffic)
+    .map(([date, count]) => ({ 
+      date, 
+      count,
+      timestamp: sessions.find(s => s.startTime && format(s.startTime.toDate(), 'MMM dd') === date)?.startTime?.toMillis() || 0
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-32 pb-20 px-4">
@@ -197,6 +219,57 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
+        {/* Traffic Chart */}
+        <div className="mb-12 space-y-6">
+          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+            <TrendingUp size={20} className="text-brand-600" />
+            Daily Traffic Report
+          </h2>
+          <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sortedChartData}>
+                <defs>
+                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF6321" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#FF6321" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  stroke="#FF6321" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorCount)" 
+                  name="Visitors"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Recent Visitors */}
           <div className="lg:col-span-2 space-y-6">
@@ -240,12 +313,12 @@ export const AdminAnalytics = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {session.events.slice(-3).map((e, i) => (
+                            {session.events && session.events.slice(-3).map((e, i) => (
                               <span key={i} className="px-2 py-0.5 bg-zinc-100 text-[9px] font-black text-zinc-500 rounded-full uppercase tracking-wider">
                                 {e}
                               </span>
                             ))}
-                            {session.events.length > 3 && (
+                            {session.events && session.events.length > 3 && (
                               <span className="text-[9px] font-bold text-zinc-400">+{session.events.length - 3}</span>
                             )}
                           </div>
@@ -325,7 +398,7 @@ export const AdminAnalytics = () => {
                         }`}>
                           {m.text}
                           <p className={`text-[8px] mt-1 opacity-60 ${m.isBot ? 'text-zinc-400' : 'text-white'}`}>
-                            {m.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {m.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Just now'}
                           </p>
                         </div>
                       </div>
