@@ -255,17 +255,16 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta name="googlebot" content="index, follow" />
     <meta name="facebook-domain-verification" content="w2yc7on06ekg1mxdf2mnuyz1g8bhhr" />
     <meta property="fb:app_id" content="966242223397117" />
-    <meta property="og:image" content="${escapedImage}" />
-    <meta property="og:image:secure_url" content="${escapedImage}" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="${imageWidth}" />
-    <meta property="og:image:height" content="${imageHeight}" />
-    <meta property="og:image:alt" content="${escapedTitle}" />
+    <meta property="og:site_name" content="Barnia Digital Hub" />
     <meta property="og:title" content="${escapedTitle}" />
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="${type}" />
-    <meta property="og:site_name" content="Barnia Digital Hub" />
+    <meta property="og:image" content="${escapedImage}" />
+    <meta property="og:image:secure_url" content="${escapedImage}" />
+    <meta property="og:image:width" content="${imageWidth}" />
+    <meta property="og:image:height" content="${imageHeight}" />
+    <meta property="og:image:alt" content="${escapedTitle}" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
     <meta property="og:updated_time" content="${updatedTime}" />
@@ -646,7 +645,7 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    const fullUrl = `${baseUrl}${req.path}`;
 
     const metadata = newsItem ? {
       title: newsItem.title,
@@ -682,7 +681,7 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    const fullUrl = `${baseUrl}${req.path}`;
     
     let metadata;
     if (shop) {
@@ -778,7 +777,7 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    const fullUrl = `${baseUrl}${req.path}`;
     
     let metadata;
     if (profile) {
@@ -874,12 +873,12 @@ async function startServer() {
     }
 
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.originalUrl}`;
+    const fullUrl = `${baseUrl}${req.path}`;
 
     let metadata = {
       title: "Barnia Digital Hub | Community Platform",
       description: "Connect with Barnia, Ujirpur, and Nadia. Check Barnia Bazar market prices and local influencers.",
-      image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
       url: fullUrl,
       type: 'website',
       imageWidth: 1200,
@@ -1055,7 +1054,7 @@ async function startServer() {
       html = await vite.transformIndexHtml(req.originalUrl, html);
       
       const baseUrl = "https://barnia.in";
-      const fullUrl = `${baseUrl}${req.originalUrl}`;
+      const fullUrl = `${baseUrl}${req.path}`;
       
       const metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
@@ -1081,7 +1080,7 @@ async function startServer() {
       let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
       
       const baseUrl = "https://barnia.in";
-      const fullUrl = `${baseUrl}${req.originalUrl}`;
+      const fullUrl = `${baseUrl}${req.path}`;
       
       const metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
