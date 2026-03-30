@@ -1120,7 +1120,9 @@ async function startServer() {
         if (!isProd && vite) html = await vite.transformIndexHtml(req.originalUrl, html);
       }
 
-      const baseUrl = "https://barnia.in";
+      const protocol = (req.headers['x-forwarded-proto'] as string) || (req.hostname === 'localhost' ? 'http' : 'https');
+      const host = req.headers.host;
+      const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
       const fullUrl = `${baseUrl}${req.path}`;
 
       let metadata = {
@@ -1470,11 +1472,15 @@ async function startServer() {
           html = await vite.transformIndexHtml(req.originalUrl, html);
         }
         
+        const protocol = (req.headers['x-forwarded-proto'] as string) || (req.hostname === 'localhost' ? 'http' : 'https');
+        const host = req.headers.host;
+        const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
+        
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
-          url: `https://barnia.in${req.path}`,
+          url: `${baseUrl}${req.path}`,
           type: 'website'
         };
         
@@ -1490,13 +1496,17 @@ async function startServer() {
 
     app.get("*", async (req, res) => {
       try {
+        const protocol = (req.headers['x-forwarded-proto'] as string) || (req.hostname === 'localhost' ? 'http' : 'https');
+        const host = req.headers.host;
+        const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
+
         let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
         
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
-          url: `https://barnia.in${req.path}`,
+          url: `${baseUrl}${req.path}`,
           type: 'website'
         };
         

@@ -157,8 +157,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               email: fbUser.email || currentUser.email
             } as User);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error('[FirebaseContext] Error handling OAuth success:', err);
+          // Show error in UI if possible
+          if (window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('auth-error', { detail: err.message || 'Facebook sign-in failed' }));
+          }
         }
       }
     };
