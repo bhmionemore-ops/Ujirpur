@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
-import { shareContent, slugify } from '../utils';
+import { shareContent, slugify, getGoogleDriveImageUrl } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
@@ -36,6 +36,7 @@ interface Influencer {
   socials: string[];
   avatar: string;
   uid?: string;
+  videos?: { title: string; url: string }[];
 }
 
 interface CollabRequest {
@@ -72,11 +73,31 @@ export const InfluencerSection = () => {
     avatarUrl: '',
     social1: '',
     social2: '',
-    social3: ''
+    social3: '',
+    videos: [] as { title: string; url: string }[]
   });
   const [seeding, setSeeding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+
+  const addVideo = () => {
+    if (!videoUrl.trim()) return;
+    setNewInfluencer(prev => ({
+      ...prev,
+      videos: [...prev.videos, { title: videoTitle || 'Popular Video', url: videoUrl }]
+    }));
+    setVideoUrl('');
+    setVideoTitle('');
+  };
+
+  const removeVideo = (index: number) => {
+    setNewInfluencer(prev => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== index)
+    }));
+  };
 
   if (error) throw error;
 
@@ -93,7 +114,8 @@ export const InfluencerSection = () => {
           avatarUrl: myProfile.avatar,
           social1: myProfile.socials[0] || '',
           social2: myProfile.socials[1] || '',
-          social3: myProfile.socials[2] || ''
+          social3: myProfile.socials[2] || '',
+          videos: myProfile.videos || []
         });
       } else if (!newInfluencer.name && !editingId) {
         // Pre-fill with user info for new profile
@@ -342,8 +364,9 @@ export const InfluencerSection = () => {
       name: newInfluencer.name,
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
-      avatar: newInfluencer.avatarUrl || `https://picsum.photos/seed/${Math.random()}/200/200`,
-      category: 'Influencer'
+      avatar: getGoogleDriveImageUrl(newInfluencer.avatarUrl) || `https://picsum.photos/seed/${Math.random()}/200/200`,
+      category: 'Influencer',
+      videos: newInfluencer.videos.filter(v => v.url.trim() !== '')
     };
 
     if (!editingId) {
@@ -385,7 +408,7 @@ export const InfluencerSection = () => {
       }
       setShowForm(false);
       setEditingId(null);
-      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
+      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '', videos: [] });
     } catch (err) {
       try {
         handleFirestoreError(err, OperationType.CREATE, 'influencers');
@@ -758,6 +781,75 @@ export const InfluencerSection = () => {
                     ))}
                   </div>
                 </div>
+
+                <div className="space-y-6 md:col-span-2 p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-lg font-black text-zinc-900 tracking-tight">Popular Videos</h4>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Showcase your best content (YouTube or Google Drive)</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600">
+                      <Youtube size={24} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
+                      <input
+                        type="text"
+                        value={videoTitle}
+                        onChange={(e) => setVideoTitle(e.target.value)}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                        placeholder="Video Title (e.g. My Best Vlog)"
+                      />
+                    </div>
+                    <div className="md:col-span-6">
+                      <input
+                        type="text"
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                        placeholder="Video Link (YouTube/Google Drive)"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        onClick={addVideo}
+                        className="w-full h-full bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-2 py-4 md:py-0"
+                      >
+                        <UserPlus size={16} />
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {newInfluencer.videos.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                      {newInfluencer.videos.map((vid, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-100 group">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 flex-shrink-0">
+                              <Youtube size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-zinc-900 truncate">{vid.title}</p>
+                              <p className="text-[10px] font-bold text-zinc-400 truncate">{vid.url}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeVideo(idx)}
+                            className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="md:col-span-2 flex justify-end gap-4 mt-4">
                   <button
                     type="button"
@@ -837,7 +929,7 @@ export const InfluencerSection = () => {
                 <div className="relative cursor-pointer" onClick={() => navigate(`/profile/${inf.slug || inf.id}`)}>
                   <div className="absolute inset-0 bg-brand-600 blur-2xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full"></div>
                   <img
-                    src={inf.avatar}
+                    src={getGoogleDriveImageUrl(inf.avatar)}
                     alt={inf.name}
                     className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl relative z-10 group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"

@@ -11,10 +11,69 @@
         "bio": { "type": "string" },
         "imageUrl": { "type": "string" },
         "socialLinks": { "type": "object" },
+        "videos": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "uid": { "type": "string" }
       },
       "required": ["name", "category", "bio", "uid"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "A product sold by a shop.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "imageUrl"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "An order placed by a customer.",
+      "type": "object",
+      "properties": {
+        "shopId": { "type": "string" },
+        "shopName": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerLocation": { 
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" }
+          }
+        },
+        "items": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            }
+          }
+        },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "verified", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["shopId", "customerName", "customerPhone", "items", "totalPrice", "status"]
     },
     "shop": {
       "title": "Shop",
@@ -144,6 +203,14 @@
     "/shops/{shopId}": {
       "schema": "shop",
       "description": "Collection of local shops in Barnia Bazar."
+    },
+    "/shops/{shopId}/products/{productId}": {
+      "schema": "product",
+      "description": "Products sold by a specific shop."
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Orders placed by customers."
     },
     "/users/{userId}": {
       "schema": "user",

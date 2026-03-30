@@ -1,64 +1,102 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { 
   Store, MapPin, Phone, ShoppingBag, Tag, ChevronLeft, Share2, 
-  MessageSquare, CheckCircle, Zap, ExternalLink
+  MessageSquare, CheckCircle, Zap, ExternalLink, Plus, Trash2, 
+  ShoppingCart, X, Map as MapIcon, Loader2, ClipboardList
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { 
+  collection, query, where, getDocs, doc, getDoc, 
+  addDoc, serverTimestamp, onSnapshot, orderBy, 
+  deleteDoc, updateDoc 
+} from 'firebase/firestore';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
-import { shareContent } from '../utils';
-
-interface Product {
-  name: string;
-  price: string;
-}
-
-interface Shop {
-  id: string;
-  slug: string;
-  name: string;
-  owner: string;
-  category: string;
-  location: string;
-  phone: string;
-  products: Product[];
-  image: string;
-  uid?: string;
-}
+import { shareContent, getGoogleDriveImageUrl } from '../utils';
+import { Product, Order, OrderItem, Shop } from '../types';
+import { toast } from 'sonner';
 
 export const ShopProfilePage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const { user } = useFirebase();
+  const { user, isAdmin } = useFirebase();
   const [shop, setShop] = useState<Shop | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Cart State
+  const [cart, setCart] = useState<OrderItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [isOrdering, setIsOrdering] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '' });
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+
+  // Management State
+  const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: '',
+    description: '',
+    imageUrl: '',
+    category: ''
+  });
+
+  const isOwner = user && shop && shop.uid === user.uid;
 
   useEffect(() => {
     const fetchShop = async () => {
       if (!slug) return;
       try {
-        // Try fetching by slug first
         const q = query(collection(db, 'shops'), where('slug', '==', slug));
         const querySnapshot = await getDocs(q);
         
+        let shopData: Shop | null = null;
         if (!querySnapshot.empty) {
           const docSnap = querySnapshot.docs[0];
-          setShop({ id: docSnap.id, ...docSnap.data() } as Shop);
+          shopData = { id: docSnap.id, ...docSnap.data() } as Shop;
         } else {
-          // Fallback to ID for backward compatibility
           const docRef = doc(db, 'shops', slug);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setShop({ id: docSnap.id, ...docSnap.data() } as Shop);
-          } else {
-            setError(new Error('Shop not found'));
+            shopData = { id: docSnap.id, ...docSnap.data() } as Shop;
           }
+        }
+
+        if (shopData) {
+          setShop(shopData);
+          // Fetch products from sub-collection
+          const productsRef = collection(db, 'shops', shopData.id, 'products');
+          const productsQuery = query(productsRef, orderBy('createdAt', 'desc'));
+          const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            setProducts(items);
+          });
+
+          // Fetch orders if owner
+          if (user && (shopData.uid === user.uid || isAdmin)) {
+            const ordersRef = collection(db, 'orders');
+            const ordersQuery = query(ordersRef, where('shopId', '==', shopData.id), orderBy('createdAt', 'desc'));
+            const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
+              const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+              setOrders(items);
+            });
+            return () => {
+              unsubProducts();
+              unsubOrders();
+            };
+          }
+
+          return () => unsubProducts();
+        } else {
+          setError(new Error('Shop not found'));
         }
       } catch (err) {
         setError(handleFirestoreError(err, OperationType.GET, `shops/${slug}`));
@@ -68,7 +106,157 @@ export const ShopProfilePage = () => {
     };
 
     fetchShop();
-  }, [slug]);
+  }, [slug, user, isAdmin]);
+
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.productId === product.id);
+      if (existing) {
+        return prev.map(item => 
+          item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prev, { productId: product.id, name: product.name, price: Number(product.price), quantity: 1 }];
+    });
+    toast.success(`${product.name} added to cart`);
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => prev.filter(item => item.productId !== productId));
+  };
+
+  const updateQuantity = (productId: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const handleGetLocation = () => {
+    setGettingLocation(true);
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      setGettingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setGettingLocation(false);
+        toast.success("Location captured successfully!");
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast.error("Could not get your location. Please enable GPS.");
+        setGettingLocation(false);
+      }
+    );
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shop || cart.length === 0) return;
+    if (!location) {
+      toast.error("Please provide your live location to place the order");
+      return;
+    }
+
+    setIsOrdering(true);
+    try {
+      const orderData = {
+        shopId: shop.id,
+        shopUid: shop.uid,
+        shopName: shop.name,
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        customerLocation: location,
+        items: cart,
+        totalPrice,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'orders'), orderData);
+      
+      // Notify via server if needed
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'order',
+          data: {
+            shopName: shop.name,
+            customerName: customerInfo.name,
+            customerPhone: customerInfo.phone,
+            total: totalPrice
+          }
+        })
+      });
+
+      toast.success("Order placed successfully! The shop owner will call you soon.");
+      setCart([]);
+      setShowCart(false);
+      setCustomerInfo({ name: '', phone: '' });
+      setLocation(null);
+    } catch (err) {
+      toast.error("Failed to place order. Please try again.");
+      console.error(err);
+    } finally {
+      setIsOrdering(false);
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shop || !isOwner) return;
+
+    try {
+      const productData = {
+        ...newProduct,
+        imageUrl: getGoogleDriveImageUrl(newProduct.imageUrl),
+        price: Number(newProduct.price),
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'shops', shop.id, 'products'), productData);
+      toast.success("Product added successfully!");
+      setShowAddProduct(false);
+      setNewProduct({ name: '', price: '', description: '', imageUrl: '', category: '' });
+    } catch (err) {
+      toast.error("Failed to add product");
+      console.error(err);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!shop || !isOwner) return;
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteDoc(doc(db, 'shops', shop.id, 'products', productId));
+      toast.success("Product deleted");
+    } catch (err) {
+      toast.error("Failed to delete product");
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status });
+      toast.success(`Order status updated to ${status}`);
+    } catch (err) {
+      toast.error("Failed to update status");
+    }
+  };
 
   if (loading) {
     return (
@@ -107,203 +295,503 @@ export const ShopProfilePage = () => {
     <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
       <Helmet>
         <title>{`${shop.name} | Barnia Bazar - Best ${shop.category} in Tehatta, Nadia`}</title>
-        <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products: ${(shop.products || []).map(p => p.name).join(', ')}. Contact: ${shop.phone}`} />
-        <meta name="keywords" content={`${shop.name}, ${shop.category}, Barnia Bazar, Tehatta, Nadia, West Bengal, Shopping, ${(shop.products || []).map(p => p.name).join(', ')}`} />
-        
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="business.business" />
-        <meta property="og:title" content={`${shop.name} | Barnia Bazar`} />
-        <meta property="og:description" content={`Check out ${shop.name} at Barnia Bazar. Best ${shop.category} in Tehatta, Nadia.`} />
-        <meta property="og:image" content={shop.image} />
-        <meta property="og:url" content={window.location.href} />
-
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:title" content={`${shop.name} | Barnia Bazar`} />
-        <meta property="twitter:description" content={`Check out ${shop.name} at Barnia Bazar. Best ${shop.category} in Tehatta, Nadia.`} />
-        <meta property="twitter:image" content={shop.image} />
-
-        {/* Structured Data */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": shop.name,
-            "image": shop.image,
-            "@id": window.location.href,
-            "url": window.location.href,
-            "telephone": shop.phone,
-            "address": {
-              "@type": "PostalAddress",
-              "streetAddress": "Barnia Bazar",
-              "addressLocality": "Tehatta",
-              "addressRegion": "West Bengal",
-              "postalCode": "741160",
-              "addressCountry": "IN"
-            },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": 23.7333,
-              "longitude": 88.5167
-            },
-            "openingHoursSpecification": {
-              "@type": "OpeningHoursSpecification",
-              "dayOfWeek": [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday"
-              ],
-              "opens": "09:00",
-              "closes": "21:00"
-            }
-          })}
-        </script>
+        <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products. Contact: ${shop.phone}`} />
       </Helmet>
 
-      {/* Decorative Background */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-200/30 blur-[120px] rounded-full"></div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 pt-12 relative z-10">
+      {/* Cart Button */}
+      {cart.length > 0 && (
         <button 
-          onClick={() => navigate('/bazar')}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-4 border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 mb-12 shadow-sm hover:shadow-md"
+          onClick={() => setShowCart(true)}
+          className="fixed bottom-8 right-8 z-[100] bg-brand-600 text-white p-6 rounded-full shadow-2xl hover:scale-110 transition-all flex items-center gap-3"
         >
-          <ChevronLeft size={16} />
-          {language === 'bn' ? 'সব দোকান' : 'All Shops'}
+          <div className="relative">
+            <ShoppingCart size={24} />
+            <span className="absolute -top-2 -right-2 bg-white text-brand-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shadow-lg">
+              {cart.reduce((s, i) => s + i.quantity, 0)}
+            </span>
+          </div>
+          <span className="font-black uppercase tracking-widest text-sm hidden sm:block">Checkout</span>
         </button>
+      )}
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[3rem] border-4 border-zinc-900 shadow-2xl overflow-hidden"
-        >
-          {/* Header/Cover Area */}
-          <div className="h-64 relative">
-            <img 
-              src={shop.image} 
-              alt={shop.name} 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end">
-              <div>
-                <span className="inline-block px-4 py-1.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-4 shadow-xl">
-                  {shop.category}
-                </span>
-                <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">
-                  {shop.name}
-                </h1>
-              </div>
+      <div className="max-w-6xl mx-auto px-4 pt-12 relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
+          <button 
+            onClick={() => navigate('/bazar')}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-4 border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 shadow-sm"
+          >
+            <ChevronLeft size={16} />
+            {language === 'bn' ? 'সব দোকান' : 'All Shops'}
+          </button>
+
+          {isOwner && (
+            <div className="flex bg-white p-1.5 rounded-2xl border-4 border-zinc-900 shadow-xl">
               <button 
-                onClick={() => {
-                  const shareUrl = window.location.href;
-                  shareContent(shop.name, `${shop.category} at Barnia Bazar. Location: ${shop.location}`, shareUrl);
-                }}
-                className="p-4 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all shadow-xl"
+                onClick={() => setActiveTab('products')}
+                className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'products' ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
               >
-                <Share2 size={24} />
+                <Tag size={16} />
+                Manage Products
+              </button>
+              <button 
+                onClick={() => setActiveTab('orders')}
+                className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
+              >
+                <ClipboardList size={16} />
+                Orders
+                {orders.filter(o => o.status === 'pending').length > 0 && (
+                  <span className="bg-brand-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                    {orders.filter(o => o.status === 'pending').length}
+                  </span>
+                )}
               </button>
             </div>
-          </div>
+          )}
+        </div>
 
-          <div className="p-8 md:p-16 relative">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              <div className="lg:col-span-2 space-y-12">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="p-6 bg-zinc-50 rounded-3xl border-4 border-zinc-100 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-brand-600 shadow-sm">
+        {isOwner && activeTab === 'orders' ? (
+          <div className="space-y-8">
+            <h2 className="text-4xl font-black tracking-tight flex items-center gap-4">
+              <ClipboardList size={40} className="text-brand-600" />
+              Recent Orders
+            </h2>
+            <div className="grid grid-cols-1 gap-6">
+              {orders.length === 0 ? (
+                <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-zinc-200 text-center">
+                  <p className="text-zinc-400 font-bold">No orders yet.</p>
+                </div>
+              ) : (
+                orders.map(order => (
+                  <div key={order.id} className="bg-white rounded-[2.5rem] border-4 border-zinc-900 p-8 shadow-xl">
+                    <div className="flex flex-col md:flex-row justify-between gap-8">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                            order.status === 'pending' ? 'bg-amber-100 text-amber-600' :
+                            order.status === 'verified' ? 'bg-blue-100 text-blue-600' :
+                            order.status === 'completed' ? 'bg-green-100 text-green-600' :
+                            'bg-red-100 text-red-600'
+                          }`}>
+                            {order.status}
+                          </span>
+                          <span className="text-zinc-400 text-xs font-bold">
+                            {order.createdAt?.toDate().toLocaleString()}
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-black">{order.customerName}</h3>
+                        <div className="flex items-center gap-4">
+                          <a href={`tel:${order.customerPhone}`} className="flex items-center gap-2 text-brand-600 font-bold hover:underline">
+                            <Phone size={16} />
+                            {order.customerPhone}
+                          </a>
+                          <a 
+                            href={`https://www.google.com/maps?q=${order.customerLocation.lat},${order.customerLocation.lng}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-zinc-500 font-bold hover:text-brand-600 transition-colors"
+                          >
+                            <MapIcon size={16} />
+                            View Live Location
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 max-w-md">
+                        <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Order Items</p>
+                          <div className="space-y-2">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span className="font-bold text-zinc-700">{item.quantity}x {item.name}</span>
+                                <span className="font-black">₹{item.price * item.quantity}</span>
+                              </div>
+                            ))}
+                            <div className="pt-4 border-t border-zinc-200 flex justify-between">
+                              <span className="font-black uppercase text-xs">Total</span>
+                              <span className="font-black text-brand-600 text-lg">₹{order.totalPrice}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Actions</p>
+                        <button 
+                          onClick={() => updateOrderStatus(order.id, 'verified')}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                        >
+                          Verify Order
+                        </button>
+                        <button 
+                          onClick={() => updateOrderStatus(order.id, 'completed')}
+                          className="px-6 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all"
+                        >
+                          Mark Completed
+                        </button>
+                        <button 
+                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                          className="px-6 py-2 bg-red-100 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-200 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {/* Shop Header */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[3rem] border-4 border-zinc-900 shadow-2xl overflow-hidden"
+            >
+              <div className="h-64 relative">
+                <img 
+                  src={getGoogleDriveImageUrl(shop.image)} 
+                  alt={shop.name} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end">
+                  <div>
+                    <span className="inline-block px-4 py-1.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-4 shadow-xl">
+                      {shop.category}
+                    </span>
+                    <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">
+                      {shop.name}
+                    </h1>
+                  </div>
+                  <button 
+                    onClick={() => shareContent(shop.name, `${shop.category} at Barnia Bazar.`, window.location.href)}
+                    className="p-4 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all shadow-xl"
+                  >
+                    <Share2 size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-8 md:p-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-brand-600">
                       <MapPin size={24} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Location</p>
-                      <p className="text-sm font-bold text-zinc-900">{shop.location}</p>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Location</p>
+                      <p className="text-sm font-bold">{shop.location}</p>
                     </div>
                   </div>
-                  <div className="p-6 bg-zinc-50 rounded-3xl border-4 border-zinc-100 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-brand-600 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-brand-600">
                       <Phone size={24} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Contact</p>
-                      <p className="text-sm font-bold text-zinc-900">{shop.phone}</p>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Contact</p>
+                      <p className="text-sm font-bold">{shop.phone}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-brand-600">
+                      <ShoppingBag size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Products</p>
+                      <p className="text-sm font-bold">{products.length} Items Available</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Product Section */}
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-4xl font-black tracking-tight flex items-center gap-4">
+                  <ShoppingBag size={40} className="text-brand-600" />
+                  Our Products
+                </h2>
+                {isOwner && (
+                  <button 
+                    onClick={() => setShowAddProduct(true)}
+                    className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-3 shadow-xl"
+                  >
+                    <Plus size={20} />
+                    Add Product
+                  </button>
+                )}
+              </div>
+
+              {products.length === 0 ? (
+                <div className="bg-white p-32 rounded-[3rem] border-4 border-dashed border-zinc-200 text-center">
+                  <ShoppingBag size={64} className="text-zinc-200 mx-auto mb-6" />
+                  <p className="text-zinc-400 font-bold text-xl">No products listed yet.</p>
+                  {isOwner && <p className="text-zinc-500 mt-2">Start adding products to your shop!</p>}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {products.map(product => (
+                    <motion.div 
+                      key={product.id}
+                      whileHover={{ y: -10 }}
+                      className="bg-white rounded-[2.5rem] border-4 border-zinc-100 p-6 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all group flex flex-col"
+                    >
+                      <div className="aspect-square rounded-3xl overflow-hidden mb-6 relative">
+                        <img 
+                          src={getGoogleDriveImageUrl(product.imageUrl)} 
+                          alt={product.name} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => (e.currentTarget.src = 'https://picsum.photos/seed/product/400/400')}
+                        />
+                        {isOwner && (
+                          <button 
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all shadow-xl"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                      <h3 className="text-2xl font-black text-zinc-900 mb-2">{product.name}</h3>
+                      <p className="text-zinc-500 text-sm mb-6 line-clamp-2 flex-1">{product.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-3xl font-black text-brand-600">₹{product.price}</span>
+                        <button 
+                          onClick={() => addToCart(product)}
+                          className="bg-zinc-900 text-white p-4 rounded-2xl hover:bg-brand-600 transition-all shadow-lg group-hover:scale-110"
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add Product Modal */}
+      <AnimatePresence>
+        {showAddProduct && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddProduct(false)}
+              className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden border-4 border-brand-500"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-black">Add New Product</h3>
+                  <button onClick={() => setShowAddProduct(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <form onSubmit={handleAddProduct} className="space-y-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Product Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                      placeholder="e.g. Fresh Tomatoes"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Price (₹)</label>
+                      <input
+                        required
+                        type="number"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Category</label>
+                      <input
+                        type="text"
+                        value={newProduct.category}
+                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                        placeholder="e.g. Vegetables"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Description</label>
+                    <textarea
+                      value={newProduct.description}
+                      onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 focus:border-brand-500 outline-none transition-all h-24 resize-none"
+                      placeholder="Tell customers about this product..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Image URL (Google Drive/PostImg)</label>
+                    <input
+                      required
+                      type="text"
+                      value={newProduct.imageUrl}
+                      onChange={(e) => setNewProduct({ ...newProduct, imageUrl: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                      placeholder="Paste image link here"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-brand-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-brand-700 transition-all shadow-xl shadow-brand-200"
+                  >
+                    Add Product to Shop
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cart/Order Modal */}
+      <AnimatePresence>
+        {showCart && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCart(false)}
+              className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative z-10 overflow-hidden border-4 border-zinc-900"
+            >
+              <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+                {/* Cart Items */}
+                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar border-b md:border-b-0 md:border-r border-zinc-100">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-black">Your Cart</h3>
+                    <button onClick={() => setShowCart(false)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full">
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <div className="space-y-6">
+                    {cart.map(item => (
+                      <div key={item.productId} className="flex items-center gap-4 p-4 bg-zinc-50 rounded-2xl">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-zinc-900">{item.name}</h4>
+                          <p className="text-brand-600 font-black">₹{item.price}</p>
+                        </div>
+                        <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-zinc-200">
+                          <button onClick={() => updateQuantity(item.productId, -1)} className="p-1 hover:text-brand-600"><Trash2 size={16} /></button>
+                          <span className="font-black w-6 text-center">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.productId, 1)} className="p-1 hover:text-brand-600"><Plus size={16} /></button>
+                        </div>
+                        <button onClick={() => removeFromCart(item.productId)} className="text-zinc-300 hover:text-red-500 transition-colors">
+                          <X size={20} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 pt-8 border-t border-zinc-100">
+                    <div className="flex justify-between items-center">
+                      <span className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Subtotal</span>
+                      <span className="text-3xl font-black text-brand-600">₹{totalPrice}</span>
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <Tag size={16} className="text-brand-600" />
-                    Product Price List
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    {(shop.products || []).map((p, i) => (
-                      <div 
-                        key={`product-${i}`}
-                        className="flex justify-between items-center p-6 bg-white rounded-3xl border-4 border-zinc-100 hover:border-brand-500 transition-all group"
+                {/* Checkout Form */}
+                <div className="w-full md:w-80 bg-zinc-50 p-8">
+                  <div className="hidden md:flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black">Checkout</h3>
+                    <button onClick={() => setShowCart(false)} className="p-2 hover:bg-zinc-200 rounded-full">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <form onSubmit={handlePlaceOrder} className="space-y-6">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Your Name</label>
+                      <input
+                        required
+                        type="text"
+                        value={customerInfo.name}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                        placeholder="Full Name"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mobile Number</label>
+                      <input
+                        required
+                        type="tel"
+                        value={customerInfo.phone}
+                        onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-200 focus:border-brand-500 outline-none transition-all"
+                        placeholder="+91 00000 00000"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Live Location</label>
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={gettingLocation}
+                        className={`w-full p-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-3 transition-all ${
+                          location 
+                            ? 'bg-green-50 border-green-500 text-green-600' 
+                            : 'bg-white border-zinc-200 text-zinc-500 hover:border-brand-500 hover:text-brand-600'
+                        }`}
                       >
-                        <span className="font-bold text-zinc-700 group-hover:text-zinc-900 transition-colors">{p.name}</span>
-                        <span className="text-2xl font-black text-brand-600">{p.price}</span>
-                      </div>
-                    ))}
-                  </div>
+                        {gettingLocation ? <Loader2 size={20} className="animate-spin" /> : <MapIcon size={20} />}
+                        <span className="font-bold text-sm">
+                          {location ? 'Location Captured' : 'Share Live Location'}
+                        </span>
+                      </button>
+                      <p className="text-[10px] text-zinc-400 font-medium text-center italic">
+                        * Required for delivery verification
+                      </p>
+                    </div>
+                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-6">
+                      <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
+                        ⚠️ No online payment. Pay at shop during collection.
+                      </p>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isOrdering || !location}
+                      className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-brand-600 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isOrdering ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'Place Order'}
+                    </button>
+                  </form>
                 </div>
               </div>
-
-              <div className="space-y-8">
-                <div className="p-8 bg-brand-600 rounded-[2.5rem] text-white shadow-2xl shadow-brand-600/20 relative overflow-hidden border-4 border-brand-500">
-                  <div className="absolute top-0 right-0 p-6 opacity-10">
-                    <ShoppingBag size={80} />
-                  </div>
-                  <div className="relative z-10">
-                    <h4 className="text-2xl font-black mb-4 tracking-tight">Visit Shop</h4>
-                    <p className="text-white/80 text-sm font-medium mb-8 leading-relaxed">
-                      Owner: <span className="text-white font-bold">{shop.owner}</span>
-                    </p>
-                    <a 
-                      href={`tel:${shop.phone}`}
-                      className="w-full py-4 bg-white text-brand-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center justify-center gap-3 shadow-xl"
-                    >
-                      <Phone size={20} />
-                      Call Now
-                    </a>
-                  </div>
-                </div>
-
-                <div className="p-8 bg-zinc-900 rounded-[2.5rem] border-4 border-zinc-800 shadow-sm text-white">
-                  <h4 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6">Quick Actions</h4>
-                  <div className="space-y-4">
-                    <button 
-                      onClick={() => {
-                        const shareUrl = window.location.href;
-                        shareContent(shop.name, `${shop.category} at Barnia Bazar.`, shareUrl);
-                      }}
-                      className="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-brand-500 font-bold text-sm transition-all flex items-center gap-3"
-                    >
-                      <Share2 size={16} />
-                      Share Shop
-                    </button>
-                    <button 
-                      onClick={() => navigate('/')}
-                      className="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-brand-500 font-bold text-sm transition-all flex items-center gap-3"
-                    >
-                      <ExternalLink size={16} />
-                      Main Website
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </motion.div>
           </div>
-        </motion.div>
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

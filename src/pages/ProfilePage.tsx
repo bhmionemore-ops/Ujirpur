@@ -20,6 +20,7 @@ interface Influencer {
   socials: string[];
   avatar: string;
   uid?: string;
+  videos?: { title: string; url: string }[];
 }
 
 const getSocialIcon = (url: string) => {
@@ -31,6 +32,41 @@ const getSocialIcon = (url: string) => {
   if (lowerUrl.includes('linkedin.com')) return <Linkedin size={24} className="text-[#0077B5]" />;
   if (lowerUrl.includes('github.com')) return <Github size={24} className="text-[#181717]" />;
   return <Globe size={24} className="text-zinc-400" />;
+};
+
+const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) => {
+  const getEmbedUrl = (url: string) => {
+    if (url.includes('youtube.com/watch?v=')) {
+      const id = url.split('v=')[1]?.split('&')[0];
+      return `https://www.youtube.com/embed/${id}`;
+    }
+    if (url.includes('youtu.be/')) {
+      const id = url.split('youtu.be/')[1]?.split('?')[0];
+      return `https://www.youtube.com/embed/${id}`;
+    }
+    if (url.includes('drive.google.com/file/d/')) {
+      const id = url.split('/d/')[1]?.split('/')[0];
+      return `https://drive.google.com/file/d/${id}/preview`;
+    }
+    return url;
+  };
+
+  const embedUrl = getEmbedUrl(url);
+
+  return (
+    <div className="space-y-4">
+      <div className="aspect-video rounded-[2rem] overflow-hidden bg-zinc-900 border-4 border-zinc-100 shadow-xl">
+        <iframe
+          src={embedUrl}
+          title={title}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        ></iframe>
+      </div>
+      <p className="text-sm font-black text-zinc-900 px-4 uppercase tracking-widest">{title}</p>
+    </div>
+  );
 };
 
 export const ProfilePage = () => {
@@ -305,6 +341,17 @@ export const ProfilePage = () => {
                     ))}
                   </div>
                 </div>
+
+                {influencer.videos && influencer.videos.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em] mb-8">Popular Videos</h3>
+                    <div className="grid grid-cols-1 gap-12">
+                      {influencer.videos.map((vid: { title: string; url: string }, i: number) => (
+                        <VideoPlayer key={`video-${i}`} url={vid.url} title={vid.title} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-8">

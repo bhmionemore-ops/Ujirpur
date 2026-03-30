@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
-import { shareContent, slugify } from '../utils';
+import { shareContent, slugify, getGoogleDriveImageUrl } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
@@ -263,7 +263,7 @@ export const BarniaBazar = () => {
       category: newShop.category,
       location: newShop.location,
       phone: newShop.phone,
-      image: newShop.imageUrl || `https://picsum.photos/seed/${Math.random()}/400/300`,
+      image: getGoogleDriveImageUrl(newShop.imageUrl) || `https://picsum.photos/seed/${Math.random()}/400/300`,
       products: filteredProducts
     };
 
@@ -423,7 +423,7 @@ export const BarniaBazar = () => {
                   logEvent('view_shop', { shopId: shop.id, shopName: shop.name });
                 }}>
                   <img
-                    src={shop.image}
+                    src={getGoogleDriveImageUrl(shop.image)}
                     alt={shop.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     referrerPolicy="no-referrer"

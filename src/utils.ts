@@ -39,6 +39,19 @@ export const shareContent = async (title: string, text: string, url: string = wi
   }
 };
 
+export const getGoogleDriveImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.includes('drive.google.com/file/d/')) {
+    const id = url.split('/d/')[1]?.split('/')[0];
+    return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+  if (url.includes('drive.google.com/open?id=')) {
+    const id = url.split('id=')[1]?.split('&')[0];
+    return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+  return url;
+};
+
 export const slugify = (text: string) => {
   return text
     .toString()
