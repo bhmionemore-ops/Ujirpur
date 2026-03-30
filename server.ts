@@ -22,6 +22,7 @@ import {
   serverTimestamp,
   query,
   where,
+  limit,
   deleteDoc,
   Firestore,
   initializeFirestore,
@@ -43,17 +44,40 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
   try {
     let data: any = null;
     
+    // Try Admin SDK first (bypasses rules)
     if (adminDb) {
-      // Try fetching by slug first
-      const shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
-      if (!shopsBySlug.empty) {
-        data = shopsBySlug.docs[0].data();
-      } else {
-        // Fallback to ID
-        const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
-        if (shopById.exists) {
-          data = shopById.data();
+      try {
+        // Try fetching by slug first
+        const shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+        if (!shopsBySlug.empty) {
+          data = shopsBySlug.docs[0].data();
+        } else {
+          // Fallback to ID
+          const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
+          if (shopById.exists) {
+            data = shopById.data();
+          }
         }
+      } catch (adminError) {
+        console.warn(`[MetaTags] Admin SDK failed to fetch shop ${idOrSlug}, falling back to client SDK:`, adminError);
+      }
+    }
+
+    // Fallback to Client SDK if Admin SDK failed or was not available
+    if (!data && db) {
+      try {
+        const q = query(collection(db, "shops"), where("slug", "==", idOrSlug), limit(1));
+        const shopsBySlug = await getDocs(q);
+        if (!shopsBySlug.empty) {
+          data = shopsBySlug.docs[0].data();
+        } else {
+          const shopById = await getDocFromServer(doc(db, "shops", idOrSlug));
+          if (shopById.exists()) {
+            data = shopById.data();
+          }
+        }
+      } catch (clientError) {
+        console.error(`[MetaTags] Client SDK also failed to fetch shop ${idOrSlug}:`, clientError);
       }
     }
 
@@ -78,17 +102,40 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
   try {
     let data: any = null;
     
+    // Try Admin SDK first (bypasses rules)
     if (adminDb) {
-      // Try fetching by slug first
-      const influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
-      if (!influencersBySlug.empty) {
-        data = influencersBySlug.docs[0].data();
-      } else {
-        // Fallback to ID
-        const influencerById = await adminDb.collection("influencers").doc(idOrSlug).get();
-        if (influencerById.exists) {
-          data = influencerById.data();
+      try {
+        // Try fetching by slug first
+        const influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+        if (!influencersBySlug.empty) {
+          data = influencersBySlug.docs[0].data();
+        } else {
+          // Fallback to ID
+          const influencerById = await adminDb.collection("influencers").doc(idOrSlug).get();
+          if (influencerById.exists) {
+            data = influencerById.data();
+          }
         }
+      } catch (adminError) {
+        console.warn(`[MetaTags] Admin SDK failed to fetch profile ${idOrSlug}, falling back to client SDK:`, adminError);
+      }
+    }
+
+    // Fallback to Client SDK if Admin SDK failed or was not available
+    if (!data && db) {
+      try {
+        const q = query(collection(db, "influencers"), where("slug", "==", idOrSlug), limit(1));
+        const influencersBySlug = await getDocs(q);
+        if (!influencersBySlug.empty) {
+          data = influencersBySlug.docs[0].data();
+        } else {
+          const influencerById = await getDocFromServer(doc(db, "influencers", idOrSlug));
+          if (influencerById.exists()) {
+            data = influencerById.data();
+          }
+        }
+      } catch (clientError) {
+        console.error(`[MetaTags] Client SDK also failed to fetch profile ${idOrSlug}:`, clientError);
       }
     }
 

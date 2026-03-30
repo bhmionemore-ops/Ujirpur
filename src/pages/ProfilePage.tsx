@@ -141,7 +141,7 @@ export const ProfilePage = () => {
       <Helmet>
         <title>{`${influencer.name} | Barnia Influencer Network - Best Creator in Tehatta`}</title>
         <meta name="description" content={`${influencer.name} is a top influencer in Tehatta, Nadia. Bio: ${influencer.bio}. Connect with ${influencer.name} on Barnia Influencer Network.`} />
-        <meta name="keywords" content={`${influencer.name}, Influencer, Barnia, Tehatta, Nadia, West Bengal, Content Creator, Social Media, ${influencer.socials.join(', ')}`} />
+        <meta name="keywords" content={`${influencer.name}, Influencer, Barnia, Tehatta, Nadia, West Bengal, Content Creator, Social Media, ${(influencer.socials || []).join(', ')}`} />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="profile" />
@@ -274,7 +274,7 @@ export const ProfilePage = () => {
                 <div>
                   <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Social Media Presence</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {influencer.socials.map((social, i) => (
+                    {(influencer.socials || []).map((social, i) => (
                       <a
                         key={`social-${i}`}
                         href={social.startsWith('http') ? social : `https://${social}`}

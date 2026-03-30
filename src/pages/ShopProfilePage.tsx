@@ -107,8 +107,8 @@ export const ShopProfilePage = () => {
     <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
       <Helmet>
         <title>{`${shop.name} | Barnia Bazar - Best ${shop.category} in Tehatta, Nadia`}</title>
-        <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products: ${shop.products.map(p => p.name).join(', ')}. Contact: ${shop.phone}`} />
-        <meta name="keywords" content={`${shop.name}, ${shop.category}, Barnia Bazar, Tehatta, Nadia, West Bengal, Shopping, ${shop.products.map(p => p.name).join(', ')}`} />
+        <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products: ${(shop.products || []).map(p => p.name).join(', ')}. Contact: ${shop.phone}`} />
+        <meta name="keywords" content={`${shop.name}, ${shop.category}, Barnia Bazar, Tehatta, Nadia, West Bengal, Shopping, ${(shop.products || []).map(p => p.name).join(', ')}`} />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="business.business" />
