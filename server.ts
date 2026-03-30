@@ -1273,7 +1273,8 @@ async function startServer() {
     // Use environment variables if available, otherwise use hardcoded fallbacks
     const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
     const host = req.get('host');
-    const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+    // Force https for redirect URI in production/proxy environments
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (host?.includes('localhost') ? 'http' : 'https');
     const currentUrl = `${protocol}://${host}`;
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
 
@@ -1292,7 +1293,8 @@ async function startServer() {
   app.get('/auth/facebook/callback', async (req, res) => {
     const { code, error } = req.query;
     const host = req.get('host');
-    const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
+    // Force https for redirect URI in production/proxy environments
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (host?.includes('localhost') ? 'http' : 'https');
     const currentUrl = `${protocol}://${host}`;
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
     
