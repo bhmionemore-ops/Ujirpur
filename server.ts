@@ -1270,17 +1270,16 @@ async function startServer() {
 
   // Facebook OAuth Routes
   app.get('/api/auth/facebook/url', (req, res) => {
-    const appId = process.env.FACEBOOK_CLIENT_ID;
-    // Use the current host if APP_URL is not set or is set to a different domain
+    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID;
     const host = req.get('host');
-    const protocol = req.protocol;
+    const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
     const currentUrl = `${protocol}://${host}`;
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
 
     if (!appId) {
-      console.error('FACEBOOK_CLIENT_ID is missing in environment variables');
+      console.error('Facebook App ID is missing in environment variables');
       return res.status(500).json({ 
-        error: 'Facebook Client ID not configured.' 
+        error: 'Facebook App ID not found. Please check your AI Studio Secrets.' 
       });
     }
 
