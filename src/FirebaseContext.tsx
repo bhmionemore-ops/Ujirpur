@@ -93,7 +93,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       // Validate origin
-      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) return;
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost') && !event.origin.includes('barnia.in')) return;
       
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
         const fbUser = event.data.user;
@@ -117,7 +117,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           await setDoc(userRef, {
             displayName: fbUser.name,
             email: fbUser.email || null,
-            photoURL: fbUser.picture?.data?.url || null,
+            photoURL: fbUser.picture || null,
             facebookId: fbUser.id,
             role: 'user',
             lastLogin: serverTimestamp()
@@ -127,7 +127,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setUser({
             ...currentUser,
             displayName: fbUser.name,
-            photoURL: fbUser.picture?.data?.url || null,
+            photoURL: fbUser.picture || null,
             email: fbUser.email || currentUser.email
           } as User);
           

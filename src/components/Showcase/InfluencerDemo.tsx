@@ -28,7 +28,7 @@ export const InfluencerDemo = ({ onClose }: { onClose: () => void }) => {
   React.useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Validate origin
-      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost') && !event.origin.includes('barnia.in')) {
         return;
       }
 
