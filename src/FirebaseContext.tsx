@@ -10,6 +10,7 @@ interface FirebaseContextType {
   isAuthModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   signIn: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
   signOut: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
@@ -66,6 +67,78 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const { signInWithGoogle } = await import('./firebase');
     await signInWithGoogle();
   };
+  
+  const signInWithFacebook = async () => {
+    try {
+      const response = await fetch('/api/auth/facebook/url');
+      if (!response.ok) throw new Error('Failed to get Facebook auth URL');
+      const { url } = await response.json();
+      
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      window.open(
+        url,
+        'facebook_oauth',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+    } catch (error) {
+      console.error("Facebook sign-in error:", error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Validate origin
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) return;
+      
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
+        const fbUser = event.data.user;
+        
+        // For now, we'll sync this user data to Firestore
+        // In a real app, you'd ideally link this to a Firebase Auth user
+        // But since we can't easily do that without manual Firebase Console setup,
+        // we'll treat this as a successful login and update our local user state
+        // or sign in anonymously and link.
+        
+        // Let's try to sign in anonymously if not already signed in
+        let currentUser = auth.currentUser;
+        if (!currentUser) {
+          const { signInAnonymously } = await import('firebase/auth');
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+        }
+
+        if (currentUser) {
+          const userRef = doc(db, 'users', currentUser.uid);
+          await setDoc(userRef, {
+            displayName: fbUser.name,
+            email: fbUser.email || null,
+            photoURL: fbUser.picture?.data?.url || null,
+            facebookId: fbUser.id,
+            role: 'user',
+            lastLogin: serverTimestamp()
+          }, { merge: true });
+          
+          // Force a refresh of the user state
+          setUser({
+            ...currentUser,
+            displayName: fbUser.name,
+            photoURL: fbUser.picture?.data?.url || null,
+            email: fbUser.email || currentUser.email
+          } as User);
+          
+          setAuthModalOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const signInWithEmail = async (email: string, pass: string) => {
     const { signInWithEmailAndPassword } = await import('./firebase');
@@ -101,6 +174,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isAuthModalOpen, 
       setAuthModalOpen, 
       signIn, 
+      signInWithFacebook,
       signOut, 
       signInWithEmail, 
       signUpWithEmail 

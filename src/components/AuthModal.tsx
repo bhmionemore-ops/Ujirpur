@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Chrome, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Mail, Lock, User, Chrome, Facebook, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
@@ -10,7 +10,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { signIn, signInWithEmail, signUpWithEmail } = useFirebase();
+  const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail } = useFirebase();
   const { language } = useLanguage();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -123,6 +123,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       } else {
         setError(`${errorMessage} (${errorCode})`);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithFacebook();
+      // The modal will stay open until the message listener in FirebaseContext handles the success
+      // Or we can close it if we assume the popup will handle the rest
+      // For now, let's keep it open to show loading state if needed, 
+      // but the message listener will handle the actual user state change.
+    } catch (err: any) {
+      console.error("Facebook Auth error:", err);
+      setError(err.message || 'Facebook sign-in failed');
     } finally {
       setLoading(false);
     }
@@ -244,14 +261,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 py-4 border border-zinc-200 rounded-2xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm font-bold text-zinc-700 active:scale-[0.98]"
-          >
-            <Chrome size={20} className="text-brand-600" />
-            {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 py-4 border border-zinc-200 rounded-2xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm font-bold text-zinc-700 active:scale-[0.98]"
+            >
+              <Chrome size={20} className="text-brand-600" />
+              {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
+            </button>
+
+            <button
+              onClick={handleFacebookSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98]"
+            >
+              <Facebook size={20} fill="currentColor" />
+              {language === 'bn' ? 'ফেসবুক দিয়ে লগইন করুন' : 'Sign in with Facebook'}
+            </button>
+          </div>
 
           <div className="mt-10 text-center space-y-4">
             <button

@@ -1291,8 +1291,11 @@ async function startServer() {
     res.json({ url: authUrl });
   });
 
+  // Facebook OAuth Callback
   app.get('/auth/facebook/callback', async (req, res) => {
     const { code, error } = req.query;
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    const redirectUri = `${appUrl}/auth/facebook/callback`;
     
     if (error) {
       return res.send(`
@@ -1312,25 +1315,63 @@ async function startServer() {
       `);
     }
 
-    // In a real production app, you would exchange the 'code' for an access token here:
-    // const tokenResponse = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${redirectUri}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&code=${code}`);
-    // const tokens = await tokenResponse.json();
-    
-    res.send(`
-      <html>
-        <body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', provider: 'facebook' }, '*');
-              window.close();
-            } else {
-              window.location.href = '/showcase';
-            }
-          </script>
-          <p>Authentication successful. This window should close automatically.</p>
-        </body>
-      </html>
-    `);
+    try {
+      // 1. Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${redirectUri}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&code=${code}`;
+      const tokenResponse = await fetch(tokenUrl);
+      const tokens = await tokenResponse.json();
+
+      if (tokens.error) {
+        throw new Error(tokens.error.message);
+      }
+
+      // 2. Fetch user profile data
+      const userResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
+      const userData = await userResponse.json();
+
+      // 3. Send success message with user data back to parent window
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'OAUTH_AUTH_SUCCESS', 
+                  provider: 'facebook',
+                  user: ${JSON.stringify({
+                    id: userData.id,
+                    name: userData.name,
+                    email: userData.email,
+                    picture: userData.picture?.data?.url
+                  })}
+                }, '*');
+                window.close();
+              } else {
+                window.location.href = '/showcase';
+              }
+            </script>
+            <p>Authentication successful. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    } catch (err) {
+      console.error('Facebook Auth Error:', err);
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', provider: 'facebook', error: 'Failed to fetch user data' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/showcase';
+              }
+            </script>
+            <p>Authentication error. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    }
   });
 
   let vite: any;
