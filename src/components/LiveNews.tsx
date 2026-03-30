@@ -3,6 +3,7 @@ import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Fa
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
+import { useFirebase } from '../FirebaseContext';
 import { fetchLiveNews } from '../services/gemini';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -10,6 +11,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const LiveNews = () => {
   const { t, language } = useLanguage();
   const { logEvent } = useTracking();
+  const { isAdmin } = useFirebase();
   const [news, setNews] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -86,24 +88,15 @@ export const LiveNews = () => {
             updatedAt: new Date().toISOString()
           };
           console.log("Saving generated news to Firestore...");
-          try {
-            await setDoc(newsDocRef, newsData);
-            console.log("News saved successfully");
-          } catch (setErr: any) {
-            // If it fails with permission error, it might be because someone else 
-            // already created it (race condition). Let's check if it exists now.
-            const checkSnap = await getDoc(newsDocRef);
-            if (checkSnap.exists()) {
-              console.log("News was already saved by another user, using that instead.");
-              newsData = checkSnap.data();
-            } else {
+          if (auth.currentUser) {
+            try {
+              await setDoc(newsDocRef, newsData);
+              console.log("News saved successfully");
+            } catch (setErr: any) {
               console.error("Failed to save news to Firestore:", setErr);
-              try {
-                handleFirestoreError(setErr, OperationType.WRITE, `news/${today}`);
-              } catch (handledErr) {
-                // We already logged it, so we can just keep going to show the news to the user
-              }
             }
+          } else {
+            console.log("Skipping news save to Firestore (not authenticated)");
           }
           setNews(newsData);
           setGenerating(false);

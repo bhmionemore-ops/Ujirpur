@@ -91,7 +91,7 @@ export const BarniaBazar = () => {
 
   useEffect(() => {
     const migrateShops = async () => {
-      if (loading || shops.length === 0) return;
+      if (loading || shops.length === 0 || !isAdmin) return;
       
       const shopsWithoutSlug = shops.filter(s => !s.slug);
       if (shopsWithoutSlug.length > 0) {
@@ -118,7 +118,7 @@ export const BarniaBazar = () => {
     };
 
     migrateShops();
-  }, [shops, loading]);
+  }, [shops, loading, isAdmin]);
 
   useEffect(() => {
     if (shops.length > 0) {
@@ -264,9 +264,12 @@ export const BarniaBazar = () => {
       location: newShop.location,
       phone: newShop.phone,
       image: newShop.imageUrl || `https://picsum.photos/seed/${Math.random()}/400/300`,
-      products: filteredProducts,
-      uid: user.uid
+      products: filteredProducts
     };
+
+    if (!editingId) {
+      shopData.uid = user.uid;
+    }
 
     try {
       if (editingId) {

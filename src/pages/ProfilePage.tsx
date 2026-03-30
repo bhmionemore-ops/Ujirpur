@@ -83,6 +83,11 @@ export const ProfilePage = () => {
     e.preventDefault();
     if (!influencer) return;
 
+    if (!user) {
+      setError(new Error('Please login to send a collaboration request'));
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'collab_requests'), {
         fromName: collabForm.fromName,

@@ -116,7 +116,7 @@ export const InfluencerSection = () => {
 
   useEffect(() => {
     const migrateInfluencers = async () => {
-      if (loading || userInfluencers.length === 0) return;
+      if (loading || userInfluencers.length === 0 || !isAdmin) return;
       
       const influencersWithoutSlug = userInfluencers.filter(i => !i.slug);
       if (influencersWithoutSlug.length > 0) {
@@ -143,7 +143,7 @@ export const InfluencerSection = () => {
     };
 
     migrateInfluencers();
-  }, [userInfluencers, loading]);
+  }, [userInfluencers, loading, isAdmin]);
 
   useEffect(() => {
     if (userInfluencers.length > 0) {
@@ -343,9 +343,12 @@ export const InfluencerSection = () => {
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
       avatar: newInfluencer.avatarUrl || `https://picsum.photos/seed/${Math.random()}/200/200`,
-      uid: user.uid,
       category: 'Influencer'
     };
+
+    if (!editingId) {
+      influencerData.uid = user.uid;
+    }
 
     let baseSlug = slugify(newInfluencer.name);
     let uniqueSlug = baseSlug;

@@ -69,6 +69,11 @@ service cloud.firestore {
       );
     }
 
+    function uidNotModified() {
+       return isAdmin() || !('uid' in request.resource.data) ||
+         request.resource.data.uid == resource.data.uid;
+    }
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
@@ -156,14 +161,14 @@ service cloud.firestore {
     match /influencers/{influencerId} {
       allow read: if true; // Publicly viewable
       allow create: if isAuthenticated() && isValidInfluencer(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidInfluencer(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidInfluencer(request.resource.data) && uidNotModified();
       allow delete: if isAdmin() || (isAuthenticated() && isDocOwner());
     }
 
     match /shops/{shopId} {
       allow read: if true; // Publicly viewable
       allow create: if isAuthenticated() && isValidShop(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidShop(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidShop(request.resource.data) && uidNotModified();
       allow delete: if isAdmin() || (isAuthenticated() && isDocOwner());
     }
 
@@ -200,23 +205,18 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      // Allow creation by anyone if it's valid news data for that specific day
+      // Allow creation by any authenticated user if it's valid news data for that specific day
       // This allows the first visitor of the day to trigger and save the AI generation
-      allow create: if isValidNews(request.resource.data) && newsId == request.resource.data.date;
-      // Allow update by anyone for a short window (10 mins) to handle race conditions during initialization
+      allow create: if isAuthenticated() && isValidNews(request.resource.data) && newsId == request.resource.data.date;
+      // Allow update by any authenticated user to handle race conditions during initialization
       // or if the user is an admin.
-      allow update: if isValidNews(request.resource.data) && (
-        isAdmin() || 
-        (request.time < resource.createTime + duration.value(10, 'm'))
-      );
+      allow update: if isAuthenticated() && isValidNews(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /visitor_sessions/{sessionId} {
       // Allow anyone to create or update their own session
-      allow create, update: if true; 
-      // Allow anyone to read their own session if they have the ID
-      allow get: if true;
+      allow read, create, update: if true; 
       // Only admins can list all sessions or delete them
       allow list, delete: if isAdmin();
     }
