@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
+import { ShowcasePage } from './pages/ShowcasePage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
 import { PonjikaPage } from './pages/PonjikaPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -80,6 +81,7 @@ function AppContent() {
                 { to: '/', label: t.nav.news },
                 { to: '/bazar', label: t.nav.bazar },
                 { to: '/influencers', label: t.nav.influencers },
+                { to: '/showcase', label: t.nav.showcase },
                 { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
               ].map((link) => (
                 <Link 
@@ -190,6 +192,7 @@ function AppContent() {
               { to: '/', label: t.nav.news },
               { to: '/bazar', label: t.nav.bazar },
               { to: '/influencers', label: t.nav.influencers },
+              { to: '/showcase', label: t.nav.showcase },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
               <Link 
@@ -217,6 +220,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/influencers" element={<InfluencerPage />} />
+          <Route path="/showcase" element={<ShowcasePage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
           <Route path="/profile/:slug" element={<ProfilePage />} />
           <Route path="/shop/:slug" element={<ShopProfilePage />} />

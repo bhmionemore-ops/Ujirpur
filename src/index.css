@@ -1,9 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
   
   --color-brand-50: #fff7ed;
   --color-brand-100: #ffedd5;
@@ -20,6 +22,10 @@
   --color-vibrant-blue: #0070f3;
   --color-vibrant-purple: #7928ca;
   --color-vibrant-cyan: #50e3c2;
+
+  --color-luxury-gold: #D4AF37;
+  --color-luxury-black: #0A0A0A;
+  --color-luxury-cream: #F5F2ED;
 }
 
 @layer base {
@@ -62,6 +68,19 @@
 
   .card-border {
     @apply border-2 border-zinc-200 hover:border-brand-500 transition-colors duration-300;
+  }
+
+  .glass-morphism {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  .text-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+
+  .mask-fade-bottom {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
   }
 }
 
@@ -112,4 +131,12 @@
 
 .animate-spin-fast {
   animation: spin-fast 1.5s linear infinite;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.rotate-y-12 {
+  transform: rotateY(12deg);
 }

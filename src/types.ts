@@ -4,6 +4,7 @@ export interface Product {
   price: number;
   description?: string;
   imageUrl: string;
+  videoUrl?: string;
   category?: string;
   createdAt?: any;
 }
@@ -49,20 +50,31 @@ export interface Shop {
 export interface Influencer {
   id: string;
   name: string;
+  handle: string;
   category: string;
   followers: string;
   bio: string;
   imageUrl: string;
+  coverImage?: string;
   socialLinks: {
     facebook?: string;
     instagram?: string;
     youtube?: string;
     twitter?: string;
   };
-  videos?: {
-    title: string;
-    url: string;
-  }[];
+  posts: Post[];
   createdAt: any;
   uid: string;
 }
+
+export interface Post {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  thumbnail?: string;
+  likes: string;
+  comments: string;
+  caption?: string;
+}
+
+

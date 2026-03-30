@@ -48,6 +48,7 @@ export const translations = {
       collab: 'সহযোগিতা',
       news: 'সংবাদ',
       ponjika: 'পঞ্জিকা',
+      showcase: 'ডেমো শোকেস',
     },
     banner: {
       title: 'বার্নিয়া ডিজিটাল হাব',
@@ -263,6 +264,7 @@ export const translations = {
       collab: 'Collaborate',
       news: 'News',
       ponjika: 'Ponjika',
+      showcase: 'Demo Showcase',
     },
     banner: {
       title: 'Barnia Digital Hub',
