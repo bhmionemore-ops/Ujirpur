@@ -468,7 +468,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta name="description" content="${escapedDescription}" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
-    <meta name="facebook-domain-verification" content="npp1k1usuuppklkr2bnx6n7jwel3rk" />
+    <meta name="facebook-domain-verification" content="ic45x958w9bvcqre3ebscyk9ljpdfs" />
     <meta property="fb:app_id" content="966242223397117" />
     <meta property="og:site_name" content="Barnia Digital Hub" />
     <meta property="og:title" content="${escapedTitle}" />
