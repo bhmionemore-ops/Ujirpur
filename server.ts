@@ -1270,18 +1270,12 @@ async function startServer() {
 
   // Facebook OAuth Routes
   app.get('/api/auth/facebook/url', (req, res) => {
-    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID;
+    // Use environment variables if available, otherwise use hardcoded fallbacks
+    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
     const host = req.get('host');
     const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
     const currentUrl = `${protocol}://${host}`;
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
-
-    if (!appId) {
-      console.error('Facebook App ID is missing in environment variables');
-      return res.status(500).json({ 
-        error: 'Facebook App ID not found. Please check your AI Studio Secrets.' 
-      });
-    }
 
     const params = new URLSearchParams({
       client_id: appId,
@@ -1298,7 +1292,7 @@ async function startServer() {
   app.get('/auth/facebook/callback', async (req, res) => {
     const { code, error } = req.query;
     const host = req.get('host');
-    const protocol = req.protocol;
+    const protocol = req.protocol === 'http' && host?.includes('.run.app') ? 'https' : req.protocol;
     const currentUrl = `${protocol}://${host}`;
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
     
@@ -1321,8 +1315,11 @@ async function startServer() {
     }
 
     try {
+      const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
+      const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "3494ad98c498cda892b65006cf833273";
+
       // 1. Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${redirectUri}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&code=${code}`;
+      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${redirectUri}&client_secret=${appSecret}&code=${code}`;
       const tokenResponse = await fetch(tokenUrl);
       const tokens = await tokenResponse.json();
 
