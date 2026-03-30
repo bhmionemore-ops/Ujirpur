@@ -1271,12 +1271,16 @@ async function startServer() {
   // Facebook OAuth Routes
   app.get('/api/auth/facebook/url', (req, res) => {
     const appId = process.env.FACEBOOK_CLIENT_ID;
-    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-    const redirectUri = `${appUrl}/auth/facebook/callback`;
+    // Use the current host if APP_URL is not set or is set to a different domain
+    const host = req.get('host');
+    const protocol = req.protocol;
+    const currentUrl = `${protocol}://${host}`;
+    const redirectUri = `${currentUrl}/auth/facebook/callback`;
 
     if (!appId) {
+      console.error('FACEBOOK_CLIENT_ID is missing in environment variables');
       return res.status(500).json({ 
-        error: 'FACEBOOK_CLIENT_ID not configured. Please add it to your environment variables.' 
+        error: 'Facebook Client ID not configured.' 
       });
     }
 
@@ -1294,8 +1298,10 @@ async function startServer() {
   // Facebook OAuth Callback
   app.get('/auth/facebook/callback', async (req, res) => {
     const { code, error } = req.query;
-    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-    const redirectUri = `${appUrl}/auth/facebook/callback`;
+    const host = req.get('host');
+    const protocol = req.protocol;
+    const currentUrl = `${protocol}://${host}`;
+    const redirectUri = `${currentUrl}/auth/facebook/callback`;
     
     if (error) {
       return res.send(`
