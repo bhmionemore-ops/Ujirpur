@@ -25,10 +25,48 @@ export const InfluencerDemo = ({ onClose }: { onClose: () => void }) => {
   const [showSocialConnect, setShowSocialConnect] = useState(false);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
 
-  const handleConnect = (platform: string) => {
-    // Demo logic: simulate connection
-    if (!connectedPlatforms.includes(platform)) {
-      setConnectedPlatforms([...connectedPlatforms, platform]);
+  React.useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
+        return;
+      }
+
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const platform = event.data.provider;
+        if (!connectedPlatforms.includes(platform)) {
+          setConnectedPlatforms(prev => [...prev, platform]);
+        }
+      } else if (event.data?.type === 'OAUTH_AUTH_ERROR') {
+        console.error('OAuth Error:', event.data.error);
+        alert(`Failed to connect ${event.data.provider}: ${event.data.error}`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [connectedPlatforms]);
+
+  const handleConnect = async (platform: string) => {
+    if (platform === 'facebook') {
+      try {
+        const response = await fetch('/api/auth/facebook/url');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to get auth URL');
+        }
+        const { url } = await response.json();
+        
+        window.open(url, 'facebook_oauth', 'width=600,height=700');
+      } catch (error) {
+        console.error('Error connecting to Facebook:', error);
+        alert(error instanceof Error ? error.message : 'Failed to connect to Facebook. Please check if FACEBOOK_CLIENT_ID is configured.');
+      }
+    } else {
+      // Demo logic for other platforms
+      if (!connectedPlatforms.includes(platform)) {
+        setConnectedPlatforms([...connectedPlatforms, platform]);
+      }
     }
   };
 

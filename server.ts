@@ -1268,6 +1268,71 @@ async function startServer() {
     }
   });
 
+  // Facebook OAuth Routes
+  app.get('/api/auth/facebook/url', (req, res) => {
+    const appId = process.env.FACEBOOK_CLIENT_ID;
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    const redirectUri = `${appUrl}/auth/facebook/callback`;
+
+    if (!appId) {
+      return res.status(500).json({ 
+        error: 'FACEBOOK_CLIENT_ID not configured. Please add it to your environment variables.' 
+      });
+    }
+
+    const params = new URLSearchParams({
+      client_id: appId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'email,public_profile,instagram_basic,pages_show_list,pages_read_engagement',
+    });
+
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
+    res.json({ url: authUrl });
+  });
+
+  app.get('/auth/facebook/callback', async (req, res) => {
+    const { code, error } = req.query;
+    
+    if (error) {
+      return res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', provider: 'facebook', error: '${error}' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/showcase';
+              }
+            </script>
+            <p>Authentication failed: ${error}. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    }
+
+    // In a real production app, you would exchange the 'code' for an access token here:
+    // const tokenResponse = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?client_id=${process.env.FACEBOOK_CLIENT_ID}&redirect_uri=${redirectUri}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&code=${code}`);
+    // const tokens = await tokenResponse.json();
+    
+    res.send(`
+      <html>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', provider: 'facebook' }, '*');
+              window.close();
+            } else {
+              window.location.href = '/showcase';
+            }
+          </script>
+          <p>Authentication successful. This window should close automatically.</p>
+        </body>
+      </html>
+    `);
+  });
+
   let vite: any;
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
