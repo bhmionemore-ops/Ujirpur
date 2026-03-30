@@ -244,7 +244,7 @@ export const ShopProfilePage = () => {
                     Product Price List
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
-                    {shop.products.map((p, i) => (
+                    {(shop.products || []).map((p, i) => (
                       <div 
                         key={`product-${i}`}
                         className="flex justify-between items-center p-6 bg-white rounded-3xl border-4 border-zinc-100 hover:border-brand-500 transition-all group"

@@ -81,6 +81,90 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
       }
     }
 
+    // Fallback to REST API if both SDKs failed
+    if (!data) {
+      try {
+        console.log(`[MetaTags] Falling back to REST API for shop ${idOrSlug}`);
+        const dbId = databaseId || '(default)';
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/shops/${idOrSlug}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const json: any = await response.json();
+          const fields = json.fields;
+          if (fields) {
+            data = {};
+            for (const key in fields) {
+              if (fields[key].stringValue) data[key] = fields[key].stringValue;
+              else if (fields[key].integerValue) data[key] = fields[key].integerValue;
+              else if (fields[key].booleanValue) data[key] = fields[key].booleanValue;
+              else if (fields[key].arrayValue) {
+                data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                  if (v.mapValue) {
+                    const mapFields = v.mapValue.fields;
+                    const item: any = {};
+                    for (const mk in mapFields) {
+                      item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                    }
+                    return item;
+                  }
+                  return v.stringValue;
+                });
+              }
+            }
+          }
+        } else {
+          // If ID fetch failed, try slug query via REST
+          const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents:runQuery`;
+          const queryBody = {
+            structuredQuery: {
+              from: [{ collectionId: "shops" }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: "slug" },
+                  op: "EQUAL",
+                  value: { stringValue: idOrSlug }
+                }
+              },
+              limit: 1
+            }
+          };
+          const queryResponse = await fetch(queryUrl, {
+            method: 'POST',
+            body: JSON.stringify(queryBody)
+          });
+          if (queryResponse.ok) {
+            const queryJson: any = await queryResponse.json();
+            if (queryJson[0] && queryJson[0].document) {
+              const fields = queryJson[0].document.fields;
+              if (fields) {
+                data = {};
+                for (const key in fields) {
+                  if (fields[key].stringValue) data[key] = fields[key].stringValue;
+                  else if (fields[key].integerValue) data[key] = fields[key].integerValue;
+                  else if (fields[key].booleanValue) data[key] = fields[key].booleanValue;
+                  else if (fields[key].arrayValue) {
+                    data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                      if (v.mapValue) {
+                        const mapFields = v.mapValue.fields;
+                        const item: any = {};
+                        for (const mk in mapFields) {
+                          item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                        }
+                        return item;
+                      }
+                      return v.stringValue;
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (restError) {
+        console.error(`[MetaTags] REST API also failed for shop ${idOrSlug}:`, restError);
+      }
+    }
+
     if (!data) return null;
 
     return {
@@ -136,6 +220,90 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
         }
       } catch (clientError) {
         console.error(`[MetaTags] Client SDK also failed to fetch profile ${idOrSlug}:`, clientError);
+      }
+    }
+
+    // Fallback to REST API if both SDKs failed
+    if (!data) {
+      try {
+        console.log(`[MetaTags] Falling back to REST API for profile ${idOrSlug}`);
+        const dbId = databaseId || '(default)';
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${idOrSlug}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const json: any = await response.json();
+          const fields = json.fields;
+          if (fields) {
+            data = {};
+            for (const key in fields) {
+              if (fields[key].stringValue) data[key] = fields[key].stringValue;
+              else if (fields[key].integerValue) data[key] = fields[key].integerValue;
+              else if (fields[key].booleanValue) data[key] = fields[key].booleanValue;
+              else if (fields[key].arrayValue) {
+                data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                  if (v.mapValue) {
+                    const mapFields = v.mapValue.fields;
+                    const item: any = {};
+                    for (const mk in mapFields) {
+                      item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                    }
+                    return item;
+                  }
+                  return v.stringValue;
+                });
+              }
+            }
+          }
+        } else {
+          // If ID fetch failed, try slug query via REST
+          const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents:runQuery`;
+          const queryBody = {
+            structuredQuery: {
+              from: [{ collectionId: "influencers" }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: "slug" },
+                  op: "EQUAL",
+                  value: { stringValue: idOrSlug }
+                }
+              },
+              limit: 1
+            }
+          };
+          const queryResponse = await fetch(queryUrl, {
+            method: 'POST',
+            body: JSON.stringify(queryBody)
+          });
+          if (queryResponse.ok) {
+            const queryJson: any = await queryResponse.json();
+            if (queryJson[0] && queryJson[0].document) {
+              const fields = queryJson[0].document.fields;
+              if (fields) {
+                data = {};
+                for (const key in fields) {
+                  if (fields[key].stringValue) data[key] = fields[key].stringValue;
+                  else if (fields[key].integerValue) data[key] = fields[key].integerValue;
+                  else if (fields[key].booleanValue) data[key] = fields[key].booleanValue;
+                  else if (fields[key].arrayValue) {
+                    data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                      if (v.mapValue) {
+                        const mapFields = v.mapValue.fields;
+                        const item: any = {};
+                        for (const mk in mapFields) {
+                          item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                        }
+                        return item;
+                      }
+                      return v.stringValue;
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (restError) {
+        console.error(`[MetaTags] REST API also failed for profile ${idOrSlug}:`, restError);
       }
     }
 
@@ -451,49 +619,61 @@ async function startServer() {
 
       if (adminDb) {
         // Fetch shops
-        const shopsSnap = await adminDb.collection("shops").get();
-        shopsSnap.forEach((doc: any) => {
-          const shop = doc.data();
-          const slug = shop.slug || doc.id;
-          urls.push({
-            loc: `${baseUrl}/shop/${slug}`,
-            changefreq: 'weekly',
-            priority: '0.8'
+        try {
+          const shopsSnap = await adminDb.collection("shops").get();
+          shopsSnap.forEach((doc: any) => {
+            const shop = doc.data();
+            const slug = shop.slug || doc.id;
+            urls.push({
+              loc: `${baseUrl}/shop/${slug}`,
+              changefreq: 'weekly',
+              priority: '0.8'
+            });
           });
-        });
+        } catch (e) {
+          console.error("[Sitemap] Failed to fetch shops:", e);
+        }
 
         // Fetch influencers
-        const influencersSnap = await adminDb.collection("influencers").get();
-        influencersSnap.forEach((doc: any) => {
-          const influencer = doc.data();
-          const slug = influencer.slug || doc.id;
-          urls.push({
-            loc: `${baseUrl}/profile/${slug}`,
-            changefreq: 'weekly',
-            priority: '0.8'
+        try {
+          const influencersSnap = await adminDb.collection("influencers").get();
+          influencersSnap.forEach((doc: any) => {
+            const influencer = doc.data();
+            const slug = influencer.slug || doc.id;
+            urls.push({
+              loc: `${baseUrl}/profile/${slug}`,
+              changefreq: 'weekly',
+              priority: '0.8'
+            });
           });
-        });
+        } catch (e) {
+          console.error("[Sitemap] Failed to fetch influencers:", e);
+        }
 
         // Fetch news dates for sitemap
-        const newsSnap = await adminDb.collection("news").orderBy("__name__", "desc").limit(10).get();
-        newsSnap.forEach((doc: any) => {
-          const date = doc.id;
-          const data = doc.data();
-          // Add top news items from each tab
-          ['top', 'local', 'sports'].forEach(tab => {
-            if (data[tab] && data[tab].length > 0) {
-              data[tab].forEach((_: any, index: number) => {
-                if (index < 3) { // Only first 3 news items per tab to avoid sitemap bloat
-                  urls.push({
-                    loc: `${baseUrl}/news/${date}/${tab}/${index}`,
-                    changefreq: 'monthly',
-                    priority: '0.6'
-                  });
-                }
-              });
-            }
+        try {
+          const newsSnap = await adminDb.collection("news").orderBy("__name__", "desc").limit(10).get();
+          newsSnap.forEach((doc: any) => {
+            const date = doc.id;
+            const data = doc.data();
+            // Add top news items from each tab
+            ['top', 'local', 'sports'].forEach(tab => {
+              if (data[tab] && data[tab].length > 0) {
+                data[tab].forEach((_: any, index: number) => {
+                  if (index < 3) { // Only first 3 news items per tab to avoid sitemap bloat
+                    urls.push({
+                      loc: `${baseUrl}/news/${date}/${tab}/${index}`,
+                      changefreq: 'monthly',
+                      priority: '0.6'
+                    });
+                  }
+                });
+              }
+            });
           });
-        });
+        } catch (e) {
+          console.error("[Sitemap] Failed to fetch news:", e);
+        }
       }
 
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
