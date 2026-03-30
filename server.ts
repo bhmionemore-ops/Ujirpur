@@ -171,7 +171,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
       name: data.name || "Barnia Shop",
       category: data.category || "General",
       location: data.location || "Barnia Bazar",
-      image: data.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1200",
+      image: data.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200",
       phone: data.phone || "",
       products: data.products || []
     };
@@ -435,7 +435,7 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     return {
       title: item.title || "Barnia News",
       content: item.content || "Latest news from our community.",
-      image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200"
+      image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200"
     };
   } catch (error) {
     console.error("Error fetching news for meta tags:", error);
@@ -884,7 +884,7 @@ async function startServer() {
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200&h=630",
+      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200&h=630",
       url: fullUrl,
       type: 'article'
     };
@@ -979,7 +979,7 @@ async function startServer() {
       metadata = {
         title: "Shop Profile | Barnia Bazar",
         description: "Explore local shops and market prices at Barnia Bazar, Nadia.",
-        image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1200&h=630",
+        image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'website'
       };
@@ -1079,7 +1079,7 @@ async function startServer() {
       metadata = {
         title: "Influencer Profile | Barnia Digital Hub",
         description: "Explore professional influencer profiles and collaboration opportunities in our community network.",
-        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1200&h=630",
+        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?fm=jpg&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'profile'
       };
@@ -1128,7 +1128,7 @@ async function startServer() {
       let metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Ponjika",
         description: "The official community platform for Barnia, Ujirpur, Nadia. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
-        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'website',
         imageWidth: 1200,
@@ -1138,15 +1138,15 @@ async function startServer() {
       if (req.path.includes("/bazar")) {
         metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
         metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
-        metadata.image = "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://images.unsplash.com/photo-1464226184884-fa280b87c399?fm=jpg&fit=crop&q=80&w=1200&h=630";
       } else if (req.path.includes("/influencers")) {
         metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
         metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
-        metadata.image = "https://images.unsplash.com/photo-1590005354167-6da97870c921?auto=format&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://images.unsplash.com/photo-1590005354167-6da97870c921?fm=jpg&fit=crop&q=80&w=1200&h=630";
       } else if (req.path.includes("/ponjika")) {
         metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
         metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
-        metadata.image = "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?auto=format&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?fm=jpg&fit=crop&q=80&w=1200&h=630";
       }
 
       try {
@@ -1479,7 +1479,7 @@ async function startServer() {
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
-          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path}`,
           type: 'website'
         };
@@ -1505,7 +1505,7 @@ async function startServer() {
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
-          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path}`,
           type: 'website'
         };
