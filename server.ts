@@ -1092,68 +1092,125 @@ async function startServer() {
 
   // Generic Meta Tag Injection for other routes
   app.get(["/", "/bazar", "/influencers", "/ponjika"], async (req, res) => {
-    let html: string;
-    if (process.env.NODE_ENV !== "production" && vite) {
-      html = await fs.readFile(path.resolve("index.html"), "utf-8");
-      html = await vite.transformIndexHtml(req.originalUrl, html);
-    } else {
-      html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
-    }
+    try {
+      const isProd = process.env.NODE_ENV === "production";
+      const indexPath = isProd ? path.resolve("dist", "index.html") : path.resolve("index.html");
+      
+      console.log(`[SSR] Handling route: ${req.path}, indexPath: ${indexPath}, isProd: ${isProd}`);
+      
+      let html = "";
+      try {
+        html = await fs.readFile(indexPath, "utf-8");
+      } catch (readError) {
+        console.error(`[SSR] Failed to read index file at ${indexPath}:`, readError);
+        // Fallback to other index if one fails
+        const fallbackPath = isProd ? path.resolve("index.html") : path.resolve("dist", "index.html");
+        console.log(`[SSR] Attempting fallback to: ${fallbackPath}`);
+        html = await fs.readFile(fallbackPath, "utf-8");
+      }
 
-    const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.path}`;
+      if (process.env.NODE_ENV !== "production" && vite) {
+        html = await vite.transformIndexHtml(req.originalUrl, html);
+      }
 
-    let metadata = {
-      title: "Barnia Digital Hub | Community Platform",
-      description: "Connect with Barnia, Ujirpur, and Nadia. Check Barnia Bazar market prices and local influencers.",
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
-      url: fullUrl,
-      type: 'website',
-      imageWidth: 1200,
-      imageHeight: 630
-    };
+      if (!html || html.trim() === "") {
+        console.error("[SSR] Generated HTML is empty before injection!");
+        // Re-read if empty
+        html = await fs.readFile(indexPath, "utf-8");
+        if (!isProd && vite) html = await vite.transformIndexHtml(req.originalUrl, html);
+      }
 
-    if (req.originalUrl.includes("/bazar")) {
-      metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
-      metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
-    } else if (req.originalUrl.includes("/influencers")) {
-      metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
-      metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
-    } else if (req.originalUrl.includes("/ponjika")) {
-      metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
-      metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
-    }
+      const baseUrl = "https://barnia.in";
+      const fullUrl = `${baseUrl}${req.path}`;
 
-    html = await injectMetaTags(html, metadata);
+      let metadata = {
+        title: "Barnia Digital Hub | Barnia Bazar, Influencers & Ponjika",
+        description: "The official community platform for Barnia, Ujirpur, Nadia. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
+        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+        url: fullUrl,
+        type: 'website',
+        imageWidth: 1200,
+        imageHeight: 630
+      };
 
-    // Add WebSite and Organization Structured Data for Home Page
-    if (req.originalUrl === "/" || req.originalUrl === "") {
-      const websiteSchema = {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Barnia Digital Hub",
-        "url": baseUrl,
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": `${baseUrl}/bazar?q={search_term_string}`,
-          "query-input": "required name=search_term_string"
+      if (req.path.includes("/bazar")) {
+        metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
+        metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
+        metadata.image = "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=1200&h=630";
+      } else if (req.path.includes("/influencers")) {
+        metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
+        metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
+        metadata.image = "https://images.unsplash.com/photo-1590005354167-6da97870c921?auto=format&fit=crop&q=80&w=1200&h=630";
+      } else if (req.path.includes("/ponjika")) {
+        metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
+        metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
+        metadata.image = "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?auto=format&fit=crop&q=80&w=1200&h=630";
+      }
+
+      try {
+        html = await injectMetaTags(html, metadata);
+      } catch (metaError) {
+        console.error("[SSR] Error injecting meta tags:", metaError);
+      }
+
+      if (!html || html.trim() === "") {
+        console.error("[SSR] Generated HTML is empty after injection!");
+        return res.status(500).send("Internal Server Error: Empty HTML");
+      }
+
+      // Add WebSite and Organization Structured Data for Home Page
+      if (req.path === "/" || req.path === "") {
+        try {
+          const websiteSchema = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Barnia Digital Hub",
+            "url": baseUrl,
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": `${baseUrl}/bazar?q={search_term_string}`,
+              "query-input": "required name=search_term_string"
+            }
+          };
+          const orgSchema = {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Barnia Digital Hub",
+            "url": baseUrl,
+            "logo": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+            "sameAs": [
+              "https://www.facebook.com/barnia.in",
+              "https://www.instagram.com/barnia.in"
+            ]
+          };
+          
+          const schemaHtml = `
+            <script type="application/ld+json">${JSON.stringify(websiteSchema)}</script>
+            <script type="application/ld+json">${JSON.stringify(orgSchema)}</script>
+          `;
+          
+          // Use a case-insensitive replace for </head>
+          const headEndRegex = /(<\/head>)/i;
+          if (headEndRegex.test(html)) {
+            html = html.replace(headEndRegex, `${schemaHtml}$1`);
+          } else {
+            html += schemaHtml;
+          }
+        } catch (schemaError) {
+          console.error("[SSR] Error adding structured data:", schemaError);
         }
-      };
-      const orgSchema = {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Barnia Digital Hub",
-        "url": baseUrl,
-        "logo": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
-        "sameAs": [
-          "https://www.facebook.com/barnia.in",
-          "https://www.instagram.com/barnia.in"
-        ]
-      };
-      html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(websiteSchema)}</script><script type="application/ld+json">${JSON.stringify(orgSchema)}</script></head>`);
-    }
+      }
 
-    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      if (!html || html.trim() === "") {
+        console.error("[SSR] Generated HTML is empty!");
+        return res.status(500).send("Internal Server Error: Empty HTML");
+      }
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (error) {
+      console.error(`[SSR] Fatal error handling route ${req.path}:`, error);
+      res.status(500).send("Internal Server Error");
+    }
   });
 
   app.post("/api/influencers", async (req, res) => {
@@ -1299,6 +1356,7 @@ async function startServer() {
     const redirectUri = `${currentUrl}/auth/facebook/callback`;
     
     if (error) {
+      console.error(`[FacebookAuth] Error from Facebook: ${error}`);
       return res.send(`
         <html>
           <body>
@@ -1307,7 +1365,7 @@ async function startServer() {
                 window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', provider: 'facebook', error: '${error}' }, '*');
                 window.close();
               } else {
-                window.location.href = '/showcase';
+                window.location.href = '/';
               }
             </script>
             <p>Authentication failed: ${error}. This window should close automatically.</p>
@@ -1320,28 +1378,39 @@ async function startServer() {
       const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
       const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "3494ad98c498cda892b65006cf833273";
 
+      console.log(`[FacebookAuth] Exchanging code for token. Redirect URI: ${redirectUri}`);
       // 1. Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${redirectUri}&client_secret=${appSecret}&code=${code}`;
+      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
       const tokenResponse = await fetch(tokenUrl);
       const tokens = await tokenResponse.json();
 
       if (tokens.error) {
+        console.error(`[FacebookAuth] Token exchange failed:`, tokens.error);
         throw new Error(tokens.error.message);
       }
 
+      console.log(`[FacebookAuth] Token received. Fetching user profile...`);
       // 2. Fetch user profile data
       const userResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
       const userData = await userResponse.json();
 
+      if (userData.error) {
+        console.error(`[FacebookAuth] Profile fetch failed:`, userData.error);
+        throw new Error(userData.error.message);
+      }
+
+      console.log(`[FacebookAuth] User data fetched: ${userData.name} (${userData.id})`);
       // 3. Send success message with user data back to parent window
       res.send(`
         <html>
           <body>
             <script>
+              console.log('[FacebookAuth] Sending success message to opener...');
               if (window.opener) {
                 window.opener.postMessage({ 
                   type: 'OAUTH_AUTH_SUCCESS', 
                   provider: 'facebook',
+                  accessToken: ${JSON.stringify(tokens.access_token)},
                   user: ${JSON.stringify({
                     id: userData.id,
                     name: userData.name,
@@ -1349,9 +1418,11 @@ async function startServer() {
                     picture: userData.picture?.data?.url
                   })}
                 }, '*');
-                window.close();
+                console.log('[FacebookAuth] Message sent. Closing window...');
+                setTimeout(() => window.close(), 100);
               } else {
-                window.location.href = '/showcase';
+                console.warn('[FacebookAuth] No opener found. Redirecting to home...');
+                window.location.href = '/';
               }
             </script>
             <p>Authentication successful. This window should close automatically.</p>
@@ -1359,7 +1430,7 @@ async function startServer() {
         </html>
       `);
     } catch (err) {
-      console.error('Facebook Auth Error:', err);
+      console.error('[FacebookAuth] Fatal error:', err);
       res.send(`
         <html>
           <body>
@@ -1368,7 +1439,7 @@ async function startServer() {
                 window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', provider: 'facebook', error: 'Failed to fetch user data' }, '*');
                 window.close();
               } else {
-                window.location.href = '/showcase';
+                window.location.href = '/';
               }
             </script>
             <p>Authentication error. This window should close automatically.</p>
@@ -1388,48 +1459,53 @@ async function startServer() {
     app.use(vite.middlewares);
 
     app.get("*", async (req, res) => {
-      let html = await fs.readFile(path.resolve("index.html"), "utf-8");
-      html = await vite.transformIndexHtml(req.originalUrl, html);
-      
-      const baseUrl = "https://barnia.in";
-      const fullUrl = `${baseUrl}${req.path}`;
-      
-      const metadata = {
-        title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
-        description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
-        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
-        url: fullUrl,
-        type: 'website'
-      };
-      
-      html = await injectMetaTags(html, metadata);
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
-    });
-
-    // Catch-all for unmatched API POST requests
-    app.post("/api/*", (req, res) => {
-      console.warn(`Unmatched API POST request: ${req.originalUrl}`);
-      res.status(404).json({ success: false, error: `API route not found: ${req.originalUrl}` });
+      // This is the final catch-all. If it's an asset, it should have been caught by static middleware.
+      // If it's a page, we serve index.html with default meta tags.
+      try {
+        const isProd = process.env.NODE_ENV === "production";
+        const indexPath = isProd ? path.resolve("dist", "index.html") : path.resolve("index.html");
+        
+        let html = await fs.readFile(indexPath, "utf-8");
+        if (!isProd && vite) {
+          html = await vite.transformIndexHtml(req.originalUrl, html);
+        }
+        
+        const metadata = {
+          title: "Barnia Digital Hub | Community Platform",
+          description: "The official community platform for Barnia, Ujirpur, Nadia.",
+          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+          url: `https://barnia.in${req.path}`,
+          type: 'website'
+        };
+        
+        html = await injectMetaTags(html, metadata);
+        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      } catch (err) {
+        console.error("[SSR] Catch-all error:", err);
+        res.status(500).send("Internal Server Error");
+      }
     });
   } else {
     app.use(express.static("dist", { index: false }));
 
     app.get("*", async (req, res) => {
-      let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
-      
-      const baseUrl = "https://barnia.in";
-      const fullUrl = `${baseUrl}${req.path}`;
-      
-      const metadata = {
-        title: "Barnia Digital Hub | Barnia Bazar, Influencers & Bengali Ponjika",
-        description: "The official community platform for Barnia, Ujirpur, Nadia. Market prices, local influencers, and Bengali Ponjika.",
-        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
-        url: fullUrl,
-        type: 'website'
-      };
-      
-      html = await injectMetaTags(html, metadata);
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      try {
+        let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+        
+        const metadata = {
+          title: "Barnia Digital Hub | Community Platform",
+          description: "The official community platform for Barnia, Ujirpur, Nadia.",
+          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=630",
+          url: `https://barnia.in${req.path}`,
+          type: 'website'
+        };
+        
+        html = await injectMetaTags(html, metadata);
+        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      } catch (err) {
+        console.error("[SSR] Production catch-all error:", err);
+        res.status(500).send("Internal Server Error");
+      }
     });
   }
 

@@ -92,46 +92,73 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
+      console.log(`[FirebaseContext] Received message from origin: ${event.origin}`, event.data);
+      
       // Validate origin
-      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost') && !event.origin.includes('barnia.in')) return;
+      const isAllowedOrigin = event.origin.endsWith('.run.app') || 
+                             event.origin.includes('localhost') || 
+                             event.origin.includes('barnia.in');
+      
+      if (!isAllowedOrigin) {
+        console.warn(`[FirebaseContext] Origin ${event.origin} not allowed.`);
+        return;
+      }
       
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
+        console.log('[FirebaseContext] OAuth success received for user:', event.data.user.name);
         const fbUser = event.data.user;
+        const accessToken = event.data.accessToken;
         
-        // For now, we'll sync this user data to Firestore
-        // In a real app, you'd ideally link this to a Firebase Auth user
-        // But since we can't easily do that without manual Firebase Console setup,
-        // we'll treat this as a successful login and update our local user state
-        // or sign in anonymously and link.
-        
-        // Let's try to sign in anonymously if not already signed in
-        let currentUser = auth.currentUser;
-        if (!currentUser) {
-          const { signInAnonymously } = await import('firebase/auth');
-          const cred = await signInAnonymously(auth);
-          currentUser = cred.user;
-        }
+        try {
+          let currentUser = auth.currentUser;
+          
+          if (accessToken) {
+            console.log('[FirebaseContext] Signing in with Facebook credential...');
+            const { FacebookAuthProvider, signInWithCredential } = await import('firebase/auth');
+            const credential = FacebookAuthProvider.credential(accessToken);
+            const cred = await signInWithCredential(auth, credential);
+            currentUser = cred.user;
+            console.log('[FirebaseContext] Signed in successfully:', currentUser.uid);
+          } else if (!currentUser) {
+            console.log('[FirebaseContext] No access token and no current user, signing in anonymously...');
+            const { signInAnonymously } = await import('firebase/auth');
+            const cred = await signInAnonymously(auth);
+            currentUser = cred.user;
+          }
 
-        if (currentUser) {
-          const userRef = doc(db, 'users', currentUser.uid);
-          await setDoc(userRef, {
-            displayName: fbUser.name,
-            email: fbUser.email || null,
-            photoURL: fbUser.picture || null,
-            facebookId: fbUser.id,
-            role: 'user',
-            lastLogin: serverTimestamp()
-          }, { merge: true });
-          
-          // Force a refresh of the user state
-          setUser({
-            ...currentUser,
-            displayName: fbUser.name,
-            photoURL: fbUser.picture || null,
-            email: fbUser.email || currentUser.email
-          } as User);
-          
-          setAuthModalOpen(false);
+          if (currentUser) {
+            console.log('[FirebaseContext] Syncing user data to Firestore...', currentUser.uid);
+            
+            // Update the Firebase Auth profile so onAuthStateChanged gets the right data
+            const { updateProfile } = await import('firebase/auth');
+            await updateProfile(currentUser, {
+              displayName: fbUser.name,
+              photoURL: fbUser.picture || null
+            });
+
+            const userRef = doc(db, 'users', currentUser.uid);
+            await setDoc(userRef, {
+              displayName: fbUser.name,
+              email: fbUser.email || null,
+              photoURL: fbUser.picture || null,
+              facebookId: fbUser.id,
+              role: 'user',
+              lastLogin: serverTimestamp()
+            }, { merge: true });
+            
+            console.log('[FirebaseContext] User synced successfully. Closing modal.');
+            setAuthModalOpen(false);
+            
+            // Force state update to ensure UI updates immediately
+            setUser({
+              ...currentUser,
+              displayName: fbUser.name,
+              photoURL: fbUser.picture || null,
+              email: fbUser.email || currentUser.email
+            } as User);
+          }
+        } catch (err) {
+          console.error('[FirebaseContext] Error handling OAuth success:', err);
         }
       }
     };

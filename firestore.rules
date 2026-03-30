@@ -95,8 +95,8 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasRequiredFields(['email', 'role']) &&
-             data.email is string && isValidEmail(data.email) &&
+      return hasRequiredFields(['role']) &&
+             (!('email' in data) || data.email == null || (data.email is string && isValidEmail(data.email))) &&
              data.role in ['admin', 'user'];
     }
 

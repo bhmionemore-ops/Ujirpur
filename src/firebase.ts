@@ -11,7 +11,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  sendEmailVerification
+  sendEmailVerification,
+  FacebookAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { 
   getFirestore, 
