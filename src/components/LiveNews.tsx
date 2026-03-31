@@ -81,26 +81,51 @@ export const LiveNews = () => {
         } else {
           console.log("News document not found, generating fresh news...");
           setGenerating(true);
-          const freshNews = await fetchLiveNews(language);
-          newsData = {
-            ...freshNews,
-            date: today,
-            updatedAt: new Date().toISOString()
-          };
-          console.log("Saving generated news to Firestore...");
-          if (auth.currentUser) {
-            try {
-              await setDoc(newsDocRef, newsData);
-              console.log("News saved successfully");
-            } catch (setErr: any) {
-              console.error("Failed to save news to Firestore:", setErr);
+          try {
+            const freshNews = await fetchLiveNews(language);
+            newsData = {
+              ...freshNews,
+              date: today,
+              updatedAt: new Date().toISOString()
+            };
+            console.log("Saving generated news to Firestore...");
+            if (auth.currentUser) {
+              try {
+                await setDoc(newsDocRef, newsData);
+                console.log("News saved successfully");
+              } catch (setErr: any) {
+                console.error("Failed to save news to Firestore:", setErr);
+              }
+            } else {
+              console.log("Skipping news save to Firestore (not authenticated)");
             }
-          } else {
-            console.log("Skipping news save to Firestore (not authenticated)");
+            setNews(newsData);
+            setGenerating(false);
+            setLoading(false);
+          } catch (genErr: any) {
+            console.error("Generation failed, trying to find most recent news as fallback:", genErr);
+            // Fallback: Try to find the most recent news document in the last 7 days
+            let foundFallback = false;
+            for (let i = 1; i <= 7; i++) {
+              const d = new Date();
+              d.setDate(d.getDate() - i);
+              const fallbackDate = d.toISOString().split('T')[0];
+              const fallbackRef = doc(db, 'news', fallbackDate);
+              const fallbackSnap = await getDoc(fallbackRef);
+              if (fallbackSnap.exists()) {
+                console.log(`Found fallback news from ${fallbackDate}`);
+                setNews(fallbackSnap.data());
+                foundFallback = true;
+                break;
+              }
+            }
+            
+            if (!foundFallback) {
+              throw genErr; // Re-throw if no fallback found
+            }
+            setGenerating(false);
+            setLoading(false);
           }
-          setNews(newsData);
-          setGenerating(false);
-          setLoading(false);
         }
 
         // Handle deep linking from URL
@@ -165,11 +190,20 @@ export const LiveNews = () => {
   }
 
   if (error) {
+    const isQuotaExceeded = error.includes('429') || error.includes('RESOURCE_EXHAUSTED');
     return (
       <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-zinc-50 px-4 text-center">
         <RefreshCw className="mb-4" size={32} />
-        <p className="font-bold mb-2">{language === 'bn' ? 'খবর লোড করতে সমস্যা হয়েছে' : 'Error loading news'}</p>
-        <p className="text-xs opacity-70 mb-6 max-w-md">{error}</p>
+        <p className="font-bold mb-2">
+          {isQuotaExceeded 
+            ? (language === 'bn' ? 'দুঃখিত, আমাদের সংবাদ সার্ভার এখন ব্যস্ত। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।' : 'Sorry, our news server is busy right now. Please try again in a few minutes.')
+            : (language === 'bn' ? 'খবর লোড করতে সমস্যা হয়েছে' : 'Error loading news')}
+        </p>
+        <p className="text-xs opacity-70 mb-6 max-w-md">
+          {isQuotaExceeded 
+            ? (language === 'bn' ? 'আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।' : 'We have exceeded our daily news quota. We are working to fix this soon.')
+            : error}
+        </p>
         <button 
           onClick={() => window.location.reload()}
           className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold text-sm"
@@ -213,17 +247,23 @@ export const LiveNews = () => {
             onClick={async () => {
               setLoading(true);
               setGenerating(true);
+              setError(null);
               try {
                 const freshNews = await fetchLiveNews(language);
-                const today = new Date().toISOString().split('T')[0]; // Simple fallback for manual refresh
+                const today = new Date().toISOString().split('T')[0];
                 const newsData = {
                   ...freshNews,
                   date: today,
                   updatedAt: new Date().toISOString()
                 };
+                if (auth.currentUser) {
+                  const newsDocRef = doc(db, 'news', today);
+                  await setDoc(newsDocRef, newsData);
+                }
                 setNews(newsData);
-              } catch (e) {
+              } catch (e: any) {
                 console.error(e);
+                setError(e.message || "Failed to refresh news");
               } finally {
                 setLoading(false);
                 setGenerating(false);

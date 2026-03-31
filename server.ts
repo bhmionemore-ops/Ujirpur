@@ -1340,11 +1340,16 @@ async function startServer() {
     const params = new URLSearchParams({
       client_id: appId,
       redirect_uri: redirectUri,
+      // Simplified scope to avoid "Advanced Access" blocks for basic login
+      // Add back 'instagram_basic', etc. only after your app is approved by Facebook
+      scope: 'email,public_profile',
       response_type: 'code',
-      scope: 'email,public_profile,instagram_basic,pages_show_list,pages_read_engagement',
+      auth_type: 'rerequest', // Prompt user again if they denied permissions
+      display: 'popup'
     });
 
     const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
+    console.log(`[FacebookAuth] Generated Auth URL: ${authUrl}`);
     res.json({ url: authUrl });
   });
 
@@ -1420,8 +1425,8 @@ async function startServer() {
                     picture: userData.picture?.data?.url
                   })}
                 }, '*');
-                console.log('[FacebookAuth] Message sent. Closing window...');
-                setTimeout(() => window.close(), 100);
+                console.log('[FacebookAuth] Message sent. Closing window in 500ms...');
+                setTimeout(() => window.close(), 500);
               } else {
                 console.warn('[FacebookAuth] No opener found. Redirecting to home...');
                 window.location.href = '/';

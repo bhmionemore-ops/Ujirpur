@@ -91,43 +91,51 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
       
       IMPORTANT: All text must be in ${langName}.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        maxOutputTokens: 8192,
-      },
-    });
+    const maxRetries = 3;
+    let retryCount = 0;
 
-    try {
-      const text = response.text || "{\"items\": []}";
-      // Basic cleanup in case of minor AI formatting issues
-      const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-      const parsed = JSON.parse(cleanedText);
-      return parsed.items || [];
-    } catch (e) {
-      console.error(`Failed to parse ${category} news:`, e);
-      // If parsing fails, try to extract items array using regex as a fallback
+    const callGemini = async (): Promise<any> => {
       try {
-        const match = response.text?.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (match) {
-          return JSON.parse(match[0]);
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            tools: [{ googleSearch: {} }],
+            responseMimeType: "application/json",
+            maxOutputTokens: 8192,
+          },
+        });
+
+        const text = response.text || "{\"items\": []}";
+        const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+        const parsed = JSON.parse(cleanedText);
+        return parsed.items || [];
+      } catch (error: any) {
+        const isRateLimit = error?.message?.includes('429') || error?.status === 'RESOURCE_EXHAUSTED';
+        
+        if (isRateLimit && retryCount < maxRetries) {
+          retryCount++;
+          const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
+          console.warn(`Rate limit hit for ${category}. Retrying in ${Math.round(delay)}ms... (Attempt ${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return callGemini();
         }
-      } catch (innerError) {
-        console.error("Fallback parsing also failed:", innerError);
+        
+        console.error(`Failed to fetch ${category} news:`, error);
+        throw error;
       }
-      return [];
-    }
+    };
+
+    return callGemini();
   };
 
   try {
-    const [local, fbTrends, igTrends] = await Promise.all([
-      generateCategoryNews("Local News", "Barnia, Nadia, West Bengal"),
-      generateCategoryNews("Facebook", "India and West Bengal", true),
-      generateCategoryNews("Instagram", "India and West Bengal", true)
-    ]);
+    // Stagger the calls to avoid hitting rate limits by making 3 heavy calls simultaneously
+    const local = await generateCategoryNews("Local News", "Barnia, Nadia, West Bengal");
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+    const fbTrends = await generateCategoryNews("Facebook", "India and West Bengal", true);
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+    const igTrends = await generateCategoryNews("Instagram", "India and West Bengal", true);
 
     return {
       local,
