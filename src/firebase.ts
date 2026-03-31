@@ -58,16 +58,23 @@ export const signInWithGoogle = async () => {
     console.error("Sign in with popup error:", error);
     
     // If popup is blocked, cancelled, or closed by user, and we are on mobile, try redirect
+    // Also try redirect for internal-error which can happen in some iframe/proxy scenarios
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const isPopupError = [
       'auth/popup-blocked',
       'auth/cancelled-popup-request',
-      'auth/popup-closed-by-user'
+      'auth/popup-closed-by-user',
+      'auth/internal-error'
     ].includes(error.code);
 
-    if (isMobile && isPopupError) {
-      console.log("Attempting redirect fallback for mobile...");
-      return signInWithRedirect(auth, googleProvider);
+    if ((isMobile && isPopupError) || error.code === 'auth/internal-error') {
+      console.log("Attempting redirect fallback...");
+      try {
+        return await signInWithRedirect(auth, googleProvider);
+      } catch (redirectError) {
+        console.error("Redirect fallback failed:", redirectError);
+        throw redirectError;
+      }
     }
     
     // Re-throw to be handled by the UI

@@ -72,10 +72,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'নেটওয়ার্ক সমস্যা। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।'
           : 'Network error. Please check your internet connection.');
-      } else if (err.code === 'auth/popup-closed-by-user') {
+      } else if (err.code === 'auth/internal-error') {
         setError(language === 'bn'
-          ? 'লগইন উইন্ডোটি বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন এবং উইন্ডোটি খোলা রাখুন।'
-          : 'The sign-in window was closed before completion. Please try again and keep the window open.');
+          ? 'একটি ইন্টারনাল এরর হয়েছে। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা আপনার ব্রাউজারের কুকিজ এবং ক্যাশ পরিষ্কার করে আবার চেষ্টা করুন।'
+          : 'An internal error occurred. Please try opening the app in a new tab or clear your browser cookies and cache and try again.');
       } else if (errorMessage.includes('missing initial state')) {
         setError(language === 'bn'
           ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'
@@ -116,6 +116,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'লগইন উইন্ডোটি বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন এবং উইন্ডোটি খোলা রাখুন।'
           : 'The sign-in window was closed before completion. Please try again and keep the window open.');
+      } else if (err.code === 'auth/internal-error') {
+        setError(language === 'bn'
+          ? 'একটি ইন্টারনাল এরর হয়েছে। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা আপনার ব্রাউজারের কুকিজ এবং ক্যাশ পরিষ্কার করে আবার চেষ্টা করুন।'
+          : 'An internal error occurred. Please try opening the app in a new tab or clear your browser cookies and cache and try again.');
       } else if (errorMessage.includes('missing initial state')) {
         setError(language === 'bn'
           ? 'লগইন সেশন পাওয়া যাচ্ছে না। অনুগ্রহ করে অ্যাপটি নতুন ট্যাবে খুলুন অথবা ইনকগনিটো মোড বন্ধ করুন।'

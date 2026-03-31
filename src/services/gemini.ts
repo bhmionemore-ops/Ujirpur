@@ -47,99 +47,46 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
   const langName = language === 'bn' ? 'Bengali' : 'English';
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   
-  const generateCategoryNews = async (category: string, location: string, isTrend: boolean = false) => {
-    const prompt = isTrend 
-      ? `Find the latest 5 VIRAL trends for ${category} in India and West Bengal for today (${today}).
-      The goal is to provide a "Viral Content Blueprint" for influencers to get more reach and engagement.
-      
-      For each viral topic, provide:
-      - Title (Must start with "Top 1 (WB):", "Top 2 (WB):", "Top 1 (India):", etc., followed by the viral topic name)
-      - Content (Detailed Viral Strategy: 
-          1. Why it's trending: Explain the cultural or social reason.
-          2. Viral Hook Idea: A specific opening line or visual to grab attention.
-          3. Content Creation Tips: Step-by-step advice on how to film/edit the reel or post.
-          4. Viral Secret: A pro-tip to help the post go viral (e.g., specific music, transition, or timing).
-          5. Engagement Booster: A question or call-to-action to get comments.
-          6. Monetization Tip: How to potentially earn from this trend.
-          7. Hashtags: A set of high-reach #hashtags).
-      - Source (The platform or source of the trend).
-      - Date (The date of the trend).
-      
-      Return exactly 5 items in this JSON format:
-      {
-        "items": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
-      }
-      
-      Keep each "content" section under 250 words to ensure the data fits.
-      IMPORTANT: All text must be in ${langName}.`
-      : `Find the latest 5 news items for: ${category} from ${location}. 
-      Focus on recent events from the last 24 hours. Today's date is ${today}.
-      
-      For each news item, provide:
-      - Title
-      - Content (Detailed summary, around 150-200 words. Be descriptive and thorough).
-      - Source (Name of the news source).
-      - Date (Actual date of the news).
-      
-      Return the data in the following JSON format:
-      {
-        "items": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
-      }
-      
-      IMPORTANT: All text must be in ${langName}.`;
-
-    const maxRetries = 3;
-    let retryCount = 0;
-
-    const callGemini = async (): Promise<any> => {
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-            responseMimeType: "application/json",
-            maxOutputTokens: 8192,
-          },
-        });
-
-        const text = response.text || "{\"items\": []}";
-        const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-        const parsed = JSON.parse(cleanedText);
-        return parsed.items || [];
-      } catch (error: any) {
-        const isRateLimit = error?.message?.includes('429') || error?.status === 'RESOURCE_EXHAUSTED';
-        
-        if (isRateLimit && retryCount < maxRetries) {
-          retryCount++;
-          const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
-          console.warn(`Rate limit hit for ${category}. Retrying in ${Math.round(delay)}ms... (Attempt ${retryCount}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return callGemini();
-        }
-        
-        console.error(`Failed to fetch ${category} news:`, error);
-        throw error;
-      }
-    };
-
-    return callGemini();
-  };
+  const prompt = `Find the latest news and trends for today (${today}) for the following categories:
+  
+  1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
+  2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  
+  For News items, provide: Title, Content (150-200 words), Source, Date.
+  For Trends, provide: Title (e.g., "Top 1 (WB): ..."), Content (Viral Strategy: Why it's trending, Hook Idea, Creation Tips, Viral Secret, Engagement Booster, Monetization Tip, Hashtags), Source, Date.
+  
+  Return the data in exactly this JSON format:
+  {
+    "local": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
+    "fbTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
+    "igTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
+  }
+  
+  IMPORTANT: All text must be in ${langName}.
+  Return exactly 5 items per category.`;
 
   try {
-    // Stagger the calls to avoid hitting rate limits by making 3 heavy calls simultaneously
-    const local = await generateCategoryNews("Local News", "Barnia, Nadia, West Bengal");
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-    const fbTrends = await generateCategoryNews("Facebook", "India and West Bengal", true);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-    const igTrends = await generateCategoryNews("Instagram", "India and West Bengal", true);
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        maxOutputTokens: 8192,
+      },
+    });
 
+    const text = response.text || "{}";
+    const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+    const parsed = JSON.parse(cleanedText);
+    
     return {
-      local,
-      fbTrends,
-      igTrends
+      local: parsed.local || [],
+      fbTrends: parsed.fbTrends || [],
+      igTrends: parsed.igTrends || []
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("News generation failed:", error);
     throw error;
   }
