@@ -49,9 +49,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           ? 'পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজারে পপআপ অনুমতি দিন বা নতুন ট্যাবে অ্যাপটি খুলুন।'
           : 'Popup blocked. Please allow popups for this site or open the app in a new tab.');
       } else if (err.code === 'auth/operation-not-allowed') {
+        const isEmail = mode === 'login' || mode === 'signup';
         setError(language === 'bn'
-          ? 'ইমেইল/পাসওয়ার্ড লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে (Authentication > Sign-in method) এটি সক্রিয় করুন।'
-          : 'Email/Password sign-in is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).');
+          ? (isEmail 
+              ? 'ইমেইল/পাসওয়ার্ড লগইন সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে এটি সক্রিয় করুন।' 
+              : 'এই লগইন পদ্ধতিটি (Google/Facebook) সক্রিয় করা নেই। অনুগ্রহ করে ফায়ারবেস কনসোলে এটি সক্রিয় করুন।')
+          : (isEmail
+              ? 'Email/Password sign-in is not enabled. Please enable it in your Firebase Console.'
+              : 'This sign-in provider (Google/Facebook) is not enabled. Please enable it in your Firebase Console (Authentication > Sign-in method).'));
       } else if (err.code === 'auth/email-already-in-use') {
         setError(language === 'bn'
           ? 'এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। অনুগ্রহ করে লগইন করুন।'
