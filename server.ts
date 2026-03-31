@@ -1352,7 +1352,7 @@ async function startServer() {
   // Facebook OAuth Routes
   app.get('/api/auth/facebook/url', (req, res) => {
     // Use environment variables if available, otherwise use hardcoded fallbacks
-    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
+    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "26242299445430440";
     const host = req.get('host');
     // Force https for production domains to avoid protocol mismatch errors
     const protocol = (host?.includes('localhost') || host?.includes('127.0.0.1')) ? 'http' : 'https';
@@ -1404,8 +1404,8 @@ async function startServer() {
     }
 
     try {
-      const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
-      const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "3494ad98c498cda892b65006cf833273";
+      const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "26242299445430440";
+      const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "e2aba97983d4422fea2e4ed1e09a5e4d";
 
       console.log(`[FacebookAuth] Exchanging code for token. Redirect URI: ${redirectUri}`);
       // 1. Exchange code for access token
