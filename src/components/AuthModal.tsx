@@ -61,6 +61,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setError(language === 'bn'
           ? 'এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। অনুগ্রহ করে লগইন করুন।'
           : 'This email is already in use. Please sign in instead.');
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setError(language === 'bn'
+          ? 'এই ইমেইলটি ইতিমধ্যে অন্য একটি লগইন পদ্ধতির (যেমন গুগল) সাথে যুক্ত। অনুগ্রহ করে আপনার আগের পদ্ধতিটি ব্যবহার করুন।'
+          : 'This email is already linked to another sign-in method (like Google). Please use your original login method.');
       } else if (err.code === 'auth/weak-password') {
         setError(language === 'bn'
           ? 'পাসওয়ার্ডটি খুব দুর্বল। কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড ব্যবহার করুন।'
