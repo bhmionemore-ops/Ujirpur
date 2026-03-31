@@ -49,11 +49,8 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
   
   const generateCategoryNews = async (category: string, location: string, isTrend: boolean = false) => {
     const prompt = isTrend 
-      ? `Find the latest VIRAL trends for ${category} in India and West Bengal for today (${today}) and yesterday.
+      ? `Find the latest 5 VIRAL trends for ${category} in India and West Bengal for today (${today}).
       The goal is to provide a "Viral Content Blueprint" for influencers to get more reach and engagement.
-      For each set (Today and Yesterday), provide:
-      - Top 3 West Bengal viral topics
-      - Top 3 India viral topics
       
       For each viral topic, provide:
       - Title (Must start with "Top 1 (WB):", "Top 2 (WB):", "Top 1 (India):", etc., followed by the viral topic name)
@@ -68,7 +65,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
       - Source (The platform or source of the trend).
       - Date (The date of the trend).
       
-      Return exactly 12 items (6 for today, 6 for yesterday) in this JSON format:
+      Return exactly 5 items in this JSON format:
       {
         "items": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
       }
@@ -76,7 +73,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en'): Promise<any> 
       Keep each "content" section under 250 words to ensure the data fits.
       IMPORTANT: All text must be in ${langName}.`
       : `Find the latest 5 news items for: ${category} from ${location}. 
-      Focus on recent events from the last 24-48 hours. Today's date is ${today}.
+      Focus on recent events from the last 24 hours. Today's date is ${today}.
       
       For each news item, provide:
       - Title

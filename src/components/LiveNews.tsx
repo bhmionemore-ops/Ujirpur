@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram } from 'lucide-react';
+import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
@@ -12,175 +12,150 @@ export const LiveNews = () => {
   const { t, language } = useLanguage();
   const { logEvent } = useTracking();
   const { isAdmin } = useFirebase();
-  const [news, setNews] = useState<any>(null);
+  const [news, setNews] = useState<any>({ local: [], fbTrends: [], igTrends: [], dates: [] });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'local' | 'fbTrends' | 'igTrends'>('local');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [copied, setCopied] = useState(false);
-  const [visibleCounts, setVisibleCounts] = useState({
-    local: 5,
-    fbTrends: 6,
-    igTrends: 6
+  const [currentDayOffset, setCurrentDayOffset] = useState({
+    local: 0,
+    fbTrends: 0,
+    igTrends: 0
   });
 
+  // Calculate "News Date" based on 6 AM IST refresh
+  const getNewsDate = (offset: number = 0) => {
+    const now = new Date();
+    // Use Intl to get IST parts accurately
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const dateParts: { [key: string]: string } = {};
+    parts.forEach(p => dateParts[p.type] = p.value);
+    
+    let year = parseInt(dateParts.year);
+    let month = parseInt(dateParts.month);
+    let day = parseInt(dateParts.day);
+    let hour = parseInt(dateParts.hour);
+    
+    // If before 6 AM IST, we are still in the previous "news day"
+    if (hour < 6) {
+      const d = new Date(year, month - 1, day);
+      d.setDate(d.getDate() - 1);
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    }
+
+    // Apply offset for previous days
+    if (offset > 0) {
+      const d = new Date(year, month - 1, day);
+      d.setDate(d.getDate() - offset);
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    }
+    
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const fetchDayNews = async (offset: number) => {
+    const date = getNewsDate(offset);
+    const newsDocRef = doc(db, 'news', date);
+    
+    try {
+      const docSnap = await getDoc(newsDocRef);
+      if (docSnap.exists()) {
+        return { ...docSnap.data(), date };
+      } else if (offset === 0) {
+        // Only generate if it's today and missing
+        setGenerating(true);
+        const freshNews = await fetchLiveNews(language);
+        const newsData = {
+          ...freshNews,
+          date: date,
+          updatedAt: new Date().toISOString()
+        };
+        if (auth.currentUser) {
+          await setDoc(newsDocRef, newsData);
+        }
+        setGenerating(false);
+        return newsData;
+      }
+      return null;
+    } catch (err: any) {
+      console.error(`Error fetching news for ${date}:`, err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
-    const checkAndFetchNews = async () => {
+    const initNews = async () => {
       setLoading(true);
       setError(null);
-      
-      // Calculate "News Date" based on 6 AM IST refresh
-      const getNewsDate = () => {
-        const now = new Date();
-        // Use Intl to get IST parts accurately
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Kolkata',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          hour12: false
-        });
-        
-        const parts = formatter.formatToParts(now);
-        const dateParts: { [key: string]: string } = {};
-        parts.forEach(p => dateParts[p.type] = p.value);
-        
-        let year = parseInt(dateParts.year);
-        let month = parseInt(dateParts.month);
-        let day = parseInt(dateParts.day);
-        let hour = parseInt(dateParts.hour);
-        
-        // If before 6 AM IST, we are still in the previous "news day"
-        if (hour < 6) {
-          const d = new Date(year, month - 1, day);
-          d.setDate(d.getDate() - 1);
-          year = d.getFullYear();
-          month = d.getMonth() + 1;
-          day = d.getDate();
-        }
-        
-        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      };
-
-      const today = getNewsDate();
-      console.log("Fetching news for date:", today);
-      const newsDocRef = doc(db, 'news', today);
-      
       try {
-        console.log("Attempting to get news document:", today);
-        const docSnap = await getDoc(newsDocRef);
-        let newsData: any = null;
-
-        if (docSnap.exists()) {
-          console.log("News document found in Firestore");
-          newsData = docSnap.data();
-          setNews(newsData);
-          setLoading(false);
-        } else {
-          console.log("News document not found, generating fresh news...");
-          setGenerating(true);
-          try {
-            const freshNews = await fetchLiveNews(language);
-            newsData = {
-              ...freshNews,
-              date: today,
-              updatedAt: new Date().toISOString()
-            };
-            console.log("Saving generated news to Firestore...");
-            if (auth.currentUser) {
-              try {
-                await setDoc(newsDocRef, newsData);
-                console.log("News saved successfully");
-              } catch (setErr: any) {
-                console.error("Failed to save news to Firestore:", setErr);
-              }
-            } else {
-              console.log("Skipping news save to Firestore (not authenticated)");
-            }
-            setNews(newsData);
-            setGenerating(false);
-            setLoading(false);
-          } catch (genErr: any) {
-            console.error("Generation failed, trying to find most recent news as fallback:", genErr);
-            // Fallback: Try to find the most recent news document in the last 7 days
-            let foundFallback = false;
-            for (let i = 1; i <= 7; i++) {
-              const d = new Date();
-              d.setDate(d.getDate() - i);
-              const fallbackDate = d.toISOString().split('T')[0];
-              const fallbackRef = doc(db, 'news', fallbackDate);
-              const fallbackSnap = await getDoc(fallbackRef);
-              if (fallbackSnap.exists()) {
-                console.log(`Found fallback news from ${fallbackDate}`);
-                setNews(fallbackSnap.data());
-                foundFallback = true;
-                break;
-              }
-            }
-            
-            if (!foundFallback) {
-              throw genErr; // Re-throw if no fallback found
-            }
-            setGenerating(false);
-            setLoading(false);
-          }
+        const todayNews = await fetchDayNews(0);
+        if (todayNews) {
+          setNews({
+            local: todayNews.local || [],
+            fbTrends: todayNews.fbTrends || [],
+            igTrends: todayNews.igTrends || [],
+            dates: [todayNews.date],
+            updatedAt: todayNews.updatedAt || new Date().toISOString()
+          });
         }
-
-        // Handle deep linking from URL
-        // Path format: /news/:date/:tab/:index
-        const path = window.location.pathname;
-        const match = path.match(/\/news\/([^/]+)\/([^/]+)\/([^/]+)/);
-        if (match && newsData) {
-          const [_, date, tab, index] = match;
-          // If the date matches today, we can open it directly
-          // If it's an older date, we'd need to fetch that specific doc
-          if (date === today) {
-            const items = newsData[tab];
-            if (items && items[parseInt(index)]) {
-              setActiveTab(tab as any);
-              setSelectedItem(items[parseInt(index)]);
-            }
-          } else {
-            // Fetch older news if needed
-            const oldDocRef = doc(db, 'news', date);
-            const oldSnap = await getDoc(oldDocRef);
-            if (oldSnap.exists()) {
-              const oldData = oldSnap.data();
-              const items = oldData[tab];
-              if (items && items[parseInt(index)]) {
-                setSelectedItem(items[parseInt(index)]);
-              }
-            }
-          }
-        }
-      } catch (error: any) {
-        console.error("Error fetching news:", error);
-        setError(error.message || "Failed to load news");
+      } catch (err: any) {
+        setError(err.message || "Failed to load news");
+      } finally {
         setLoading(false);
-        setGenerating(false);
       }
     };
 
-    checkAndFetchNews();
+    initNews();
   }, [language]);
 
-  const handleShare = (item: any, index: number) => {
-    const date = news.date;
-    const tab = activeTab;
-    const shareUrl = `${window.location.origin}/news/${date}/${tab}/${index}`;
-    return shareUrl;
+  const handleSeeMore = async () => {
+    const nextOffset = currentDayOffset[activeTab] + 1;
+    if (nextOffset > 2) return; // Limit to 3 days (0, 1, 2)
+
+    setLoading(true);
+    try {
+      const prevNews = await fetchDayNews(nextOffset);
+      if (prevNews) {
+        setNews((prev: any) => ({
+          ...prev,
+          [activeTab]: [...prev[activeTab], ...(prevNews[activeTab] || [])],
+          dates: [...prev.dates, prevNews.date]
+        }));
+        setCurrentDayOffset(prev => ({
+          ...prev,
+          [activeTab]: nextOffset
+        }));
+      } else {
+        // If yesterday's news doesn't exist, we can't show more
+        // But we can mark it as "no more" by setting offset to 2
+        setCurrentDayOffset(prev => ({
+          ...prev,
+          [activeTab]: 2
+        }));
+      }
+    } catch (err: any) {
+      console.error("Error loading more news:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const copyToClipboard = (url: string, item: any) => {
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    logEvent('share_news', { title: item.title, method: 'copy_link' });
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  if (loading) {
+  if (loading && news.dates.length === 0) {
     return (
       <div className="py-20 flex flex-col items-center justify-center text-zinc-500 bg-zinc-50">
         <RefreshCw className="animate-spin mb-4" size={32} />
@@ -189,7 +164,7 @@ export const LiveNews = () => {
     );
   }
 
-  if (error) {
+  if (error && news.dates.length === 0) {
     const isQuotaExceeded = error.includes('429') || error.includes('RESOURCE_EXHAUSTED');
     return (
       <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-zinc-50 px-4 text-center">
@@ -214,17 +189,16 @@ export const LiveNews = () => {
     );
   }
 
-  if (!news) return null;
+  if (!news || !news[activeTab]) return null;
 
-  const currentNews = news[activeTab] || [];
-  const visibleNews = currentNews.slice(0, visibleCounts[activeTab]);
-  const hasMore = currentNews.length > visibleCounts[activeTab];
+  const currentNews = news[activeTab];
+  const hasMore = currentDayOffset[activeTab] < 2;
 
-  const handleSeeMore = () => {
-    setVisibleCounts(prev => ({
-      ...prev,
-      [activeTab]: prev[activeTab] + (activeTab === 'local' ? 5 : 6)
-    }));
+  const copyToClipboard = (url: string, item: any) => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    logEvent('share_news', { title: item.title, method: 'copy_link' });
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -250,7 +224,7 @@ export const LiveNews = () => {
               setError(null);
               try {
                 const freshNews = await fetchLiveNews(language);
-                const today = new Date().toISOString().split('T')[0];
+                const today = getNewsDate(0);
                 const newsData = {
                   ...freshNews,
                   date: today,
@@ -260,7 +234,14 @@ export const LiveNews = () => {
                   const newsDocRef = doc(db, 'news', today);
                   await setDoc(newsDocRef, newsData);
                 }
-                setNews(newsData);
+                setNews({
+                  local: newsData.local || [],
+                  fbTrends: newsData.fbTrends || [],
+                  igTrends: newsData.igTrends || [],
+                  dates: [today],
+                  updatedAt: newsData.updatedAt
+                });
+                setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
               } catch (e: any) {
                 console.error(e);
                 setError(e.message || "Failed to refresh news");
@@ -314,8 +295,8 @@ export const LiveNews = () => {
         {/* News Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           <AnimatePresence mode="popLayout">
-            {visibleNews.map((item: any, i: number) => {
-              const shareUrl = handleShare(item, i);
+            {currentNews.map((item: any, i: number) => {
+              const shareUrl = `${window.location.origin}/news/${item.date}/${activeTab}/${i % 5}`;
               return (
                 <motion.div
                   key={`${activeTab}-${i}`}
@@ -379,7 +360,7 @@ export const LiveNews = () => {
                     </div>
                     <button 
                       onClick={() => {
-                        setSelectedItem({...item, index: i});
+                        setSelectedItem({...item, index: i % 5});
                         logEvent('view_news_item', { title: item.title });
                         window.history.pushState({}, '', shareUrl);
                       }}
@@ -444,7 +425,7 @@ export const LiveNews = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <a 
-                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(handleShare(selectedItem, selectedItem.index))}`}
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1877F2]/10 text-[#1877F2] text-[10px] font-bold hover:bg-[#1877F2] hover:text-white transition-all"
@@ -453,7 +434,7 @@ export const LiveNews = () => {
                         Facebook
                       </a>
                       <a 
-                        href={`https://wa.me/?text=${encodeURIComponent(selectedItem.title + ' ' + handleShare(selectedItem, selectedItem.index))}`}
+                        href={`https://wa.me/?text=${encodeURIComponent(selectedItem.title + ' ' + `${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] text-[10px] font-bold hover:bg-[#25D366] hover:text-white transition-all"
@@ -462,14 +443,14 @@ export const LiveNews = () => {
                         WhatsApp
                       </a>
                       <button 
-                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index), selectedItem)}
+                        onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E4405F]/10 text-[#E4405F] text-[10px] font-bold hover:bg-[#E4405F] hover:text-white transition-all"
                       >
                         <Instagram size={12} />
                         Instagram
                       </button>
                       <button 
-                        onClick={() => copyToClipboard(handleShare(selectedItem, selectedItem.index), selectedItem)}
+                        onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10px] font-bold hover:bg-zinc-800 hover:text-white transition-all"
                       >
                         {copied ? <Check size={12} className="text-green-600" /> : <Link size={12} />}
@@ -513,6 +494,24 @@ export const LiveNews = () => {
           <RefreshCw size={12} />
           {t.news.lastUpdated}: {new Date(news.updatedAt).toLocaleString()}
         </div>
+
+        {/* See More Button */}
+        {hasMore && (
+          <div className="flex justify-center">
+            <button
+              onClick={handleSeeMore}
+              disabled={loading}
+              className="group relative flex items-center gap-3 px-10 py-5 rounded-[2rem] bg-white border-2 border-zinc-100 text-zinc-900 font-black text-sm uppercase tracking-widest hover:border-brand-500 hover:text-brand-600 transition-all shadow-sm hover:shadow-xl disabled:opacity-50"
+            >
+              {loading ? (
+                <RefreshCw className="animate-spin" size={18} />
+              ) : (
+                <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+              )}
+              {loading ? t.news.loading : t.news.seeMore}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

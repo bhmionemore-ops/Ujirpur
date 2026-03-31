@@ -753,6 +753,11 @@ async function startServer() {
     next();
   });
 
+  // Keep-alive endpoint for cron jobs
+  app.get("/api/ping", (req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // Diagnostic endpoint
   app.get("/api/admin/diag", async (req, res) => {
     const diag: any = {
