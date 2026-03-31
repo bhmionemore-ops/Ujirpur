@@ -698,6 +698,22 @@ export const PonjikaPage = () => {
           <p className="text-zinc-400 font-black uppercase tracking-[0.8em] text-xs">Barnia Digital Ponjika</p>
           <p className="text-zinc-300 font-bold text-[10px] mt-4">© 2026 Barnia Digital Hub. All Rights Reserved.</p>
         </div>
+
+        {/* Hidden SEO Section for Google Indexing */}
+        <div className="sr-only" aria-hidden="true">
+          <h2>Daily Bengali Ponjika and Calendar - Nadia, West Bengal</h2>
+          <p>
+            Stay updated with the daily Bengali Ponjika, almanac, and calendar for Barnia and Nadia. 
+            Get accurate information on Tithi, Nakshatra, Yoga, Karana, and auspicious timings for today.
+          </p>
+          <ul>
+            <li>Bengali Calendar Today Nadia</li>
+            <li>Daily Bengali Almanac Barnia</li>
+            <li>Auspicious Timings Today West Bengal</li>
+            <li>Bengali Festival Calendar 2026</li>
+            <li>Tithi and Nakshatra Today Bengali</li>
+          </ul>
+        </div>
       </div>
 
       {/* Custom Styles for Print */}

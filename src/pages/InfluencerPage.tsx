@@ -63,6 +63,22 @@ export const InfluencerPage = () => {
 
           <CollaborationTools />
         </div>
+
+        {/* Hidden SEO Section for Google Indexing */}
+        <div className="sr-only" aria-hidden="true">
+          <h2>Local Influencers in Barnia, Nadia - West Bengal</h2>
+          <p>
+            Connect with the top social media influencers from Barnia and Nadia. 
+            Our platform helps local creators collaborate and grow their audience on Facebook and Instagram.
+          </p>
+          <ul>
+            <li>Barnia Influencers Directory</li>
+            <li>Nadia Social Media Creators</li>
+            <li>West Bengal Influencer Marketing</li>
+            <li>Facebook Viral Trends Barnia</li>
+            <li>Instagram Content Strategy Nadia</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

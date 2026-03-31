@@ -58,6 +58,22 @@ export const BarniaBazarPage = () => {
         <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border border-zinc-100">
           <BarniaBazar />
         </div>
+
+        {/* Hidden SEO Section for Google Indexing */}
+        <div className="sr-only" aria-hidden="true">
+          <h2>Barnia Bazar Today Market Price - Nadia, West Bengal</h2>
+          <p>
+            Get the latest market prices for vegetables, fruits, and other commodities at Barnia Bazar, Nadia. 
+            Our platform provides real-time updates on Barnia Bazar today market price to help local farmers and consumers.
+          </p>
+          <ul>
+            <li>Barnia Bazar Vegetable Price Today</li>
+            <li>Barnia Bazar Fruit Price Today</li>
+            <li>Nadia Market Price Updates</li>
+            <li>West Bengal Local Market Rates</li>
+            <li>Barnia Bazar Business Directory</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

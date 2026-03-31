@@ -188,6 +188,23 @@ export const Home = () => {
           </ul>
         </div>
       </div>
+      {/* Hidden SEO Section for Google Indexing */}
+      <div className="sr-only" aria-hidden="true">
+        <h2>Barnia Digital Hub - Community Platform for Nadia, West Bengal</h2>
+        <p>
+          Welcome to Barnia Digital Hub, the official community platform for Barnia, Ujirpur, Nadia, and surrounding areas in West Bengal. 
+          Get daily Barnia Bazar market prices, connect with local influencers, and stay updated with the latest news from Barnia and Nadia.
+        </p>
+        <ul>
+          <li>Barnia Bazar Today Market Price</li>
+          <li>Barnia News Today</li>
+          <li>Nadia West Bengal Community Hub</li>
+          <li>Bengali Ponjika and Calendar</li>
+          <li>Local Influencers in Barnia</li>
+          <li>Shops and Businesses in Barnia Bazar</li>
+          <li>Ujirpur Nadia Community Updates</li>
+        </ul>
+      </div>
     </div>
   );
 };

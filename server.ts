@@ -452,11 +452,12 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string }) {
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
   const escapedImage = escapeHtml(metadata.image);
   const escapedUrl = escapeHtml(metadata.url);
+  const escapedKeywords = metadata.keywords ? escapeHtml(metadata.keywords) : "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia";
   const type = metadata.type || 'website';
   const updatedTime = new Date().toISOString();
   const imageWidth = metadata.imageWidth || 1200;
@@ -466,6 +467,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <!-- Meta Injected -->
     <title>${escapedTitle}</title>
     <meta name="description" content="${escapedDescription}" />
+    <meta name="keywords" content="${escapedKeywords}" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
     <meta name="facebook-domain-verification" content="qqo7i4cm5uqezzfiga7mn2vdqm8iy3" />
@@ -525,6 +527,9 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     const regex = new RegExp(`<meta\\s+[^>]*?(name|property)=["']${tag}["'][^>]*?\\/?>`, 'gi');
     modifiedHtml = modifiedHtml.replace(regex, "");
   });
+
+  // Remove keywords tag as well
+  modifiedHtml = modifiedHtml.replace(/<meta name=["']keywords["'].*?\/?>/gi, "");
 
   // Remove canonical link if it exists
   modifiedHtml = modifiedHtml.replace(/<link rel=["']canonical["'].*?\/?>/gi, "");
@@ -1148,7 +1153,8 @@ async function startServer() {
         url: fullUrl,
         type: 'website',
         imageWidth: 1200,
-        imageHeight: 630
+        imageHeight: 630,
+        keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
       };
 
       if (req.path.includes("/bazar")) {
@@ -1500,7 +1506,8 @@ async function startServer() {
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path}`,
-          type: 'website'
+          type: 'website',
+          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
         };
         
         html = await injectMetaTags(html, metadata);
@@ -1526,7 +1533,8 @@ async function startServer() {
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path}`,
-          type: 'website'
+          type: 'website',
+          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
         };
         
         html = await injectMetaTags(html, metadata);
