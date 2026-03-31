@@ -758,6 +758,14 @@ async function startServer() {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Self-pinging mechanism to keep the server awake
+  const APP_URL = process.env.APP_URL || "https://barnia.in";
+  setInterval(() => {
+    fetch(`${APP_URL}/api/ping`)
+      .then(() => console.log(`[Keep-Alive] Self-ping successful at ${new Date().toISOString()}`))
+      .catch(err => console.error("[Keep-Alive] Self-ping failed:", err));
+  }, 10 * 60 * 1000); // Every 10 minutes
+
   // Diagnostic endpoint
   app.get("/api/admin/diag", async (req, res) => {
     const diag: any = {
