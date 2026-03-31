@@ -104,6 +104,15 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
       
+      if (event.data?.type === 'OAUTH_AUTH_ERROR') {
+        console.error('[FirebaseContext] OAuth error received:', event.data.error);
+        if (window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('auth-error', { detail: event.data.error || 'Facebook sign-in failed' }));
+        }
+        setLoading(false);
+        return;
+      }
+      
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
         console.log('[FirebaseContext] OAuth success received for user:', event.data.user.name);
         const fbUser = event.data.user;
