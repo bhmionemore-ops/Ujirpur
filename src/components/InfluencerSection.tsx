@@ -89,14 +89,37 @@ export const InfluencerSection = () => {
   const handleFacebookVerify = async () => {
     try {
       await signInWithFacebook();
-      // After successful sign in, the user document in Firestore will have facebookId
-      const userRef = doc(db, 'users', user!.uid);
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists() && userDoc.data().facebookId) {
-        setFacebookId(userDoc.data().facebookId);
-        setIsVerified(true);
-        toast.success(language === 'bn' ? 'ফেসবুক ভেরিফিকেশন সফল হয়েছে!' : 'Facebook verified successfully!');
-      }
+      
+      // We need to wait for the user document to be updated by the message listener in FirebaseContext
+      // Let's poll for a few seconds or use a better way.
+      // For now, let's just wait a bit and check Firestore.
+      toast.loading(language === 'bn' ? 'ভেরিফিকেশন চেক করা হচ্ছে...' : 'Checking verification...', { id: 'fb-verify' });
+      
+      let attempts = 0;
+      const checkVerification = async () => {
+        if (attempts > 10) {
+          toast.error(language === 'bn' ? 'ভেরিফিকেশন সময় পার হয়ে গেছে। আবার চেষ্টা করুন।' : 'Verification timed out. Please try again.', { id: 'fb-verify' });
+          return;
+        }
+        
+        try {
+          const userRef = doc(db, 'users', user!.uid);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists() && userDoc.data().facebookId) {
+            setFacebookId(userDoc.data().facebookId);
+            setIsVerified(true);
+            toast.success(language === 'bn' ? 'ফেসবুক ভেরিফিকেশন সফল হয়েছে!' : 'Facebook verified successfully!', { id: 'fb-verify' });
+          } else {
+            attempts++;
+            setTimeout(checkVerification, 1000);
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error(language === 'bn' ? 'ভেরিফিকেশন চেক করতে সমস্যা হয়েছে' : 'Error checking verification.', { id: 'fb-verify' });
+        }
+      };
+      
+      setTimeout(checkVerification, 2000);
     } catch (err) {
       console.error(err);
       toast.error(language === 'bn' ? 'ফেসবুক ভেরিফিকেশন ব্যর্থ হয়েছে' : 'Facebook verification failed.');
@@ -125,31 +148,51 @@ export const InfluencerSection = () => {
   const myProfile = user ? userInfluencers.find(inf => inf.uid === user.uid) : null;
 
   useEffect(() => {
-    if (showForm && user) {
-      if (myProfile && !editingId) {
-        // Pre-fill with existing profile if editing
-        setEditingId(myProfile.id);
-        setNewInfluencer({
-          name: myProfile.name,
-          bio: myProfile.bio,
-          avatarUrl: myProfile.avatar,
-          social1: myProfile.socials[0] || '',
-          social2: myProfile.socials[1] || '',
-          social3: myProfile.socials[2] || '',
-          videos: myProfile.videos || []
-        });
-      } else if (!newInfluencer.name && !editingId) {
-        // Pre-fill with user info for new profile
-        setNewInfluencer(prev => ({
-          ...prev,
-          name: user.displayName || '',
-          avatarUrl: user.photoURL || ''
-        }));
+    const initForm = async () => {
+      if (showForm && user) {
+        if (myProfile && !editingId) {
+          // Pre-fill with existing profile if editing
+          setEditingId(myProfile.id);
+          setNewInfluencer({
+            name: myProfile.name,
+            bio: myProfile.bio,
+            avatarUrl: myProfile.avatar,
+            social1: myProfile.socials[0] || '',
+            social2: myProfile.socials[1] || '',
+            social3: myProfile.socials[2] || '',
+            videos: myProfile.videos || []
+          });
+          setIsVerified(myProfile.isVerified || false);
+          setFacebookId(myProfile.facebookId || '');
+        } else if (!newInfluencer.name && !editingId) {
+          // Pre-fill with user info for new profile
+          setNewInfluencer(prev => ({
+            ...prev,
+            name: user.displayName || '',
+            avatarUrl: user.photoURL || ''
+          }));
+          
+          // Check if user has facebookId in their user document
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists() && userDoc.data().facebookId) {
+              setFacebookId(userDoc.data().facebookId);
+              setIsVerified(true);
+            }
+          } catch (err) {
+            console.error("Error checking user verification:", err);
+          }
+        }
+      } else if (!showForm) {
+        setEditingId(null);
+        setIsVerified(false);
+        setFacebookId('');
+        setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '', videos: [] });
       }
-    } else if (!showForm) {
-      setEditingId(null);
-      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '' });
-    }
+    };
+    
+    initForm();
   }, [showForm, user, myProfile]);
 
   const [collabForm, setCollabForm] = useState({
