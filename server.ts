@@ -1,6 +1,7 @@
 // Server entry point
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import { GoogleGenAI, Type } from "@google/genai";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import path from "path";
@@ -443,6 +444,59 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
   }
 }
 
+async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const langName = language === 'bn' ? 'Bengali' : 'English';
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  const prompt = `Find the latest news and trends for today (${today}) for the following categories:
+  
+  1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
+  2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  
+  For News items, provide: Title, Content (150-200 words), Source, Date.
+  For Trends, provide: Title (e.g., "Top 1 (WB): ..."), Content (Viral Strategy: Why it's trending, Hook Idea, Creation Tips, Viral Secret, Engagement Booster, Monetization Tip, Hashtags), Source, Date.
+  
+  Return the data in exactly this JSON format:
+  {
+    "local": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
+    "fbTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
+    "igTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
+  }
+  
+  IMPORTANT: All text must be in ${langName}.
+  Return exactly 5 items per category.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        maxOutputTokens: 8192,
+      },
+    });
+
+    const text = response.text || "{}";
+    const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+    const parsed = JSON.parse(cleanedText);
+    
+    return {
+      local: parsed.local || [],
+      fbTrends: parsed.fbTrends || [],
+      igTrends: parsed.igTrends || []
+    };
+  } catch (error: any) {
+    console.error("News generation failed on server:", error);
+    throw error;
+  }
+}
+
 function escapeHtml(text: string) {
   return text
     .replace(/&/g, "&amp;")
@@ -817,6 +871,68 @@ async function startServer() {
     }
 
     res.json(diag);
+  });
+
+  app.get("/api/news", async (req, res) => {
+    const { date, lang } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required" });
+    
+    const language = (lang === 'bn' ? 'bn' : 'en') as 'bn' | 'en';
+    const docId = `${date}-${language}`;
+
+    try {
+      if (adminDb) {
+        // 1. Check if news already exists for this date and language
+        const docSnap = await adminDb.collection("news").doc(docId).get();
+        if (docSnap.exists) {
+          return res.json(docSnap.data());
+        }
+
+        // 2. If not, generate it
+        console.log(`[NewsAPI] Generating news for ${docId}...`);
+        try {
+          const freshNews = await fetchLiveNewsServer(language);
+          const newsData = {
+            ...freshNews,
+            date: date,
+            lang: language,
+            updatedAt: new Date().toISOString()
+          };
+          
+          // 3. Save to Firestore
+          await adminDb.collection("news").doc(docId).set(newsData);
+          return res.json(newsData);
+        } catch (genError: any) {
+          console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
+          
+          // 4. Fallback: Try to get the most recent news from Firestore
+          const recentNews = await adminDb.collection("news")
+            .where("lang", "==", language)
+            .orderBy("updatedAt", "desc")
+            .limit(1)
+            .get();
+          
+          if (!recentNews.empty) {
+            console.log(`[NewsAPI] Returning fallback news for ${docId}`);
+            return res.json({
+              ...recentNews.docs[0].data(),
+              isFallback: true,
+              originalError: genError.message
+            });
+          }
+          
+          throw genError;
+        }
+      } else {
+        res.status(500).json({ error: "Admin SDK not initialized" });
+      }
+    } catch (error: any) {
+      console.error(`[NewsAPI] Error:`, error);
+      res.status(500).json({ 
+        error: error.message || "Internal server error",
+        code: error.status || error.code
+      });
+    }
   });
 
   // Health check endpoint

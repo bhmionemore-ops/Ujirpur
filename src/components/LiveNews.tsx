@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
 import { useFirebase } from '../FirebaseContext';
-import { fetchLiveNews } from '../services/gemini';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -70,29 +69,18 @@ export const LiveNews = () => {
 
   const fetchDayNews = async (offset: number) => {
     const date = getNewsDate(offset);
-    const newsDocRef = doc(db, 'news', date);
-    
+    setGenerating(true);
     try {
-      const docSnap = await getDoc(newsDocRef);
-      if (docSnap.exists()) {
-        return { ...docSnap.data(), date };
-      } else if (offset === 0) {
-        // Only generate if it's today and missing
-        setGenerating(true);
-        const freshNews = await fetchLiveNews(language);
-        const newsData = {
-          ...freshNews,
-          date: date,
-          updatedAt: new Date().toISOString()
-        };
-        if (auth.currentUser) {
-          await setDoc(newsDocRef, newsData);
-        }
-        setGenerating(false);
-        return newsData;
+      const response = await fetch(`/api/news?date=${date}&lang=${language}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch news");
       }
-      return null;
+      const data = await response.json();
+      setGenerating(false);
+      return { ...data, date };
     } catch (err: any) {
+      setGenerating(false);
       console.error(`Error fetching news for ${date}:`, err);
       throw err;
     }
