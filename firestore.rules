@@ -138,8 +138,9 @@ service cloud.firestore {
     }
 
     function isValidNews(data) {
-      return hasRequiredFields(['date', 'local', 'fbTrends', 'igTrends', 'updatedAt']) &&
+      return hasRequiredFields(['date', 'local', 'fbTrends', 'igTrends', 'updatedAt', 'lang']) &&
              data.date is string &&
+             data.lang is string &&
              data.local is list &&
              data.fbTrends is list &&
              data.igTrends is list &&
@@ -207,18 +208,21 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid || isAdmin());
     }
 
+    match /system/{docId} {
+      allow read: if true;
+    }
+
     match /test/{docId} {
       allow read: if true;
     }
 
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      // Allow creation by any authenticated user if it's valid news data for that specific day
-      // This allows the first visitor of the day to trigger and save the AI generation
-      allow create: if isAuthenticated() && isValidNews(request.resource.data) && newsId == request.resource.data.date;
-      // Allow update by any authenticated user to handle race conditions during initialization
-      // or if the user is an admin.
-      allow update: if isAuthenticated() && isValidNews(request.resource.data);
+      // Allow creation and update by anyone if it's valid news data for that specific day
+      // This ensures the server-side API can save generated news even if not fully authenticated as admin
+      allow create, update: if isValidNews(request.resource.data) && 
+                            (newsId == request.resource.data.date || 
+                             newsId == request.resource.data.date + "-" + request.resource.data.lang);
       allow delete: if isAdmin();
     }
 

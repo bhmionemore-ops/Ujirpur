@@ -158,12 +158,13 @@
       "type": "object",
       "properties": {
         "date": { "type": "string", "format": "date" },
+        "lang": { "type": "string", "description": "Language code (e.g., 'en', 'bn')" },
         "local": { "type": "array", "items": { "$ref": "news_item" } },
         "fbTrends": { "type": "array", "items": { "$ref": "news_item" } },
         "igTrends": { "type": "array", "items": { "$ref": "news_item" } },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["date", "local", "fbTrends", "igTrends", "updatedAt"]
+      "required": ["date", "lang", "local", "fbTrends", "igTrends", "updatedAt"]
     },
     "news_item": {
       "title": "News Item",

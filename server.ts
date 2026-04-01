@@ -445,8 +445,11 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
 }
 
 async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    console.error("Neither GEMINI_API_KEY nor API_KEY is available in the environment.");
+    throw new Error("Gemini API key is missing");
+  }
 
   const ai = new GoogleGenAI({ apiKey });
   const langName = language === 'bn' ? 'Bengali' : 'English';
@@ -779,17 +782,17 @@ async function startServer() {
           projectId: firebaseConfig.projectId
         });
         console.log("Admin SDK initialized with Application Default Credentials.");
-      } catch (credError) {
-        console.warn("Could not load default credentials, trying to initialize with project ID only:", credError);
+      } catch (credError: any) {
+        console.warn("Could not load default credentials, trying to initialize with project ID only:", credError.message);
         try {
           // Fallback: Initialize with just the project ID. 
           // In some environments, this is enough if the environment is already authenticated.
           admin.initializeApp({
             projectId: firebaseConfig.projectId
           });
-          console.log("Admin SDK initialized with project ID only.");
-        } catch (initError) {
-          console.error("Admin SDK failed to initialize even with project ID fallback:", initError);
+          console.log("Admin SDK initialized with project ID only. Note: This may lead to PERMISSION_DENIED if not authenticated.");
+        } catch (initError: any) {
+          console.error("Admin SDK failed to initialize even with project ID fallback:", initError.message);
         }
       }
     }
@@ -797,6 +800,26 @@ async function startServer() {
     try {
       adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
       console.log(`Admin Firestore instance created for database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
+      
+      // Test Admin SDK permissions with a more robust check
+      try {
+        // Try to write and then delete a test document to ensure full permissions
+        const testRef = adminDb.collection("_health_check").doc("server_init_test");
+        await testRef.set({ 
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          status: "testing"
+        });
+        await testRef.delete();
+        console.log("Admin SDK permissions verified (Read/Write).");
+      } catch (permError: any) {
+        console.warn(`Admin SDK health check failed: ${permError.message} (Code: ${permError.code})`);
+        if (permError.message && (permError.message.includes("PERMISSION_DENIED") || permError.code === 7)) {
+          console.warn("Admin SDK lacks Firestore permissions. Disabling Admin SDK for Firestore operations.");
+          adminDb = null;
+        } else {
+          console.warn("Admin SDK health check failed (non-permission error). Continuing with Admin SDK enabled.");
+        }
+      }
     } catch (dbError) {
       console.error("Failed to create Admin Firestore instance:", dbError);
     }
@@ -881,57 +904,99 @@ async function startServer() {
     const docId = `${date}-${language}`;
 
     try {
+      let data: any = null;
+      
+      // 1. Try fetching from Firestore (Admin SDK first, then Client SDK)
       if (adminDb) {
-        // 1. Check if news already exists for this date and language
-        const docSnap = await adminDb.collection("news").doc(docId).get();
-        if (docSnap.exists) {
-          return res.json(docSnap.data());
-        }
-
-        // 2. If not, generate it
-        console.log(`[NewsAPI] Generating news for ${docId}...`);
         try {
-          const freshNews = await fetchLiveNewsServer(language);
-          const newsData = {
-            ...freshNews,
-            date: date,
-            lang: language,
-            updatedAt: new Date().toISOString()
-          };
-          
-          // 3. Save to Firestore
-          await adminDb.collection("news").doc(docId).set(newsData);
-          return res.json(newsData);
-        } catch (genError: any) {
-          console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
-          
-          // 4. Fallback: Try to get the most recent news from Firestore
-          const recentNews = await adminDb.collection("news")
-            .where("lang", "==", language)
-            .orderBy("updatedAt", "desc")
-            .limit(1)
-            .get();
-          
-          if (!recentNews.empty) {
-            console.log(`[NewsAPI] Returning fallback news for ${docId}`);
-            return res.json({
-              ...recentNews.docs[0].data(),
-              isFallback: true,
-              originalError: genError.message
-            });
+          const docSnap = await adminDb.collection("news").doc(docId).get();
+          if (docSnap.exists) {
+            data = docSnap.data();
           }
-          
-          throw genError;
+        } catch (adminError) {
+          console.warn(`[NewsAPI] Admin SDK fetch failed for ${docId}:`, adminError);
         }
+      }
+
+      if (!data && db) {
+        try {
+          const docSnap = await getDocFromServer(doc(db, "news", docId));
+          if (docSnap.exists()) {
+            data = docSnap.data();
+          }
+        } catch (clientError) {
+          console.warn(`[NewsAPI] Client SDK fetch failed for ${docId}:`, clientError);
+        }
+      }
+
+      if (data) {
+        return res.json(data);
+      }
+
+      // 2. If not found, return 404 so frontend can generate
+      return res.status(404).json({ error: "News not found for this date", docId });
+    } catch (error: any) {
+      console.error(`[NewsAPI] Error fetching news for ${docId}:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/news", async (req, res) => {
+    const { date, lang, newsData } = req.body;
+    if (!date || !lang || !newsData) {
+      return res.status(400).json({ error: "Missing required fields: date, lang, newsData" });
+    }
+
+    const docId = `${date}-${lang}`;
+    const dataToSave = {
+      ...newsData,
+      date,
+      lang,
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log(`[NewsAPI] Attempting to cache news for ${docId}. Data keys: ${Object.keys(dataToSave).join(", ")}`);
+
+    try {
+      let saved = false;
+      if (adminDb) {
+        try {
+          await adminDb.collection("news").doc(docId).set(dataToSave);
+          console.log(`[NewsAPI] Successfully saved news for ${docId} via Admin SDK`);
+          saved = true;
+        } catch (adminSaveError: any) {
+          console.warn(`[NewsAPI] Admin SDK save failed for ${docId}: ${adminSaveError.message}`);
+        }
+      }
+
+      if (!saved && db) {
+        try {
+          await setDoc(doc(db, "news", docId), dataToSave);
+          console.log(`[NewsAPI] Successfully saved news for ${docId} via Client SDK`);
+          saved = true;
+        } catch (clientSaveError: any) {
+          console.warn(`[NewsAPI] Client SDK save failed for ${docId}: ${clientSaveError.message}`);
+          // Log more details if it's a permission error
+          if (clientSaveError.message.includes("PERMISSION_DENIED")) {
+            console.error(`[NewsAPI] PERMISSION_DENIED for ${docId}. Check firestore.rules. Data:`, JSON.stringify({
+              date: dataToSave.date,
+              lang: dataToSave.lang,
+              hasLocal: !!dataToSave.local,
+              hasFb: !!dataToSave.fbTrends,
+              hasIg: !!dataToSave.igTrends
+            }));
+          }
+        }
+      }
+
+      if (saved) {
+        return res.json({ success: true, docId });
       } else {
-        res.status(500).json({ error: "Admin SDK not initialized" });
+        return res.status(500).json({ error: "Failed to save news to any database" });
       }
     } catch (error: any) {
-      console.error(`[NewsAPI] Error:`, error);
-      res.status(500).json({ 
-        error: error.message || "Internal server error",
-        code: error.status || error.code
-      });
+      console.error(`[NewsAPI] Error saving news for ${docId}:`, error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

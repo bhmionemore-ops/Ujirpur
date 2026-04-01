@@ -6,6 +6,7 @@ import { useTracking } from '../TrackingContext';
 import { useFirebase } from '../FirebaseContext';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { fetchLiveNews } from '../services/newsService';
 
 export const LiveNews = () => {
   const { t, language } = useLanguage();
@@ -72,10 +73,36 @@ export const LiveNews = () => {
     setGenerating(true);
     try {
       const response = await fetch(`/api/news?date=${date}&lang=${language}`);
+      
+      if (response.status === 404) {
+        // News not found on server, generate it on frontend
+        console.log(`[News] Not found on server for ${date}, generating on frontend...`);
+        const freshNews = await fetchLiveNews(language as 'bn' | 'en');
+        
+        // Save to server for caching
+        try {
+          await fetch('/api/news', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date,
+              lang: language,
+              newsData: freshNews
+            })
+          });
+        } catch (saveErr) {
+          console.warn("[News] Failed to cache news on server:", saveErr);
+        }
+
+        setGenerating(false);
+        return { ...freshNews, date };
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to fetch news");
       }
+
       const data = await response.json();
       setGenerating(false);
       return { ...data, date };
@@ -211,22 +238,12 @@ export const LiveNews = () => {
               setGenerating(true);
               setError(null);
               try {
-                const freshNews = await fetchLiveNews(language);
-                const today = getNewsDate(0);
-                const newsData = {
-                  ...freshNews,
-                  date: today,
-                  updatedAt: new Date().toISOString()
-                };
-                if (auth.currentUser) {
-                  const newsDocRef = doc(db, 'news', today);
-                  await setDoc(newsDocRef, newsData);
-                }
+                const newsData = await fetchDayNews(0);
                 setNews({
                   local: newsData.local || [],
                   fbTrends: newsData.fbTrends || [],
                   igTrends: newsData.igTrends || [],
-                  dates: [today],
+                  dates: [newsData.date],
                   updatedAt: newsData.updatedAt
                 });
                 setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
