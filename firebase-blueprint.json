@@ -194,6 +194,20 @@
         "events": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "startTime", "lastSeen"]
+    },
+    "inbound_email": {
+      "title": "Inbound Email",
+      "description": "An email received via webhook for domain verification.",
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "html": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["from", "to", "subject", "body", "timestamp"]
     }
   },
   "firestore": {
@@ -240,6 +254,10 @@
     "/visitor_sessions/{sessionId}": {
       "schema": "visitor_session",
       "description": "Tracking of visitor sessions for analytics."
+    },
+    "/inbound_emails/{emailId}": {
+      "schema": "inbound_email",
+      "description": "Emails received for domain verification."
     }
   }
 }

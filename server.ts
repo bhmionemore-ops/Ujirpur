@@ -843,6 +843,38 @@ async function startServer() {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Inbound Email Webhook (for App Inbox)
+  // This endpoint receives forwarded emails from services like Cloudflare Email Routing or ImprovMX
+  app.post("/api/webhooks/email", async (req, res) => {
+    try {
+      console.log("[Webhook] Received inbound email:", req.body);
+      
+      // Basic structure for common email forwarding services
+      const { from, to, subject, body, html, text } = req.body;
+      
+      if (!adminDb) {
+        console.error("[Webhook] Admin Firestore not initialized.");
+        return res.status(500).json({ error: "Database not initialized" });
+      }
+
+      await adminDb.collection("inbound_emails").add({
+        from: from || req.body.sender || "unknown@example.com",
+        to: to || req.body.recipient || "info@barnia.in",
+        subject: subject || "No Subject",
+        body: body || text || "No content",
+        html: html || "",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        raw: JSON.stringify(req.body) // Store raw for debugging
+      });
+
+      console.log("[Webhook] Inbound email saved to Firestore.");
+      res.status(200).json({ status: "success" });
+    } catch (error) {
+      console.error("[Webhook] Error processing inbound email:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
   // Self-pinging mechanism to keep the server awake
   const APP_URL = process.env.APP_URL || "https://barnia.in";
   setInterval(() => {

@@ -36,6 +36,9 @@ service cloud.firestore {
     //   - igTrends: list (required) - Instagram trends
     //   - updatedAt: string (required) - ISO timestamp
     //
+    // Collection: inbound_emails
+    // Fields: from, to, subject, body, html, timestamp
+    //
     // ===============================================================
 
     // ===============================================================
@@ -150,6 +153,11 @@ service cloud.firestore {
              data.updatedAt is string;
     }
 
+    function isValidInboundEmail(data) {
+      return hasRequiredFields(['from', 'to', 'subject', 'body', 'timestamp']) &&
+             data.from is string && data.to is string && data.subject is string && data.body is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -246,6 +254,15 @@ service cloud.firestore {
       allow read, create, update: if true; 
       // Only admins can list all sessions or delete them
       allow list, delete: if isAdmin();
+    }
+
+    match /inbound_emails/{emailId} {
+      // Only admins can read inbound emails
+      allow read: if isAdmin();
+      // Allow creation by anyone (the webhook will be the one writing)
+      // In a real app, we'd use a secret key or admin SDK
+      allow create: if isValidInboundEmail(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /system/{docId} {
