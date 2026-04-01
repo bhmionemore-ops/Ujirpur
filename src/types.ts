@@ -65,6 +65,8 @@ export interface Influencer {
   posts: Post[];
   createdAt: any;
   uid: string;
+  facebookId?: string;
+  isVerified?: boolean;
 }
 
 export interface Post {

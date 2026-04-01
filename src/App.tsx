@@ -11,6 +11,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AdminAnalytics } from './pages/AdminAnalytics';
+import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -229,6 +230,7 @@ function AppContent() {
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/logo-fixer" element={<LogoFixerPage />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/facebook-verification" element={<FacebookVerificationPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
         </Routes>

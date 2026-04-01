@@ -97,6 +97,7 @@ service cloud.firestore {
     function isValidUser(data) {
       return hasRequiredFields(['role']) &&
              (!('email' in data) || data.email == null || (data.email is string && isValidEmail(data.email))) &&
+             (!('facebookId' in data) || data.facebookId is string) &&
              data.role in ['admin', 'user'];
     }
 
@@ -104,6 +105,8 @@ service cloud.firestore {
       return hasRequiredFields(['name', 'category', 'bio']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.bio is string && data.bio.size() > 0 && data.bio.size() < 1000 &&
+             (!('isVerified' in data) || data.isVerified is bool) &&
+             (!('facebookId' in data) || data.facebookId is string) &&
              (isAdmin() || (hasRequiredFields(['uid']) && data.uid == request.auth.uid));
     }
 

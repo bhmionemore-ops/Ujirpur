@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -174,6 +174,13 @@ export const AdminAnalytics = () => {
             <p className="text-zinc-500 font-medium">Real-time monitoring of website traffic and user behavior.</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              to="/facebook-verification"
+              className="px-6 py-3 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center gap-3 shadow-sm"
+            >
+              <Facebook size={18} className="text-brand-600" />
+              Verification Guide
+            </Link>
             <button
               onClick={handleSeed}
               disabled={seeding}

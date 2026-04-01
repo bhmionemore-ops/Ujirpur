@@ -256,6 +256,11 @@ export const ProfilePage = () => {
                     e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(influencer.name)}&background=random&color=fff`;
                   }}
                 />
+                {influencer.isVerified && (
+                  <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-2xl z-20 border-4 border-zinc-50">
+                    <CheckCircle size={32} className="text-blue-500 fill-blue-50" />
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <h1 className="text-4xl md:text-6xl font-black text-zinc-900 tracking-tighter mb-4 leading-none">

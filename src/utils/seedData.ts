@@ -75,6 +75,7 @@ export const seedDatabase = async () => {
         category: category,
         uid: "seed-user",
         isSeed: true,
+        isVerified: i % 3 === 0,
         createdAt: serverTimestamp()
       });
     }

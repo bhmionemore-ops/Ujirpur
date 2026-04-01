@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { shareContent, slugify, getGoogleDriveImageUrl } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc, getDocs, getDoc } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseContext';
 import { useTracking } from '../TrackingContext';
 import { seedDatabase } from '../utils/seedData';
@@ -37,6 +37,8 @@ interface Influencer {
   avatar: string;
   uid?: string;
   videos?: { title: string; url: string }[];
+  isVerified?: boolean;
+  facebookId?: string;
 }
 
 interface CollabRequest {
@@ -52,7 +54,7 @@ interface CollabRequest {
 export const InfluencerSection = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { user, signIn, isAdmin, language, setAuthModalOpen } = useFirebase();
+  const { user, signIn, signInWithFacebook, isAdmin, language, setAuthModalOpen } = useFirebase();
   const { logEvent } = useTracking();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,25 @@ export const InfluencerSection = () => {
   const [uploading, setUploading] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
+  const [facebookId, setFacebookId] = useState('');
+
+  const handleFacebookVerify = async () => {
+    try {
+      await signInWithFacebook();
+      // After successful sign in, the user document in Firestore will have facebookId
+      const userRef = doc(db, 'users', user!.uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists() && userDoc.data().facebookId) {
+        setFacebookId(userDoc.data().facebookId);
+        setIsVerified(true);
+        toast.success(language === 'bn' ? 'ফেসবুক ভেরিফিকেশন সফল হয়েছে!' : 'Facebook verified successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(language === 'bn' ? 'ফেসবুক ভেরিফিকেশন ব্যর্থ হয়েছে' : 'Facebook verification failed.');
+    }
+  };
 
   const addVideo = () => {
     if (!videoUrl.trim()) return;
@@ -366,7 +387,9 @@ export const InfluencerSection = () => {
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
       avatar: getGoogleDriveImageUrl(newInfluencer.avatarUrl) || `https://picsum.photos/seed/${Math.random()}/200/200`,
       category: 'Influencer',
-      videos: newInfluencer.videos.filter(v => v.url.trim() !== '')
+      videos: newInfluencer.videos.filter(v => v.url.trim() !== ''),
+      isVerified: isVerified,
+      facebookId: facebookId
     };
 
     if (!editingId) {
@@ -747,6 +770,31 @@ export const InfluencerSection = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="space-y-4 md:col-span-2">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Verification Status</label>
+                    {isVerified ? (
+                      <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest bg-blue-50 px-3 py-1.5 rounded-full">
+                        <CheckCircle size={14} />
+                        Facebook Verified
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleFacebookVerify}
+                        className="flex items-center gap-2 text-brand-600 hover:text-brand-700 font-black text-[10px] uppercase tracking-widest bg-brand-50 px-3 py-1.5 rounded-full transition-all hover:scale-105"
+                      >
+                        <Facebook size={14} />
+                        Verify with Facebook
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium px-1">
+                    Verified influencers get a blue checkmark and higher visibility in search results.
+                  </p>
+                </div>
+
                 <div className="space-y-3 md:col-span-2">
                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Social Media Pages (Up to 3)</label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -937,6 +985,11 @@ export const InfluencerSection = () => {
                       e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(inf.name)}&background=random&color=fff`;
                     }}
                   />
+                  {inf.isVerified && (
+                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-lg z-20 border border-zinc-100">
+                      <CheckCircle size={20} className="text-blue-500 fill-blue-50" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button 
@@ -1050,7 +1103,8 @@ export const InfluencerSection = () => {
                 )}
               </div>
             </motion.div>
-          )))}
+            ))
+          )}
         </div>
 
         {/* Delete Confirmation Modal */}
