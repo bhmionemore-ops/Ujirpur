@@ -622,6 +622,10 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Body parser middleware - MUST be before routes
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
   // Trust proxy for correct protocol/host detection behind Render/AI Studio proxies
   app.set('trust proxy', true);
 
