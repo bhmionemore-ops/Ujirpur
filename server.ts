@@ -38,8 +38,6 @@ let db: Firestore | null = null;
 let adminDb: any = null;
 let clientAuth: any = null;
 
-let currentUpdatePromise: Promise<boolean | void> | null = null;
-
 
 
 async function getShopItem(idOrSlug: string, projectId: string, databaseId: string) {
