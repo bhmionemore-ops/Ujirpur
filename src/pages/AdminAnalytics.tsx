@@ -615,11 +615,18 @@ export const AdminAnalytics = () => {
                   </button>
                 </div>
                 <div className="p-8 max-h-[60vh] overflow-y-auto">
-                  <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100">
-                    <pre className="text-xs font-mono text-zinc-700 whitespace-pre-wrap break-words leading-relaxed">
-                      {selectedEmail.body}
-                    </pre>
-                  </div>
+                  {selectedEmail.html ? (
+                    <div 
+                      className="bg-white p-6 rounded-3xl border border-zinc-100 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: selectedEmail.html }}
+                    />
+                  ) : (
+                    <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100">
+                      <pre className="text-xs font-mono text-zinc-700 whitespace-pre-wrap break-words leading-relaxed">
+                        {selectedEmail.body}
+                      </pre>
+                    </div>
+                  )}
                   {selectedEmail.raw && (
                     <details className="mt-6">
                       <summary className="text-[10px] font-black text-zinc-400 uppercase tracking-widest cursor-pointer hover:text-zinc-600 transition-colors">
@@ -631,10 +638,17 @@ export const AdminAnalytics = () => {
                     </details>
                   )}
                 </div>
-                <div className="p-8 bg-zinc-50 border-t border-zinc-100 flex justify-end">
+                <div className="p-8 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between gap-4">
+                  <a 
+                    href={`mailto:${selectedEmail.from}?subject=Re: ${selectedEmail.subject}`}
+                    className="px-8 py-3 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-700 transition-all shadow-xl shadow-brand-600/20 flex items-center gap-2"
+                  >
+                    <Mail size={14} />
+                    Reply
+                  </a>
                   <button 
                     onClick={() => setSelectedEmail(null)}
-                    className="px-8 py-3 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all shadow-xl shadow-zinc-900/10"
+                    className="px-8 py-3 bg-zinc-200 text-zinc-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-300 transition-all"
                   >
                     Close
                   </button>

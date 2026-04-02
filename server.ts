@@ -3,6 +3,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import nodemailer from "nodemailer";
+import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs/promises";
@@ -864,12 +865,32 @@ async function startServer() {
       // Basic structure for common email forwarding services
       const { from, to, subject, body, html, text } = req.body;
       
+      let cleanFrom = from || req.body.sender || "unknown@example.com";
+      let cleanTo = to || req.body.recipient || "info@barnia.in";
+      let cleanSubject = subject || "No Subject";
+      let cleanBody = body || text || "No content";
+      let cleanHtml = html || "";
+
+      // If it looks like raw MIME, parse it
+      if (cleanBody.includes('DKIM-Signature:') || cleanBody.includes('Received:')) {
+        try {
+          const parsed = await simpleParser(cleanBody);
+          cleanFrom = parsed.from?.text || cleanFrom;
+          cleanTo = (Array.isArray(parsed.to) ? parsed.to.map(t => t.text).join(', ') : parsed.to?.text) || cleanTo;
+          cleanSubject = parsed.subject || cleanSubject;
+          cleanBody = parsed.text || cleanBody;
+          cleanHtml = (typeof parsed.html === 'string' ? parsed.html : "") || cleanHtml;
+        } catch (parseError) {
+          console.error("[Webhook] Failed to parse raw email:", parseError);
+        }
+      }
+
       const emailData = {
-        from: from || req.body.sender || "unknown@example.com",
-        to: to || req.body.recipient || "info@barnia.in",
-        subject: subject || "No Subject",
-        body: body || text || "No content",
-        html: html || "",
+        from: cleanFrom,
+        to: cleanTo,
+        subject: cleanSubject,
+        body: cleanBody,
+        html: cleanHtml,
         timestamp: new Date(), // Use JS Date for fallback, serverTimestamp for Firestore
         raw: JSON.stringify(req.body) // Store raw for debugging
       };
