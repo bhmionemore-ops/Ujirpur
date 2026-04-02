@@ -585,6 +585,105 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
+        {/* Email Signature Section */}
+        <div className="space-y-6 mb-20">
+          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+            <Mail size={20} className="text-brand-600" />
+            Professional Email Signature
+          </h2>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-200 shadow-sm">
+            <p className="text-xs text-zinc-500 font-medium mb-6">
+              Copy this signature and paste it into your Gmail settings (Settings {'>'} See all settings {'>'} Signature). 
+              Once saved, it will appear **automatically** on every email you send.
+            </p>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* Preview */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Live Preview</p>
+                <div className="border border-zinc-100 rounded-3xl p-6 bg-zinc-50/30">
+                  <div style={{ fontFamily: "'Inter', Helvetica, Arial, sans-serif", color: "#18181b", maxWidth: "500px", border: "1px solid #f4f4f5", borderRadius: "24px", overflow: "hidden", backgroundColor: "#ffffff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+                    <div style={{ backgroundColor: "#FF6321", padding: "20px", textAlign: "center" }}>
+                      <h1 style={{ margin: 0, color: "#ffffff", fontSize: "20px", fontWeight: 900, letterSpacing: "-0.5px", textTransform: "uppercase" }}>Barnia Digital Hub</h1>
+                      <a href="https://barnia.in" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "none", fontSize: "12px", fontWeight: "bold" }}>www.barnia.in</a>
+                    </div>
+                    <div style={{ padding: "24px" }}>
+                      <div style={{ marginBottom: "20px" }}>
+                        <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#18181b" }}>Your Name Here</p>
+                        <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#71717a", fontWeight: 500 }}>Community Administrator</p>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
+                        <a href="https://www.facebook.com/ujirpur.barnia" style={{ display: "inline-block", backgroundColor: "#1877F2", color: "white", padding: "6px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "10px", fontWeight: "bold", marginRight: "4px", marginBottom: "4px" }}>Facebook</a>
+                        <a href="https://www.instagram.com/ujirpurbarnia/" style={{ display: "inline-block", backgroundColor: "#E4405F", color: "white", padding: "6px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "10px", fontWeight: "bold", marginRight: "4px", marginBottom: "4px" }}>Instagram</a>
+                        <a href="https://www.threads.com/@ujirpurbarnia" style={{ display: "inline-block", backgroundColor: "#000000", color: "white", padding: "6px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "10px", fontWeight: "bold", marginRight: "4px", marginBottom: "4px" }}>Threads</a>
+                        <a href="https://www.youtube.com/channel/UCOPZsznZz3wMXd3v1K9gTtQ" style={{ display: "inline-block", backgroundColor: "#FF0000", color: "white", padding: "6px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>YouTube</a>
+                      </div>
+                      <div style={{ marginTop: "20px", paddingTop: "15px", borderTop: "1px solid #f4f4f5" }}>
+                        <p style={{ margin: 0, fontSize: "10px", color: "#a1a1aa", lineHeight: 1.5 }}>
+                          Connecting Barnia, Ujirpur, and Nadia to the digital world.<br />
+                          Stay updated with market prices, news, and community events.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Code */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">HTML Template Code</p>
+                  <button 
+                    onClick={() => {
+                      const code = `<div style="font-family: 'Inter', Helvetica, Arial, sans-serif; color: #18181b; max-width: 500px; border: 1px solid #f4f4f5; border-radius: 24px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+  <div style="background-color: #FF6321; padding: 20px; text-align: center;">
+    <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 900; letter-spacing: -0.5px; text-transform: uppercase;">Barnia Digital Hub</h1>
+    <a href="https://barnia.in" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 12px; font-weight: bold;">www.barnia.in</a>
+  </div>
+  <div style="padding: 24px;">
+    <div style="margin-bottom: 20px;">
+      <p style="margin: 0; font-size: 16px; font-weight: 800; color: #18181b;">Your Name Here</p>
+      <p style="margin: 2px 0 0 0; font-size: 12px; color: #71717a; font-weight: 500;">Community Administrator</p>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
+      <a href="https://www.facebook.com/ujirpur.barnia" style="display: inline-block; background-color: #1877F2; color: white; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 4px;">Facebook</a>
+      <a href="https://www.instagram.com/ujirpurbarnia/" style="display: inline-block; background-color: #E4405F; color: white; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 4px;">Instagram</a>
+      <a href="https://www.threads.com/@ujirpurbarnia" style="display: inline-block; background-color: #000000; color: white; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 4px;">Threads</a>
+      <a href="https://www.youtube.com/channel/UCOPZsznZz3wMXd3v1K9gTtQ" style="display: inline-block; background-color: #FF0000; color: white; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 10px; font-weight: bold; margin-bottom: 4px;">YouTube</a>
+    </div>
+    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f4f4f5;">
+      <p style="margin: 0; font-size: 10px; color: #a1a1aa; line-height: 1.5;">
+        Connecting Barnia, Ujirpur, and Nadia to the digital world.<br>
+        Stay updated with market prices, news, and community events.
+      </p>
+    </div>
+  </div>
+</div>`;
+                      navigator.clipboard.writeText(code);
+                      toast.success("Signature code copied!");
+                    }}
+                    className="flex items-center gap-2 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:underline"
+                  >
+                    <ExternalLink size={12} />
+                    Copy HTML Code
+                  </button>
+                </div>
+                <div className="bg-zinc-900 p-6 rounded-3xl overflow-x-auto">
+                  <pre className="text-[10px] font-mono text-zinc-400 leading-relaxed">
+                    {`<div style="font-family: 'Inter', ...">
+  <div style="background-color: #FF6321; ...">
+    <h1 style="...">Barnia Digital Hub</h1>
+    ...
+  </div>
+  ...
+</div>`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Email Modal */}
         <AnimatePresence>
           {selectedEmail && (
