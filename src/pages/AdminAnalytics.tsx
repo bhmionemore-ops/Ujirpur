@@ -241,6 +241,128 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
+        {/* App Inbox (Inbound Emails) - MOVED TO TOP */}
+        <div className="space-y-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <Mail size={20} className="text-brand-600" />
+              App Inbox (@barnia.in)
+            </h2>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/webhooks/email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        from: 'test@example.com',
+                        to: 'info@barnia.in',
+                        subject: 'Test Webhook Message',
+                        body: 'This is a test message to verify the webhook is working correctly.',
+                        timestamp: new Date().toISOString()
+                      })
+                    });
+                    if (response.ok) {
+                      toast.success("Test email sent to webhook!");
+                    } else {
+                      toast.error("Failed to send test email.");
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Error sending test email.");
+                  }
+                }}
+                className="px-4 py-2 bg-green-100 text-green-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-200 transition-all flex items-center gap-2"
+              >
+                <Activity size={14} />
+                Test Webhook
+              </button>
+              <button 
+                onClick={() => setShowSetupGuide(true)}
+                className="px-4 py-2 bg-brand-100 text-brand-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-200 transition-all flex items-center gap-2"
+              >
+                <Database size={14} />
+                Setup Guide
+              </button>
+              <button 
+                onClick={() => {
+                  const url = `${window.location.origin}/api/webhooks/email`;
+                  navigator.clipboard.writeText(url);
+                  toast.success("Webhook URL copied to clipboard!");
+                }}
+                className="px-4 py-2 bg-zinc-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-2 shadow-lg shadow-zinc-900/10"
+              >
+                <ExternalLink size={14} />
+                Copy Webhook URL
+              </button>
+              <div className="px-4 py-2 bg-brand-50 rounded-xl border border-brand-100">
+                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Webhook Active</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50 border-b border-zinc-100">
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">From</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Subject</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {inboundEmails.map((email) => (
+                    <tr key={email.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-bold text-zinc-900">{email.from}</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">To: {email.to}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-medium text-zinc-600 line-clamp-1">{email.subject}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-[10px] font-bold text-zinc-500">
+                          {email.timestamp?.toDate()?.toLocaleString() || 'Just now'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => setSelectedEmail(email)}
+                            className="p-2 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
+                            title="View Content"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteEmail(email.id)}
+                            className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {inboundEmails.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-20 text-center">
+                        <Mail size={48} className="text-zinc-100 mx-auto mb-4" />
+                        <p className="text-zinc-400 font-medium text-sm">No emails received yet.</p>
+                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Waiting for webhook data...</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
@@ -460,99 +582,6 @@ export const AdminAnalytics = () => {
                 <p className="text-zinc-500 font-medium">No chat history found yet.</p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* App Inbox (Inbound Emails) */}
-        <div className="space-y-6 mb-20">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Mail size={20} className="text-brand-600" />
-              App Inbox (@barnia.in)
-            </h2>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowSetupGuide(true)}
-                className="px-4 py-2 bg-brand-100 text-brand-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-200 transition-all flex items-center gap-2"
-              >
-                <Database size={14} />
-                Setup Guide
-              </button>
-              <button 
-                onClick={() => {
-                  const url = `${window.location.origin}/api/webhooks/email`;
-                  navigator.clipboard.writeText(url);
-                  toast.success("Webhook URL copied to clipboard!");
-                }}
-                className="px-4 py-2 bg-zinc-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-2 shadow-lg shadow-zinc-900/10"
-              >
-                <ExternalLink size={14} />
-                Copy Webhook URL
-              </button>
-              <div className="px-4 py-2 bg-brand-50 rounded-xl border border-brand-100">
-                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Webhook Active</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-100">
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">From</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Subject</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50">
-                  {inboundEmails.map((email) => (
-                    <tr key={email.id} className="hover:bg-zinc-50/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-bold text-zinc-900">{email.from}</p>
-                        <p className="text-[10px] text-zinc-400 font-medium">To: {email.to}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-medium text-zinc-600 line-clamp-1">{email.subject}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-[10px] font-bold text-zinc-500">
-                          {email.timestamp?.toDate()?.toLocaleString() || 'Just now'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => setSelectedEmail(email)}
-                            className="p-2 text-zinc-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
-                            title="View Content"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteEmail(email.id)}
-                            className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {inboundEmails.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-20 text-center">
-                        <Mail size={48} className="text-zinc-100 mx-auto mb-4" />
-                        <p className="text-zinc-400 font-medium text-sm">No emails received yet.</p>
-                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Waiting for webhook data...</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
 
