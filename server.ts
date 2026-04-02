@@ -25,6 +25,7 @@ import {
   where,
   limit,
   deleteDoc,
+  addDoc,
   Firestore,
   initializeFirestore,
   getDocFromServer
@@ -851,28 +852,64 @@ async function startServer() {
   // This endpoint receives forwarded emails from services like Cloudflare Email Routing or ImprovMX
   app.post("/api/webhooks/email", async (req, res) => {
     try {
-      console.log("[Webhook] Received inbound email:", req.body);
+      console.log("[Webhook] Received inbound email POST request.");
+      console.log("[Webhook] Headers:", req.headers);
+      console.log("[Webhook] Body Type:", typeof req.body);
+      console.log("[Webhook] Body Keys:", Object.keys(req.body || {}));
       
+      if (!req.body || Object.keys(req.body).length === 0) {
+        console.warn("[Webhook] Received empty body. Body parser might not be working or request is empty.");
+      }
+
       // Basic structure for common email forwarding services
       const { from, to, subject, body, html, text } = req.body;
       
-      if (!adminDb) {
-        console.error("[Webhook] Admin Firestore not initialized.");
-        return res.status(500).json({ error: "Database not initialized" });
-      }
-
-      await adminDb.collection("inbound_emails").add({
+      const emailData = {
         from: from || req.body.sender || "unknown@example.com",
         to: to || req.body.recipient || "info@barnia.in",
         subject: subject || "No Subject",
         body: body || text || "No content",
         html: html || "",
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: new Date(), // Use JS Date for fallback, serverTimestamp for Firestore
         raw: JSON.stringify(req.body) // Store raw for debugging
-      });
+      };
 
-      console.log("[Webhook] Inbound email saved to Firestore.");
-      res.status(200).json({ status: "success" });
+      let saved = false;
+
+      // 1. Try Admin SDK first (bypasses rules)
+      if (adminDb) {
+        try {
+          await adminDb.collection("inbound_emails").add({
+            ...emailData,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log("[Webhook] Inbound email saved to Firestore using Admin SDK.");
+          saved = true;
+        } catch (adminError) {
+          console.error("[Webhook] Admin SDK failed to save email:", adminError);
+        }
+      }
+
+      // 2. Fallback to Client SDK if Admin SDK failed or was not available
+      if (!saved && db) {
+        try {
+          await addDoc(collection(db, "inbound_emails"), {
+            ...emailData,
+            timestamp: serverTimestamp()
+          });
+          console.log("[Webhook] Inbound email saved to Firestore using Client SDK.");
+          saved = true;
+        } catch (clientError) {
+          console.error("[Webhook] Client SDK failed to save email:", clientError);
+        }
+      }
+
+      if (saved) {
+        res.status(200).json({ status: "success" });
+      } else {
+        console.error("[Webhook] Failed to save email with both Admin and Client SDKs.");
+        res.status(500).json({ error: "Failed to save email to database" });
+      }
     } catch (error) {
       console.error("[Webhook] Error processing inbound email:", error);
       res.status(500).json({ error: "Internal Server Error" });
