@@ -44,7 +44,7 @@ interface InboundEmail {
 }
 
 export const AdminAnalytics = () => {
-  const { isAdmin } = useFirebase();
+  const { isAdmin, user } = useFirebase();
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
@@ -53,6 +53,16 @@ export const AdminAnalytics = () => {
   const [seeding, setSeeding] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<InboundEmail | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  
+  // Email Signature State
+  const [adminName, setAdminName] = useState(user?.displayName || 'Your Name Here');
+  const [adminTitle, setAdminTitle] = useState('Community Administrator');
+
+  useEffect(() => {
+    if (user?.displayName && adminName === 'Your Name Here') {
+      setAdminName(user.displayName);
+    }
+  }, [user]);
 
   const handleSeed = async () => {
     if (!confirm("Are you sure you want to seed the database with 30 influencers and 17 shops? This will only run if seed data doesn't exist yet.")) return;
@@ -597,7 +607,39 @@ export const AdminAnalytics = () => {
               Once saved, it will appear **automatically** on every email you send.
             </p>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              {/* Configuration */}
+              <div className="space-y-6">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Customize Signature</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5 ml-1">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={adminName}
+                      onChange={(e) => setAdminName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5 ml-1">Job Title</label>
+                    <input 
+                      type="text" 
+                      value={adminTitle}
+                      onChange={(e) => setAdminTitle(e.target.value)}
+                      placeholder="Enter your title"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100">
+                  <p className="text-[10px] text-brand-700 font-medium leading-relaxed">
+                    <strong>Tip:</strong> The signature below updates in real-time. Once you're happy with it, click "Copy HTML Code" and paste it into Gmail.
+                  </p>
+                </div>
+              </div>
+
               {/* Preview */}
               <div className="space-y-4">
                 <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Live Preview</p>
@@ -609,8 +651,8 @@ export const AdminAnalytics = () => {
                     </div>
                     <div style={{ padding: "24px" }}>
                       <div style={{ marginBottom: "20px" }}>
-                        <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#18181b" }}>Your Name Here</p>
-                        <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#71717a", fontWeight: 500 }}>Community Administrator</p>
+                        <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#18181b" }}>{adminName}</p>
+                        <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#71717a", fontWeight: 500 }}>{adminTitle}</p>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
                         <a href="https://www.facebook.com/ujirpur.barnia" style={{ display: "inline-block", backgroundColor: "#1877F2", color: "white", padding: "6px 12px", borderRadius: "8px", textDecoration: "none", fontSize: "10px", fontWeight: "bold", marginRight: "4px", marginBottom: "4px" }}>Facebook</a>
@@ -642,8 +684,8 @@ export const AdminAnalytics = () => {
   </div>
   <div style="padding: 24px;">
     <div style="margin-bottom: 20px;">
-      <p style="margin: 0; font-size: 16px; font-weight: 800; color: #18181b;">Your Name Here</p>
-      <p style="margin: 2px 0 0 0; font-size: 12px; color: #71717a; font-weight: 500;">Community Administrator</p>
+      <p style="margin: 0; font-size: 16px; font-weight: 800; color: #18181b;">${adminName}</p>
+      <p style="margin: 2px 0 0 0; font-size: 12px; color: #71717a; font-weight: 500;">${adminTitle}</p>
     </div>
     <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
       <a href="https://www.facebook.com/ujirpur.barnia" style="display: inline-block; background-color: #1877F2; color: white; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 4px;">Facebook</a>
