@@ -1014,16 +1014,27 @@ async function startServer() {
 
   // Self-pinging mechanism to keep the server awake
   const APP_URL = process.env.APP_URL || "https://barnia.in";
+  let lastPingTimestamp = "Never";
+  console.log(`[Keep-Alive] Initializing self-ping for: ${APP_URL}/api/ping`);
+  
   setInterval(() => {
     fetch(`${APP_URL}/api/ping`)
-      .then(() => console.log(`[Keep-Alive] Self-ping successful at ${new Date().toISOString()}`))
-      .catch(err => console.error("[Keep-Alive] Self-ping failed:", err));
+      .then(() => {
+        lastPingTimestamp = new Date().toISOString();
+        console.log(`[Keep-Alive] Self-ping successful for ${APP_URL} at ${lastPingTimestamp}`);
+      })
+      .catch(err => console.error(`[Keep-Alive] Self-ping failed for ${APP_URL}:`, err.message));
   }, 10 * 60 * 1000); // Every 10 minutes
 
   // Diagnostic endpoint
   app.get("/api/admin/diag", async (req, res) => {
     const diag: any = {
       timestamp: new Date().toISOString(),
+      lastKeepAlivePing: lastPingTimestamp,
+      env: process.env.NODE_ENV || 'development',
+      isProduction: process.env.NODE_ENV === 'production',
+      appUrl: process.env.APP_URL || 'Not Set',
+      emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
       firebaseConfig: {
         projectId: firebaseConfig?.projectId,
         databaseId: firebaseConfig?.firestoreDatabaseId,

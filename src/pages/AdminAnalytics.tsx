@@ -49,6 +49,7 @@ export const AdminAnalytics = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [diagData, setDiagData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<InboundEmail | null>(null);
@@ -117,6 +118,20 @@ export const AdminAnalytics = () => {
         setError(e as Error);
       }
     });
+
+    // Fetch diagnostic data
+    const fetchDiag = async () => {
+      try {
+        const res = await fetch('/api/admin/diag');
+        if (res.ok) {
+          const data = await res.json();
+          setDiagData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching diagnostic data:", err);
+      }
+    };
+    fetchDiag();
 
     return () => {
       unsubSessions();
@@ -224,6 +239,20 @@ export const AdminAnalytics = () => {
             <p className="text-zinc-500 font-medium">Real-time monitoring of website traffic and user behavior.</p>
           </div>
           <div className="flex items-center gap-4">
+            {diagData && (
+              <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${diagData.emailConfigured ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <Mail size={20} className={diagData.emailConfigured ? 'text-green-600' : 'text-red-600'} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">System Status</p>
+                  <p className="text-xs font-bold text-zinc-900">
+                    {diagData.isProduction ? 'Production' : 'AI Studio'} • {diagData.emailConfigured ? 'Email OK' : 'Email Missing'}
+                  </p>
+                  <p className="text-[8px] text-zinc-400 font-medium">Last Ping: {diagData.lastKeepAlivePing || 'Never'}</p>
+                </div>
+              </div>
+            )}
             <Link
               to="/facebook-verification"
               className="px-6 py-3 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center gap-3 shadow-sm"
