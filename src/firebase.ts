@@ -13,7 +13,8 @@ import {
   updateProfile,
   sendEmailVerification,
   FacebookAuthProvider,
-  signInWithCredential
+  signInWithCredential,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -84,6 +85,7 @@ export const signInWithGoogle = async () => {
 
 export const handleRedirectResult = () => getRedirectResult(auth);
 export const logout = () => signOut(auth);
+export const sendPasswordReset = (email: string) => sendPasswordResetEmail(auth, email);
 export { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 

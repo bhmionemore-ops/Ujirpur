@@ -10,30 +10,36 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail } = useFirebase();
+  const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail, sendPasswordReset } = useFirebase();
   const { language } = useLanguage();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
       if (mode === 'login') {
         await signInWithEmail(email, password);
-      } else {
+        onClose();
+      } else if (mode === 'signup') {
         if (password.length < 6) {
           throw new Error(language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters');
         }
         await signUpWithEmail(email, password, name);
+        onClose();
+      } else if (mode === 'forgot') {
+        await sendPasswordReset(email);
+        setSuccess(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিঙ্ক আপনার ইমেইলে পাঠানো হয়েছে' : 'Password reset link sent to your email');
       }
-      onClose();
     } catch (err: any) {
       console.error("Auth error:", err);
       const errorCode = err.code || 'unknown';
@@ -192,12 +198,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <h2 className="text-3xl font-black text-zinc-900 tracking-tight">
               {mode === 'login' 
                 ? (language === 'bn' ? 'স্বাগতম' : 'Welcome Back') 
-                : (language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account')}
+                : mode === 'signup' 
+                  ? (language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account')
+                  : (language === 'bn' ? 'পাসওয়ার্ড রিসেট' : 'Reset Password')}
             </h2>
             <p className="text-zinc-500 text-sm mt-3 font-medium">
               {mode === 'login'
                 ? (language === 'bn' ? 'আপনার অ্যাকাউন্টে লগইন করুন' : 'Sign in to your account to continue')
-                : (language === 'bn' ? 'বর্নিয়া বাজার কমিউনিটিতে যোগ দিন' : 'Join the Barnia Bazar community today')}
+                : mode === 'signup'
+                  ? (language === 'bn' ? 'বর্নিয়া বাজার কমিউনিটিতে যোগ দিন' : 'Join the Barnia Bazar community today')
+                  : (language === 'bn' ? 'আপনার ইমেইল দিন রিসেট লিঙ্কের জন্য' : 'Enter your email to receive a reset link')}
             </p>
           </div>
 
@@ -228,22 +238,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               />
             </div>
 
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
-              <input
-                type="password"
-                placeholder={language === 'bn' ? 'পাসওয়ার্ড' : 'Password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
-              />
-              {mode === 'signup' && (
-                <p className="text-[10px] text-zinc-400 mt-2 ml-2 font-medium">
-                  {language === 'bn' ? 'এই সাইটের জন্য একটি নতুন পাসওয়ার্ড তৈরি করুন' : 'Create a new password for this site'}
-                </p>
-              )}
-            </div>
+            {mode !== 'forgot' && (
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
+                <input
+                  type="password"
+                  placeholder={language === 'bn' ? 'পাসওয়ার্ড' : 'Password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
+                />
+                {mode === 'signup' && (
+                  <p className="text-[10px] text-zinc-400 mt-2 ml-2 font-medium">
+                    {language === 'bn' ? 'এই সাইটের জন্য একটি নতুন পাসওয়ার্ড তৈরি করুন' : 'Create a new password for this site'}
+                  </p>
+                )}
+                {mode === 'login' && (
+                  <div className="flex justify-end mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-[10px] text-brand-600 hover:text-brand-700 font-bold uppercase tracking-wider"
+                    >
+                      {language === 'bn' ? 'পাসওয়ার্ড ভুলে গেছেন?' : 'Forgot Password?'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && (
               <motion.div 
@@ -256,61 +279,92 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </motion.div>
             )}
 
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 text-emerald-600 text-xs bg-emerald-50 p-4 rounded-2xl border border-emerald-100"
+              >
+                <AlertCircle size={16} />
+                <span className="font-medium leading-tight">{success}</span>
+              </motion.div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-2xl font-black text-sm hover:shadow-xl hover:shadow-brand-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 mt-6"
+              className={`w-full ${mode === 'signup' ? 'bg-gradient-to-r from-emerald-600 to-emerald-500' : 'bg-gradient-to-r from-brand-600 to-brand-500'} text-white py-4 rounded-2xl font-black text-sm hover:shadow-xl ${mode === 'signup' ? 'hover:shadow-emerald-500/30' : 'hover:shadow-brand-500/30'} transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 mt-6`}
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
-                  {mode === 'login' ? (language === 'bn' ? 'লগইন' : 'Sign In') : (language === 'bn' ? 'সাইন আপ' : 'Sign Up')}
+                  {mode === 'login' 
+                    ? (language === 'bn' ? 'লগইন' : 'Sign In') 
+                    : mode === 'signup' 
+                      ? (language === 'bn' ? 'সাইন আপ' : 'Sign Up')
+                      : (language === 'bn' ? 'রিসেট লিঙ্ক পাঠান' : 'Send Reset Link')}
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
           </form>
 
-          <div className="relative my-10">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-zinc-100"></div>
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
-              <span className="bg-white/0 backdrop-blur-xl px-4 text-zinc-400">
-                {language === 'bn' ? 'অথবা' : 'Or continue with'}
-              </span>
-            </div>
-          </div>
+          {mode !== 'forgot' && (
+            <>
+              <div className="relative my-10">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-zinc-100"></div>
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
+                  <span className="bg-white/0 backdrop-blur-xl px-4 text-zinc-400">
+                    {language === 'bn' ? 'অথবা' : 'Or continue with'}
+                  </span>
+                </div>
+              </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-4 border border-zinc-200 rounded-2xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm font-bold text-zinc-700 active:scale-[0.98]"
-            >
-              <Chrome size={20} className="text-brand-600" />
-              {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
-            </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-white border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 hover:border-brand-500/30 transition-all text-sm font-bold text-zinc-700 active:scale-[0.98] shadow-sm"
+                >
+                  <div className="bg-white p-1 rounded-lg shadow-sm border border-zinc-100">
+                    <Chrome size={18} className="text-brand-600" />
+                  </div>
+                  {language === 'bn' ? 'গুগল দিয়ে লগইন করুন' : 'Sign in with Google'}
+                </button>
 
-            <button
-              onClick={handleFacebookSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98]"
-            >
-              <Facebook size={20} fill="currentColor" />
-              {language === 'bn' ? 'ফেসবুক দিয়ে লগইন করুন' : 'Sign in with Facebook'}
-            </button>
-          </div>
+                <button
+                  onClick={handleFacebookSignIn}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98] shadow-lg shadow-[#1877F2]/20"
+                >
+                  <Facebook size={20} fill="currentColor" />
+                  {language === 'bn' ? 'ফেসবুক দিয়ে লগইন করুন' : 'Sign in with Facebook'}
+                </button>
+              </div>
+            </>
+          )}
 
           <div className="mt-10 text-center space-y-4">
             <button
-              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              onClick={() => {
+                setError('');
+                setSuccess('');
+                if (mode === 'forgot') {
+                  setMode('login');
+                } else {
+                  setMode(mode === 'login' ? 'signup' : 'login');
+                }
+              }}
               className="text-sm font-bold text-zinc-500 hover:text-brand-600 transition-colors block w-full"
             >
               {mode === 'login'
                 ? (language === 'bn' ? 'অ্যাকাউন্ট নেই? সাইন আপ করুন' : "Don't have an account? Sign up")
-                : (language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'Already have an account? Sign in')}
+                : mode === 'signup'
+                  ? (language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'Already have an account? Sign in')
+                  : (language === 'bn' ? 'লগইন পেজে ফিরে যান' : 'Back to Login')}
             </button>
             
             <p className="text-[10px] text-zinc-400 font-medium italic">

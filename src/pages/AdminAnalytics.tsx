@@ -261,6 +261,38 @@ export const AdminAnalytics = () => {
             <div className="flex items-center gap-3">
               <button 
                 onClick={async () => {
+                  if (!user?.email) {
+                    toast.error("You must have an email associated with your account.");
+                    return;
+                  }
+                  try {
+                    toast.loading("Sending test welcome email...", { id: 'test-email' });
+                    const response = await fetch('/api/send-welcome-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        email: user.email,
+                        name: user.displayName || 'Admin'
+                      })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                      toast.success(`Welcome email sent to ${user.email}!`, { id: 'test-email' });
+                    } else {
+                      toast.error(`Failed: ${data.error || 'Unknown error'}`, { id: 'test-email' });
+                    }
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error(`Error: ${err.message}`, { id: 'test-email' });
+                  }
+                }}
+                className="px-4 py-2 bg-blue-100 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-200 transition-all flex items-center gap-2"
+              >
+                <Mail size={14} />
+                Test Welcome Email
+              </button>
+              <button 
+                onClick={async () => {
                   try {
                     const response = await fetch('/api/webhooks/email', {
                       method: 'POST',

@@ -622,6 +622,22 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Email Transporter
+  console.log(`[Server] Initializing email transporter with user: ${process.env.EMAIL_USER || 'NOT_SET'}`);
+  if (!process.env.EMAIL_PASS) {
+    console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
+
   // Body parser middleware - MUST be before routes
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -924,6 +940,46 @@ async function startServer() {
       }
 
       if (saved) {
+        // Send auto-reply
+        try {
+          const autoReplyOptions = {
+            from: `"Barnia Digital Hub" <${process.env.EMAIL_USER || 'info@barnia.in'}>`,
+            to: cleanFrom,
+            subject: `Re: ${cleanSubject}`,
+            html: `
+              <div style="font-family: 'Inter', Helvetica, Arial, sans-serif; color: #18181b; max-width: 600px; margin: 0 auto; border: 1px solid #f4f4f5; border-radius: 24px; overflow: hidden; background-color: #ffffff;">
+                <div style="background-color: #FF6321; padding: 40px 20px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Message Received!</h1>
+                  <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500;">Barnia Digital Hub Support</p>
+                </div>
+                <div style="padding: 40px;">
+                  <p style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Hi there,</p>
+                  <p style="font-size: 15px; line-height: 1.6; color: #52525b; margin-bottom: 24px;">
+                    Thank you for reaching out to Barnia Digital Hub. We have received your message regarding <strong>"${cleanSubject}"</strong> and our team will get back to you as soon as possible.
+                  </p>
+                  <div style="background-color: #f8fafc; padding: 20px; border-radius: 16px; margin-bottom: 24px; border: 1px dashed #e2e8f0;">
+                    <p style="margin: 0; font-size: 13px; color: #64748b; font-style: italic;">
+                      "Your message is important to us. We typically respond within 24 hours."
+                    </p>
+                  </div>
+                  <p style="font-size: 14px; color: #71717a; border-top: 1px solid #f4f4f5; padding-top: 20px;">
+                    Best regards,<br>
+                    <strong>The Barnia Digital Hub Team</strong>
+                  </p>
+                </div>
+                <div style="background-color: #f4f4f5; padding: 20px; text-align: center; font-size: 11px; color: #a1a1aa;">
+                  © 2026 Barnia Digital Hub. All rights reserved.<br>
+                  Nadia, West Bengal, India
+                </div>
+              </div>
+            `
+          };
+          await transporter.sendMail(autoReplyOptions);
+          console.log(`[Webhook] Auto-reply sent to ${cleanFrom}`);
+        } catch (replyError) {
+          console.error("[Webhook] Failed to send auto-reply:", replyError);
+        }
+
         res.status(200).json({ status: "success" });
       } else {
         console.error("[Webhook] Failed to save email with both Admin and Client SDKs.");
@@ -1100,17 +1156,6 @@ async function startServer() {
   // Load initial data
   let localDb = await loadData();
 
-  // Email Transporter
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
-
   // API Routes
   app.get("/api/influencers", (req, res) => {
     res.json(localDb.userInfluencers);
@@ -1127,7 +1172,7 @@ async function startServer() {
     console.log(`[WelcomeEmail] Sending welcome email to ${email} (${name || 'User'})`);
 
     const mailOptions = {
-      from: '"Barnia Digital Hub" <info@barnia.in>',
+      from: `"Barnia Digital Hub" <${process.env.EMAIL_USER || 'info@barnia.in'}>`,
       to: email,
       subject: "Welcome to Barnia Digital Hub! 🚀",
       html: `
@@ -1171,11 +1216,13 @@ async function startServer() {
     };
 
     try {
-      await transporter.sendMail(mailOptions);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error("[WelcomeEmail] Failed to send email:", error);
-      res.status(500).json({ error: "Failed to send email" });
+      console.log(`[WelcomeEmail] Attempting to send email via transporter to ${email}...`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[WelcomeEmail] Email sent successfully to ${email}. MessageId: ${info.messageId}`);
+      res.status(200).json({ success: true, messageId: info.messageId });
+    } catch (error: any) {
+      console.error("[WelcomeEmail] Failed to send email:", error.message);
+      res.status(500).json({ error: "Failed to send email", details: error.message });
     }
   });
 

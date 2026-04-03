@@ -14,6 +14,7 @@ interface FirebaseContextType {
   signOut: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -39,6 +40,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
           const userDoc = await getDoc(userRef);
           if (!userDoc.exists()) {
+            console.log(`[FirebaseContext] New user detected via auth state change: ${currentUser.email}. Creating Firestore doc...`);
             await setDoc(userRef, {
               displayName: currentUser.displayName,
               email: currentUser.email,
@@ -49,6 +51,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             
             // Send welcome email
             if (currentUser.email) {
+              console.log(`[FirebaseContext] Sending welcome email to: ${currentUser.email}`);
               fetch('/api/send-welcome-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -56,11 +59,18 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   email: currentUser.email,
                   name: currentUser.displayName || 'User'
                 })
-              }).catch(err => console.error("Error sending welcome email:", err));
+              }).then(res => {
+                if (!res.ok) {
+                  console.error(`[FirebaseContext] Welcome email API failed with status: ${res.status}`);
+                } else {
+                  console.log(`[FirebaseContext] Welcome email API call successful for: ${currentUser.email}`);
+                }
+              }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
             }
             
             setIsAdmin(false);
           } else {
+            console.log(`[FirebaseContext] User already exists in Firestore: ${currentUser.email}`);
             setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com');
           }
         } catch (error) {
@@ -203,6 +213,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(userCredential.user, { displayName: name });
     
+    console.log(`[FirebaseContext] New user signed up: ${email}. Syncing to Firestore...`);
+    
     // Sync to Firestore immediately
     const userRef = doc(db, 'users', userCredential.user.uid);
     await setDoc(userRef, {
@@ -212,11 +224,27 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       role: 'user',
       createdAt: serverTimestamp()
     });
+
+    // Explicitly trigger welcome email for manual sign-up
+    console.log(`[FirebaseContext] Triggering welcome email for manual sign-up: ${email}`);
+    fetch('/api/send-welcome-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email,
+        name: name
+      })
+    }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
   };
 
   const signOut = async () => {
     const { logout } = await import('./firebase');
     await logout();
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    const { sendPasswordReset: firebaseReset } = await import('./firebase');
+    await firebaseReset(email);
   };
 
   return (
@@ -230,7 +258,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       signInWithFacebook,
       signOut, 
       signInWithEmail, 
-      signUpWithEmail 
+      signUpWithEmail,
+      sendPasswordReset
     }}>
       {children}
     </FirebaseContext.Provider>
