@@ -279,7 +279,9 @@ export const AdminAnalytics = () => {
                     if (response.ok) {
                       toast.success(`Welcome email sent to ${user.email}!`, { id: 'test-email' });
                     } else {
-                      toast.error(`Failed: ${data.error || 'Unknown error'}`, { id: 'test-email' });
+                      const detail = data.details ? `: ${data.details}` : '';
+                      const errorMsg = data.error || 'Unknown error';
+                      toast.error(`Failed to send email: ${errorMsg}${detail}`, { id: 'test-email', duration: 5000 });
                     }
                   } catch (err: any) {
                     console.error(err);
