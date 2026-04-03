@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
 import { ShowcasePage } from './pages/ShowcasePage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
+import { VillageTransportPage } from './pages/VillageTransportPage';
 import { PonjikaPage } from './pages/PonjikaPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ShopProfilePage } from './pages/ShopProfilePage';
@@ -18,7 +19,7 @@ import { VisitorCounter } from './components/VisitorCounter';
 import { InstallPrompt } from './components/InstallPrompt';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar, Activity } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar, Activity, Car } from 'lucide-react';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -81,6 +82,7 @@ function AppContent() {
               {[
                 { to: '/', label: t.nav.news },
                 { to: '/bazar', label: t.nav.bazar },
+                { to: '/transport', label: t.nav.transport },
                 { to: '/influencers', label: t.nav.influencers },
                 { to: '/showcase', label: t.nav.showcase },
                 { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
@@ -192,6 +194,7 @@ function AppContent() {
             {[
               { to: '/', label: t.nav.news },
               { to: '/bazar', label: t.nav.bazar },
+              { to: '/transport', label: t.nav.transport },
               { to: '/influencers', label: t.nav.influencers },
               { to: '/showcase', label: t.nav.showcase },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
@@ -223,6 +226,7 @@ function AppContent() {
           <Route path="/influencers" element={<InfluencerPage />} />
           <Route path="/showcase" element={<ShowcasePage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
+          <Route path="/transport" element={<VillageTransportPage />} />
           <Route path="/profile/:slug" element={<ProfilePage />} />
           <Route path="/shop/:slug" element={<ShopProfilePage />} />
           <Route path="/ponjika" element={<PonjikaPage />} />
@@ -307,6 +311,7 @@ function AppContent() {
                 {[
                   { to: '/', label: t.nav.news },
                   { to: '/bazar', label: t.nav.bazar },
+                  { to: '/transport', label: t.nav.transport },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (

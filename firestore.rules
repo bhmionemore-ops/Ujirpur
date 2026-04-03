@@ -158,6 +158,36 @@ service cloud.firestore {
              data.from is string && data.to is string && data.subject is string && data.body is string;
     }
 
+    function isValidVehicle(data) {
+      return hasRequiredFields(['driverUid', 'driverName', 'driverPhone', 'vehicleType', 'status']) &&
+             data.driverUid == request.auth.uid &&
+             data.driverName is string && data.driverName.size() > 0 &&
+             data.driverPhone is string && data.driverPhone.size() >= 10 &&
+             data.vehicleType in ['Toto', 'Auto', 'Van', 'Bike', 'Car'] &&
+             data.status in ['available', 'busy', 'offline'];
+    }
+
+    function isValidRideRequest(data) {
+      return hasRequiredFields(['riderUid', 'riderName', 'riderPhone', 'from', 'to', 'status']) &&
+             data.riderUid == request.auth.uid &&
+             data.riderName is string && data.riderName.size() > 0 &&
+             data.from is string && data.from.size() > 0 &&
+             data.to is string && data.to.size() > 0 &&
+             data.status in ['pending', 'accepted', 'completed', 'cancelled'];
+    }
+
+    function isValidRideChatMessage(data) {
+      return hasRequiredFields(['requestId', 'senderUid', 'senderName', 'text']) &&
+             data.senderUid == request.auth.uid &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 1000;
+    }
+
+    function isValidRideCall(data) {
+      return hasRequiredFields(['requestId', 'callerUid', 'receiverUid', 'status']) &&
+             data.callerUid == request.auth.uid &&
+             data.status in ['calling', 'ongoing', 'ended', 'missed'];
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -263,6 +293,62 @@ service cloud.firestore {
       // In a real app, we'd use a secret key or admin SDK
       allow create: if isValidInboundEmail(request.resource.data);
       allow delete: if isAdmin();
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidVehicle(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.driverUid == request.auth.uid || isAdmin()) && isValidVehicle(request.resource.data);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.driverUid == request.auth.uid);
+    }
+
+    match /ride_requests/{requestId} {
+      allow read: if isAuthenticated() && (
+        resource.data.riderUid == request.auth.uid || 
+        resource.data.driverUid == request.auth.uid || 
+        resource.data.status == 'pending' ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isValidRideRequest(request.resource.data);
+      allow update: if isAuthenticated() && (
+        resource.data.riderUid == request.auth.uid || 
+        resource.data.driverUid == request.auth.uid || 
+        request.resource.data.driverUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.riderUid == request.auth.uid);
+    }
+
+    match /ride_chat_messages/{messageId} {
+      allow read: if isAuthenticated() && (
+        exists(/databases/$(database)/documents/ride_requests/$(resource.data.requestId)) &&
+        (
+          get(/databases/$(database)/documents/ride_requests/$(resource.data.requestId)).data.riderUid == request.auth.uid ||
+          get(/databases/$(database)/documents/ride_requests/$(resource.data.requestId)).data.driverUid == request.auth.uid ||
+          isAdmin()
+        )
+      );
+      allow create: if isAuthenticated() && 
+        isValidRideChatMessage(request.resource.data) &&
+        exists(/databases/$(database)/documents/ride_requests/$(request.resource.data.requestId)) &&
+        (
+          get(/databases/$(database)/documents/ride_requests/$(request.resource.data.requestId)).data.riderUid == request.auth.uid ||
+          get(/databases/$(database)/documents/ride_requests/$(request.resource.data.requestId)).data.driverUid == request.auth.uid
+        );
+    }
+
+    match /ride_calls/{callId} {
+      allow read: if isAuthenticated() && (
+        resource.data.callerUid == request.auth.uid ||
+        resource.data.receiverUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isValidRideCall(request.resource.data);
+      allow update: if isAuthenticated() && (
+        resource.data.callerUid == request.auth.uid ||
+        resource.data.receiverUid == request.auth.uid ||
+        isAdmin()
+      );
     }
 
     match /system/{docId} {

@@ -208,6 +208,79 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["from", "to", "subject", "body", "timestamp"]
+    },
+    "vehicle": {
+      "title": "Vehicle",
+      "description": "A vehicle registered for the village transport service.",
+      "type": "object",
+      "properties": {
+        "driverUid": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "vehicleType": { "type": "string", "enum": ["Toto", "Auto", "Van", "Bike", "Car"] },
+        "vehicleNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "busy", "offline"] },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["driverUid", "driverName", "driverPhone", "vehicleType", "status"]
+    },
+    "ride_request": {
+      "title": "Ride Request",
+      "description": "A request for a ride sent by a user.",
+      "type": "object",
+      "properties": {
+        "riderUid": { "type": "string" },
+        "riderName": { "type": "string" },
+        "riderPhone": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "driverUid": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "fare": { "type": "number" },
+        "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["riderUid", "riderName", "riderPhone", "from", "to", "status"]
+    },
+    "ride_chat_message": {
+      "title": "Ride Chat Message",
+      "description": "A message sent between a rider and a driver for a specific ride.",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string" },
+        "senderUid": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "senderUid", "senderName", "text"]
+    },
+    "ride_call": {
+      "title": "Ride Call",
+      "description": "A WebRTC signaling session for a voice call between rider and driver.",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string" },
+        "callerUid": { "type": "string" },
+        "receiverUid": { "type": "string" },
+        "offer": { "type": "object" },
+        "answer": { "type": "object" },
+        "iceCandidates": { "type": "array", "items": { "type": "object" } },
+        "status": { "type": "string", "enum": ["calling", "ongoing", "ended", "missed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "callerUid", "receiverUid", "status"]
     }
   },
   "firestore": {
@@ -258,6 +331,18 @@
     "/inbound_emails/{emailId}": {
       "schema": "inbound_email",
       "description": "Emails received for domain verification."
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": "vehicle",
+      "description": "Collection of registered vehicles."
+    },
+    "/ride_requests/{requestId}": {
+      "schema": "ride_request",
+      "description": "Requests for rides."
+    },
+    "/ride_chat_messages/{messageId}": {
+      "schema": "ride_chat_message",
+      "description": "Messages sent between a rider and a driver for a specific ride."
     }
   }
 }
