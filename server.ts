@@ -1116,6 +1116,69 @@ async function startServer() {
     res.json(localDb.userInfluencers);
   });
 
+  // Welcome Email Endpoint
+  app.post("/api/send-welcome-email", async (req, res) => {
+    const { email, name } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    console.log(`[WelcomeEmail] Sending welcome email to ${email} (${name || 'User'})`);
+
+    const mailOptions = {
+      from: '"Barnia Digital Hub" <info@barnia.in>',
+      to: email,
+      subject: "Welcome to Barnia Digital Hub! 🚀",
+      html: `
+        <div style="font-family: 'Inter', Helvetica, Arial, sans-serif; color: #18181b; max-width: 600px; margin: 0 auto; border: 1px solid #f4f4f5; border-radius: 24px; overflow: hidden; background-color: #ffffff;">
+          <div style="background-color: #FF6321; padding: 40px 20px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Welcome to the Hub!</h1>
+            <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px; font-weight: 500;">Barnia Digital Hub</p>
+          </div>
+          <div style="padding: 40px;">
+            <p style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">Hi ${name || 'there'},</p>
+            <p style="font-size: 16px; line-height: 1.6; color: #52525b; margin-bottom: 24px;">
+              We're thrilled to have you join our community! Barnia Digital Hub is your one-stop platform for everything local in Barnia, Ujirpur, and Nadia.
+            </p>
+            <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 24px;">
+              <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.05em;">What you can do now:</h3>
+              <ul style="margin: 0; padding: 0; list-style: none;">
+                <li style="margin-bottom: 8px; font-size: 14px; color: #475569; display: flex; align-items: center;">
+                  <span style="color: #FF6321; margin-right: 8px;">•</span> Check daily market prices at Barnia Bazar
+                </li>
+                <li style="margin-bottom: 8px; font-size: 14px; color: #475569; display: flex; align-items: center;">
+                  <span style="color: #FF6321; margin-right: 8px;">•</span> Connect with local influencers
+                </li>
+                <li style="margin-bottom: 0; font-size: 14px; color: #475569; display: flex; align-items: center;">
+                  <span style="color: #FF6321; margin-right: 8px;">•</span> Stay updated with Bengali Ponjika
+                </li>
+              </ul>
+            </div>
+            <a href="https://barnia.in" style="display: inline-block; background-color: #FF6321; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px rgba(245, 99, 33, 0.3);">Explore the Website</a>
+            <p style="margin-top: 40px; font-size: 14px; color: #71717a; border-top: 1px solid #f4f4f5; pt-20px; padding-top: 20px;">
+              If you have any questions, just reply to this email. We're here to help!<br><br>
+              Best regards,<br>
+              <strong>The Barnia Digital Hub Team</strong>
+            </p>
+          </div>
+          <div style="background-color: #f4f4f5; padding: 20px; text-align: center; font-size: 12px; color: #a1a1aa;">
+            © 2026 Barnia Digital Hub. All rights reserved.<br>
+            Nadia, West Bengal, India
+          </div>
+        </div>
+      `
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[WelcomeEmail] Failed to send email:", error);
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
   // Meta Tag Routes (MUST be before static/vite middleware)
   app.get("/api/image/influencer/:id", async (req, res) => {
     try {

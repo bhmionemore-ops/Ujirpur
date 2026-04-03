@@ -46,6 +46,19 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               role: 'user',
               createdAt: serverTimestamp()
             });
+            
+            // Send welcome email
+            if (currentUser.email) {
+              fetch('/api/send-welcome-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: currentUser.email,
+                  name: currentUser.displayName || 'User'
+                })
+              }).catch(err => console.error("Error sending welcome email:", err));
+            }
+            
             setIsAdmin(false);
           } else {
             setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com');
