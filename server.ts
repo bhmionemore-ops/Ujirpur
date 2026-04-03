@@ -1190,6 +1190,15 @@ async function startServer() {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    // Diagnostic check for secrets
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error("[WelcomeEmail] Missing secrets. EMAIL_USER:", !!process.env.EMAIL_USER, "EMAIL_PASS:", !!process.env.EMAIL_PASS);
+      return res.status(500).json({ 
+        error: "Server configuration error", 
+        details: `Missing secrets: ${!process.env.EMAIL_USER ? 'EMAIL_USER ' : ''}${!process.env.EMAIL_PASS ? 'EMAIL_PASS' : ''}. Please ensure you named your secrets EXACTLY 'EMAIL_USER' and 'EMAIL_PASS' and clicked 'Apply changes'.`
+      });
+    }
+
     console.log(`[WelcomeEmail] Sending welcome email to ${email} (${name || 'User'})`);
 
     const mailOptions = {
