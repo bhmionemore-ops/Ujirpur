@@ -623,17 +623,38 @@ async function startServer() {
   const PORT = 3000;
 
   // Email Transporter
-  console.log(`[Server] Initializing email transporter with user: ${process.env.EMAIL_USER || 'NOT_SET'}`);
-  if (!process.env.EMAIL_PASS) {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  
+  console.log(`[Server] Initializing email transporter...`);
+  console.log(`[Server] EMAIL_USER: ${emailUser || 'NOT_SET'}`);
+  
+  if (emailPass) {
+    const passLen = emailPass.length;
+    const firstChar = emailPass.charAt(0);
+    const lastChar = emailPass.charAt(passLen - 1);
+    console.log(`[Server] EMAIL_PASS is set (Length: ${passLen}, Starts with: ${firstChar}, Ends with: ${lastChar})`);
+    
+    if (emailPass.includes(' ')) {
+      console.warn(`[Server] WARNING: EMAIL_PASS contains spaces. This will cause login failures.`);
+    }
+    if (passLen !== 16) {
+      console.warn(`[Server] WARNING: Gmail App Passwords should be exactly 16 characters. Yours is ${passLen}.`);
+    }
+  } else {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // use SSL
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: emailUser,
+      pass: emailPass,
     },
+    debug: true, // show debug output
+    logger: true // log information in console
   });
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
