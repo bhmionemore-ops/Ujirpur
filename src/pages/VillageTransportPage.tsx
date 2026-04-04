@@ -525,6 +525,7 @@ export const VillageTransportPage = () => {
   const [myVehicle, setMyVehicle] = useState<Vehicle | null>(null);
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [myRequests, setMyRequests] = useState<RideRequest[]>([]);
+  const [currentRiderRide, setCurrentRiderRide] = useState<RideRequest | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form states
@@ -768,6 +769,12 @@ export const VillageTransportPage = () => {
     return () => unsub();
   }, [user]);
 
+  useEffect(() => {
+    // Find the most recent active ride for the rider
+    const activeRide = myRequests.find(req => req.status === 'pending' || req.status === 'accepted');
+    setCurrentRiderRide(activeRide || null);
+  }, [myRequests]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !activeChat || !newMessage.trim()) return;
@@ -940,7 +947,7 @@ export const VillageTransportPage = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-3 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${
+                className={`relative flex items-center gap-3 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${
                   activeTab === tab.id 
                     ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20' 
                     : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
@@ -948,10 +955,132 @@ export const VillageTransportPage = () => {
               >
                 <tab.icon size={18} />
                 {tab.label}
+                {tab.id === 'requests' && currentRiderRide && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-500 rounded-full border-2 border-white animate-pulse" />
+                )}
               </button>
             ))}
           </div>
         </div>
+
+        {/* Rider Status Overlay (Uber-like) */}
+        <AnimatePresence>
+          {currentRiderRide && activeTab === 'find' && (
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed bottom-24 left-4 right-4 z-[50] md:left-auto md:right-8 md:w-[400px]"
+            >
+              <div className="bg-white rounded-[2.5rem] shadow-2xl border border-brand-100 p-8 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-100 overflow-hidden">
+                  {currentRiderRide.status === 'pending' && (
+                    <motion.div
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="w-1/3 h-full bg-brand-600 shadow-[0_0_10px_rgba(234,88,12,0.5)]"
+                    />
+                  )}
+                  {currentRiderRide.status === 'accepted' && (
+                    <div className="w-full h-full bg-emerald-500" />
+                  )}
+                </div>
+
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">
+                      {currentRiderRide.status === 'pending' 
+                        ? (language === 'bn' ? 'ড্রাইভার খোঁজা হচ্ছে...' : 'Finding your ride...') 
+                        : (language === 'bn' ? 'ড্রাইভার আসছে' : 'Driver Assigned')}
+                    </h4>
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
+                      Ride ID: #{currentRiderRide.id.slice(-6).toUpperCase()}
+                    </p>
+                  </div>
+                  <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center shadow-inner ${
+                    currentRiderRide.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                  }`}>
+                    {currentRiderRide.status === 'pending' ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Clock size={28} />
+                      </motion.div>
+                    ) : <Car size={28} />}
+                  </div>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-center gap-4 p-4 bg-zinc-50 rounded-2xl">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-brand-600 shadow-sm">
+                      <MapPin size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Destination</p>
+                      <p className="font-bold text-zinc-900 truncate">{currentRiderRide.to}</p>
+                    </div>
+                  </div>
+
+                  {currentRiderRide.status === 'accepted' && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100"
+                    >
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-emerald-600 shadow-sm">
+                          <User size={28} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Driver Assigned</p>
+                          <h5 className="text-lg font-black text-zinc-900">{currentRiderRide.driverName}</h5>
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star size={12} fill="currentColor" />
+                            <span className="text-xs font-black">4.8</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setActiveChat(currentRiderRide)}
+                          className="flex-1 py-3 bg-white text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-100 transition-all flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle size={14} />
+                          Chat
+                        </button>
+                        <a
+                          href={`tel:${currentRiderRide.driverPhone}`}
+                          className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Phone size={14} />
+                          Call
+                        </a>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActiveTab('requests')}
+                    className="flex-1 py-4 bg-zinc-100 text-zinc-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                  >
+                    View Details
+                  </button>
+                  {currentRiderRide.status === 'pending' && (
+                    <button
+                      onClick={() => updateRideStatus(currentRiderRide.id, 'cancelled')}
+                      className="flex-1 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Content */}
         <AnimatePresence mode="wait">

@@ -70,17 +70,26 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsub = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        const latestRequest = {
-          id: snapshot.docs[0].id,
-          ...snapshot.docs[0].data()
-        } as RideRequest;
-        
-        // Only show if it's a new request (within last 5 minutes)
-        const now = new Date().getTime();
-        const requestTime = latestRequest.createdAt?.toDate?.().getTime() || now;
-        
-        if (now - requestTime < 300000) { // 5 minutes
-          setActiveIncomingRequest(latestRequest);
+        // Get the most recent pending request that isn't from the current user
+        const validRequests = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as RideRequest))
+          .filter(req => req.riderUid !== user.uid);
+
+        if (validRequests.length > 0) {
+          const latestRequest = validRequests[0];
+          
+          // Only show if it's a new request (within last 5 minutes)
+          const now = new Date().getTime();
+          const requestTime = latestRequest.createdAt?.toDate?.().getTime() || now;
+          
+          if (now - requestTime < 300000) { // 5 minutes
+            // Only update if it's a different request ID to prevent "running again and again"
+            setActiveIncomingRequest(prev => prev?.id === latestRequest.id ? prev : latestRequest);
+          } else {
+            setActiveIncomingRequest(null);
+          }
+        } else {
+          setActiveIncomingRequest(null);
         }
       } else {
         setActiveIncomingRequest(null);
@@ -101,22 +110,23 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const rideRef = doc(db, 'ride_requests', requestId);
       
-      // Get driver details
+      // Get driver details - Use getDocs instead of onSnapshot to avoid leaks and infinite loops
+      const { getDocs } = await import('firebase/firestore');
       const q = query(collection(db, 'vehicles'), where('driverUid', '==', user.uid));
-      const driverSnap = await onSnapshot(q, (snap) => {
-        if (!snap.empty) {
-          const driverData = snap.docs[0].data();
-          updateDoc(rideRef, {
-            status: 'accepted',
-            driverUid: user.uid,
-            driverName: user.displayName || 'Driver',
-            driverPhone: driverData.driverPhone || '',
-            acceptedAt: serverTimestamp()
-          });
-          toast.success("Ride accepted!");
-          setActiveIncomingRequest(null);
-        }
-      });
+      const driverSnap = await getDocs(q);
+      
+      if (!driverSnap.empty) {
+        const driverData = driverSnap.docs[0].data();
+        await updateDoc(rideRef, {
+          status: 'accepted',
+          driverUid: user.uid,
+          driverName: user.displayName || 'Driver',
+          driverPhone: driverData.driverPhone || '',
+          acceptedAt: serverTimestamp()
+        });
+        toast.success("Ride accepted!");
+        setActiveIncomingRequest(null);
+      }
     } catch (error) {
       toast.error("Failed to accept ride");
       console.error(error);
