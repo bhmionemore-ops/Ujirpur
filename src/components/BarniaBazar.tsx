@@ -26,6 +26,7 @@ interface Shop {
   phone: string;
   products: Product[];
   image: string;
+  isVerified?: boolean;
   uid?: string;
 }
 
@@ -331,6 +332,55 @@ export const BarniaBazar = () => {
 
   return (
     <div className="relative">
+      {/* Daily Market Rates Section */}
+      <div className="mb-16 bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl shadow-zinc-900/20">
+        <div className="absolute top-0 right-0 p-12 opacity-10">
+          <RefreshCw size={150} className="animate-spin-slow" />
+        </div>
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/20 text-brand-400 font-black text-xs uppercase tracking-widest mb-4 border border-brand-500/20">
+                <Zap size={14} />
+                {language === 'bn' ? 'আজকের বাজার দর' : 'Today\'s Market Rates'}
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-none">
+                {language === 'bn' ? 'বার্নিয়া বাজার রেট' : 'Barnia Market Rates'}
+              </h2>
+            </div>
+            <div className="text-right">
+              <p className="text-zinc-400 text-xs font-black uppercase tracking-widest mb-2">Last Updated</p>
+              <p className="text-xl font-bold text-brand-400">Today, 08:30 AM</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {[
+              { name: language === 'bn' ? 'আলু' : 'Potato', price: '₹20/kg', trend: 'up' },
+              { name: language === 'bn' ? 'পেঁয়াজ' : 'Onion', price: '₹35/kg', trend: 'down' },
+              { name: language === 'bn' ? 'টমেটো' : 'Tomato', price: '₹40/kg', trend: 'stable' },
+              { name: language === 'bn' ? 'চাল' : 'Rice', price: '₹45/kg', trend: 'stable' },
+              { name: language === 'bn' ? 'ডাল' : 'Dal', price: '₹120/kg', trend: 'up' },
+              { name: language === 'bn' ? 'তেল' : 'Oil', price: '₹145/L', trend: 'down' },
+            ].map((item, i) => (
+              <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all group">
+                <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.name}</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-xl font-black text-white">{item.price}</p>
+                  <div className={`text-[10px] font-black uppercase ${
+                    item.trend === 'up' ? 'text-rose-500' : 
+                    item.trend === 'down' ? 'text-emerald-500' : 
+                    'text-zinc-500'
+                  }`}>
+                    {item.trend === 'up' ? '↑' : item.trend === 'down' ? '↓' : '•'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-10">
         <div className="max-w-2xl">
           <p className="text-zinc-500 text-lg leading-relaxed max-w-xl">
@@ -430,10 +480,16 @@ export const BarniaBazar = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
-                  <div className="absolute top-6 left-6 flex gap-2">
+                  <div className="absolute top-6 left-6 flex flex-col gap-2">
                     <span className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest shadow-xl">
                       {shop.category}
                     </span>
+                    {shop.isVerified && (
+                      <div className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-1">
+                        <CheckCircle size={12} />
+                        Verified
+                      </div>
+                    )}
                   </div>
                   
                   {(isAdmin || (user && shop.uid === user.uid)) && (

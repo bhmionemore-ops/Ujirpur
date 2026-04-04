@@ -43,6 +43,97 @@ const Swastika = ({ size = 16, className = "" }) => (
 
 import { Toaster } from 'sonner';
 import { TrackingProvider, useTracking } from './TrackingContext';
+import { RideProvider, useRide } from './RideContext';
+import { useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+
+const GlobalBookingAlert = () => {
+  const { activeIncomingRequest, acceptRide, declineRide } = useRide();
+  const { language, t } = useLanguage();
+
+  useEffect(() => {
+    if (activeIncomingRequest) {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1357/1357-preview.mp3');
+      audio.loop = true;
+      audio.play().catch(e => console.log('Audio play blocked'));
+      return () => {
+        audio.pause();
+        audio.currentTime = 0;
+      };
+    }
+  }, [activeIncomingRequest]);
+
+  if (!activeIncomingRequest) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-brand-600/90 backdrop-blur-md">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl text-center space-y-8 border-4 border-white"
+      >
+        <div className="w-24 h-24 bg-brand-50 rounded-full flex items-center justify-center mx-auto animate-pulse">
+          <Car size={48} className="text-brand-600" />
+        </div>
+        
+        <div>
+          <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tight mb-2">
+            {language === 'bn' ? 'নতুন বুকিং!' : 'New Booking!'}
+          </h2>
+          <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">
+            {language === 'bn' ? 'আগত রাইড অনুরোধ' : 'Incoming Ride Request'}
+          </p>
+        </div>
+
+        <div className="space-y-6 text-left bg-zinc-50 p-6 rounded-[2rem] border border-zinc-100">
+          <div className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <div className="w-2 h-2 rounded-full bg-current" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.transport.from}</p>
+              <p className="font-bold text-zinc-900 line-clamp-2">{activeIncomingRequest.from}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+              <MapPin size={16} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.transport.to}</p>
+              <p className="font-bold text-zinc-900 line-clamp-2">{activeIncomingRequest.to}</p>
+            </div>
+          </div>
+          <div className="pt-4 border-t border-zinc-200 flex justify-between items-center">
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Estimated Fare</p>
+              <p className="text-2xl font-black text-emerald-600">₹{activeIncomingRequest.fare}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Rider</p>
+              <p className="font-bold text-zinc-900">{activeIncomingRequest.riderName}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => declineRide(activeIncomingRequest.id)}
+            className="py-5 bg-zinc-100 text-zinc-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-200 transition-all"
+          >
+            {language === 'bn' ? 'বাতিল' : 'Decline'}
+          </button>
+          <button
+            onClick={() => acceptRide(activeIncomingRequest.id)}
+            className="py-5 bg-emerald-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+          >
+            {language === 'bn' ? 'গ্রহণ করুন' : 'Accept'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 function AppContent() {
   const { language, setLanguage, t } = useLanguage();
@@ -243,6 +334,7 @@ function AppContent() {
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
       <LiveChatWidget />
       <InstallPrompt />
+      <GlobalBookingAlert />
       <Toaster position="top-center" richColors />
 
       {/* Footer */}
@@ -352,7 +444,9 @@ export default function App() {
   return (
     <Router>
       <TrackingProvider>
-        <AppContent />
+        <RideProvider>
+          <AppContent />
+        </RideProvider>
       </TrackingProvider>
     </Router>
   );

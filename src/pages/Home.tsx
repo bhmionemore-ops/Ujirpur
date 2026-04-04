@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Store, ChevronRight, Facebook, Calendar, Car } from 'lucide-react';
+import { Users, Store, ChevronRight, Facebook, Calendar, Car, Search, Activity } from 'lucide-react';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -39,6 +39,28 @@ export const Home = () => {
   return (
     <div className="space-y-12 pb-20">
       <Banner />
+
+      {/* Global Search Bar */}
+      <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative group"
+        >
+          <div className="absolute inset-0 bg-brand-500/20 blur-3xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+          <div className="relative flex items-center">
+            <Search className="absolute left-8 text-zinc-400 group-focus-within:text-brand-600 transition-colors" size={28} />
+            <input 
+              type="text"
+              placeholder={language === 'bn' ? 'দোকান, ড্রাইভার বা খবর খুঁজুন...' : 'Search shops, drivers, or news...'}
+              className="w-full pl-20 pr-8 py-8 rounded-[3rem] bg-white border-4 border-zinc-100 shadow-2xl focus:border-brand-500 outline-none text-xl font-bold transition-all placeholder:text-zinc-300"
+            />
+            <button className="absolute right-4 px-10 py-4 bg-zinc-900 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest hover:bg-brand-600 transition-all shadow-xl shadow-zinc-900/20">
+              {language === 'bn' ? 'খুঁজুন' : 'Search'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
       
       <div className="max-w-7xl mx-auto px-4">
         <LiveNews />

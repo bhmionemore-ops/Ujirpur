@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Car, MapPin, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Search, User, Navigation, ShieldCheck, Star, MessageCircle, Send, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react';
+import { Car, MapPin, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Search, User, Navigation, ShieldCheck, Star, MessageCircle, Send, Mic, MicOff, PhoneOff, Volume2, X, ChevronRight, Activity } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
 import { db } from '../firebase';
@@ -237,6 +237,8 @@ interface Vehicle {
   vehicleType: 'Toto' | 'Auto' | 'Van' | 'Bike' | 'Car';
   vehicleNumber: string;
   status: 'available' | 'busy' | 'offline';
+  isVerified?: boolean;
+  rating?: number;
   location?: {
     lat: number;
     lng: number;
@@ -528,6 +530,7 @@ export const VillageTransportPage = () => {
   // Form states
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -1069,11 +1072,25 @@ export const VillageTransportPage = () => {
                           <div className="w-14 h-14 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
                             <Car size={28} />
                           </div>
-                          <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
-                            {t.transport.pending}
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                              {t.transport.pending}
+                            </div>
+                            {vehicle.isVerified && (
+                              <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                                <CheckCircle2 size={12} />
+                                <span className="text-[8px] font-black uppercase tracking-widest">Verified</span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <h4 className="text-xl font-black text-zinc-900 mb-1 uppercase tracking-tight">{vehicle.vehicleType}</h4>
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{vehicle.vehicleType}</h4>
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star size={14} fill="currentColor" />
+                            <span className="text-sm font-black">{vehicle.rating || '4.8'}</span>
+                          </div>
+                        </div>
                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">{vehicle.vehicleNumber}</p>
                         
                         <div className="space-y-3 mb-8">
@@ -1799,6 +1816,99 @@ export const VillageTransportPage = () => {
               onSubmit={handleRatingSubmit}
               driverName={ratingRide.driverName || 'Driver'}
             />
+          )}
+        </AnimatePresence>
+
+        {/* Safety Center Floating Button */}
+        <div className="fixed bottom-8 right-8 z-[1000]">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowSafetyModal(true)}
+            className="w-16 h-16 bg-red-600 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center hover:bg-red-700 transition-all border-4 border-white"
+          >
+            <AlertCircle size={32} />
+          </motion.button>
+        </div>
+
+        {/* Safety Modal */}
+        <AnimatePresence>
+          {showSafetyModal && (
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
+                <button 
+                  onClick={() => setShowSafetyModal(false)}
+                  className="absolute top-6 right-6 p-2 text-zinc-400 hover:text-zinc-900 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="text-center mb-10">
+                  <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-600 mx-auto mb-6">
+                    <AlertCircle size={40} />
+                  </div>
+                  <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tight mb-2">Safety Center</h2>
+                  <p className="text-zinc-500 font-medium">Your safety is our top priority in Barnia.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => window.open('tel:100')}
+                    className="w-full p-6 bg-red-600 text-white rounded-2xl flex items-center justify-between group hover:bg-red-700 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Phone size={24} />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-black uppercase tracking-widest text-xs opacity-80">Emergency</p>
+                        <p className="text-xl font-black">Call Police (100)</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                  </button>
+
+                  <button 
+                    onClick={() => window.open('tel:102')}
+                    className="w-full p-6 bg-emerald-600 text-white rounded-2xl flex items-center justify-between group hover:bg-emerald-700 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Activity size={24} />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-black uppercase tracking-widest text-xs opacity-80">Medical</p>
+                        <p className="text-xl font-black">Ambulance (102)</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                  </button>
+
+                  <div className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100">
+                    <h4 className="font-black text-zinc-900 uppercase tracking-widest text-[10px] mb-4">Safety Tips</h4>
+                    <ul className="space-y-3">
+                      {[
+                        'Share your ride status with family',
+                        'Verify vehicle number before boarding',
+                        'Always wear a helmet/seatbelt',
+                        'Report any suspicious behavior'
+                      ].map((tip, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-zinc-600 font-medium">
+                          <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </div>
