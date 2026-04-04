@@ -9,6 +9,173 @@ import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 
+const LocationAutocomplete = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  icon: Icon,
+  onSelect
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  placeholder: string;
+  icon: any;
+  onSelect?: (lat: number, lng: number, address: string) => void;
+}) => {
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const searchLocation = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`);
+      const data = await response.json();
+      setSuggestions(data);
+    } catch (error) {
+      console.error("Search error:", error);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (value && showSuggestions) searchLocation(value);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  return (
+    <div className="relative flex-1">
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
+      <input
+        required
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setShowSuggestions(true);
+        }}
+        onFocus={() => setShowSuggestions(true)}
+        placeholder={placeholder}
+        className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+      />
+      <AnimatePresence>
+        {showSuggestions && suggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-zinc-200 shadow-xl z-[1000] overflow-hidden"
+          >
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  onChange(s.display_name);
+                  onSelect?.(parseFloat(s.lat), parseFloat(s.lon), s.display_name);
+                  setShowSuggestions(false);
+                }}
+                className="w-full px-6 py-4 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0 flex items-start gap-3"
+              >
+                <MapPin size={16} className="text-zinc-400 mt-1 shrink-0" />
+                <span className="text-xs font-bold text-zinc-600 line-clamp-2">{s.display_name}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const BookingAlertModal = ({ 
+  request, 
+  onAccept, 
+  onDecline 
+}: { 
+  request: RideRequest; 
+  onAccept: () => void; 
+  onDecline: () => void;
+}) => {
+  useEffect(() => {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1357/1357-preview.mp3');
+    audio.loop = true;
+    audio.play().catch(e => console.log('Audio play blocked'));
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-brand-600">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl text-center space-y-8"
+      >
+        <div className="w-24 h-24 bg-brand-50 rounded-full flex items-center justify-center mx-auto animate-pulse">
+          <Car size={48} className="text-brand-600" />
+        </div>
+        
+        <div>
+          <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tight mb-2">New Booking!</h2>
+          <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Incoming Ride Request</p>
+        </div>
+
+        <div className="space-y-6 text-left bg-zinc-50 p-6 rounded-[2rem] border border-zinc-100">
+          <div className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <div className="w-2 h-2 rounded-full bg-current" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pickup</p>
+              <p className="font-bold text-zinc-900 line-clamp-2">{request.from}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+              <MapPin size={16} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Drop-off</p>
+              <p className="font-bold text-zinc-900 line-clamp-2">{request.to}</p>
+            </div>
+          </div>
+          <div className="pt-4 border-t border-zinc-200 flex justify-between items-center">
+            <div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Estimated Fare</p>
+              <p className="text-2xl font-black text-emerald-600">₹{request.fare}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Rider</p>
+              <p className="font-bold text-zinc-900">{request.riderName}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={onDecline}
+            className="py-5 bg-zinc-100 text-zinc-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-200 transition-all"
+          >
+            Decline
+          </button>
+          <button
+            onClick={onAccept}
+            className="py-5 bg-emerald-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+          >
+            Accept
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // Fix Leaflet default icon issue
 const DefaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -368,16 +535,29 @@ export const VillageTransportPage = () => {
   const [isPickingLocation, setIsPickingLocation] = useState<'pickup' | 'dropoff' | null>(null);
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('Toto');
 
-  const onMapClick = (e: L.LeafletMouseEvent) => {
+  const onMapClick = async (e: L.LeafletMouseEvent) => {
+    const { lat, lng } = e.latlng;
+    let address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      if (data.display_name) address = data.display_name;
+    } catch (error) {
+      console.error("Reverse geocode error:", error);
+    }
+
     if (isPickingLocation === 'pickup') {
-      setPickupCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
-      setFromLocation(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      setPickupCoords({ lat, lng });
+      setFromLocation(address);
       setIsPickingLocation(null);
+      setShowRequestModal(true);
       toast.success("Pickup location set!");
     } else if (isPickingLocation === 'dropoff') {
-      setDropoffCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
-      setToLocation(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      setDropoffCoords({ lat, lng });
+      setToLocation(address);
       setIsPickingLocation(null);
+      setShowRequestModal(true);
       toast.success("Drop-off location set!");
     }
   };
@@ -399,10 +579,12 @@ export const VillageTransportPage = () => {
   } | null>(null);
   const [ratingRide, setRatingRide] = useState<RideRequest | null>(null);
   const [selectedRide, setSelectedRide] = useState<RideRequest | null>(null);
+  const [incomingBooking, setIncomingBooking] = useState<RideRequest | null>(null);
+  const [isPhoneValid, setIsPhoneValid] = useState(true);
 
   // Notification sound for drivers
   useEffect(() => {
-    if (user && myVehicle) {
+    if (user && myVehicle && myVehicle.status === 'available') {
       const q = query(
         collection(db, 'ride_requests'),
         where('status', '==', 'pending'),
@@ -412,12 +594,11 @@ export const VillageTransportPage = () => {
       const unsub = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added') {
-            const data = change.doc.data();
+            const data = { id: change.doc.id, ...change.doc.data() } as RideRequest;
             // Only notify if it's a new request (within last 30 seconds)
             const createdAt = data.createdAt?.toDate();
             if (createdAt && (new Date().getTime() - createdAt.getTime()) < 30000) {
-              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
-              audio.play().catch(e => console.log('Audio play blocked'));
+              setIncomingBooking(data);
               toast.info(`New Ride Request: ${data.from} to ${data.to}`, {
                 description: `Fare: ₹${data.fare || 'TBD'}`,
                 duration: 10000,
@@ -663,6 +844,11 @@ export const VillageTransportPage = () => {
   const handleRegisterVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!isPhoneValid) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
+    }
 
     try {
       await addDoc(collection(db, 'vehicles'), {
@@ -1333,17 +1519,16 @@ export const VillageTransportPage = () => {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.from}</label>
                     <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
-                        <input
-                          required
-                          type="text"
-                          value={fromLocation}
-                          onChange={(e) => setFromLocation(e.target.value)}
-                          placeholder="e.g. Barnia Bazar"
-                          className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                        />
-                      </div>
+                      <LocationAutocomplete
+                        value={fromLocation}
+                        onChange={setFromLocation}
+                        placeholder="e.g. Barnia Bazar"
+                        icon={MapPin}
+                        onSelect={(lat, lng, addr) => {
+                          setPickupCoords({ lat, lng });
+                          setFromLocation(addr);
+                        }}
+                      />
                       <button
                         type="button"
                         onClick={() => {
@@ -1360,17 +1545,16 @@ export const VillageTransportPage = () => {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.to}</label>
                     <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
-                        <input
-                          required
-                          type="text"
-                          value={toLocation}
-                          onChange={(e) => setToLocation(e.target.value)}
-                          placeholder="e.g. Ujirpur Station"
-                          className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                        />
-                      </div>
+                      <LocationAutocomplete
+                        value={toLocation}
+                        onChange={setToLocation}
+                        placeholder="e.g. Ujirpur Station"
+                        icon={Navigation}
+                        onSelect={(lat, lng, addr) => {
+                          setDropoffCoords({ lat, lng });
+                          setToLocation(addr);
+                        }}
+                      />
                       <button
                         type="button"
                         onClick={() => {
@@ -1477,10 +1661,19 @@ export const VillageTransportPage = () => {
                       required
                       type="tel"
                       value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="+91 00000 00000"
-                      className="w-full px-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                      onChange={(e) => {
+                        setRegPhone(e.target.value);
+                        const isValid = /^[6-9]\d{9}$/.test(e.target.value.replace(/\D/g, ''));
+                        setIsPhoneValid(isValid || e.target.value === '');
+                      }}
+                      placeholder="10-digit mobile number"
+                      className={`w-full px-6 py-4 bg-zinc-50 border rounded-2xl focus:ring-2 outline-none transition-all font-bold text-sm ${
+                        isPhoneValid ? 'border-zinc-200 focus:ring-brand-500/20 focus:border-brand-500' : 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                      }`}
                     />
+                    {!isPhoneValid && (
+                      <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-1">Invalid phone number. Please enter a valid 10-digit number.</p>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -1491,6 +1684,17 @@ export const VillageTransportPage = () => {
                 </form>
               </motion.div>
             </div>
+          )}
+
+          {incomingBooking && (
+            <BookingAlertModal
+              request={incomingBooking}
+              onAccept={() => {
+                updateRideStatus(incomingBooking.id, 'accepted');
+                setIncomingBooking(null);
+              }}
+              onDecline={() => setIncomingBooking(null)}
+            />
           )}
 
           {activeChat && (
