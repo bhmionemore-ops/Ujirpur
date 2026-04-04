@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook, Calendar } from 'lucide-react';
+import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook, Calendar, Car } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
@@ -86,32 +86,10 @@ export const Banner = () => {
 
   const handleNavigation = (path: string) => {
     if (window.location.pathname === path) {
-      const targetId = path === '/' ? 'news' : 'content';
-      const element = document.getElementById(targetId);
-      if (element) {
-        const offset = 80;
-        const bodyRect = document.body.getBoundingClientRect().top;
-        const elementRect = element.getBoundingClientRect().top;
-        const elementPosition = elementRect - bodyRect;
-        const offsetPosition = elementPosition - offset;
-        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      navigate(path, { state: { scrollToContent: true } });
-      // If navigating to home, we might need a manual scroll after a delay
-      if (path === '/') {
-        setTimeout(() => {
-          const newsSection = document.getElementById('news');
-          if (newsSection) {
-            const offset = 80;
-            const bodyRect = document.body.getBoundingClientRect().top;
-            const elementRect = newsSection.getBoundingClientRect().top;
-            const elementPosition = elementRect - bodyRect;
-            const offsetPosition = elementPosition - offset;
-            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-          }
-        }, 300);
-      }
+      navigate(path);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -210,6 +188,14 @@ export const Banner = () => {
           >
             <Newspaper size={20} />
             {t.banner.news}
+          </button>
+
+          <button 
+            onClick={() => handleNavigation('/transport')}
+            className="group relative px-8 py-4 rounded-2xl bg-emerald-600 text-white font-bold text-lg shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-3"
+          >
+            <Car size={20} />
+            {language === 'bn' ? 'রাইড' : 'Ride'}
           </button>
 
           <button 

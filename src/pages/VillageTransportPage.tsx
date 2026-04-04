@@ -190,7 +190,7 @@ interface Vehicle {
   driverUid: string;
   driverName: string;
   driverPhone: string;
-  vehicleType: 'Toto' | 'Auto' | 'Van' | 'Bike' | 'Car';
+  vehicleType: 'Toto' | 'Auto' | 'Bike' | 'Car';
   vehicleNumber: string;
   status: 'available' | 'busy' | 'offline';
   isVerified?: boolean;
@@ -638,8 +638,9 @@ export const VillageTransportPage = () => {
   }, [toLocation, showToSuggestions]);
 
   // Registration states
-  const [regVehicleType, setRegVehicleType] = useState<'Toto' | 'Auto' | 'Van' | 'Bike' | 'Car'>('Toto');
+  const [regVehicleType, setRegVehicleType] = useState<'Toto' | 'Auto' | 'Bike' | 'Car'>('Toto');
   const [regVehicleNumber, setRegVehicleNumber] = useState('');
+  const [isVehicleNumberValid, setIsVehicleNumberValid] = useState(true);
   const [regPhone, setRegPhone] = useState('');
   const [activeChat, setActiveChat] = useState<RideRequest | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -656,6 +657,10 @@ export const VillageTransportPage = () => {
   const [selectedRide, setSelectedRide] = useState<RideRequest | null>(null);
   const [incomingBooking, setIncomingBooking] = useState<RideRequest | null>(null);
   const [isPhoneValid, setIsPhoneValid] = useState(true);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   // Notification sound for drivers
   useEffect(() => {
@@ -894,7 +899,6 @@ export const VillageTransportPage = () => {
     const baseFares: Record<string, number> = {
       'Toto': 20,
       'Auto': 30,
-      'Van': 50,
       'Bike': 15,
       'Car': 100
     };
@@ -943,11 +947,22 @@ export const VillageTransportPage = () => {
   const handleRegisterVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
-    if (!isPhoneValid) {
-      toast.error("Please enter a valid 10-digit phone number");
-      return;
+    
+    // Validation
+    let isValid = true;
+    if (!regPhone || !isPhoneValid) {
+      toast.error(language === 'bn' ? "সঠিক ফোন নম্বর দিন" : "Please enter a valid 10-digit phone number");
+      setIsPhoneValid(false);
+      isValid = false;
     }
+
+    if (regVehicleType !== 'Toto' && !regVehicleNumber) {
+      toast.error(language === 'bn' ? "যানবাহন নম্বর দিন" : "Please enter vehicle number");
+      setIsVehicleNumberValid(false);
+      isValid = false;
+    }
+
+    if (!isValid) return;
 
     try {
       await addDoc(collection(db, 'vehicles'), {
@@ -2005,7 +2020,6 @@ export const VillageTransportPage = () => {
                     { type: 'Toto', name: 'Go Non AC', capacity: 4, time: '5 min', price: 20, icon: Car, badge: null },
                     { type: 'Bike', name: 'Bike', capacity: 1, time: '2 min', price: 15, icon: Navigation, badge: 'Faster' },
                     { type: 'Auto', name: 'Barnia Go', capacity: 3, time: '5 min', price: 30, icon: Car, badge: null },
-                    { type: 'Van', name: 'Barnia XL', capacity: 6, time: '8 min', price: 50, icon: Car, badge: null },
                     { type: 'Car', name: 'Premier', capacity: 4, time: '10 min', price: 100, icon: Car, badge: 'Top Rated' },
                   ].map((v) => (
                     <button
@@ -2096,22 +2110,32 @@ export const VillageTransportPage = () => {
                     >
                       <option value="Toto">Toto</option>
                       <option value="Auto">Auto</option>
-                      <option value="Van">Van</option>
                       <option value="Bike">Bike</option>
                       <option value="Car">Car</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{language === 'bn' ? 'যানবাহন নম্বর' : 'Vehicle Number'}</label>
-                    <input
-                      required
-                      type="text"
-                      value={regVehicleNumber}
-                      onChange={(e) => setRegVehicleNumber(e.target.value)}
-                      placeholder="e.g. WB 52 X 1234"
-                      className="w-full px-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                    />
-                  </div>
+                  
+                  {regVehicleType !== 'Toto' && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{language === 'bn' ? 'যানবাহন নম্বর' : 'Vehicle Number'}</label>
+                      <input
+                        required
+                        type="text"
+                        value={regVehicleNumber}
+                        onChange={(e) => {
+                          setRegVehicleNumber(e.target.value);
+                          setIsVehicleNumberValid(e.target.value !== '');
+                        }}
+                        placeholder="e.g. WB 52 X 1234"
+                        className={`w-full px-6 py-4 bg-zinc-50 border rounded-2xl focus:ring-2 outline-none transition-all font-bold text-sm ${
+                          isVehicleNumberValid ? 'border-zinc-200 focus:ring-brand-500/20 focus:border-brand-500' : 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                        }`}
+                      />
+                      {!isVehicleNumberValid && (
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-1">{language === 'bn' ? 'যানবাহন নম্বর দিন' : 'Vehicle number is required'}</p>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.phone}</label>
                     <input
