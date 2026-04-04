@@ -78,10 +78,10 @@ const GlobalBookingAlert = () => {
         
         <div>
           <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tight mb-2">
-            {language === 'bn' ? 'নতুন বুকিং!' : 'New Booking!'}
+            {t.transport.newBooking}
           </h2>
           <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">
-            {language === 'bn' ? 'আগত রাইড অনুরোধ' : 'Incoming Ride Request'}
+            {t.transport.incomingRideRequest}
           </p>
         </div>
 
@@ -198,10 +198,14 @@ function AppContent() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-100/80 hover:bg-white hover:shadow-md transition-all text-xs font-bold text-zinc-700 border border-transparent hover:border-zinc-200"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-2xl bg-zinc-100/80 hover:bg-white hover:shadow-md transition-all text-xs font-bold text-zinc-700 border border-transparent hover:border-zinc-200"
               >
                 <Languages size={14} className="text-brand-600" />
-                <span className="hidden sm:inline">{language === 'bn' ? 'English' : 'বাংলা'}</span>
+                <div className="flex items-center gap-1">
+                  <span className={language === 'en' ? 'text-brand-600' : 'text-zinc-400'}>EN</span>
+                  <span className="text-zinc-300">/</span>
+                  <span className={language === 'bn' ? 'text-brand-600' : 'text-zinc-400'}>BN</span>
+                </div>
               </button>
 
               {user ? (

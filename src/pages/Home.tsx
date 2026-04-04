@@ -114,12 +114,10 @@ export const Home = () => {
                 {t.nav.ponjika}
               </h3>
               <p className="text-zinc-500 font-medium mb-8 max-w-xs leading-relaxed">
-                {language === 'bn' 
-                  ? 'প্রতিদিনের বাংলা পঞ্জিকা, উৎসব এবং শুভ সময় জানুন।' 
-                  : 'Get daily Bengali Ponjika, festivals, and auspicious timings.'}
+                {t.banner.ponjikaDesc}
               </p>
               <div className="flex items-center gap-2 font-black text-sm uppercase tracking-widest text-brand-600">
-                {language === 'bn' ? 'পঞ্জিকা দেখুন' : 'View Ponjika'}
+                {t.banner.viewPonjika}
                 <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
               </div>
             </div>
@@ -169,12 +167,10 @@ export const Home = () => {
                 <Facebook size={40} className="text-brand-600" />
               </div>
               <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight text-zinc-900">
-                {language === 'bn' ? 'আমাদের ফেসবুক গ্রুপে যোগ দিন' : 'Join Our Facebook Community'}
+                {t.banner.joinFacebookTitle}
               </h2>
               <p className="text-zinc-500 font-medium mb-12 max-w-2xl mx-auto text-lg leading-relaxed">
-                {language === 'bn' 
-                  ? 'আমাদের ফেসবুক গ্রুপে যোগ দিয়ে সর্বশেষ আপডেট পান, আপনার মতামত শেয়ার করুন এবং সবার সাথে যুক্ত থাকুন।' 
-                  : 'Get the latest updates, share your thoughts, and stay connected with everyone in our official Facebook group. Join thousands of other members!'}
+                {t.banner.joinFacebookDesc}
               </p>
               
               <motion.a 

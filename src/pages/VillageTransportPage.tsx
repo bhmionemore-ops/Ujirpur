@@ -113,11 +113,15 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // Barnia Center Coordinates
 const BARNIA_CENTER: [number, number] = [23.8859, 88.4869];
 
-const MapUpdater = ({ center }: { center: [number, number] }) => {
+const MapUpdater = ({ center, zoom }: { center: [number, number], zoom?: number }) => {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
+    if (zoom) {
+      map.setView(center, zoom);
+    } else {
+      map.setView(center);
+    }
+  }, [center, zoom, map]);
   return null;
 };
 
@@ -641,6 +645,7 @@ export const VillageTransportPage = () => {
   const [regVehicleType, setRegVehicleType] = useState<'Toto' | 'Auto' | 'Bike' | 'Car'>('Toto');
   const [regVehicleNumber, setRegVehicleNumber] = useState('');
   const [isVehicleNumberValid, setIsVehicleNumberValid] = useState(true);
+  const [mapZoom, setMapZoom] = useState(14);
   const [regPhone, setRegPhone] = useState('');
   const [activeChat, setActiveChat] = useState<RideRequest | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -951,13 +956,13 @@ export const VillageTransportPage = () => {
     // Validation
     let isValid = true;
     if (!regPhone || !isPhoneValid) {
-      toast.error(language === 'bn' ? "সঠিক ফোন নম্বর দিন" : "Please enter a valid 10-digit phone number");
+      toast.error(t.transport.validPhone);
       setIsPhoneValid(false);
       isValid = false;
     }
 
     if (regVehicleType !== 'Toto' && !regVehicleNumber) {
-      toast.error(language === 'bn' ? "যানবাহন নম্বর দিন" : "Please enter vehicle number");
+      toast.error(t.transport.enterVehicleNumber);
       setIsVehicleNumberValid(false);
       isValid = false;
     }
@@ -1033,7 +1038,7 @@ export const VillageTransportPage = () => {
             {t.transport.title}
           </motion.div>
           <h1 className="text-4xl md:text-6xl font-black text-zinc-900 tracking-tight mb-6 uppercase">
-            {language === 'bn' ? 'বার্নিয়া রাইড' : 'Barnia Ride'}
+            {t.transport.barniaRide}
           </h1>
           <p className="text-zinc-500 font-medium max-w-2xl mx-auto text-lg">
             {t.transport.subtitle}
@@ -1044,9 +1049,9 @@ export const VillageTransportPage = () => {
         <div className="flex justify-center mb-12">
           <div className="bg-white p-1.5 rounded-3xl border border-zinc-200 shadow-sm flex gap-1">
             {[
-              { id: 'find', label: language === 'bn' ? 'পরিবহন' : 'Poribohon', icon: Car },
+              { id: 'find', label: t.nav.transport, icon: Car },
               { id: 'driver', label: t.transport.driverMode, icon: User },
-              { id: 'requests', label: language === 'bn' ? 'আমার রাইড' : 'My Rides', icon: Clock },
+              { id: 'requests', label: t.transport.myRides, icon: Clock },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1094,8 +1099,8 @@ export const VillageTransportPage = () => {
                   <div>
                     <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">
                       {currentRiderRide.status === 'pending' 
-                        ? (language === 'bn' ? 'ড্রাইভার খোঁজা হচ্ছে...' : 'Finding your ride...') 
-                        : (language === 'bn' ? 'ড্রাইভার আসছে' : 'Driver Assigned')}
+                        ? t.transport.findingRide 
+                        : t.transport.driverAssigned}
                     </h4>
                     <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
                       Ride ID: #{currentRiderRide.id.slice(-6).toUpperCase()}
@@ -1210,7 +1215,7 @@ export const VillageTransportPage = () => {
                     </div>
                     <h3 className="text-2xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.requestRide}</h3>
                     <p className="text-zinc-500 text-sm font-medium mb-8 leading-relaxed">
-                      {language === 'bn' ? 'আপনার গন্তব্য লিখুন এবং নিকটস্থ ড্রাইভারদের সাথে যোগাযোগ করুন।' : 'Enter your destination and connect with nearby drivers.'}
+                      {t.transport.enterDestination}
                     </p>
                     
                     <button
@@ -1224,7 +1229,7 @@ export const VillageTransportPage = () => {
                     <div className="mt-8 pt-8 border-t border-zinc-100">
                       <div className="flex items-center gap-4 text-zinc-500">
                         <ShieldCheck size={20} className="text-emerald-500" />
-                        <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'নিরাপদ ও নির্ভরযোগ্য' : 'Safe & Reliable'}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">{t.transport.safeReliable}</span>
                       </div>
                     </div>
                   </div>
@@ -1257,7 +1262,10 @@ export const VillageTransportPage = () => {
                       to={currentRiderRide?.dropoffCoords || activeDriverRide?.dropoffCoords || dropoffCoords} 
                     />
                     {(currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords) && (
-                      <MapUpdater center={[(currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lat, (currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lng]} />
+                      <MapUpdater 
+                      center={[(currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lat, (currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lng]} 
+                      zoom={mapZoom}
+                    />
                     )}
                     {vehicles.map((vehicle) => {
                       const isAssignedToMe = currentRiderRide?.driverUid === vehicle.driverUid;
@@ -1299,7 +1307,7 @@ export const VillageTransportPage = () => {
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-16 pointer-events-auto">
                           <div className="bg-zinc-900 text-white px-4 py-2 rounded-xl shadow-2xl border border-zinc-800 whitespace-nowrap">
                             <p className="text-[10px] font-black uppercase tracking-widest">
-                              {isPickingLocation === 'pickup' ? 'Set Pickup' : 'Set Drop-off'}
+                              {isPickingLocation === 'pickup' ? t.transport.setPickup : t.transport.setDropoff}
                             </p>
                           </div>
                         </div>
@@ -1307,22 +1315,24 @@ export const VillageTransportPage = () => {
                     </div>
                   )}
 
+                  <div className="absolute bottom-6 right-6 z-[1002]">
+                    <button
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition((position) => {
+                            const { latitude, longitude } = position.coords;
+                            setPickupCoords({ lat: latitude, lng: longitude });
+                          });
+                        }
+                      }}
+                      className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-zinc-900 hover:bg-zinc-50 transition-all border border-zinc-200"
+                    >
+                      <LocateFixed size={24} />
+                    </button>
+                  </div>
+
                   {isPickingLocation && (
                     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1002] flex flex-col items-center gap-4">
-                      <button
-                        onClick={() => {
-                          if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition((position) => {
-                              const { latitude, longitude } = position.coords;
-                              setPickupCoords({ lat: latitude, lng: longitude });
-                              // MapUpdater will handle the zoom/center
-                            });
-                          }
-                        }}
-                        className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-zinc-900 hover:bg-zinc-50 transition-all border border-zinc-200"
-                      >
-                        <LocateFixed size={24} />
-                      </button>
                       <button
                         onClick={async () => {
                           const coords = isPickingLocation === 'pickup' ? pickupCoords : dropoffCoords;
@@ -1343,14 +1353,14 @@ export const VillageTransportPage = () => {
                         }}
                         className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-brand-700 transition-all"
                       >
-                        Confirm Location
+                        {t.transport.confirmLocation}
                       </button>
                     </div>
                   )}
                   <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Live Tracking</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">{t.transport.liveTracking}</span>
                     </div>
                   </div>
                   {showVehicleSelection && (
@@ -1455,7 +1465,7 @@ export const VillageTransportPage = () => {
                   </div>
                   <h3 className="text-3xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.becomeDriver}</h3>
                   <p className="text-zinc-500 font-medium mb-12 max-w-md mx-auto">
-                    {language === 'bn' ? 'আপনার যানবাহন নথিভুক্ত করুন এবং বার্নিয়ার মানুষের সেবা করুন।' : 'Register your vehicle and serve the people of Barnia.'}
+                    {t.transport.registerVehicleDesc}
                   </p>
                   <button
                     onClick={() => setShowRegisterModal(true)}
@@ -1536,7 +1546,7 @@ export const VillageTransportPage = () => {
                             : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
                         }`}
                       >
-                        {myVehicle.status === 'available' ? 'Go Offline' : 'Go Online'}
+                        {myVehicle.status === 'available' ? t.transport.goOffline : t.transport.goOnline}
                       </button>
                     </div>
                   </div>
@@ -1545,7 +1555,7 @@ export const VillageTransportPage = () => {
                   <div className="space-y-6">
                     <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-4">
                       <AlertCircle className="text-brand-600" />
-                      {language === 'bn' ? 'আগত অনুরোধ' : 'Incoming Requests'}
+                      {t.transport.incomingRequests}
                     </h3>
                     
                     {rideRequests.length > 0 ? (
@@ -1854,7 +1864,7 @@ export const VillageTransportPage = () => {
                   <button onClick={() => setShowRequestModal(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
                     <X size={24} className="text-zinc-900" />
                   </button>
-                  <h3 className="text-xl font-black text-zinc-900 tracking-tight">Plan your trip</h3>
+                  <h3 className="text-xl font-black text-zinc-900 tracking-tight">{t.transport.planTrip}</h3>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -1867,17 +1877,18 @@ export const VillageTransportPage = () => {
                           navigator.geolocation.getCurrentPosition((position) => {
                             const { latitude, longitude } = position.coords;
                             setPickupCoords({ lat: latitude, lng: longitude });
+                            setMapZoom(18);
                           });
                         }
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-brand-50 rounded-full text-sm font-bold text-brand-600 border border-brand-100"
                     >
                       <LocateFixed size={16} />
-                      Live Pickup
+                      {t.transport.livePickup}
                     </button>
                     <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-bold text-zinc-900">
                       <User size={16} />
-                      For me
+                      {t.transport.forMe}
                       <ChevronRight size={14} className="rotate-90" />
                     </button>
                   </div>
@@ -1898,7 +1909,7 @@ export const VillageTransportPage = () => {
                             setShowFromSuggestions(true);
                           }}
                           onFocus={() => setShowFromSuggestions(true)}
-                          placeholder="Where from?"
+                          placeholder={t.transport.whereFrom}
                           className="w-full py-2 bg-transparent outline-none font-bold text-lg placeholder:text-zinc-300"
                         />
                         {fromLocation && (
@@ -1917,7 +1928,7 @@ export const VillageTransportPage = () => {
                             setShowToSuggestions(true);
                           }}
                           onFocus={() => setShowToSuggestions(true)}
-                          placeholder="Where to?"
+                          placeholder={t.transport.whereTo}
                           className="w-full py-2 bg-transparent outline-none font-bold text-lg placeholder:text-zinc-300"
                         />
                         {toLocation && (
@@ -1976,7 +1987,7 @@ export const VillageTransportPage = () => {
                         <Navigation size={20} />
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-zinc-900">Set location on map</p>
+                        <p className="font-bold text-zinc-900">{t.transport.setLocationOnMap}</p>
                       </div>
                     </button>
                   </div>
@@ -2017,10 +2028,10 @@ export const VillageTransportPage = () => {
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                   {[
-                    { type: 'Toto', name: 'Go Non AC', capacity: 4, time: '5 min', price: 20, icon: Car, badge: null },
-                    { type: 'Bike', name: 'Bike', capacity: 1, time: '2 min', price: 15, icon: Navigation, badge: 'Faster' },
-                    { type: 'Auto', name: 'Barnia Go', capacity: 3, time: '5 min', price: 30, icon: Car, badge: null },
-                    { type: 'Car', name: 'Premier', capacity: 4, time: '10 min', price: 100, icon: Car, badge: 'Top Rated' },
+                    { type: 'Toto', name: 'Barnia Toto', capacity: 4, time: '5 min', price: 20, icon: Car, badge: null },
+                    { type: 'Bike', name: 'Barnia Bike', capacity: 1, time: '2 min', price: 15, icon: Navigation, badge: 'Faster' },
+                    { type: 'Auto', name: 'Barnia Auto', capacity: 3, time: '5 min', price: 30, icon: Car, badge: null },
+                    { type: 'Car', name: 'Barnia Car', capacity: 4, time: '10 min', price: 100, icon: Car, badge: 'Top Rated' },
                   ].map((v) => (
                     <button
                       key={v.type}
@@ -2117,7 +2128,7 @@ export const VillageTransportPage = () => {
                   
                   {regVehicleType !== 'Toto' && (
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{language === 'bn' ? 'যানবাহন নম্বর' : 'Vehicle Number'}</label>
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.vehicleNumber}</label>
                       <input
                         required
                         type="text"
@@ -2132,7 +2143,7 @@ export const VillageTransportPage = () => {
                         }`}
                       />
                       {!isVehicleNumberValid && (
-                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-1">{language === 'bn' ? 'যানবাহন নম্বর দিন' : 'Vehicle number is required'}</p>
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-1">{t.transport.enterVehicleNumber}</p>
                       )}
                     </div>
                   )}

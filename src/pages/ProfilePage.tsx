@@ -230,7 +230,7 @@ export const ProfilePage = () => {
           className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-4 border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 mb-12 shadow-sm hover:shadow-md"
         >
           <ChevronLeft size={16} />
-          {language === 'bn' ? 'সব ইনফ্লুয়েন্সার' : 'All Influencers'}
+          {t.common.allInfluencers}
         </button>
 
         <motion.div 

@@ -202,13 +202,13 @@ export const ShopProfilePage = () => {
         })
       });
 
-      toast.success("Order placed successfully! The shop owner will call you soon.");
+      toast.success(t.shop.orderPlaced);
       setCart([]);
       setShowCart(false);
       setCustomerInfo({ name: '', phone: '' });
       setLocation(null);
     } catch (err) {
-      toast.error("Failed to place order. Please try again.");
+      toast.error(t.shop.orderFailed);
       console.error(err);
     } finally {
       setIsOrdering(false);
@@ -228,24 +228,24 @@ export const ShopProfilePage = () => {
       };
 
       await addDoc(collection(db, 'shops', shop.id, 'products'), productData);
-      toast.success("Product added successfully!");
+      toast.success(t.shop.productAdded);
       setShowAddProduct(false);
       setNewProduct({ name: '', price: '', description: '', imageUrl: '', category: '' });
     } catch (err) {
-      toast.error("Failed to add product");
+      toast.error(t.shop.orderFailed);
       console.error(err);
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
     if (!shop || !isOwner) return;
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    if (!window.confirm(t.shop.deleteConfirm)) return;
 
     try {
       await deleteDoc(doc(db, 'shops', shop.id, 'products', productId));
-      toast.success("Product deleted");
+      toast.success(t.shop.productDeleted);
     } catch (err) {
-      toast.error("Failed to delete product");
+      toast.error(t.shop.orderFailed);
     }
   };
 
@@ -273,7 +273,7 @@ export const ShopProfilePage = () => {
           <Zap size={48} />
         </div>
         <h1 className="text-3xl font-black text-zinc-900 mb-4 tracking-tight">
-          {language === 'bn' ? 'দোকান পাওয়া যায়নি' : 'Shop Not Found'}
+          {t.common.shopNotFound}
         </h1>
         <p className="text-zinc-500 mb-10 font-medium text-center max-w-md">
           {language === 'bn' 
@@ -285,7 +285,7 @@ export const ShopProfilePage = () => {
           className="bg-zinc-900 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-3 shadow-xl"
         >
           <ChevronLeft size={20} />
-          {language === 'bn' ? 'ফিরে যান' : 'Go Back'}
+          {t.common.goBack}
         </button>
       </div>
     );
@@ -321,7 +321,7 @@ export const ShopProfilePage = () => {
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-4 border-zinc-200 hover:border-brand-500 hover:text-brand-600 transition-all text-xs font-bold text-zinc-600 shadow-sm"
           >
             <ChevronLeft size={16} />
-            {language === 'bn' ? 'সব দোকান' : 'All Shops'}
+            {t.common.allShops}
           </button>
 
           {isOwner && (
@@ -331,14 +331,14 @@ export const ShopProfilePage = () => {
                 className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'products' ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
               >
                 <Tag size={16} />
-                Manage Products
+                {t.shop.manageProducts}
               </button>
               <button 
                 onClick={() => setActiveTab('orders')}
                 className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:bg-zinc-50'}`}
               >
                 <ClipboardList size={16} />
-                Orders
+                {t.shop.orders}
                 {orders.filter(o => o.status === 'pending').length > 0 && (
                   <span className="bg-brand-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
                     {orders.filter(o => o.status === 'pending').length}

@@ -315,9 +315,9 @@ export const BarniaBazar = () => {
     setSeeding(true);
     try {
       await seedDatabase();
-      toast.success(language === 'bn' ? 'সফলভাবে ডেটা যোগ করা হয়েছে!' : 'Data seeded successfully!');
+      toast.success(t.bazar.seedSuccess);
     } catch (err) {
-      toast.error(language === 'bn' ? 'ডেটা যোগ করতে সমস্যা হয়েছে' : 'Failed to seed data');
+      toast.error(t.bazar.seedFailed);
       console.error(err);
     } finally {
       setSeeding(false);
@@ -342,10 +342,10 @@ export const BarniaBazar = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/20 text-brand-400 font-black text-xs uppercase tracking-widest mb-4 border border-brand-500/20">
                 <Zap size={14} />
-                {language === 'bn' ? 'আজকের বাজার দর' : 'Today\'s Market Rates'}
+                {t.bazar.marketRates}
               </div>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-none">
-                {language === 'bn' ? 'বার্নিয়া বাজার রেট' : 'Barnia Market Rates'}
+                {t.bazar.marketRatesTitle}
               </h2>
             </div>
             <div className="text-right">
@@ -356,12 +356,12 @@ export const BarniaBazar = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {[
-              { name: language === 'bn' ? 'আলু' : 'Potato', price: '₹20/kg', trend: 'up' },
-              { name: language === 'bn' ? 'পেঁয়াজ' : 'Onion', price: '₹35/kg', trend: 'down' },
-              { name: language === 'bn' ? 'টমেটো' : 'Tomato', price: '₹40/kg', trend: 'stable' },
-              { name: language === 'bn' ? 'চাল' : 'Rice', price: '₹45/kg', trend: 'stable' },
-              { name: language === 'bn' ? 'ডাল' : 'Dal', price: '₹120/kg', trend: 'up' },
-              { name: language === 'bn' ? 'তেল' : 'Oil', price: '₹145/L', trend: 'down' },
+              { name: t.bazar.potato, price: '₹20/kg', trend: 'up' },
+              { name: t.bazar.onion, price: '₹35/kg', trend: 'down' },
+              { name: t.bazar.tomato, price: '₹40/kg', trend: 'stable' },
+              { name: t.bazar.rice, price: '₹45/kg', trend: 'stable' },
+              { name: t.bazar.dal, price: '₹120/kg', trend: 'up' },
+              { name: t.bazar.oil, price: '₹145/L', trend: 'down' },
             ].map((item, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all group">
                 <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.name}</p>
@@ -397,7 +397,7 @@ export const BarniaBazar = () => {
                 title="Seed 17 Demo Shops"
               >
                 {seeding ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
-                {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? 'সিড ডেটা' : 'Seed Data')}
+                {seeding ? t.bazar.seeding : t.bazar.seedData}
               </button>
             )}
             <div className="relative group flex-1 sm:flex-none">
@@ -421,7 +421,7 @@ export const BarniaBazar = () => {
               className="bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-600 hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10 group"
             >
               {user ? (myShop ? <Store size={20} className="group-hover:scale-110 transition-transform" /> : <Plus size={20} className="group-hover:rotate-90 transition-transform" />) : <LogIn size={20} />}
-              {user ? (myShop ? (language === 'bn' ? 'দোকান এডিট করুন' : 'Edit My Shop') : t.bazar.register) : (language === 'bn' ? 'লগইন করুন' : 'Login to Register')}
+              {user ? (myShop ? t.bazar.editShop : t.bazar.register) : t.bazar.loginToRegister}
             </button>
           </div>
         </div>
@@ -433,7 +433,7 @@ export const BarniaBazar = () => {
               <div className="absolute inset-0 border-4 border-brand-600 rounded-full border-t-transparent animate-spin"></div>
             </div>
             <p className="text-zinc-400 font-black uppercase tracking-widest text-xs animate-pulse">
-              {language === 'bn' ? 'দোকান লোড হচ্ছে...' : 'Loading shops...'}
+              {t.bazar.loadingShops}
             </p>
           </div>
         ) : filteredShops.length === 0 ? (
@@ -442,10 +442,10 @@ export const BarniaBazar = () => {
               <ShoppingBag className="text-zinc-300" size={48} />
             </div>
             <h3 className="text-3xl font-black text-zinc-900 mb-4 tracking-tight">
-              {language === 'bn' ? 'কোন দোকান পাওয়া যায়নি' : 'No shops found'}
+              {t.bazar.noShopsFound}
             </h3>
             <p className="text-zinc-500 max-w-md mx-auto mb-10">
-              {searchQuery ? (language === 'bn' ? 'আপনার অনুসন্ধানের সাথে মেলে এমন কিছু পাওয়া যায়নি' : 'Try adjusting your search query') : (language === 'bn' ? 'প্রথম দোকানটি নথিভুক্ত করুন!' : 'Be the first to register a shop!')}
+              {searchQuery ? t.bazar.adjustSearch : t.bazar.firstShop}
             </p>
             
             {isAdmin && !searchQuery && (
@@ -455,7 +455,7 @@ export const BarniaBazar = () => {
                 className="bg-zinc-100 text-zinc-600 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2 disabled:opacity-50 mx-auto"
               >
                 {seeding ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                {seeding ? (language === 'bn' ? 'প্রসেসিং...' : 'Seeding...') : (language === 'bn' ? '১৭টি ডেমো দোকান যোগ করুন' : 'Seed 17 Demo Shops')}
+                {seeding ? t.bazar.seeding : t.bazar.seedDemoShops}
               </button>
             )}
           </div>
@@ -533,7 +533,7 @@ export const BarniaBazar = () => {
                     className="w-full py-3 mb-6 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-600 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
                     <ExternalLink size={14} />
-                    {language === 'bn' ? 'দোকান দেখুন' : 'View Shop'}
+                    {t.bazar.viewShop}
                   </button>
                   
                   <div className="space-y-4 mt-auto">
@@ -577,23 +577,23 @@ export const BarniaBazar = () => {
                   <X size={32} />
                 </div>
                 <h3 className="text-xl font-bold text-zinc-900 mb-2">
-                  {language === 'bn' ? 'দোকানটি মুছে ফেলবেন?' : 'Delete Shop?'}
+                  {t.bazar.deleteShop}
                 </h3>
                 <p className="text-zinc-500 mb-8">
-                  {language === 'bn' ? 'আপনি কি নিশ্চিত যে আপনি এই দোকানটি মুছে ফেলতে চান? এই কাজটি আর ফেরানো যাবে না।' : 'Are you sure you want to delete this shop? This action cannot be undone.'}
+                  {t.bazar.deleteShopConfirm}
                 </p>
                 <div className="flex gap-4">
                   <button
                     onClick={() => setConfirmDelete(null)}
                     className="flex-1 px-6 py-3 rounded-xl font-bold text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-all"
                   >
-                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                    {t.bazar.cancel}
                   </button>
                   <button
                     onClick={confirmDeleteAction}
                     className="flex-1 px-6 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg shadow-red-200"
                   >
-                    {language === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+                    {t.bazar.delete}
                   </button>
                 </div>
               </motion.div>
@@ -771,7 +771,7 @@ export const BarniaBazar = () => {
                           type="submit"
                           className="w-full bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-200"
                         >
-                          {editingId ? (language === 'bn' ? 'আপডেট করুন' : 'Update Shop') : (language === 'bn' ? 'দোকান প্রকাশ করুন' : 'Register Shop')}
+                          {editingId ? t.bazar.updateShop : t.bazar.publishShop}
                         </button>
                       </form>
                     </>
@@ -852,14 +852,14 @@ export const BarniaBazar = () => {
                       className="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
                     >
                       <Phone size={20} />
-                      {language === 'bn' ? 'কল করুন' : 'Call Owner'}
+                      {t.bazar.callOwner}
                     </a>
                     <button 
                       onClick={() => navigate(`/shop/${selectedShop.slug || selectedShop.id}`)}
                       className="flex-1 bg-brand-600 text-white py-4 rounded-2xl font-bold hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
                     >
                       <ExternalLink size={20} />
-                      {language === 'bn' ? 'প্রোফাইল' : 'Full Profile'}
+                      {t.bazar.fullProfile}
                     </button>
                   </div>
                 </div>
