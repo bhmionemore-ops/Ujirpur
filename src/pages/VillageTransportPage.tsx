@@ -6,7 +6,7 @@ import { useFirebase } from '../FirebaseContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, orderBy, getDoc, arrayUnion } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 
 // Fix Leaflet default icon issue
@@ -36,6 +36,32 @@ const MapUpdater = ({ center }: { center: [number, number] }) => {
   return null;
 };
 
+const MapClickHandler = ({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.on('click', onMapClick);
+    return () => {
+      map.off('click', onMapClick);
+    };
+  }, [map, onMapClick]);
+  return null;
+};
+
+const RouteLine = ({ from, to }: { from: { lat: number; lng: number } | null, to: { lat: number; lng: number } | null }) => {
+  if (!from || !to) return null;
+  return (
+    <>
+      <Marker position={[from.lat, from.lng]} icon={DefaultIcon}>
+        <Popup>Pickup Location</Popup>
+      </Marker>
+      <Marker position={[to.lat, to.lng]} icon={DefaultIcon}>
+        <Popup>Drop-off Location</Popup>
+      </Marker>
+      <Polyline positions={[[from.lat, from.lng], [to.lat, to.lng]]} color="#f58e27" weight={4} dashArray="10, 10" />
+    </>
+  );
+};
+
 interface Vehicle {
   id: string;
   driverUid: string;
@@ -59,6 +85,8 @@ interface RideRequest {
   riderPhone: string;
   from: string;
   to: string;
+  pickupCoords?: { lat: number; lng: number };
+  dropoffCoords?: { lat: number; lng: number };
   vehicleId?: string;
   driverUid?: string;
   driverName?: string;
@@ -335,7 +363,24 @@ export const VillageTransportPage = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isPickingLocation, setIsPickingLocation] = useState<'pickup' | 'dropoff' | null>(null);
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('Toto');
+
+  const onMapClick = (e: L.LeafletMouseEvent) => {
+    if (isPickingLocation === 'pickup') {
+      setPickupCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+      setFromLocation(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      setIsPickingLocation(null);
+      toast.success("Pickup location set!");
+    } else if (isPickingLocation === 'dropoff') {
+      setDropoffCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+      setToLocation(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      setIsPickingLocation(null);
+      toast.success("Drop-off location set!");
+    }
+  };
 
   // Registration states
   const [regVehicleType, setRegVehicleType] = useState<'Toto' | 'Auto' | 'Van' | 'Bike' | 'Car'>('Toto');
@@ -353,6 +398,7 @@ export const VillageTransportPage = () => {
     callId?: string;
   } | null>(null);
   const [ratingRide, setRatingRide] = useState<RideRequest | null>(null);
+  const [selectedRide, setSelectedRide] = useState<RideRequest | null>(null);
 
   // Notification sound for drivers
   useEffect(() => {
@@ -581,6 +627,8 @@ export const VillageTransportPage = () => {
         riderPhone: user.phoneNumber || '',
         from: fromLocation,
         to: toLocation,
+        pickupCoords,
+        dropoffCoords,
         vehicleType: selectedVehicleType,
         fare: estimatedFare,
         status: 'pending',
@@ -590,6 +638,8 @@ export const VillageTransportPage = () => {
       setShowRequestModal(false);
       setFromLocation('');
       setToLocation('');
+      setPickupCoords(null);
+      setDropoffCoords(null);
     } catch (error) {
       console.error("Error requesting ride:", error);
       toast.error("Failed to request ride");
@@ -761,6 +811,14 @@ export const VillageTransportPage = () => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
+                    <MapClickHandler onMapClick={onMapClick} />
+                    <RouteLine 
+                      from={selectedRide?.pickupCoords || pickupCoords} 
+                      to={selectedRide?.dropoffCoords || dropoffCoords} 
+                    />
+                    {selectedRide && selectedRide.pickupCoords && (
+                      <MapUpdater center={[selectedRide.pickupCoords.lat, selectedRide.pickupCoords.lng]} />
+                    )}
                     {vehicles.map((vehicle) => (
                       vehicle.location && (
                         <Marker 
@@ -779,6 +837,26 @@ export const VillageTransportPage = () => {
                       )
                     ))}
                   </MapContainer>
+                  {isPickingLocation && (
+                    <div className="absolute inset-0 z-[1001] bg-brand-600/10 pointer-events-none flex items-center justify-center">
+                      <div className="bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-brand-600 animate-bounce">
+                        <p className="text-sm font-black text-brand-600 uppercase tracking-widest">
+                          Tap on map to set {isPickingLocation}
+                        </p>
+                      </div>
+                      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
+                        <button
+                          onClick={() => {
+                            setIsPickingLocation(null);
+                            setShowRequestModal(true);
+                          }}
+                          className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-brand-700 transition-all"
+                        >
+                          Confirm & Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -980,6 +1058,19 @@ export const VillageTransportPage = () => {
                                   <p className="text-2xl font-black text-emerald-700">₹{request.fare}</p>
                                 </div>
                               )}
+
+                              {request.pickupCoords && request.dropoffCoords && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedRide(request);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }}
+                                  className="flex items-center gap-2 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:text-brand-700 transition-colors"
+                                >
+                                  <Navigation size={14} />
+                                  View Route on Map
+                                </button>
+                              )}
                             </div>
 
                             <div className="flex flex-row md:flex-col gap-3 justify-end">
@@ -1112,47 +1203,72 @@ export const VillageTransportPage = () => {
                             <p className="font-bold text-zinc-900">{request.to}</p>
                           </div>
                         </div>
+                        {request.pickupCoords && request.dropoffCoords && (
+                          <button
+                            onClick={() => {
+                              setSelectedRide(request);
+                              setActiveTab('find');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="flex items-center gap-2 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:text-brand-700 transition-colors mt-4"
+                          >
+                            <Navigation size={14} />
+                            View Route on Map
+                          </button>
+                        )}
                       </div>
 
                       {request.status === 'accepted' && (
-                        <div className="p-6 rounded-3xl bg-zinc-50 border border-zinc-100">
-                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Driver Assigned</p>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
-                                <User size={20} />
+                        <div className="space-y-4">
+                          <div className="p-6 rounded-3xl bg-zinc-50 border border-zinc-100">
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Driver Assigned</p>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
+                                  <User size={20} />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-zinc-900">{request.driverName || 'Driver'}</p>
+                                  <p className="text-zinc-500 text-xs font-bold">{request.driverPhone}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-bold text-zinc-900">{request.driverName || 'Driver'}</p>
-                                <p className="text-zinc-500 text-xs font-bold">{request.driverPhone}</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setActiveChat(request)}
+                                  className="p-3 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-all"
+                                >
+                                  <MessageCircle size={20} />
+                                </button>
+                                <button
+                                  onClick={() => setActiveCall({
+                                    requestId: request.id,
+                                    callerUid: user?.uid || '',
+                                    receiverUid: request.driverUid || '',
+                                    receiverName: request.driverName || 'Driver',
+                                    isIncoming: false
+                                  })}
+                                  className="p-3 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-all"
+                                >
+                                  <Volume2 size={20} />
+                                </button>
+                                <a
+                                  href={`tel:${request.driverPhone}`}
+                                  className="p-3 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 transition-all"
+                                >
+                                  <Phone size={20} />
+                                </a>
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setActiveChat(request)}
-                                className="p-3 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-all"
-                              >
-                                <MessageCircle size={20} />
-                              </button>
-                              <button
-                                onClick={() => setActiveCall({
-                                  requestId: request.id,
-                                  callerUid: user?.uid || '',
-                                  receiverUid: request.driverUid || '',
-                                  receiverName: request.driverName || 'Driver',
-                                  isIncoming: false
-                                })}
-                                className="p-3 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-all"
-                              >
-                                <Volume2 size={20} />
-                              </button>
-                              <a
-                                href={`tel:${request.driverPhone}`}
-                                className="p-3 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 transition-all"
-                              >
-                                <Phone size={20} />
-                              </a>
+                          </div>
+                          
+                          <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <ShieldCheck size={18} className="text-red-600" />
+                              <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Safety Center</span>
                             </div>
+                            <button className="px-4 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all">
+                              SOS
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1216,30 +1332,85 @@ export const VillageTransportPage = () => {
                 <form onSubmit={handleRequestRide} className="p-8 space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.from}</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
-                      <input
-                        required
-                        type="text"
-                        value={fromLocation}
-                        onChange={(e) => setFromLocation(e.target.value)}
-                        placeholder="e.g. Barnia Bazar"
-                        className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
+                        <input
+                          required
+                          type="text"
+                          value={fromLocation}
+                          onChange={(e) => setFromLocation(e.target.value)}
+                          placeholder="e.g. Barnia Bazar"
+                          className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPickingLocation('pickup');
+                          setShowRequestModal(false);
+                        }}
+                        className="p-4 bg-brand-50 text-brand-600 rounded-2xl hover:bg-brand-100 transition-all border border-brand-100"
+                        title="Pick on Map"
+                      >
+                        <MapPin size={20} />
+                      </button>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.to}</label>
-                    <div className="relative">
-                      <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
-                      <input
-                        required
-                        type="text"
-                        value={toLocation}
-                        onChange={(e) => setToLocation(e.target.value)}
-                        placeholder="e.g. Ujirpur Station"
-                        className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
+                        <input
+                          required
+                          type="text"
+                          value={toLocation}
+                          onChange={(e) => setToLocation(e.target.value)}
+                          placeholder="e.g. Ujirpur Station"
+                          className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPickingLocation('dropoff');
+                          setShowRequestModal(false);
+                        }}
+                        className="p-4 bg-brand-50 text-brand-600 rounded-2xl hover:bg-brand-100 transition-all border border-brand-100"
+                        title="Pick on Map"
+                      >
+                        <Navigation size={20} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Select Vehicle Type</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { type: 'Toto', icon: Car, fare: 20 },
+                        { type: 'Auto', icon: Car, fare: 30 },
+                        { type: 'Bike', icon: Navigation, fare: 15 },
+                        { type: 'Van', icon: Car, fare: 50 },
+                        { type: 'Car', icon: Car, fare: 100 },
+                      ].map((v) => (
+                        <button
+                          key={v.type}
+                          type="button"
+                          onClick={() => setSelectedVehicleType(v.type)}
+                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                            selectedVehicleType === v.type
+                              ? 'border-brand-600 bg-brand-50 text-brand-600'
+                              : 'border-zinc-100 bg-zinc-50 text-zinc-400 hover:border-zinc-200'
+                          }`}
+                        >
+                          <v.icon size={24} />
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-tight">{v.type}</p>
+                            <p className="text-xs font-bold">₹{v.fare}</p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <button
