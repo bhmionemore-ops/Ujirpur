@@ -705,7 +705,10 @@ async function startServer() {
   app.get("/sw.js", async (req, res) => {
     try {
       const data = await fs.readFile(path.resolve("sw.js"), "utf-8");
-      res.status(200).set("Content-Type", "application/javascript").send(data);
+      res.status(200)
+        .set("Content-Type", "application/javascript")
+        .set("Cache-Control", "no-cache, no-store, must-revalidate")
+        .send(data);
     } catch (e) {
       res.status(404).send("Not found");
     }
@@ -1964,7 +1967,12 @@ async function startServer() {
         };
         
         html = await injectMetaTags(html, metadata);
-        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+        res.status(200)
+          .set({ 
+            "Content-Type": "text/html",
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+          })
+          .end(html);
       } catch (err) {
         console.error("[SSR] Production catch-all error:", err);
         res.status(500).send("Internal Server Error");
