@@ -4,7 +4,7 @@ export const translations = {
   bn: {
     chat: {
       welcome: 'হ্যালো! আমরা আপনাকে আজ কীভাবে সাহায্য করতে পারি? এখানে পাঠানো যেকোনো বার্তা সরাসরি আমাদের অ্যাডমিনের কাছে যায়।',
-      contactInfo: 'আপনি সরাসরি আমাদের ইমেইল ujirpur.barnia6@gmail.com অথবা আমাদের সোশ্যাল মিডিয়া হ্যান্ডেলে যোগাযোগ করতে পারেন: ফেসবুক (https://www.facebook.com/share/r/1HbN6N3EBa/) এবং ইনস্টাগ্রাম (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5)।',
+      contactInfo: 'আপনি সরাসরি আমাদের ইমেইল info@barnia.in অথবা আমাদের সোশ্যাল মিডিয়া হ্যান্ডেলে যোগাযোগ করতে পারেন: ফেসবুক (https://www.facebook.com/share/r/1HbN6N3EBa/) এবং ইনস্টাগ্রাম (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5)।',
       support: 'লাইভ সাপোর্ট',
       assistant: 'স্বয়ংক্রিয় সহকারী',
       delivered: 'বার্তা অ্যাডমিনের কাছে পৌঁছেছে!',
@@ -56,7 +56,7 @@ export const translations = {
       subtitle: 'বার্নিয়া এবং আশেপাশের এলাকার জন্য সহজ ও দ্রুত যানবাহন বুকিং।',
       findRide: 'গাড়ি খুঁজুন',
       driverMode: 'ড্রাইভার মোড',
-      requestRide: 'রাইড অনুরোধ করুন',
+      requestRide: 'পরিবহন',
       from: 'কোথা থেকে',
       to: 'কোথায় যাবেন',
       vehicleType: 'যানবাহনের ধরন',
@@ -242,7 +242,7 @@ export const translations = {
   en: {
     chat: {
       welcome: 'Hello! How can we help you today? Any messages sent here go directly to our admin.',
-      contactInfo: 'You can contact us directly at ujirpur.barnia6@gmail.com or via our social media: Facebook (https://www.facebook.com/share/r/1HbN6N3EBa/) and Instagram (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5).',
+      contactInfo: 'You can contact us directly at info@barnia.in or via our social media: Facebook (https://www.facebook.com/share/r/1HbN6N3EBa/) and Instagram (https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5).',
       support: 'Live Support',
       assistant: 'Automated Assistant',
       delivered: 'Message delivered to admin!',
@@ -294,7 +294,7 @@ export const translations = {
       subtitle: 'Easy and fast vehicle booking for Barnia and surrounding areas.',
       findRide: 'Find a Ride',
       driverMode: 'Driver Mode',
-      requestRide: 'Request Ride',
+      requestRide: 'Poribohon',
       from: 'From',
       to: 'To',
       vehicleType: 'Vehicle Type',

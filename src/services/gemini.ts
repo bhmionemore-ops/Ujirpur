@@ -9,7 +9,7 @@ export async function generateChatReply(message: string, history: { text: string
   Website Info:
   - Location: Barnia, Nadia, West Bengal, India.
   - Features: Barnia Bazar (market prices), Influencer Network, and Collaboration Hub.
-  - Contact Email: ujirpur.barnia6@gmail.com
+  - Contact Email: info@barnia.in
   - Facebook: https://www.facebook.com/share/r/1HbN6N3EBa/
   - Instagram: https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5
   

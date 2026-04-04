@@ -105,8 +105,8 @@ export const TermsOfServicePage = () => {
           <div className="mt-20 pt-12 border-t border-zinc-100">
             <p className="text-zinc-500 font-medium">
               {language === 'bn' 
-                ? "এই পরিষেবার শর্তাবলী সম্পর্কে আপনার যদি কোনো প্রশ্ন থাকে, তাহলে আমাদের সাথে যোগাযোগ করুন: ujirpur.barnia6@gmail.com"
-                : "If you have any questions about these Terms of Service, please contact us at: ujirpur.barnia6@gmail.com"}
+                ? "এই পরিষেবার শর্তাবলী সম্পর্কে আপনার যদি কোনো প্রশ্ন থাকে, তাহলে আমাদের সাথে যোগাযোগ করুন: info@barnia.in"
+                : "If you have any questions about these Terms of Service, please contact us at: info@barnia.in"}
             </p>
           </div>
         </motion.div>

@@ -657,7 +657,7 @@ async function startServer() {
     logger: true // log information in console
   });
 
-  const RECIPIENT = process.env.NOTIFICATION_EMAIL || "ujirpur.barnia6@gmail.com";
+  const RECIPIENT = process.env.NOTIFICATION_EMAIL || "info@barnia.in";
 
   // Body parser middleware - MUST be before routes
   app.use(express.json());

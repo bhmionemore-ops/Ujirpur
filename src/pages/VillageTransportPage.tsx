@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Car, MapPin, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Search, User, Navigation, ShieldCheck, Star, MessageCircle, Send, Mic, MicOff, PhoneOff, Volume2, X, ChevronRight, Activity } from 'lucide-react';
+import { Car, MapPin, Phone, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Search, User, Navigation, ShieldCheck, Star, MessageCircle, Send, Mic, MicOff, PhoneOff, Volume2, X, ChevronRight, Activity, LocateFixed } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
 import { db } from '../firebase';
@@ -8,88 +8,6 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, serverTim
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-
-const LocationAutocomplete = ({ 
-  value, 
-  onChange, 
-  placeholder, 
-  icon: Icon,
-  onSelect
-}: { 
-  value: string; 
-  onChange: (val: string) => void; 
-  placeholder: string;
-  icon: any;
-  onSelect?: (lat: number, lng: number, address: string) => void;
-}) => {
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const searchLocation = async (query: string) => {
-    if (query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`);
-      const data = await response.json();
-      setSuggestions(data);
-    } catch (error) {
-      console.error("Search error:", error);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (value && showSuggestions) searchLocation(value);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [value]);
-
-  return (
-    <div className="relative flex-1">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-500" size={18} />
-      <input
-        required
-        type="text"
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setShowSuggestions(true);
-        }}
-        onFocus={() => setShowSuggestions(true)}
-        placeholder={placeholder}
-        className="w-full pl-12 pr-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-      />
-      <AnimatePresence>
-        {showSuggestions && suggestions.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-zinc-200 shadow-xl z-[1000] overflow-hidden"
-          >
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  onChange(s.display_name);
-                  onSelect?.(parseFloat(s.lat), parseFloat(s.lon), s.display_name);
-                  setShowSuggestions(false);
-                }}
-                className="w-full px-6 py-4 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0 flex items-start gap-3"
-              >
-                <MapPin size={16} className="text-zinc-400 mt-1 shrink-0" />
-                <span className="text-xs font-bold text-zinc-600 line-clamp-2">{s.display_name}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
 
 const BookingAlertModal = ({ 
   request, 
@@ -203,25 +121,63 @@ const MapUpdater = ({ center }: { center: [number, number] }) => {
   return null;
 };
 
-const MapClickHandler = ({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) => {
+const MapClickHandler = ({ 
+  onMapClick, 
+  isPickingLocation, 
+  onLocationSelect 
+}: { 
+  onMapClick: (e: L.LeafletMouseEvent) => void,
+  isPickingLocation: string | null,
+  onLocationSelect: (lat: number, lng: number) => void
+}) => {
   const map = useMap();
   useEffect(() => {
     map.on('click', onMapClick);
+    const onMoveEnd = () => {
+      if (isPickingLocation) {
+        const center = map.getCenter();
+        onLocationSelect(center.lat, center.lng);
+      }
+    };
+    map.on('moveend', onMoveEnd);
     return () => {
       map.off('click', onMapClick);
+      map.off('moveend', onMoveEnd);
     };
-  }, [map, onMapClick]);
+  }, [map, onMapClick, isPickingLocation, onLocationSelect]);
   return null;
 };
+
+const PickupIcon = L.divIcon({
+  html: `
+    <div class="w-8 h-8 bg-zinc-900 rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg">
+      <div class="w-2 h-2 bg-white rounded-full"></div>
+    </div>
+  `,
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+const DropoffIcon = L.divIcon({
+  html: `
+    <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white border-2 border-white shadow-lg rotate-45">
+      <div class="w-2 h-2 bg-white rounded-sm -rotate-45"></div>
+    </div>
+  `,
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 
 const RouteLine = ({ from, to }: { from: { lat: number; lng: number } | null, to: { lat: number; lng: number } | null }) => {
   if (!from || !to) return null;
   return (
     <>
-      <Marker position={[from.lat, from.lng]} icon={DefaultIcon}>
+      <Marker position={[from.lat, from.lng]} icon={PickupIcon}>
         <Popup>Pickup Location</Popup>
       </Marker>
-      <Marker position={[to.lat, to.lng]} icon={DefaultIcon}>
+      <Marker position={[to.lat, to.lng]} icon={DropoffIcon}>
         <Popup>Drop-off Location</Popup>
       </Marker>
       <Polyline positions={[[from.lat, from.lng], [to.lat, to.lng]]} color="#f58e27" weight={4} dashArray="10, 10" />
@@ -517,6 +473,71 @@ const VoiceCallModal = ({
   );
 };
 
+export const AssignedDriverIcon = L.divIcon({
+  html: `
+    <div class="relative">
+      <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-2xl border-4 border-white animate-bounce">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-1z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+      </div>
+      <div class="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
+    </div>
+  `,
+  className: '',
+  iconSize: [48, 48],
+  iconAnchor: [24, 48],
+});
+
+const ServiceAreaModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-2 bg-brand-500" />
+          <div className="flex flex-col items-center text-center space-y-6">
+            <div className="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center text-brand-600">
+              <AlertCircle size={40} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">Service Unavailable</h3>
+              <p className="text-zinc-500 font-bold leading-relaxed">
+                We're currently only serving the <span className="text-brand-600">Nadia District</span> area. 
+                Our service is not yet available in your selected location.
+              </p>
+            </div>
+            <div className="w-full p-6 bg-zinc-50 rounded-2xl border border-zinc-100 flex flex-col items-center gap-3">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Want us in your area?</p>
+              <a 
+                href="mailto:info@barnia.in" 
+                className="text-lg font-black text-brand-600 hover:text-brand-700 transition-colors"
+              >
+                info@barnia.in
+              </a>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-500/20"
+            >
+              Got it
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
+
 export const VillageTransportPage = () => {
   const { t, language } = useLanguage();
   const { user, setAuthModalOpen } = useFirebase();
@@ -526,18 +547,30 @@ export const VillageTransportPage = () => {
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [myRequests, setMyRequests] = useState<RideRequest[]>([]);
   const [currentRiderRide, setCurrentRiderRide] = useState<RideRequest | null>(null);
+  const [activeDriverRide, setActiveDriverRide] = useState<RideRequest | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form states
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showVehicleSelection, setShowVehicleSelection] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [fromSuggestions, setFromSuggestions] = useState<any[]>([]);
+  const [toSuggestions, setToSuggestions] = useState<any[]>([]);
+  const [showFromSuggestions, setShowFromSuggestions] = useState(false);
+  const [showToSuggestions, setShowToSuggestions] = useState(false);
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isPickingLocation, setIsPickingLocation] = useState<'pickup' | 'dropoff' | null>(null);
+  const [showServiceAreaModal, setShowServiceAreaModal] = useState(false);
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>('Toto');
+
+  const isWithinServiceArea = (address: string) => {
+    const lowerAddress = address.toLowerCase();
+    return lowerAddress.includes('nadia') || lowerAddress.includes('krishnanagar') || lowerAddress.includes('kalyani') || lowerAddress.includes('ranaghat') || lowerAddress.includes('chakdaha');
+  };
 
   const onMapClick = async (e: L.LeafletMouseEvent) => {
     const { lat, lng } = e.latlng;
@@ -551,20 +584,58 @@ export const VillageTransportPage = () => {
       console.error("Reverse geocode error:", error);
     }
 
+    if (!isWithinServiceArea(address)) {
+      setShowServiceAreaModal(true);
+      setIsPickingLocation(null);
+      return;
+    }
+
     if (isPickingLocation === 'pickup') {
       setPickupCoords({ lat, lng });
       setFromLocation(address);
       setIsPickingLocation(null);
       setShowRequestModal(true);
+      setShowFromSuggestions(false);
       toast.success("Pickup location set!");
     } else if (isPickingLocation === 'dropoff') {
       setDropoffCoords({ lat, lng });
       setToLocation(address);
       setIsPickingLocation(null);
       setShowRequestModal(true);
+      setShowToSuggestions(false);
       toast.success("Drop-off location set!");
     }
   };
+
+  const searchLocations = async (query: string, type: 'from' | 'to') => {
+    if (query.length < 3) {
+      if (type === 'from') setFromSuggestions([]);
+      else setToSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`);
+      const data = await response.json();
+      if (type === 'from') setFromSuggestions(data);
+      else setToSuggestions(data);
+    } catch (error) {
+      console.error("Search error:", error);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (fromLocation && showFromSuggestions) searchLocations(fromLocation, 'from');
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fromLocation, showFromSuggestions]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (toLocation && showToSuggestions) searchLocations(toLocation, 'to');
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [toLocation, showToSuggestions]);
 
   // Registration states
   const [regVehicleType, setRegVehicleType] = useState<'Toto' | 'Auto' | 'Van' | 'Bike' | 'Car'>('Toto');
@@ -648,8 +719,8 @@ export const VillageTransportPage = () => {
   }, [user, myVehicle?.id, myVehicle?.status]);
 
   useEffect(() => {
-    // Listen for available vehicles
-    const qVehicles = query(collection(db, 'vehicles'), where('status', '==', 'available'));
+    // Listen for available and busy vehicles (to track assigned drivers)
+    const qVehicles = query(collection(db, 'vehicles'), where('status', 'in', ['available', 'busy']));
     const unsubVehicles = onSnapshot(qVehicles, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
       setVehicles(docs);
@@ -775,6 +846,12 @@ export const VillageTransportPage = () => {
     setCurrentRiderRide(activeRide || null);
   }, [myRequests]);
 
+  useEffect(() => {
+    // Find the most recent active ride for the driver
+    const activeRide = rideRequests.find(req => req.status === 'accepted' && req.driverUid === user?.uid);
+    setActiveDriverRide(activeRide || null);
+  }, [rideRequests, user]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !activeChat || !newMessage.trim()) return;
@@ -801,7 +878,19 @@ export const VillageTransportPage = () => {
       return;
     }
 
+    if (!isWithinServiceArea(fromLocation) || !isWithinServiceArea(toLocation)) {
+      setShowServiceAreaModal(true);
+      return;
+    }
+
     // Simple fare estimation logic
+    setShowRequestModal(false);
+    setShowVehicleSelection(true);
+  };
+
+  const handleConfirmRide = async () => {
+    if (!user) return;
+
     const baseFares: Record<string, number> = {
       'Toto': 20,
       'Auto': 30,
@@ -826,7 +915,7 @@ export const VillageTransportPage = () => {
         createdAt: serverTimestamp()
       });
       toast.success(t.transport.requestSent);
-      setShowRequestModal(false);
+      setShowVehicleSelection(false);
       setFromLocation('');
       setToLocation('');
       setPickupCoords(null);
@@ -940,7 +1029,7 @@ export const VillageTransportPage = () => {
         <div className="flex justify-center mb-12">
           <div className="bg-white p-1.5 rounded-3xl border border-zinc-200 shadow-sm flex gap-1">
             {[
-              { id: 'find', label: t.transport.findRide, icon: Search },
+              { id: 'find', label: language === 'bn' ? 'পরিবহন' : 'Poribohon', icon: Car },
               { id: 'driver', label: t.transport.driverMode, icon: User },
               { id: 'requests', label: language === 'bn' ? 'আমার রাইড' : 'My Rides', icon: Clock },
             ].map((tab) => (
@@ -1084,95 +1173,163 @@ export const VillageTransportPage = () => {
 
         {/* Content */}
         <AnimatePresence mode="wait">
+          <ServiceAreaModal 
+            isOpen={showServiceAreaModal} 
+            onClose={() => setShowServiceAreaModal(false)} 
+          />
+
           {activeTab === 'find' && (
             <motion.div
               key="find"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+              className={`grid grid-cols-1 ${showVehicleSelection ? '' : 'lg:grid-cols-3'} gap-8 relative`}
             >
               {/* Request Card */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 shadow-sm sticky top-32">
-                  <div className="w-16 h-16 rounded-3xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8">
-                    <Navigation size={32} />
-                  </div>
-                  <h3 className="text-2xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.requestRide}</h3>
-                  <p className="text-zinc-500 text-sm font-medium mb-8 leading-relaxed">
-                    {language === 'bn' ? 'আপনার গন্তব্য লিখুন এবং নিকটস্থ ড্রাইভারদের সাথে যোগাযোগ করুন।' : 'Enter your destination and connect with nearby drivers.'}
-                  </p>
-                  
-                  <button
-                    onClick={() => setShowRequestModal(true)}
-                    className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-3"
-                  >
-                    <Plus size={20} />
-                    {t.transport.requestRide}
-                  </button>
+              {!showVehicleSelection && (
+                <div className="lg:col-span-1">
+                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 shadow-sm sticky top-32">
+                    <div className="w-16 h-16 rounded-3xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8">
+                      <Navigation size={32} />
+                    </div>
+                    <h3 className="text-2xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.requestRide}</h3>
+                    <p className="text-zinc-500 text-sm font-medium mb-8 leading-relaxed">
+                      {language === 'bn' ? 'আপনার গন্তব্য লিখুন এবং নিকটস্থ ড্রাইভারদের সাথে যোগাযোগ করুন।' : 'Enter your destination and connect with nearby drivers.'}
+                    </p>
+                    
+                    <button
+                      onClick={() => setShowRequestModal(true)}
+                      className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-3"
+                    >
+                      <Plus size={20} />
+                      {t.transport.requestRide}
+                    </button>
 
-                  <div className="mt-8 pt-8 border-t border-zinc-100">
-                    <div className="flex items-center gap-4 text-zinc-500">
-                      <ShieldCheck size={20} className="text-emerald-500" />
-                      <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'নিরাপদ ও নির্ভরযোগ্য' : 'Safe & Reliable'}</span>
+                    <div className="mt-8 pt-8 border-t border-zinc-100">
+                      <div className="flex items-center gap-4 text-zinc-500">
+                        <ShieldCheck size={20} className="text-emerald-500" />
+                        <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'নিরাপদ ও নির্ভরযোগ্য' : 'Safe & Reliable'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Available Vehicles */}
-              <div className="lg:col-span-2 space-y-8">
+              <div className={`${showVehicleSelection ? 'col-span-full' : 'lg:col-span-2'} space-y-8`}>
                 {/* Live Map */}
-                <div className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm h-[400px] relative z-0">
+                <div className={`bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm relative z-0 transition-all duration-500 ${showVehicleSelection ? 'h-[calc(100vh-450px)]' : 'h-[400px]'}`}>
                   <MapContainer center={BARNIA_CENTER} zoom={14} style={{ height: '100%', width: '100%' }}>
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
-                    <MapClickHandler onMapClick={onMapClick} />
-                    <RouteLine 
-                      from={selectedRide?.pickupCoords || pickupCoords} 
-                      to={selectedRide?.dropoffCoords || dropoffCoords} 
+                    <MapClickHandler 
+                      onMapClick={onMapClick} 
+                      isPickingLocation={isPickingLocation}
+                      onLocationSelect={(lat, lng) => {
+                        // This updates the coords as the map moves
+                        if (isPickingLocation === 'pickup') {
+                          setPickupCoords({ lat, lng });
+                        } else if (isPickingLocation === 'dropoff') {
+                          setDropoffCoords({ lat, lng });
+                        }
+                      }}
                     />
-                    {selectedRide && selectedRide.pickupCoords && (
-                      <MapUpdater center={[selectedRide.pickupCoords.lat, selectedRide.pickupCoords.lng]} />
+                    <RouteLine 
+                      from={currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords} 
+                      to={currentRiderRide?.dropoffCoords || activeDriverRide?.dropoffCoords || dropoffCoords} 
+                    />
+                    {(currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords) && (
+                      <MapUpdater center={[(currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lat, (currentRiderRide?.pickupCoords || activeDriverRide?.pickupCoords || pickupCoords)!.lng]} />
                     )}
-                    {vehicles.map((vehicle) => (
-                      vehicle.location && (
-                        <Marker 
-                          key={vehicle.id} 
-                          position={[vehicle.location.lat, vehicle.location.lng]}
-                          icon={DriverIcon}
-                        >
-                          <Popup>
-                            <div className="p-2">
-                              <p className="font-black text-zinc-900 uppercase tracking-tight">{vehicle.vehicleType}</p>
-                              <p className="text-xs font-bold text-zinc-500">{vehicle.driverName}</p>
-                              <p className="text-xs font-bold text-brand-600 mt-1">{vehicle.status}</p>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      )
-                    ))}
+                    {vehicles.map((vehicle) => {
+                      const isAssignedToMe = currentRiderRide?.driverUid === vehicle.driverUid;
+                      const isMe = user?.uid === vehicle.driverUid;
+                      
+                      // Only show available vehicles OR the one assigned to me OR my own vehicle
+                      if (vehicle.status !== 'available' && !isAssignedToMe && !isMe) return null;
+
+                      return (
+                        vehicle.location && (
+                          <Marker 
+                            key={vehicle.id} 
+                            position={[vehicle.location.lat, vehicle.location.lng]}
+                            icon={isAssignedToMe ? AssignedDriverIcon : DriverIcon}
+                          >
+                            <Popup>
+                              <div className="p-2">
+                                <p className="font-black text-zinc-900 uppercase tracking-tight">
+                                  {isAssignedToMe ? 'Your Driver' : vehicle.vehicleType}
+                                </p>
+                                <p className="text-xs font-bold text-zinc-500">{vehicle.driverName}</p>
+                                <p className="text-xs font-bold text-brand-600 mt-1">{vehicle.status}</p>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        )
+                      );
+                    })}
                   </MapContainer>
+
                   {isPickingLocation && (
-                    <div className="absolute inset-0 z-[1001] bg-brand-600/10 pointer-events-none flex items-center justify-center">
-                      <div className="bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-brand-600 animate-bounce">
-                        <p className="text-sm font-black text-brand-600 uppercase tracking-widest">
-                          Tap on map to set {isPickingLocation}
-                        </p>
+                    <div className="absolute inset-0 z-[1001] pointer-events-none flex items-center justify-center">
+                      <div className="relative -translate-y-8">
+                        <div className="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center shadow-2xl border-4 border-white animate-bounce">
+                          <MapPin size={28} className="text-white" />
+                        </div>
+                        <div className="w-3 h-3 bg-brand-600/40 rounded-full mx-auto mt-1 blur-[1px]" />
+                        
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-16 pointer-events-auto">
+                          <div className="bg-zinc-900 text-white px-4 py-2 rounded-xl shadow-2xl border border-zinc-800 whitespace-nowrap">
+                            <p className="text-[10px] font-black uppercase tracking-widest">
+                              {isPickingLocation === 'pickup' ? 'Set Pickup' : 'Set Drop-off'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
-                        <button
-                          onClick={() => {
-                            setIsPickingLocation(null);
-                            setShowRequestModal(true);
-                          }}
-                          className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-brand-700 transition-all"
-                        >
-                          Confirm & Back
-                        </button>
-                      </div>
+                    </div>
+                  )}
+
+                  {isPickingLocation && (
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1002] flex flex-col items-center gap-4">
+                      <button
+                        onClick={() => {
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition((position) => {
+                              const { latitude, longitude } = position.coords;
+                              setPickupCoords({ lat: latitude, lng: longitude });
+                              // MapUpdater will handle the zoom/center
+                            });
+                          }
+                        }}
+                        className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-zinc-900 hover:bg-zinc-50 transition-all border border-zinc-200"
+                      >
+                        <LocateFixed size={24} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const coords = isPickingLocation === 'pickup' ? pickupCoords : dropoffCoords;
+                          if (coords) {
+                            try {
+                              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                              const data = await res.json();
+                              if (data.display_name) {
+                                if (isPickingLocation === 'pickup') setFromLocation(data.display_name);
+                                else setToLocation(data.display_name);
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }
+                          setIsPickingLocation(null);
+                          setShowRequestModal(true);
+                        }}
+                        className="px-8 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-brand-700 transition-all"
+                      >
+                        Confirm Location
+                      </button>
                     </div>
                   )}
                   <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
@@ -1181,76 +1338,89 @@ export const VillageTransportPage = () => {
                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Live Tracking</span>
                     </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {loading ? (
-                    Array(4).fill(0).map((_, i) => (
-                      <div key={i} className="h-48 bg-zinc-100 rounded-[2.5rem] animate-pulse" />
-                    ))
-                  ) : vehicles.length > 0 ? (
-                    vehicles.map((vehicle) => (
-                      <motion.div
-                        key={vehicle.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 hover:shadow-xl hover:shadow-zinc-200/50 transition-all group"
-                      >
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="w-14 h-14 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                            <Car size={28} />
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
-                              {t.transport.pending}
-                            </div>
-                            {vehicle.isVerified && (
-                              <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                                <CheckCircle2 size={12} />
-                                <span className="text-[8px] font-black uppercase tracking-widest">Verified</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{vehicle.vehicleType}</h4>
-                          <div className="flex items-center gap-1 text-amber-500">
-                            <Star size={14} fill="currentColor" />
-                            <span className="text-sm font-black">{vehicle.rating || '4.8'}</span>
-                          </div>
-                        </div>
-                        <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">{vehicle.vehicleNumber}</p>
-                        
-                        <div className="space-y-3 mb-8">
-                          <div className="flex items-center gap-3 text-zinc-600">
-                            <User size={16} className="text-brand-500" />
-                            <span className="text-sm font-bold">{vehicle.driverName}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-zinc-600">
-                            <Phone size={16} className="text-brand-500" />
-                            <span className="text-sm font-bold">{vehicle.driverPhone}</span>
-                          </div>
-                        </div>
-
-                        <a
-                          href={`tel:${vehicle.driverPhone}`}
-                          className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-3"
-                        >
-                          <Phone size={16} />
-                          {t.transport.contact}
-                        </a>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <div className="col-span-full py-20 text-center">
-                      <div className="w-20 h-20 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-300 mx-auto mb-6">
-                        <Car size={40} />
-                      </div>
-                      <p className="text-zinc-500 font-bold uppercase tracking-widest">{t.transport.noVehicles}</p>
-                    </div>
+                  {showVehicleSelection && (
+                    <button 
+                      onClick={() => {
+                        setShowVehicleSelection(false);
+                        setShowRequestModal(true);
+                      }}
+                      className="absolute top-4 left-4 z-[1000] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-zinc-900 hover:bg-zinc-50 transition-all"
+                    >
+                      <ChevronRight size={24} className="rotate-180" />
+                    </button>
                   )}
                 </div>
+
+                {!showVehicleSelection && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {loading ? (
+                      Array(4).fill(0).map((_, i) => (
+                        <div key={i} className="h-48 bg-zinc-100 rounded-[2.5rem] animate-pulse" />
+                      ))
+                    ) : vehicles.length > 0 ? (
+                      vehicles.map((vehicle) => (
+                        <motion.div
+                          key={vehicle.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 hover:shadow-xl hover:shadow-zinc-200/50 transition-all group"
+                        >
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                              <Car size={28} />
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                                {t.transport.pending}
+                              </div>
+                              {vehicle.isVerified && (
+                                <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                                  <CheckCircle2 size={12} />
+                                  <span className="text-[8px] font-black uppercase tracking-widest">Verified</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{vehicle.vehicleType}</h4>
+                            <div className="flex items-center gap-1 text-amber-500">
+                              <Star size={14} fill="currentColor" />
+                              <span className="text-sm font-black">{vehicle.rating || '4.8'}</span>
+                            </div>
+                          </div>
+                          <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">{vehicle.vehicleNumber}</p>
+                          
+                          <div className="space-y-3 mb-8">
+                            <div className="flex items-center gap-3 text-zinc-600">
+                              <User size={16} className="text-brand-500" />
+                              <span className="text-sm font-bold">{vehicle.driverName}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-zinc-600">
+                              <Phone size={16} className="text-brand-500" />
+                              <span className="text-sm font-bold">{vehicle.driverPhone}</span>
+                            </div>
+                          </div>
+
+                          <a
+                            href={`tel:${vehicle.driverPhone}`}
+                            className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-3"
+                          >
+                            <Phone size={16} />
+                            {t.transport.contact}
+                          </a>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="col-span-full py-20 text-center">
+                        <div className="w-20 h-20 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-300 mx-auto mb-6">
+                          <Car size={40} />
+                        </div>
+                        <p className="text-zinc-500 font-bold uppercase tracking-widest">{t.transport.noVehicles}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -1292,15 +1462,25 @@ export const VillageTransportPage = () => {
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       />
+                      <RouteLine 
+                        from={activeDriverRide?.pickupCoords || selectedRide?.pickupCoords} 
+                        to={activeDriverRide?.dropoffCoords || selectedRide?.dropoffCoords} 
+                      />
+                      {(activeDriverRide?.pickupCoords || selectedRide?.pickupCoords || (myVehicle.location && { lat: myVehicle.location.lat, lng: myVehicle.location.lng })) && (
+                        <MapUpdater center={
+                          activeDriverRide?.pickupCoords 
+                            ? [activeDriverRide.pickupCoords.lat, activeDriverRide.pickupCoords.lng]
+                            : selectedRide?.pickupCoords
+                              ? [selectedRide.pickupCoords.lat, selectedRide.pickupCoords.lng]
+                              : [myVehicle.location!.lat, myVehicle.location!.lng]
+                        } />
+                      )}
                       {myVehicle.location && (
-                        <>
-                          <Marker position={[myVehicle.location.lat, myVehicle.location.lng]} icon={DriverIcon}>
-                            <Popup>
-                              <span className="font-bold">Your Location</span>
-                            </Popup>
-                          </Marker>
-                          <MapUpdater center={[myVehicle.location.lat, myVehicle.location.lng]} />
-                        </>
+                        <Marker position={[myVehicle.location.lat, myVehicle.location.lng]} icon={DriverIcon}>
+                          <Popup>
+                            <span className="font-bold">Your Location</span>
+                          </Popup>
+                        </Marker>
                       )}
                     </MapContainer>
                     <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
@@ -1655,101 +1835,232 @@ export const VillageTransportPage = () => {
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
               >
-                <div className="p-8 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
-                  <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">{t.transport.requestRide}</h3>
-                  <button onClick={() => setShowRequestModal(false)} className="p-2 hover:bg-zinc-200 rounded-xl transition-colors">
-                    <XCircle size={24} className="text-zinc-400" />
+                <div className="p-6 border-b border-zinc-100 flex items-center gap-4 bg-white sticky top-0 z-10">
+                  <button onClick={() => setShowRequestModal(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                    <X size={24} className="text-zinc-900" />
+                  </button>
+                  <h3 className="text-xl font-black text-zinc-900 tracking-tight">Plan your trip</h3>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  <div className="flex gap-3 mb-6">
+                    <button 
+                      onClick={() => {
+                        setIsPickingLocation('pickup');
+                        setShowRequestModal(false);
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition((position) => {
+                            const { latitude, longitude } = position.coords;
+                            setPickupCoords({ lat: latitude, lng: longitude });
+                          });
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-brand-50 rounded-full text-sm font-bold text-brand-600 border border-brand-100"
+                    >
+                      <LocateFixed size={16} />
+                      Live Pickup
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-bold text-zinc-900">
+                      <User size={16} />
+                      For me
+                      <ChevronRight size={14} className="rotate-90" />
+                    </button>
+                  </div>
+
+                  <div className="relative bg-white border-2 border-zinc-900 rounded-3xl p-4 flex gap-4">
+                    <div className="flex flex-col items-center py-2">
+                      <div className="w-2.5 h-2.5 rounded-full border-2 border-zinc-900 bg-white" />
+                      <div className="w-0.5 flex-1 bg-zinc-900 my-1" />
+                      <div className="w-2.5 h-2.5 bg-zinc-900" />
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={fromLocation}
+                          onChange={(e) => {
+                            setFromLocation(e.target.value);
+                            setShowFromSuggestions(true);
+                          }}
+                          onFocus={() => setShowFromSuggestions(true)}
+                          placeholder="Where from?"
+                          className="w-full py-2 bg-transparent outline-none font-bold text-lg placeholder:text-zinc-300"
+                        />
+                        {fromLocation && (
+                          <button onClick={() => setFromLocation('')} className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-zinc-100 rounded-full">
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="h-px bg-zinc-100" />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={toLocation}
+                          onChange={(e) => {
+                            setToLocation(e.target.value);
+                            setShowToSuggestions(true);
+                          }}
+                          onFocus={() => setShowToSuggestions(true)}
+                          placeholder="Where to?"
+                          className="w-full py-2 bg-transparent outline-none font-bold text-lg placeholder:text-zinc-300"
+                        />
+                        {toLocation && (
+                          <button onClick={() => setToLocation('')} className="absolute right-0 top-1/2 -translate-y-1/2 p-1 bg-zinc-100 rounded-full">
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <button className="p-2 bg-zinc-100 rounded-full self-center">
+                      <Plus size={20} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                    {/* Suggestions list */}
+                    {(showFromSuggestions ? fromSuggestions : toSuggestions).map((s, i) => (
+                      <button 
+                        key={i}
+                        onClick={() => {
+                          if (!isWithinServiceArea(s.display_name)) {
+                            setShowServiceAreaModal(true);
+                            return;
+                          }
+                          if (showFromSuggestions) {
+                            setFromLocation(s.display_name);
+                            setPickupCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) });
+                            setShowFromSuggestions(false);
+                          } else {
+                            setToLocation(s.display_name);
+                            setDropoffCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) });
+                            setShowToSuggestions(false);
+                          }
+                        }}
+                        className="w-full flex items-center gap-4 p-4 hover:bg-zinc-50 rounded-2xl transition-all border-b border-zinc-50 last:border-0"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 shrink-0">
+                          <MapPin size={20} />
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <p className="font-bold text-zinc-900 truncate">{s.display_name.split(',')[0]}</p>
+                          <p className="text-xs text-zinc-500 font-medium truncate">{s.display_name}</p>
+                        </div>
+                        <p className="text-xs text-zinc-400 font-bold shrink-0">{(Math.random() * 10).toFixed(1)} mi</p>
+                      </button>
+                    ))}
+
+                    <button 
+                      onClick={() => {
+                        setIsPickingLocation(showFromSuggestions ? 'pickup' : 'dropoff');
+                        setShowRequestModal(false);
+                      }}
+                      className="w-full flex items-center gap-4 p-4 hover:bg-zinc-50 rounded-2xl transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900">
+                        <Navigation size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-zinc-900">Set location on map</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {fromLocation && toLocation && (
+                    <button
+                      onClick={handleRequestRide}
+                      className="w-full py-5 bg-zinc-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                    >
+                      Choose a trip
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {showVehicleSelection && (
+            <div className="fixed inset-0 z-[120] flex items-end justify-center">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowVehicleSelection(false)}
+                className="absolute inset-0 bg-transparent"
+              />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                className="relative w-full max-w-2xl bg-white rounded-t-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border-t border-zinc-200"
+              >
+                <div className="w-12 h-1.5 bg-zinc-200 rounded-full mx-auto my-4 shrink-0" />
+                
+                <div className="px-8 pb-4 border-b border-zinc-100">
+                  <h3 className="text-xl font-black text-zinc-900 text-center uppercase tracking-tight">Choose a trip</h3>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                  {[
+                    { type: 'Toto', name: 'Go Non AC', capacity: 4, time: '5 min', price: 20, icon: Car, badge: null },
+                    { type: 'Bike', name: 'Bike', capacity: 1, time: '2 min', price: 15, icon: Navigation, badge: 'Faster' },
+                    { type: 'Auto', name: 'Barnia Go', capacity: 3, time: '5 min', price: 30, icon: Car, badge: null },
+                    { type: 'Van', name: 'Barnia XL', capacity: 6, time: '8 min', price: 50, icon: Car, badge: null },
+                    { type: 'Car', name: 'Premier', capacity: 4, time: '10 min', price: 100, icon: Car, badge: 'Top Rated' },
+                  ].map((v) => (
+                    <button
+                      key={v.type}
+                      onClick={() => setSelectedVehicleType(v.type as any)}
+                      className={`w-full p-4 rounded-3xl border-2 transition-all flex items-center gap-4 ${
+                        selectedVehicleType === v.type
+                          ? 'border-zinc-900 bg-zinc-50'
+                          : 'border-transparent hover:bg-zinc-50'
+                      }`}
+                    >
+                      <div className="w-20 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
+                        <v.icon size={32} className="text-zinc-400" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-2">
+                          <p className="font-black text-zinc-900 uppercase tracking-tight">{v.name}</p>
+                          <div className="flex items-center gap-1 text-zinc-400">
+                            <User size={12} />
+                            <span className="text-xs font-bold">{v.capacity}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {v.time}</p>
+                        {v.badge && (
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-brand-100 text-brand-600 rounded-md text-[10px] font-black uppercase tracking-widest">
+                            {v.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-lg font-black text-zinc-900">₹{v.price}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-6 bg-white border-t border-zinc-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-bold text-zinc-900">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px]">
+                        ₹
+                      </div>
+                      Cash
+                      <ChevronRight size={14} className="rotate-90" />
+                    </button>
+                    <button className="p-3 bg-zinc-100 rounded-full text-zinc-900">
+                      <Clock size={20} />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleConfirmRide}
+                    className="w-full py-5 bg-zinc-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                  >
+                    Choose {selectedVehicleType}
                   </button>
                 </div>
-                <form onSubmit={handleRequestRide} className="p-8 space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.from}</label>
-                    <div className="flex gap-2">
-                      <LocationAutocomplete
-                        value={fromLocation}
-                        onChange={setFromLocation}
-                        placeholder="e.g. Barnia Bazar"
-                        icon={MapPin}
-                        onSelect={(lat, lng, addr) => {
-                          setPickupCoords({ lat, lng });
-                          setFromLocation(addr);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPickingLocation('pickup');
-                          setShowRequestModal(false);
-                        }}
-                        className="p-4 bg-brand-50 text-brand-600 rounded-2xl hover:bg-brand-100 transition-all border border-brand-100"
-                        title="Pick on Map"
-                      >
-                        <MapPin size={20} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">{t.transport.to}</label>
-                    <div className="flex gap-2">
-                      <LocationAutocomplete
-                        value={toLocation}
-                        onChange={setToLocation}
-                        placeholder="e.g. Ujirpur Station"
-                        icon={Navigation}
-                        onSelect={(lat, lng, addr) => {
-                          setDropoffCoords({ lat, lng });
-                          setToLocation(addr);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPickingLocation('dropoff');
-                          setShowRequestModal(false);
-                        }}
-                        className="p-4 bg-brand-50 text-brand-600 rounded-2xl hover:bg-brand-100 transition-all border border-brand-100"
-                        title="Pick on Map"
-                      >
-                        <Navigation size={20} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Select Vehicle Type</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { type: 'Toto', icon: Car, fare: 20 },
-                        { type: 'Auto', icon: Car, fare: 30 },
-                        { type: 'Bike', icon: Navigation, fare: 15 },
-                        { type: 'Van', icon: Car, fare: 50 },
-                        { type: 'Car', icon: Car, fare: 100 },
-                      ].map((v) => (
-                        <button
-                          key={v.type}
-                          type="button"
-                          onClick={() => setSelectedVehicleType(v.type)}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                            selectedVehicleType === v.type
-                              ? 'border-brand-600 bg-brand-50 text-brand-600'
-                              : 'border-zinc-100 bg-zinc-50 text-zinc-400 hover:border-zinc-200'
-                          }`}
-                        >
-                          <v.icon size={24} />
-                          <div className="text-center">
-                            <p className="text-[10px] font-black uppercase tracking-tight">{v.type}</p>
-                            <p className="text-xs font-bold">₹{v.fare}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20"
-                  >
-                    {t.transport.requestRide}
-                  </button>
-                </form>
               </motion.div>
             </div>
           )}
