@@ -7,7 +7,7 @@ export const VisitorCounter = () => {
   const [count, setCount] = useState<number | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const { t } = useLanguage();
-  const BASE_COUNT = 1500;
+  const BASE_COUNT = 100000;
 
   if (error) throw error;
 
