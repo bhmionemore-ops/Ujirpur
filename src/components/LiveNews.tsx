@@ -74,30 +74,6 @@ export const LiveNews = () => {
     try {
       const response = await fetch(`/api/news?date=${date}&lang=${language}`);
       
-      if (response.status === 404) {
-        // News not found on server, generate it on frontend
-        console.log(`[News] Not found on server for ${date}, generating on frontend...`);
-        const freshNews = await fetchLiveNews(language as 'bn' | 'en');
-        
-        // Save to server for caching
-        try {
-          await fetch('/api/news', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              date,
-              lang: language,
-              newsData: freshNews
-            })
-          });
-        } catch (saveErr) {
-          console.warn("[News] Failed to cache news on server:", saveErr);
-        }
-
-        setGenerating(false);
-        return { ...freshNews, date };
-      }
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to fetch news");

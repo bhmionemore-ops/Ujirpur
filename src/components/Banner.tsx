@@ -195,7 +195,7 @@ export const Banner = () => {
             className="group relative px-8 py-4 rounded-2xl bg-emerald-600 text-white font-bold text-lg shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-3"
           >
             <Car size={20} />
-            {language === 'bn' ? 'রাইড' : 'Ride'}
+            {language === 'bn' ? 'পরিবহন' : 'Ride'}
           </button>
 
           <button 
@@ -244,17 +244,7 @@ export const Banner = () => {
       </div>
 
       {/* Controls */}
-      <div className="absolute bottom-12 left-4 right-4 md:left-12 md:right-12 flex items-center justify-between z-20">
-        <div className="flex gap-3">
-          {SLIDES.map((_, i) => (
-            <button
-              key={`slide-dot-${i}`}
-              onClick={() => setCurrent(i)}
-              className={`h-1 rounded-full transition-all duration-500 ${current === i ? 'bg-brand-500 w-12' : 'bg-white/20 w-6 hover:bg-white/40'}`}
-            />
-          ))}
-        </div>
-        
+      <div className="absolute bottom-12 left-4 right-4 md:left-12 md:right-12 flex items-center justify-end z-20">
         <div className="flex gap-2">
           <button 
             onClick={prev}

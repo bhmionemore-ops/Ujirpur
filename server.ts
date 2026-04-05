@@ -444,6 +444,42 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
   }
 }
 
+function getCurrentNewsDate() {
+  const now = new Date();
+  // Use Intl to get IST parts accurately
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const dateParts: { [key: string]: string } = {};
+  parts.forEach(p => dateParts[p.type] = p.value);
+  
+  let year = parseInt(dateParts.year);
+  let month = parseInt(dateParts.month);
+  let day = parseInt(dateParts.day);
+  let hour = parseInt(dateParts.hour);
+  
+  // If before 6 AM IST, we are still in the previous "news day"
+  if (hour < 6) {
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() - 1);
+    year = d.getFullYear();
+    month = d.getMonth() + 1;
+    day = d.getDate();
+  }
+  
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// Global lock to prevent multiple simultaneous news generations
+let isGeneratingNews = false;
+
 async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
@@ -1085,6 +1121,7 @@ async function startServer() {
     
     const language = (lang === 'bn' ? 'bn' : 'en') as 'bn' | 'en';
     const docId = `${date}-${language}`;
+    const currentNewsDate = getCurrentNewsDate();
 
     try {
       let data: any = null;
@@ -1116,7 +1153,57 @@ async function startServer() {
         return res.json(data);
       }
 
-      // 2. If not found, return 404 so frontend can generate
+      // 2. If not found and it's the current news date, try to generate it on the server
+      if (date === currentNewsDate) {
+        if (isGeneratingNews) {
+          return res.status(503).json({ 
+            error: language === 'bn' 
+              ? "দুঃখিত, আমাদের সংবাদ সার্ভার এখন ব্যস্ত। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।" 
+              : "Sorry, our news server is busy. Please try again later." 
+          });
+        }
+
+        isGeneratingNews = true;
+        try {
+          console.log(`[NewsAPI] Generating news for ${docId} on server...`);
+          const newsData = await fetchLiveNewsServer(language);
+          
+          const dataToSave = {
+            ...newsData,
+            date,
+            lang: language,
+            updatedAt: new Date().toISOString()
+          };
+
+          // Save to Firestore
+          if (adminDb) {
+            await adminDb.collection("news").doc(docId).set(dataToSave);
+          } else if (db) {
+            await setDoc(doc(db, "news", docId), dataToSave);
+          }
+
+          isGeneratingNews = false;
+          return res.json(dataToSave);
+        } catch (genError: any) {
+          isGeneratingNews = false;
+          console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
+          
+          // Check for quota error
+          const isQuotaError = genError.message?.includes("429") || genError.message?.toLowerCase().includes("quota");
+          
+          return res.status(isQuotaError ? 429 : 500).json({ 
+            error: language === 'bn'
+              ? (isQuotaError 
+                  ? "আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।" 
+                  : "সংবাদ তৈরি করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পরে চেষ্টা করুন।")
+              : (isQuotaError
+                  ? "We have exceeded our daily news quota. We are trying to fix it soon."
+                  : "Failed to generate news. Please try again later.")
+          });
+        }
+      }
+
+      // 3. For older dates, just return 404
       return res.status(404).json({ error: "News not found for this date", docId });
     } catch (error: any) {
       console.error(`[NewsAPI] Error fetching news for ${docId}:`, error);
