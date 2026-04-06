@@ -74,14 +74,27 @@ export const LiveNews = () => {
     try {
       const response = await fetch(`/api/news?date=${date}&lang=${language}`);
       
+      const contentType = response.headers.get("content-type");
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch news");
+        let errorMessage = "Failed to fetch news";
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const text = await response.text();
+          console.error(`Non-JSON error response for ${date}:`, text.substring(0, 200));
+          errorMessage = `Server error (${response.status}). Please check logs.`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      setGenerating(false);
-      return { ...data, date };
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        setGenerating(false);
+        return { ...data, date };
+      } else {
+        throw new Error("Server returned non-JSON response");
+      }
     } catch (err: any) {
       setGenerating(false);
       console.error(`Error fetching news for ${date}:`, err);

@@ -558,6 +558,13 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   // Comprehensive logging for debugging
   const allEnvKeys = Object.keys(process.env);
   const keyRelatedEnv = allEnvKeys.filter(k => k.includes('KEY') || k.includes('API') || k.includes('GEMINI') || k.includes('TOKEN'));
+  console.log(`[NewsAPI] Environment check - Key-related variables found: ${keyRelatedEnv.join(', ')}`);
+  
+  // Log if any of them start with AIza
+  const aizaKeys = allEnvKeys.filter(k => process.env[k]?.startsWith('AIza'));
+  if (aizaKeys.length > 0) {
+    console.log(`[NewsAPI] Environment check - AIza keys found in: ${aizaKeys.join(', ')}`);
+  }
   
   console.log("[NewsAPI] Environment check:");
   console.log(`- Total Env Keys: ${allEnvKeys.length}`);
@@ -1371,17 +1378,34 @@ async function startServer() {
           generationStartTime = null;
           console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
           
-          // Check for quota error
-          const isQuotaError = genError.message?.includes("429") || genError.message?.toLowerCase().includes("quota");
+          // Check for specific error types
+          const errorMsg = genError.message || "";
+          const isQuotaError = errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota");
+          const isBlockedError = errorMsg.includes("API_KEY_SERVICE_BLOCKED") || errorMsg.includes("blocked");
+          const isDisabledError = errorMsg.includes("SERVICE_DISABLED") || errorMsg.includes("not been used in project");
           
-          return res.status(isQuotaError ? 429 : 500).json({ 
-            error: language === 'bn'
-              ? (isQuotaError 
-                  ? "আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।" 
-                  : "সংবাদ তৈরি করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পরে চেষ্টা করুন।")
-              : (isQuotaError
-                  ? "We have exceeded our daily news quota. We are trying to fix it soon."
-                  : "Failed to generate news. Please try again later.")
+          let userErrorMessage = language === 'bn'
+            ? "সংবাদ তৈরি করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পরে চেষ্টা করুন।"
+            : "Failed to generate news. Please try again later.";
+
+          if (isQuotaError) {
+            userErrorMessage = language === 'bn'
+              ? "আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।"
+              : "We have exceeded our daily news quota. We are trying to fix it soon.";
+          } else if (isBlockedError) {
+            userErrorMessage = language === 'bn'
+              ? "আপনার API কী এই পরিষেবার জন্য ব্লক করা হয়েছে। অনুগ্রহ করে Google Cloud Console-এ কী-এর সীমাবদ্ধতা পরীক্ষা করুন।"
+              : "Your API key is blocked for this service. Please check the API key restrictions in the Google Cloud Console (https://console.cloud.google.com/apis/credentials). Ensure 'Generative Language API' is allowed.";
+          } else if (isDisabledError) {
+            userErrorMessage = language === 'bn'
+              ? "Generative Language API নিষ্ক্রিয় করা হয়েছে। অনুগ্রহ করে এটি সক্ষম করুন।"
+              : "Generative Language API is disabled. Please enable it at: https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview?project=35806183265";
+          }
+          
+          return res.status(isQuotaError ? 429 : (isBlockedError || isDisabledError ? 403 : 500)).json({ 
+            error: userErrorMessage,
+            details: isBlockedError || isDisabledError ? errorMsg : undefined,
+            code: isBlockedError ? "API_KEY_SERVICE_BLOCKED" : (isDisabledError ? "SERVICE_DISABLED" : "UNKNOWN")
           });
         }
       }
