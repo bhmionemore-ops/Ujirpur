@@ -90,6 +90,9 @@ export const LiveNews = () => {
 
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
+        if (data.isError) {
+          throw new Error(data.error || "Failed to generate news");
+        }
         setGenerating(false);
         return { ...data, date };
       } else {
@@ -170,19 +173,45 @@ export const LiveNews = () => {
 
   if (error && news.dates.length === 0) {
     const isQuotaExceeded = error.includes('429') || error.includes('RESOURCE_EXHAUSTED');
+    const isBlocked = error.includes('API_KEY_SERVICE_BLOCKED') || error.includes('blocked') || error.includes('403');
+    
     return (
       <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-zinc-50 px-4 text-center">
         <RefreshCw className="mb-4" size={32} />
         <p className="font-bold mb-2">
           {isQuotaExceeded 
             ? (language === 'bn' ? 'দুঃখিত, আমাদের সংবাদ সার্ভার এখন ব্যস্ত। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।' : 'Sorry, our news server is busy right now. Please try again in a few minutes.')
-            : (language === 'bn' ? 'খবর লোড করতে সমস্যা হয়েছে' : 'Error loading news')}
+            : (isBlocked 
+                ? (language === 'bn' ? 'API কী ব্লক করা হয়েছে' : 'API Key Blocked')
+                : (language === 'bn' ? 'খবর লোড করতে সমস্যা হয়েছে' : 'Error loading news'))}
         </p>
-        <p className="text-xs opacity-70 mb-6 max-w-md">
-          {isQuotaExceeded 
-            ? (language === 'bn' ? 'আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।' : 'We have exceeded our daily news quota. We are working to fix this soon.')
-            : error}
-        </p>
+        <div className="text-xs opacity-70 mb-6 max-w-md space-y-2">
+          {isQuotaExceeded ? (
+            <p>{language === 'bn' ? 'আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।' : 'We have exceeded our daily news quota. We are working to fix this soon.'}</p>
+          ) : isBlocked ? (
+            <>
+              <p>{language === 'bn' ? 'আপনার API কী এই পরিষেবার জন্য ব্লক করা হয়েছে। অনুগ্রহ করে Google Cloud Console-এ কী-এর সীমাবদ্ধতা পরীক্ষা করুন।' : 'Your API key is blocked for this service. This usually means the API key is restricted and doesn\'t allow the Generative Language API.'}</p>
+              <p className="font-bold">{language === 'bn' ? 'সমাধান:' : 'Solution:'}</p>
+              <ol className="list-decimal text-left pl-4 space-y-1">
+                <li>{language === 'bn' ? 'Google Cloud Console-এ যান (প্রজেক্ট: 35806183265)' : 'Go to Google Cloud Console (Project: 35806183265)'}</li>
+                <li>{language === 'bn' ? 'API & Services > Credentials-এ যান' : 'Go to API & Services > Credentials'}</li>
+                <li>{language === 'bn' ? '"Browser key (auto created by Firebase)" এ ক্লিক করুন' : 'Click on "Browser key (auto created by Firebase)"'}</li>
+                <li>{language === 'bn' ? '"API restrictions" এর নিচে "Don\'t restrict key" নির্বাচন করুন' : 'Under "API restrictions", select "Don\'t restrict key"'}</li>
+                <li>{language === 'bn' ? '"Save" এ ক্লিক করুন এবং ১০ মিনিট অপেক্ষা করুন' : 'Click "Save" and wait 10 minutes for changes to apply.'}</li>
+              </ol>
+              <a 
+                href="https://console.cloud.google.com/apis/credentials?project=35806183265" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block mt-4 text-brand-600 underline font-bold"
+              >
+                {language === 'bn' ? 'Google Cloud Console খুলুন' : 'Open Google Cloud Console'}
+              </a>
+            </>
+          ) : (
+            <p>{error}</p>
+          )}
+        </div>
         <button 
           onClick={() => window.location.reload()}
           className="px-6 py-2 bg-brand-500 text-white rounded-xl font-bold text-sm"

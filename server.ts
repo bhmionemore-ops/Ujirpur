@@ -37,6 +37,7 @@ dotenv.config();
 let db: Firestore | null = null;
 let adminDb: any = null;
 let clientAuth: any = null;
+let firebaseConfig: any = null;
 
 
 
@@ -536,7 +537,8 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
     );
     if (potentialKeys.length > 0) {
       apiKey = process.env[potentialKeys[0]];
-      console.log(`[NewsAPI] Found potential key in: ${potentialKeys[0]} (Length: ${apiKey?.length})`);
+      const prefix = apiKey ? apiKey.substring(0, 4) : "null";
+      console.log(`[NewsAPI] Found potential key in: ${potentialKeys[0]} (Prefix: ${prefix}..., Length: ${apiKey?.length})`);
     }
   }
 
@@ -548,7 +550,8 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
       const config = JSON.parse(configData);
       if (config.apiKey && !config.apiKey.includes("TODO") && config.apiKey.length > 10) {
         apiKey = config.apiKey;
-        console.log(`[NewsAPI] Using Firebase API key as last resort fallback. (Length: ${apiKey.length})`);
+        const prefix = apiKey.substring(0, 4);
+        console.log(`[NewsAPI] Using Firebase API key as last resort fallback. (Prefix: ${prefix}..., Length: ${apiKey.length})`);
       }
     } catch (e: any) {
       console.warn(`[NewsAPI] Firebase config fallback failed: ${e.message}`);
@@ -564,6 +567,23 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   const aizaKeys = allEnvKeys.filter(k => process.env[k]?.startsWith('AIza'));
   if (aizaKeys.length > 0) {
     console.log(`[NewsAPI] Environment check - AIza keys found in: ${aizaKeys.join(', ')}`);
+    aizaKeys.forEach(k => {
+      const val = process.env[k];
+      if (val) {
+        console.log(`- ${k}: prefix=${val.substring(0, 8)}...`);
+      }
+    });
+  }
+  
+  // Check if any of them match the Firebase key
+  const firebaseKey = firebaseConfig?.apiKey;
+  if (firebaseKey) {
+    const matchingEnv = allEnvKeys.find(k => process.env[k] === firebaseKey);
+    if (matchingEnv) {
+      console.log(`[NewsAPI] Environment check - Firebase key matches environment variable: ${matchingEnv}`);
+    } else {
+      console.log(`[NewsAPI] Environment check - Firebase key NOT found in environment variables.`);
+    }
   }
   
   console.log("[NewsAPI] Environment check:");
@@ -576,7 +596,8 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
     const isStringUndefined = val === "undefined";
     const isStringNull = val === "null";
     const startsWithAIza = typeof val === 'string' && val.startsWith('AIza');
-    console.log(`- ${k}: present=${!!val}, len=${val?.length || 0}, aiza=${startsWithAIza}, placeholder=${isPlaceholder}, label=${isLabel}, empty=${isEmpty}, str_undef=${isStringUndefined}, str_null=${isStringNull}, start=${val ? val.substring(0, 2) : 'N/A'}`);
+    const prefix = val && typeof val === 'string' ? val.substring(0, 4) : 'N/A';
+    console.log(`- ${k}: present=${!!val}, len=${val?.length || 0}, aiza=${startsWithAIza}, placeholder=${isPlaceholder}, label=${isLabel}, empty=${isEmpty}, str_undef=${isStringUndefined}, str_null=${isStringNull}, prefix=${prefix}`);
   });
   
   console.log(`- Final API Key selected: ${apiKey ? apiKey.substring(0, 4) + "..." : "None"}`);
@@ -586,6 +607,9 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
     console.error(`[NewsAPI] ${errorMsg}`);
     throw new Error(errorMsg);
   }
+
+  const prefix = apiKey.substring(0, 4);
+  console.log(`[NewsAPI] Using API key with prefix: ${prefix}... (Length: ${apiKey.length})`);
 
   const ai = new GoogleGenAI({ apiKey });
   const langName = language === 'bn' ? 'Bengali' : 'English';
@@ -631,7 +655,12 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
     const response: any = await Promise.race([generatePromise, timeoutPromise]);
     console.log("[NewsAPI] Gemini API response received.");
 
-    const text = response.text || "{}";
+    if (!response || !response.text) {
+      console.error("[NewsAPI] Empty or invalid response from Gemini:", JSON.stringify(response));
+      throw new Error("Empty response from Gemini API");
+    }
+
+    const text = response.text;
     const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
     const parsed = JSON.parse(cleanedText);
     
@@ -643,9 +672,12 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   } catch (error: any) {
     console.error("News generation failed on server:", error);
     
-    // If it failed with googleSearch, try without it as a fallback
-    if (error.message?.includes("googleSearch") || error.message?.includes("tool")) {
-      console.log("[NewsAPI] Retrying without googleSearch tool...");
+    // If it failed with googleSearch or PERMISSION_DENIED, try without it as a fallback
+    const isToolError = error.message?.includes("googleSearch") || error.message?.includes("tool");
+    const isPermissionError = error.message?.includes("PERMISSION_DENIED") || error.message?.includes("403");
+    
+    if (isToolError || isPermissionError) {
+      console.log(`[NewsAPI] Retrying without googleSearch tool due to ${isPermissionError ? 'permission' : 'tool'} error...`);
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
@@ -655,7 +687,12 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
             maxOutputTokens: 8192,
           },
         });
-        const text = response.text || "{}";
+        
+        if (!response || !response.text) {
+          throw new Error("Empty response from Gemini API (retry)");
+        }
+
+        const text = response.text;
         const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
         const parsed = JSON.parse(cleanedText);
         return {
@@ -990,7 +1027,6 @@ async function startServer() {
     }
   });
 
-  let firebaseConfig: any = null;
   try {
     const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
     firebaseConfig = JSON.parse(configData);
@@ -1219,50 +1255,52 @@ async function startServer() {
 
   // Diagnostic endpoint
   app.get("/api/admin/diag", async (req, res) => {
+    const now = new Date();
+    const currentNewsDate = getCurrentNewsDate();
+    
+    // Get API key info (safely)
+    const getMaskedKey = (key: string | undefined) => {
+      if (!key) return "Not Set";
+      if (key.length < 8) return "Too Short";
+      return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+    };
+
+    const allEnvKeys = Object.keys(process.env);
+    const aizaKeys: any = {};
+    allEnvKeys.filter(k => process.env[k]?.startsWith('AIza')).forEach(k => {
+      aizaKeys[k] = getMaskedKey(process.env[k]);
+    });
+
     const diag: any = {
-      timestamp: new Date().toISOString(),
-      lastKeepAlivePing: lastPingTimestamp,
+      timestamp: now.toISOString(),
+      serverTimeIST: new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(now),
+      currentNewsDate,
       env: process.env.NODE_ENV || 'development',
-      isProduction: process.env.NODE_ENV === 'production',
-      appUrl: process.env.APP_URL || 'Not Set',
-      emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
-      firebaseConfig: {
+      aizaKeys,
+      keys: {
+        GEMINI_API_KEY: getMaskedKey(process.env.GEMINI_API_KEY),
+        API_KEY: getMaskedKey(process.env.API_KEY),
+        GOOGLE_API_KEY: getMaskedKey(process.env.GOOGLE_API_KEY),
+        FIREBASE_CONFIG_KEY: getMaskedKey(firebaseConfig?.apiKey),
+      },
+      firebase: {
         projectId: firebaseConfig?.projectId,
         databaseId: firebaseConfig?.firestoreDatabaseId,
       },
-      clientAuth: {
-        authenticated: !!clientAuth?.currentUser,
-        uid: clientAuth?.currentUser?.uid,
-        email: clientAuth?.currentUser?.email,
-      },
-      adminDb: !!adminDb,
+      newsStatus: {
+        isGenerating: isGeneratingNews,
+        startTime: generationStartTime ? new Date(generationStartTime).toISOString() : null,
+      }
     };
-
-    if (db) {
-      try {
-        const testDoc = await getDocFromServer(doc(db, "system", "startup_test"));
-        diag.clientDbTest = {
-          success: true,
-          exists: testDoc.exists(),
-          data: testDoc.exists() ? testDoc.data() : null
-        };
-      } catch (e: any) {
-        diag.clientDbTest = { success: false, error: e.message };
-      }
-    }
-
-    if (adminDb) {
-      try {
-        const testDoc = await adminDb.collection("system").doc("admin_test").get();
-        diag.adminDbTest = {
-          success: true,
-          exists: testDoc.exists,
-          data: testDoc.exists ? testDoc.data() : null
-        };
-      } catch (e: any) {
-        diag.adminDbTest = { success: false, error: e.message };
-      }
-    }
 
     res.json(diag);
   });
@@ -1281,6 +1319,13 @@ async function startServer() {
     });
     const parts = formatter.formatToParts(now);
     
+    // Get last 50 lines of logs if possible
+    let logs = "Logs not available";
+    try {
+      // We don't have a log file, but we can maybe capture console.log?
+      // For now, just return the environment info
+    } catch (e) {}
+
     res.json({
       serverTime: now.toISOString(),
       currentNewsDate,
@@ -1289,8 +1334,13 @@ async function startServer() {
       generationStartTime: generationStartTime ? new Date(generationStartTime).toISOString() : null,
       env: {
         GEMINI_API_KEY_PRESENT: !!process.env.GEMINI_API_KEY,
-        GEMINI_API_KEY_LENGTH: process.env.GEMINI_API_KEY?.length || 0,
-        API_KEY_PRESENT: !!process.env.API_KEY
+        GEMINI_API_KEY_PREFIX: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 4) : null,
+        API_KEY_PRESENT: !!process.env.API_KEY,
+        API_KEY_PREFIX: process.env.API_KEY ? process.env.API_KEY.substring(0, 4) : null,
+        GOOGLE_API_KEY_PRESENT: !!process.env.GOOGLE_API_KEY,
+        GOOGLE_API_KEY_PREFIX: process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.substring(0, 4) : null,
+        FIREBASE_API_KEY_PRESENT: !!firebaseConfig?.apiKey,
+        FIREBASE_API_KEY_PREFIX: firebaseConfig?.apiKey ? firebaseConfig?.apiKey.substring(0, 4) : null,
       }
     });
   });
@@ -1402,10 +1452,11 @@ async function startServer() {
               : "Generative Language API is disabled. Please enable it at: https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview?project=35806183265";
           }
           
-          return res.status(isQuotaError ? 429 : (isBlockedError || isDisabledError ? 403 : 500)).json({ 
+          return res.status(200).json({ 
             error: userErrorMessage,
             details: isBlockedError || isDisabledError ? errorMsg : undefined,
-            code: isBlockedError ? "API_KEY_SERVICE_BLOCKED" : (isDisabledError ? "SERVICE_DISABLED" : "UNKNOWN")
+            code: isBlockedError ? "API_KEY_SERVICE_BLOCKED" : (isDisabledError ? "SERVICE_DISABLED" : "UNKNOWN"),
+            isError: true
           });
         }
       }
