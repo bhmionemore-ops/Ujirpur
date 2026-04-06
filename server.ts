@@ -479,11 +479,27 @@ function getCurrentNewsDate() {
 
 // Global lock to prevent multiple simultaneous news generations
 let isGeneratingNews = false;
+let generationStartTime: number | null = null;
 
 async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
+  
+  // Comprehensive logging for debugging invalid key issues
+  console.log("[NewsAPI] Environment check:");
+  console.log(`- GEMINI_API_KEY present: ${!!process.env.GEMINI_API_KEY}`);
+  console.log(`- API_KEY present: ${!!process.env.API_KEY}`);
+  console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+  
+  if (apiKey) {
+    console.log(`- GEMINI_API_KEY starts with: ${apiKey.substring(0, 4)}... (length: ${apiKey.length})`);
+    if (apiKey === "MY_GEMINI_API_KEY") {
+      console.error("[NewsAPI] GEMINI_API_KEY is still set to the placeholder value from .env.example!");
+      throw new Error("Invalid Gemini API key: Placeholder value detected");
+    }
+  }
+
   if (!apiKey) {
-    console.error("Neither GEMINI_API_KEY nor API_KEY is available in the environment.");
+    console.error("GEMINI_API_KEY is not available in the environment.");
     throw new Error("Gemini API key is missing");
   }
 
@@ -511,7 +527,14 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   Return exactly 5 items per category.`;
 
   try {
-    const response = await ai.models.generateContent({
+    console.log(`[NewsAPI] Calling Gemini API for ${langName} news...`);
+    
+    // Add a timeout to the API call
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Gemini API timeout (60s)")), 60000)
+    );
+
+    const generatePromise = ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
@@ -520,6 +543,9 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
         maxOutputTokens: 8192,
       },
     });
+
+    const response: any = await Promise.race([generatePromise, timeoutPromise]);
+    console.log("[NewsAPI] Gemini API response received.");
 
     const text = response.text || "{}";
     const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
@@ -532,6 +558,33 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
     };
   } catch (error: any) {
     console.error("News generation failed on server:", error);
+    
+    // If it failed with googleSearch, try without it as a fallback
+    if (error.message?.includes("googleSearch") || error.message?.includes("tool")) {
+      console.log("[NewsAPI] Retrying without googleSearch tool...");
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            maxOutputTokens: 8192,
+          },
+        });
+        const text = response.text || "{}";
+        const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+        const parsed = JSON.parse(cleanedText);
+        return {
+          local: parsed.local || [],
+          fbTrends: parsed.fbTrends || [],
+          igTrends: parsed.igTrends || []
+        };
+      } catch (retryError: any) {
+        console.error("[NewsAPI] Retry failed:", retryError);
+        throw retryError;
+      }
+    }
+    
     throw error;
   }
 }
@@ -1115,6 +1168,34 @@ async function startServer() {
     res.json(diag);
   });
 
+  // Debug endpoint for news generation parameters
+  app.get("/api/debug-news", (req, res) => {
+    const now = new Date();
+    const currentNewsDate = getCurrentNewsDate();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    
+    res.json({
+      serverTime: now.toISOString(),
+      currentNewsDate,
+      istParts: parts,
+      isGeneratingNews,
+      generationStartTime: generationStartTime ? new Date(generationStartTime).toISOString() : null,
+      env: {
+        GEMINI_API_KEY_PRESENT: !!process.env.GEMINI_API_KEY,
+        GEMINI_API_KEY_LENGTH: process.env.GEMINI_API_KEY?.length || 0,
+        API_KEY_PRESENT: !!process.env.API_KEY
+      }
+    });
+  });
+
   app.get("/api/news", async (req, res) => {
     const { date, lang } = req.query;
     if (!date) return res.status(400).json({ error: "Date is required" });
@@ -1155,6 +1236,13 @@ async function startServer() {
 
       // 2. If not found and it's the current news date, try to generate it on the server
       if (date === currentNewsDate) {
+        // Check if generation is stuck (more than 2 minutes)
+        if (isGeneratingNews && generationStartTime && (Date.now() - generationStartTime > 120000)) {
+          console.warn("[NewsAPI] Generation appears stuck, resetting lock.");
+          isGeneratingNews = false;
+          generationStartTime = null;
+        }
+
         if (isGeneratingNews) {
           return res.status(503).json({ 
             error: language === 'bn' 
@@ -1164,6 +1252,7 @@ async function startServer() {
         }
 
         isGeneratingNews = true;
+        generationStartTime = Date.now();
         try {
           console.log(`[NewsAPI] Generating news for ${docId} on server...`);
           const newsData = await fetchLiveNewsServer(language);
@@ -1183,9 +1272,11 @@ async function startServer() {
           }
 
           isGeneratingNews = false;
+          generationStartTime = null;
           return res.json(dataToSave);
         } catch (genError: any) {
           isGeneratingNews = false;
+          generationStartTime = null;
           console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
           
           // Check for quota error
