@@ -482,25 +482,102 @@ let isGeneratingNews = false;
 let generationStartTime: number | null = null;
 
 async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  
-  // Comprehensive logging for debugging invalid key issues
-  console.log("[NewsAPI] Environment check:");
-  console.log(`- GEMINI_API_KEY present: ${!!process.env.GEMINI_API_KEY}`);
-  console.log(`- API_KEY present: ${!!process.env.API_KEY}`);
-  console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
-  
-  if (apiKey) {
-    console.log(`- GEMINI_API_KEY starts with: ${apiKey.substring(0, 4)}... (length: ${apiKey.length})`);
-    if (apiKey === "MY_GEMINI_API_KEY") {
-      console.error("[NewsAPI] GEMINI_API_KEY is still set to the placeholder value from .env.example!");
-      throw new Error("Invalid Gemini API key: Placeholder value detected");
+  // Priority list of environment variables to check for the Gemini API key
+  const keyNames = [
+    'GEMINI_API_KEY',
+    'NEXT_PUBLIC_GEMINI_API_KEY',
+    'API_KEY',
+    'GOOGLE_API_KEY',
+    'VITE_GEMINI_API_KEY',
+    'GOOGLE_GENERATIVE_AI_API_KEY'
+  ];
+
+  let apiKey: string | undefined;
+
+  // 1. Try the known keys in order
+  for (const name of keyNames) {
+    const val = process.env[name];
+    // Check for valid key: not empty, not placeholder, not the string "undefined", not the string "null"
+    if (val && 
+        val !== "MY_GEMINI_API_KEY" && 
+        val !== "" && 
+        val !== "undefined" && 
+        val !== "null" &&
+        val !== "AI Studio Free Tier" // This is a UI label, if it leaks into env it's invalid
+    ) {
+      apiKey = val;
+      console.log(`[NewsAPI] Selected API key from: ${name} (Length: ${val.length})`);
+      break;
     }
   }
 
+  // 2. Search for ANY key that starts with 'AIza' (standard prefix for Google API keys)
   if (!apiKey) {
-    console.error("GEMINI_API_KEY is not available in the environment.");
-    throw new Error("Gemini API key is missing");
+    const aizaKeyName = Object.keys(process.env).find(k => {
+      const val = process.env[k];
+      return val && typeof val === 'string' && val.startsWith('AIza') && val.length > 10;
+    });
+    if (aizaKeyName) {
+      apiKey = process.env[aizaKeyName];
+      console.log(`[NewsAPI] Found valid Google API key in environment variable: ${aizaKeyName}`);
+    }
+  }
+
+  // 3. Final fallback: Search for ANY key containing GEMINI or AI_KEY that isn't a placeholder
+  if (!apiKey) {
+    const potentialKeys = Object.keys(process.env).filter(k => 
+      (k.includes('GEMINI') || k.includes('AI_KEY') || k.includes('GOOGLE_API')) && 
+      process.env[k] && 
+      process.env[k] !== "MY_GEMINI_API_KEY" &&
+      process.env[k] !== "undefined" &&
+      process.env[k] !== "null" &&
+      process.env[k] !== "" &&
+      process.env[k] !== "AI Studio Free Tier"
+    );
+    if (potentialKeys.length > 0) {
+      apiKey = process.env[potentialKeys[0]];
+      console.log(`[NewsAPI] Found potential key in: ${potentialKeys[0]} (Length: ${apiKey?.length})`);
+    }
+  }
+
+  // 3. Last resort: Try the Firebase API key from config
+  if (!apiKey) {
+    try {
+      const configPath = path.resolve("firebase-applet-config.json");
+      const configData = await fs.readFile(configPath, "utf-8");
+      const config = JSON.parse(configData);
+      if (config.apiKey && !config.apiKey.includes("TODO") && config.apiKey.length > 10) {
+        apiKey = config.apiKey;
+        console.log(`[NewsAPI] Using Firebase API key as last resort fallback. (Length: ${apiKey.length})`);
+      }
+    } catch (e: any) {
+      console.warn(`[NewsAPI] Firebase config fallback failed: ${e.message}`);
+    }
+  }
+  
+  // Comprehensive logging for debugging
+  const allEnvKeys = Object.keys(process.env);
+  const keyRelatedEnv = allEnvKeys.filter(k => k.includes('KEY') || k.includes('API') || k.includes('GEMINI') || k.includes('TOKEN'));
+  
+  console.log("[NewsAPI] Environment check:");
+  console.log(`- Total Env Keys: ${allEnvKeys.length}`);
+  keyRelatedEnv.forEach(k => {
+    const val = process.env[k];
+    const isPlaceholder = val === "MY_GEMINI_API_KEY";
+    const isLabel = val === "AI Studio Free Tier";
+    const isEmpty = val === "";
+    const isStringUndefined = val === "undefined";
+    const isStringNull = val === "null";
+    const startsWithAIza = typeof val === 'string' && val.startsWith('AIza');
+    console.log(`- ${k}: present=${!!val}, len=${val?.length || 0}, aiza=${startsWithAIza}, placeholder=${isPlaceholder}, label=${isLabel}, empty=${isEmpty}, str_undef=${isStringUndefined}, str_null=${isStringNull}, start=${val ? val.substring(0, 2) : 'N/A'}`);
+  });
+  
+  console.log(`- Final API Key selected: ${apiKey ? apiKey.substring(0, 4) + "..." : "None"}`);
+  
+  if (!apiKey) {
+    const errorMsg = `Gemini API key is missing. I checked ${keyNames.length} variables, scanned ${allEnvKeys.length} total env vars, and checked Firebase config. Please ensure you have clicked 'Save' in the Secrets menu after selecting 'AI Studio Free Tier'.`;
+    console.error(`[NewsAPI] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -755,12 +832,26 @@ async function startServer() {
   // Trust proxy for correct protocol/host detection behind Render/AI Studio proxies
   app.set('trust proxy', true);
 
-  // Domain Redirect Middleware
+  // Trailing Slash & Domain Redirect Middleware
   app.use((req, res, next) => {
     const host = req.get('host');
-    if (host && host.includes('barnia.onrender.com')) {
-      return res.redirect(301, `https://barnia.in${req.originalUrl}`);
+    
+    // 1. Domain Redirect (onrender.com -> barnia.in OR www -> non-www)
+    if (host) {
+      if (host.includes('barnia.onrender.com') || host.startsWith('www.')) {
+        const cleanHost = host.replace('www.', '').replace('barnia.onrender.com', 'barnia.in');
+        return res.redirect(301, `https://${cleanHost}${req.originalUrl}`);
+      }
     }
+
+    // 2. Trailing Slash Redirect (except root and API)
+    // Redirect /path/ to /path
+    if (req.path !== '/' && req.path.endsWith('/') && !req.path.startsWith('/api/')) {
+      const query = req.url.slice(req.path.length);
+      const safepath = req.path.slice(0, -1).replace(/\/+/g, '/');
+      return res.redirect(301, safepath + query);
+    }
+
     next();
   });
 
@@ -805,7 +896,6 @@ async function startServer() {
 
   app.get("/sitemap.xml", async (req, res) => {
     try {
-      const protocol = 'https';
       const baseUrl = "https://barnia.in";
       
       let urls = [
@@ -899,7 +989,9 @@ async function startServer() {
     firebaseConfig = JSON.parse(configData);
     
     // Initialize Client SDK (for client-side compatible operations if needed)
+    console.log(`[Firebase] Initializing Client SDK for project: ${firebaseConfig.projectId}`);
     const clientApp = initializeClientApp(firebaseConfig);
+    
     // Use initializeFirestore with long polling to avoid gRPC issues in Node.js environment
     db = initializeFirestore(clientApp, {
       experimentalForceLongPolling: true
@@ -910,22 +1002,22 @@ async function startServer() {
     if (!admin.apps.length) {
       try {
         // Try initializing with application default credentials
+        console.log("[Firebase] Attempting Admin SDK initialization with Application Default Credentials...");
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
           projectId: firebaseConfig.projectId
         });
-        console.log("Admin SDK initialized with Application Default Credentials.");
+        console.log("[Firebase] Admin SDK initialized with Application Default Credentials.");
       } catch (credError: any) {
-        console.warn("Could not load default credentials, trying to initialize with project ID only:", credError.message);
+        console.warn("[Firebase] Could not load default credentials, trying to initialize with project ID only:", credError.message);
         try {
           // Fallback: Initialize with just the project ID. 
-          // In some environments, this is enough if the environment is already authenticated.
           admin.initializeApp({
             projectId: firebaseConfig.projectId
           });
-          console.log("Admin SDK initialized with project ID only. Note: This may lead to PERMISSION_DENIED if not authenticated.");
+          console.log("[Firebase] Admin SDK initialized with project ID only.");
         } catch (initError: any) {
-          console.error("Admin SDK failed to initialize even with project ID fallback:", initError.message);
+          console.error("[Firebase] Admin SDK failed to initialize even with project ID fallback:", initError.message);
         }
       }
     }
@@ -2100,19 +2192,20 @@ async function startServer() {
         const indexPath = isProd ? path.resolve("dist", "index.html") : path.resolve("index.html");
         
         let html = await fs.readFile(indexPath, "utf-8");
-        if (!isProd && vite) {
+        if (!vite) {
+          // If vite is not available, we might be in a weird state, but try to serve
+        } else if (!isProd) {
           html = await vite.transformIndexHtml(req.originalUrl, html);
         }
         
-        const protocol = (req.headers['x-forwarded-proto'] as string) || (req.hostname === 'localhost' ? 'http' : 'https');
-        const host = req.headers.host;
-        const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
+        // Always use barnia.in as the canonical base in production
+        const baseUrl = (process.env.NODE_ENV === "production") ? "https://barnia.in" : (process.env.APP_URL || `http://${req.headers.host}`);
         
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
-          url: `${baseUrl}${req.path}`,
+          url: `${baseUrl}${req.path === '/' ? '' : req.path}`,
           type: 'website',
           keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
         };
@@ -2129,9 +2222,8 @@ async function startServer() {
 
     app.get("*", async (req, res) => {
       try {
-        const protocol = (req.headers['x-forwarded-proto'] as string) || (req.hostname === 'localhost' ? 'http' : 'https');
-        const host = req.headers.host;
-        const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
+        // Always use barnia.in as the canonical base in production
+        const baseUrl = "https://barnia.in";
 
         let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
         
@@ -2139,7 +2231,7 @@ async function startServer() {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
-          url: `${baseUrl}${req.path}`,
+          url: `${baseUrl}${req.path === '/' ? '' : req.path}`,
           type: 'website',
           keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
         };
