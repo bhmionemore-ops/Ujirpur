@@ -14,6 +14,14 @@ const SLIDES = [
     labelKey: 'news'
   },
   {
+    url: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=1920",
+    title: "Village Transport",
+    subtitle: "Book rides and track local transport easily within the village.",
+    path: "/transport",
+    icon: <Car size={20} />,
+    labelKey: 'transport'
+  },
+  {
     url: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=1920",
     title: "Barnia Bazar",
     subtitle: "Explore local shops and check daily market prices online.",
@@ -30,8 +38,6 @@ const SLIDES = [
     labelKey: 'influencer'
   },
   {
-    // Note: Direct Facebook photo links often don't work as direct image sources.
-    // Replace this URL with a direct image link (e.g., from Unsplash or a direct CDN)
     url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1920",
     title: "Collaboration Hub",
     subtitle: "Tools designed for seamless partnership between creators.",
@@ -123,7 +129,7 @@ export const Banner = () => {
           transition={{ delay: 0.2 }}
           className="mb-6"
         >
-          <span className="inline-block px-6 py-2 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-400 text-sm font-black uppercase tracking-[0.4em] backdrop-blur-md shadow-[0_0_20px_rgba(245,142,39,0.2)]">
+          <span className="inline-block px-6 py-2 rounded-full bg-zinc-950/40 border border-white/20 text-brand-400 text-base md:text-sm font-black uppercase tracking-[0.4em] backdrop-blur-md shadow-lg">
             {"Welcome to our community".split("").map((letter, index) => (
               <motion.span
                 key={index}
@@ -155,24 +161,28 @@ export const Banner = () => {
           transition={{ delay: 0.4 }}
           className="max-w-5xl mx-auto"
         >
-          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9] text-3d-colorful">
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9] text-shadow-lg md:text-3d-colorful">
             {language === 'bn' ? (
               current === 0 ? 'লাইভ নিউজ হাব' : 
-              current === 1 ? 'বার্নিয়া বাজার' : 
-              current === 2 ? 'ইনফ্লুয়েন্সার নেটওয়ার্ক' :
-              current === 3 ? 'সহযোগিতা হাব' :
+              current === 1 ? 'গ্রাম্য পরিবহন' : 
+              current === 2 ? 'বার্নিয়া বাজার' : 
+              current === 3 ? 'ইনফ্লুয়েন্সার নেটওয়ার্ক' :
+              current === 4 ? 'সহযোগিতা হাব' :
               'বাংলা পঞ্জিকা'
             ) : SLIDES[current].title}
           </h1>
-          <p className="text-lg md:text-xl text-zinc-300 font-medium max-w-2xl mx-auto leading-relaxed text-3d">
-            {language === 'bn' ? (
-              current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
-              current === 1 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
-              current === 2 ? 'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।' :
-              current === 3 ? 'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।' :
-              'আমাদের ডিজিটাল পঞ্জিকায় প্রতিদিনের তিথি, নক্ষত্র এবং বিশেষ উৎসবগুলি দেখুন।'
-            ) : SLIDES[current].subtitle}
-          </p>
+          <div className="bg-zinc-950/40 backdrop-blur-sm p-6 rounded-[2rem] border border-white/10 max-w-2xl mx-auto">
+            <p className="text-xl md:text-xl text-white font-bold leading-relaxed drop-shadow-md">
+              {language === 'bn' ? (
+                current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
+                current === 1 ? 'সহজেই গ্রামের মধ্যে রাইড বুক করুন এবং স্থানীয় পরিবহন ট্র্যাক করুন।' : 
+                current === 2 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
+                current === 3 ? 'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।' :
+                current === 4 ? 'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।' :
+                'আমাদের ডিজিটাল পঞ্জিকায় প্রতিদিনের তিথি, নক্ষত্র এবং বিশেষ উৎসবগুলি দেখুন।'
+              ) : SLIDES[current].subtitle}
+            </p>
+          </div>
         </motion.div>
 
         {/* Action Buttons */}
@@ -241,24 +251,6 @@ export const Banner = () => {
             </span>
           </motion.a>
         </motion.div>
-      </div>
-
-      {/* Controls */}
-      <div className="absolute bottom-12 left-4 right-4 md:left-12 md:right-12 flex items-center justify-end z-20">
-        <div className="flex gap-2">
-          <button 
-            onClick={prev}
-            className="p-3 rounded-2xl bg-white/5 text-white hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <button 
-            onClick={next}
-            className="p-3 rounded-2xl bg-white/5 text-white hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all"
-          >
-            <ChevronRight size={24} />
-          </button>
-        </div>
       </div>
     </div>
   );
