@@ -4,13 +4,14 @@ import { motion } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { 
   Instagram, Twitter, Facebook, Youtube, Linkedin, Github, Globe, 
-  ChevronLeft, Share2, MessageSquare, Send, CheckCircle, Zap
+  ChevronLeft, Share2, MessageSquare, Send, CheckCircle, Zap, Edit, Trash2, Plus, X, Save, RefreshCw
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useLanguage } from '../LanguageContext';
 import { useFirebase } from '../FirebaseContext';
-import { shareContent } from '../utils';
+import { shareContent, slugify } from '../utils';
+import { toast } from 'sonner';
 
 interface Influencer {
   id: string;
@@ -48,14 +49,22 @@ const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) =
       const id = url.split('/d/')[1]?.split('/')[0];
       return `https://drive.google.com/file/d/${id}/preview`;
     }
+    if (url.includes('facebook.com')) {
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;
+    }
+    if (url.includes('instagram.com')) {
+      const cleanUrl = url.split('?')[0].replace(/\/$/, '');
+      return `${cleanUrl}/embed`;
+    }
     return url;
   };
 
   const embedUrl = getEmbedUrl(url);
+  const isInstagram = url.includes('instagram.com');
 
   return (
     <div className="space-y-4">
-      <div className="aspect-video rounded-[2rem] overflow-hidden bg-zinc-900 border-4 border-zinc-100 shadow-xl">
+      <div className={`rounded-[2rem] overflow-hidden bg-zinc-900 border-4 border-zinc-100 shadow-xl ${isInstagram ? 'aspect-[9/16] max-w-[400px] mx-auto' : 'aspect-video'}`}>
         <iframe
           src={embedUrl}
           title={title}
@@ -64,7 +73,7 @@ const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) =
           allowFullScreen
         ></iframe>
       </div>
-      <p className="text-sm font-black text-zinc-900 px-4 uppercase tracking-widest">{title}</p>
+      <p className="text-sm font-black text-zinc-900 px-4 uppercase tracking-widest text-center">{title}</p>
     </div>
   );
 };
@@ -79,6 +88,16 @@ export const ProfilePage = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    bio: '',
+    avatar: '',
+    socials: ['', '', ''],
+    videos: [] as { title: string; url: string }[]
+  });
+  const [newVideo, setNewVideo] = useState({ title: '', url: '' });
   const [collabForm, setCollabForm] = useState({
     fromName: '',
     message: ''
@@ -94,13 +113,29 @@ export const ProfilePage = () => {
         
         if (!querySnapshot.empty) {
           const docSnap = querySnapshot.docs[0];
-          setInfluencer({ id: docSnap.id, ...docSnap.data() } as Influencer);
+          const data = docSnap.data() as Influencer;
+          setInfluencer({ id: docSnap.id, ...data } as Influencer);
+          setEditForm({
+            name: data.name,
+            bio: data.bio,
+            avatar: data.avatar,
+            socials: [...(data.socials || []), '', '', ''].slice(0, 3),
+            videos: data.videos || []
+          });
         } else {
           // Fallback to ID for backward compatibility
           const docRef = doc(db, 'influencers', slug);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setInfluencer({ id: docSnap.id, ...docSnap.data() } as Influencer);
+            const data = docSnap.data() as Influencer;
+            setInfluencer({ id: docSnap.id, ...data } as Influencer);
+            setEditForm({
+              name: data.name,
+              bio: data.bio,
+              avatar: data.avatar,
+              socials: [...(data.socials || []), '', '', ''].slice(0, 3),
+              videos: data.videos || []
+            });
           } else {
             setError(new Error('Influencer not found'));
           }
@@ -114,6 +149,37 @@ export const ProfilePage = () => {
 
     fetchInfluencer();
   }, [slug]);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!influencer || !user) return;
+
+    setUpdating(true);
+    try {
+      const updatedData = {
+        name: editForm.name,
+        bio: editForm.bio,
+        avatar: editForm.avatar,
+        socials: editForm.socials.filter(s => s.trim() !== ''),
+        videos: editForm.videos,
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(doc(db, 'influencers', influencer.id), updatedData);
+      
+      setInfluencer(prev => prev ? { ...prev, ...updatedData } : null);
+      setIsEditing(false);
+      toast.success(language === 'bn' ? 'প্রোফাইল আপডেট করা হয়েছে!' : 'Profile updated successfully!');
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, `influencers/${influencer.id}`);
+      } catch (e: any) {
+        toast.error(language === 'bn' ? 'আপডেট করতে সমস্যা হয়েছে' : 'Failed to update profile');
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const handleCollabRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,7 +310,148 @@ export const ProfilePage = () => {
           </div>
 
           <div className="px-8 md:px-16 pb-16 -mt-24 relative">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+            {isEditing ? (
+              <form onSubmit={handleUpdateProfile} className="pt-32 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Full Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Avatar URL</label>
+                    <input
+                      required
+                      type="text"
+                      value={editForm.avatar}
+                      onChange={(e) => setEditForm({ ...editForm, avatar: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Bio</label>
+                  <textarea
+                    required
+                    value={editForm.bio}
+                    onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                    className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold h-32 resize-none"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Social Media Links</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {editForm.socials.map((social, idx) => (
+                      <input
+                        key={idx}
+                        type="text"
+                        value={social}
+                        placeholder={`Social Link ${idx + 1}`}
+                        onChange={(e) => {
+                          const newSocials = [...editForm.socials];
+                          newSocials[idx] = e.target.value;
+                          setEditForm({ ...editForm, socials: newSocials });
+                        }}
+                        className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-6 p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100">
+                  <h4 className="text-lg font-black text-zinc-900 tracking-tight">Manage Videos</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
+                      <input
+                        type="text"
+                        placeholder="Video Title"
+                        value={newVideo.title}
+                        onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-6">
+                      <input
+                        type="text"
+                        placeholder="Video URL (YouTube, FB, IG)"
+                        value={newVideo.url}
+                        onChange={(e) => setNewVideo({ ...newVideo, url: e.target.value })}
+                        className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newVideo.title && newVideo.url) {
+                            setEditForm({ ...editForm, videos: [...editForm.videos, newVideo] });
+                            setNewVideo({ title: '', url: '' });
+                          }
+                        }}
+                        className="w-full h-full bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-2 py-4 md:py-0"
+                      >
+                        <Plus size={16} />
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 mt-6">
+                    {editForm.videos.map((vid, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-100">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 flex-shrink-0">
+                            <Youtube size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-zinc-900 truncate">{vid.title}</p>
+                            <p className="text-[10px] font-bold text-zinc-400 truncate">{vid.url}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newVideos = [...editForm.videos];
+                            newVideos.splice(idx, 1);
+                            setEditForm({ ...editForm, videos: newVideos });
+                          }}
+                          className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-zinc-500 hover:bg-zinc-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-xl shadow-brand-600/20 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {updating ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
+                    {updating ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
               <div className="relative">
                 <div className="absolute inset-0 bg-brand-600 blur-3xl opacity-20 rounded-full"></div>
                 <img 
@@ -275,6 +482,15 @@ export const ProfilePage = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-4">
+                  {user?.uid === influencer.uid && (
+                    <button 
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand-600 text-white hover:bg-brand-700 transition-all text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-600/20"
+                    >
+                      <Edit size={16} />
+                      {language === 'bn' ? 'প্রোফাইল এডিট করুন' : 'Edit Profile'}
+                    </button>
+                  )}
                   <button 
                     onClick={() => {
                       const shareUrl = window.location.href;
@@ -442,6 +658,8 @@ export const ProfilePage = () => {
                 </div>
               </div>
             </div>
+          </>
+        )}
           </div>
         </motion.div>
       </div>

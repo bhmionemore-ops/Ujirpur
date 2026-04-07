@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
   Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User, RefreshCw,
-  Trash2, XCircle
+  Trash2, XCircle, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -877,10 +877,10 @@ export const InfluencerSection = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-lg font-black text-zinc-900 tracking-tight">Popular Videos</h4>
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Showcase your best content (YouTube or Google Drive)</p>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Showcase your best content (YouTube, FB, IG or Google Drive)</p>
                     </div>
                     <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600">
-                      <Youtube size={24} />
+                      <Play size={24} />
                     </div>
                   </div>
 
@@ -900,7 +900,7 @@ export const InfluencerSection = () => {
                         value={videoUrl}
                         onChange={(e) => setVideoUrl(e.target.value)}
                         className="w-full p-4 rounded-2xl bg-white border border-zinc-100 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-sm"
-                        placeholder="Video Link (YouTube/Google Drive)"
+                        placeholder="Video Link (YouTube, Facebook, Instagram)"
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -917,26 +917,34 @@ export const InfluencerSection = () => {
 
                   {newInfluencer.videos.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                      {newInfluencer.videos.map((vid, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-100 group">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 flex-shrink-0">
-                              <Youtube size={18} />
+                      {newInfluencer.videos.map((vid, idx) => {
+                        const lowerUrl = vid.url.toLowerCase();
+                        let Icon = Play;
+                        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) Icon = Youtube;
+                        else if (lowerUrl.includes('facebook.com')) Icon = Facebook;
+                        else if (lowerUrl.includes('instagram.com')) Icon = Instagram;
+
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-100 group">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 flex-shrink-0">
+                                <Icon size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-black text-zinc-900 truncate">{vid.title}</p>
+                                <p className="text-[10px] font-bold text-zinc-400 truncate">{vid.url}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-black text-zinc-900 truncate">{vid.title}</p>
-                              <p className="text-[10px] font-bold text-zinc-400 truncate">{vid.url}</p>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeVideo(idx)}
+                              className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeVideo(idx)}
-                            className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
