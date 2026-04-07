@@ -135,6 +135,16 @@ const GlobalBookingAlert = () => {
   );
 };
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
 function AppContent() {
   const { language, setLanguage, t } = useLanguage();
   const { user, signOut, isAuthModalOpen, setAuthModalOpen, isAdmin } = useFirebase();
@@ -144,6 +154,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
+      <ScrollToTop />
       {/* Background Decorative Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full" />
@@ -170,19 +181,28 @@ function AppContent() {
           
           <div className="flex items-center gap-4 md:gap-8">
             <div className="hidden lg:flex items-center gap-10 text-[13px] font-bold text-zinc-500 uppercase tracking-widest">
-              {[
-                { to: '/', label: t.nav.news },
-                { to: '/bazar', label: t.nav.bazar },
-                { to: '/transport', label: t.nav.transport },
-                { to: '/influencers', label: t.nav.influencers },
-                { to: '/showcase', label: t.nav.showcase },
-                { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
-              ].map((link) => (
-                <Link 
-                  key={link.to}
-                  to={link.to} 
-                  className={`hover:text-brand-600 transition-all relative group py-2 flex items-center gap-2 ${location.pathname === link.to ? 'text-brand-600' : ''}`}
-                >
+                {[
+                  { to: '/', label: t.nav.news, sectionId: 'news' },
+                  { to: '/bazar', label: t.nav.bazar },
+                  { to: '/transport', label: t.nav.transport },
+                  { to: '/influencers', label: t.nav.influencers },
+                  { to: '/showcase', label: t.nav.showcase },
+                  { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
+                ].map((link) => (
+                  <Link 
+                    key={link.to}
+                    to={link.to} 
+                    onClick={(e) => {
+                      if (location.pathname === link.to && link.sectionId) {
+                        e.preventDefault();
+                        const element = document.getElementById(link.sectionId);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
+                    }}
+                    className={`hover:text-brand-600 transition-all relative group py-2 flex items-center gap-2 ${location.pathname === link.to ? 'text-brand-600' : ''}`}
+                  >
                   {link.isPonjika && (
                     <div className="relative flex items-center justify-center">
                       <div className="absolute inset-0 border border-brand-500/30 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
@@ -287,7 +307,7 @@ function AppContent() {
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-white border-b border-zinc-100 py-6 px-4 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
             {[
-              { to: '/', label: t.nav.news },
+              { to: '/', label: t.nav.news, sectionId: 'news' },
               { to: '/bazar', label: t.nav.bazar },
               { to: '/transport', label: t.nav.transport },
               { to: '/influencers', label: t.nav.influencers },
@@ -297,7 +317,16 @@ function AppContent() {
               <Link 
                 key={link.to}
                 to={link.to} 
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(e) => {
+                  if (location.pathname === link.to && link.sectionId) {
+                    e.preventDefault();
+                    const element = document.getElementById(link.sectionId);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }
+                  setIsMobileMenuOpen(false);
+                }}
                 className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${
                   location.pathname === link.to ? 'bg-brand-50 text-brand-600' : 'text-zinc-500 hover:bg-zinc-50'
                 }`}

@@ -626,12 +626,25 @@ async function cleanupOldNews() {
     console.log(`[NewsAPI] Cleaning up news older than: ${dateStr}`);
 
     if (adminDb) {
-      const oldNews = await adminDb.collection("news").where("date", "<", dateStr).get();
-      if (!oldNews.empty) {
-        const batch = adminDb.batch();
-        oldNews.docs.forEach((doc: any) => batch.delete(doc.ref));
-        await batch.commit();
-        console.log(`[NewsAPI] Cleaned up ${oldNews.size} old news documents.`);
+      try {
+        const oldNews = await adminDb.collection("news").where("date", "<", dateStr).get();
+        if (!oldNews.empty) {
+          const batch = adminDb.batch();
+          oldNews.docs.forEach((doc: any) => batch.delete(doc.ref));
+          await batch.commit();
+          console.log(`[NewsAPI] [Admin] Cleaned up ${oldNews.size} old news documents.`);
+        }
+      } catch (adminError: any) {
+        console.warn(`[NewsAPI] Admin cleanup failed, falling back to client SDK: ${adminError.message}`);
+        // Fallback to client SDK logic below
+        const q = query(collection(db, "news"), where("date", "<", dateStr));
+        const oldNews = await getDocs(q);
+        if (!oldNews.empty) {
+          const batch = writeBatch(db);
+          oldNews.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+          await batch.commit();
+          console.log(`[NewsAPI] [Client] Cleaned up ${oldNews.size} old news documents.`);
+        }
       }
     } else if (db) {
       const q = query(collection(db, "news"), where("date", "<", dateStr));
@@ -640,7 +653,7 @@ async function cleanupOldNews() {
         const batch = writeBatch(db);
         oldNews.docs.forEach((docSnap) => batch.delete(docSnap.ref));
         await batch.commit();
-        console.log(`[NewsAPI] Cleaned up ${oldNews.size} old news documents.`);
+        console.log(`[NewsAPI] [Client] Cleaned up ${oldNews.size} old news documents.`);
       }
     }
   } catch (error) {

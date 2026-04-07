@@ -150,8 +150,7 @@ service cloud.firestore {
              data.local is list &&
              data.fbTrends is list &&
              data.igTrends is list &&
-             data.updatedAt is string &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
+             data.updatedAt is string;
     }
 
     function isValidInboundEmail(data) {
@@ -260,16 +259,18 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
-      // Allow creation and update by anyone if it's valid news data for that specific day
-      // This ensures the server-side API can save generated news even if not fully authenticated as admin
+      
+      // Allow creation and update by anyone if it's valid news data
+      // We allow this so the server-side generation can cache news even if Admin SDK is limited
       allow create, update: if isValidNews(request.resource.data) && 
                             (newsId == request.resource.data.date || 
                              newsId == request.resource.data.date + "-" + request.resource.data.lang);
-      // Allow deletion of old news (older than 14 days) by anyone to facilitate cleanup tasks
-      // Or by admins at any time
+      
+      // Allow deletion of old news (older than 14 days)
+      // We use both createdAt (timestamp) and date (string) for robustness
       allow delete: if isAdmin() || 
-                    ('createdAt' in resource.data && resource.data.createdAt < request.time - duration.value(14, 'd')) ||
-                    ('date' in resource.data && resource.data.date < "2026-03-01"); // Fallback for docs without createdAt
+                    (resource.data.createdAt != null && request.time > resource.data.createdAt + duration.value(14, 'd')) ||
+                    (resource.data.date != null && request.time > timestamp.date(resource.data.date + "T00:00:00Z") + duration.value(14, 'd'));
     }
 
     match /shops/{shopId}/products/{productId} {

@@ -92,10 +92,17 @@ export const Banner = () => {
 
   const handleNavigation = (path: string) => {
     if (window.location.pathname === path) {
+      if (path === '/') {
+        const newsSection = document.getElementById('news');
+        if (newsSection) {
+          newsSection.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       navigate(path);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to top will be handled by ScrollToTop component
     }
   };
 
