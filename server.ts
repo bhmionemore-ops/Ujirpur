@@ -683,15 +683,23 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   } catch (error: any) {
     console.error("News generation failed on server:", error);
     
-    // If it failed with googleSearch or PERMISSION_DENIED, try without it as a fallback
+    // If it failed with googleSearch, PERMISSION_DENIED, or RESOURCE_EXHAUSTED, try fallback
     const isToolError = error.message?.includes("googleSearch") || error.message?.includes("tool");
     const isPermissionError = error.message?.includes("PERMISSION_DENIED") || error.message?.includes("403");
+    const isQuotaError = error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED");
     
-    if (isToolError || isPermissionError) {
-      console.log(`[NewsAPI] Retrying without googleSearch tool due to ${isPermissionError ? 'permission' : 'tool'} error...`);
+    if (isToolError || isPermissionError || isQuotaError) {
+      const reason = isQuotaError ? 'quota' : (isPermissionError ? 'permission' : 'tool');
+      console.log(`[NewsAPI] Retrying with fallback model due to ${reason} error...`);
       try {
+        // Wait 2 seconds before retry if it's a quota error
+        if (isQuotaError) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        // Try gemini-flash-latest as it often has higher free tier quotas
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-flash-latest",
           contents: prompt,
           config: {
             responseMimeType: "application/json",
@@ -1322,16 +1330,32 @@ async function startServer() {
       console.log("[TestGemini] Starting test...");
       const apiKey = await getGeminiApiKey();
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: "Hello, are you working?",
-      });
-      res.json({ 
-        status: "success", 
-        text: response.text,
-        keyPrefix: apiKey.substring(0, 8),
-        keyLength: apiKey.length
-      });
+      
+      // Try multiple models in order of preference
+      const modelsToTry = ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-3.1-flash-lite-preview"];
+      let lastError = null;
+      
+      for (const model of modelsToTry) {
+        try {
+          console.log(`[TestGemini] Trying model: ${model}`);
+          const response = await ai.models.generateContent({
+            model: model,
+            contents: "Hello, are you working?",
+          });
+          return res.json({ 
+            status: "success", 
+            text: response.text,
+            modelUsed: model,
+            keyPrefix: apiKey.substring(0, 8),
+            keyLength: apiKey.length
+          });
+        } catch (e: any) {
+          console.warn(`[TestGemini] Model ${model} failed: ${e.message}`);
+          lastError = e;
+        }
+      }
+      
+      throw lastError || new Error("All models failed");
     } catch (error: any) {
       console.error("[TestGemini] Test failed:", error);
       res.status(500).json({ 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus } from 'lucide-react';
+import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
 import { useFirebase } from '../FirebaseContext';
@@ -281,22 +282,31 @@ export const LiveNews = () => {
             {isAdmin && (
               <button 
                 onClick={async () => {
+                  const toastId = toast.loading('Testing Gemini API...');
                   try {
                     const res = await fetch('/api/admin/test-gemini');
                     const data = await res.json();
                     if (data.status === 'success') {
-                      alert(`Gemini is working! Response: ${data.text}`);
+                      toast.success(`Gemini is working!`, {
+                        id: toastId,
+                        description: `Model: ${data.modelUsed}\nResponse: ${data.text.substring(0, 50)}...`,
+                        duration: 5000
+                      });
                     } else {
-                      alert(`Gemini Test Failed: ${data.message}\nCode: ${data.code}`);
+                      toast.error(`Gemini Test Failed`, {
+                        id: toastId,
+                        description: `${data.message}\nCode: ${data.code}`,
+                        duration: 10000
+                      });
                     }
                   } catch (e: any) {
-                    alert(`Error: ${e.message}`);
+                    toast.error(`Error: ${e.message}`, { id: toastId });
                   }
                 }}
                 className="p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-green-500 hover:border-green-200 transition-all shadow-sm group"
                 title="Test Gemini API"
               >
-                <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+                <ShieldCheck size={20} className="group-hover:scale-110 transition-transform duration-500" />
               </button>
             )}
             <button 

@@ -378,7 +378,7 @@ export const InfluencerSection = () => {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert(language === 'bn' ? 'ছবিটি ২ মেগাবাইটের কম হতে হবে' : 'Image must be less than 2MB');
+      toast.error(language === 'bn' ? 'ছবিটি ২ মেগাবাইটের কম হতে হবে' : 'Image must be less than 2MB');
       return;
     }
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { X, Instagram, Facebook, Play, Heart, MessageCircle, Share2, ExternalLink, Users, Grid, Video, Music, Plus, CheckCircle } from 'lucide-react';
 
 interface Post {
@@ -39,7 +40,7 @@ export const InfluencerDemo = ({ onClose }: { onClose: () => void }) => {
         }
       } else if (event.data?.type === 'OAUTH_AUTH_ERROR') {
         console.error('OAuth Error:', event.data.error);
-        alert(`Failed to connect ${event.data.provider}: ${event.data.error}`);
+        toast.error(`Failed to connect ${event.data.provider}: ${event.data.error}`);
       }
     };
 
@@ -60,7 +61,7 @@ export const InfluencerDemo = ({ onClose }: { onClose: () => void }) => {
         window.open(url, 'facebook_oauth', 'width=600,height=700');
       } catch (error) {
         console.error('Error connecting to Facebook:', error);
-        alert(error instanceof Error ? error.message : 'Failed to connect to Facebook. Please check if FACEBOOK_CLIENT_ID is configured.');
+        toast.error(error instanceof Error ? error.message : 'Failed to connect to Facebook. Please check if FACEBOOK_CLIENT_ID is configured.');
       }
     } else {
       // Demo logic for other platforms
