@@ -2241,7 +2241,7 @@ async function startServer() {
   // Facebook OAuth Routes
   app.get('/api/auth/facebook/url', (req, res) => {
     // Use environment variables if available, otherwise use hardcoded fallbacks
-    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "26242299445430440";
+    const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
     const host = req.get('host');
     // Force https for production domains to avoid protocol mismatch errors
     const protocol = (host?.includes('localhost') || host?.includes('127.0.0.1')) ? 'http' : 'https';
@@ -2253,13 +2253,13 @@ async function startServer() {
       redirect_uri: redirectUri,
       // Simplified scope to avoid "Advanced Access" blocks for basic login
       // Add back 'instagram_basic', etc. only after your app is approved by Facebook
-      scope: 'email,public_profile',
+      scope: 'public_profile,email',
       response_type: 'code',
       auth_type: 'rerequest', // Prompt user again if they denied permissions
       display: 'popup'
     });
 
-    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
+    const authUrl = `https://www.facebook.com/v20.0/dialog/oauth?${params.toString()}`;
     console.log(`[FacebookAuth] Generated Auth URL: ${authUrl}`);
     res.json({ url: authUrl });
   });
@@ -2293,12 +2293,12 @@ async function startServer() {
     }
 
     try {
-      const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "26242299445430440";
-      const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "e2aba97983d4422fea2e4ed1e09a5e4d";
+      const appId = process.env.FACEBOOK_CLIENT_ID || process.env.FACEBOOK_APP_ID || "2201629183577400";
+      const appSecret = process.env.FACEBOOK_CLIENT_SECRET || "3494ad98c498cda892b65006cf833273";
 
       console.log(`[FacebookAuth] Exchanging code for token. Redirect URI: ${redirectUri}`);
       // 1. Exchange code for access token
-      const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
+      const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
       const tokenResponse = await fetch(tokenUrl);
       const tokens = await tokenResponse.json();
 
@@ -2309,7 +2309,7 @@ async function startServer() {
 
       console.log(`[FacebookAuth] Token received. Fetching user profile...`);
       // 2. Fetch user profile data
-      const userResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
+      const userResponse = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
       const userData = await userResponse.json();
 
       if (userData.error) {

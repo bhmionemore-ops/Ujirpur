@@ -343,6 +343,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <Facebook size={20} fill="currentColor" />
                   {language === 'bn' ? 'ফেসবুক দিয়ে লগইন করুন' : 'Sign in with Facebook'}
                 </button>
+                
+                <p className="text-[10px] text-zinc-400 font-medium text-center px-4">
+                  {language === 'bn' 
+                    ? 'ফেসবুক লগইন বর্তমানে মেটা (ফেসবুক) দ্বারা রিভিউ করা হচ্ছে। এটি কাজ না করলে অনুগ্রহ করে গুগল বা ইমেইল ব্যবহার করুন।' 
+                    : 'Facebook login is currently being reviewed by Meta. Please use Google or Email if it is not working for you yet.'}
+                </p>
               </div>
             </>
           )}

@@ -145,12 +145,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           let currentUser = auth.currentUser;
           
           if (accessToken) {
-            console.log('[FirebaseContext] Signing in with Facebook credential...');
+            console.log('[FirebaseContext] Signing in with Facebook credential. Token length:', accessToken.length);
             const { FacebookAuthProvider, signInWithCredential } = await import('firebase/auth');
             const credential = FacebookAuthProvider.credential(accessToken);
+            console.log('[FirebaseContext] Credential created. Calling signInWithCredential...');
             const cred = await signInWithCredential(auth, credential);
             currentUser = cred.user;
-            console.log('[FirebaseContext] Signed in successfully:', currentUser.uid);
+            console.log('[FirebaseContext] Signed in successfully to Firebase:', currentUser.uid);
           } else if (!currentUser) {
             console.log('[FirebaseContext] No access token and no current user, signing in anonymously...');
             const { signInAnonymously } = await import('firebase/auth');
