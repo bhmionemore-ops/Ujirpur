@@ -150,7 +150,8 @@ service cloud.firestore {
              data.local is list &&
              data.fbTrends is list &&
              data.igTrends is list &&
-             data.updatedAt is string;
+             data.updatedAt is string &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidInboundEmail(data) {
@@ -264,7 +265,11 @@ service cloud.firestore {
       allow create, update: if isValidNews(request.resource.data) && 
                             (newsId == request.resource.data.date || 
                              newsId == request.resource.data.date + "-" + request.resource.data.lang);
-      allow delete: if isAdmin();
+      // Allow deletion of old news (older than 14 days) by anyone to facilitate cleanup tasks
+      // Or by admins at any time
+      allow delete: if isAdmin() || 
+                    ('createdAt' in resource.data && resource.data.createdAt < request.time - duration.value(14, 'd')) ||
+                    ('date' in resource.data && resource.data.date < "2026-03-01"); // Fallback for docs without createdAt
     }
 
     match /shops/{shopId}/products/{productId} {

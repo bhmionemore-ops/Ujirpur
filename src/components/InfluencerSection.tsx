@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   UserPlus, Globe, MessageSquare, Share2, Send, Inbox, CheckCircle,
   Instagram, Twitter, Facebook, Youtube, Linkedin, Github, LogIn, Zap, ExternalLink, User, RefreshCw,
-  Trash2, XCircle, Play
+  Trash2, XCircle, Play, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
@@ -922,10 +922,10 @@ export const InfluencerSection = () => {
                       <button
                         type="button"
                         onClick={addVideo}
-                        className="w-full h-full bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-2 py-4 md:py-0"
+                        className="w-full h-full bg-brand-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-2 py-4 md:py-0 shadow-lg shadow-brand-500/20 active:scale-95"
                       >
-                        <UserPlus size={16} />
-                        Add
+                        <Plus size={18} />
+                        {language === 'bn' ? 'যোগ করুন' : 'Add Video'}
                       </button>
                     </div>
                   </div>

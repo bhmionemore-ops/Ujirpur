@@ -1512,7 +1512,8 @@ async function startServer() {
             ...newsData,
             date,
             lang: language,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
           };
 
           // Save to Firestore
@@ -1582,7 +1583,8 @@ async function startServer() {
       ...newsData,
       date,
       lang,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
     };
 
     console.log(`[NewsAPI] Attempting to cache news for ${docId}. Data keys: ${Object.keys(dataToSave).join(", ")}`);

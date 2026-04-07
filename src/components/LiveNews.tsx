@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck } from 'lucide-react';
+import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useLanguage } from '../LanguageContext';
@@ -324,13 +324,49 @@ export const LiveNews = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-100 text-brand-600 font-bold text-sm mb-4"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-brand-100 text-brand-600 font-black text-xs mb-6 uppercase tracking-[0.2em] shadow-sm border border-brand-200"
           >
-            <Newspaper size={16} />
+            <Newspaper size={16} className="animate-pulse" />
             {t.banner.news}
           </motion.div>
-          <h2 className="text-4xl font-bold text-zinc-900 mb-4">{t.news.title}</h2>
-          <p className="text-zinc-500 max-w-2xl mx-auto">{t.news.subtitle}</p>
+          <div className="relative inline-block">
+            <h2 className="text-5xl sm:text-6xl font-black text-zinc-900 mb-6 tracking-tighter flex items-center justify-center gap-4">
+              <motion.span
+                animate={{ rotate: [0, 15, 0] }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="text-brand-500"
+              >
+                <Moon size={48} fill="currentColor" />
+              </motion.span>
+              {t.news.title}
+            </h2>
+            <motion.div 
+              animate={{ 
+                rotate: [0, 10, 0, -10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{ duration: 5, repeat: Infinity }}
+              className="absolute -top-8 -right-12 text-brand-500/20 opacity-50 hidden sm:block"
+            >
+              <Zap size={64} strokeWidth={1} />
+            </motion.div>
+            <motion.div 
+              animate={{ 
+                y: [0, -10, 0],
+                rotate: [0, 5, 0]
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute -top-12 -left-16 text-brand-400/20 opacity-40 hidden sm:block"
+            >
+              <motion.div
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <div className="w-16 h-16 rounded-full border-4 border-current border-r-transparent -rotate-45" />
+              </motion.div>
+            </motion.div>
+          </div>
+          <p className="text-zinc-500 max-w-2xl mx-auto text-lg font-medium leading-relaxed">{t.news.subtitle}</p>
           
           {/* Refresh Button Container */}
           <div className="absolute top-0 right-0 flex gap-2">
@@ -398,11 +434,11 @@ export const LiveNews = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-6 mb-16">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-16">
           {[
-            { id: 'local', label: t.news.local, icon: <MapPin size={18} />, color: 'from-brand-600 to-brand-500' },
-            { id: 'fbTrends', label: t.news.fbTrends, icon: <Facebook size={18} />, color: 'from-[#1877F2] to-[#0D65D9]' },
-            { id: 'igTrends', label: t.news.igTrends, icon: <Instagram size={18} />, color: 'from-[#E4405F] to-[#D62976]' }
+            { id: 'local', label: t.news.local, icon: <MapPin size={18} />, color: 'from-brand-600 to-brand-500', inactiveColor: 'bg-brand-50 text-brand-600 border-brand-200' },
+            { id: 'fbTrends', label: t.news.fbTrends, icon: <Facebook size={18} />, color: 'from-[#1877F2] to-[#0D65D9]', inactiveColor: 'bg-blue-50 text-[#1877F2] border-blue-200' },
+            { id: 'igTrends', label: t.news.igTrends, icon: <div className="relative"><Instagram size={18} /><motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1 text-[8px]">✨</motion.div></div>, color: 'from-[#E4405F] to-[#D62976]', inactiveColor: 'bg-pink-50 text-[#E4405F] border-pink-200' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -411,22 +447,25 @@ export const LiveNews = () => {
                 activeTab === tab.id ? 'scale-110' : 'hover:scale-105'
               }`}
             >
-              {/* Animated Light Circle (Glow Ring) */}
-              {activeTab === tab.id && (
-                <div className="absolute inset-0 rounded-2xl overflow-hidden">
-                  <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0%,transparent_30%,white_50%,transparent_70%,transparent_100%)] animate-spin-fast opacity-80 blur-[2px]" />
-                </div>
-              )}
+              {/* Animated Light Circle (Glow Ring) - The "Moon" Glow */}
+              <div className={`absolute inset-0 rounded-2xl overflow-hidden transition-opacity duration-500 ${activeTab === tab.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}>
+                <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0%,transparent_30%,white_50%,transparent_70%,transparent_100%)] animate-spin-fast opacity-80 blur-[3px]" />
+              </div>
               
-              <div className={`relative flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-500 ${
+              <div className={`relative flex items-center gap-3 px-6 sm:px-10 py-3 sm:py-5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest transition-all duration-500 border-2 ${
                 activeTab === tab.id 
-                  ? `bg-gradient-to-br ${tab.color} text-white shadow-[0_10px_40px_rgba(0,0,0,0.2)]` 
-                  : 'bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-100'
+                  ? `bg-gradient-to-br ${tab.color} text-white border-transparent shadow-[0_15px_50px_rgba(0,0,0,0.3)]` 
+                  : `${tab.inactiveColor} hover:shadow-xl`
               }`}>
-                <span className={`${activeTab === tab.id ? 'animate-bounce' : ''}`}>
+                <span className={`${activeTab === tab.id ? 'animate-bounce' : 'group-hover:scale-125 transition-transform duration-300'}`}>
                   {tab.icon}
                 </span>
                 {tab.label}
+                
+                {/* Decorative Moon Glow Dot */}
+                <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full blur-[1px] transition-all duration-500 ${
+                  activeTab === tab.id ? 'bg-white animate-pulse shadow-[0_0_10px_white]' : 'bg-current opacity-30'
+                }`} />
               </div>
             </button>
           ))}
