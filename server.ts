@@ -617,16 +617,47 @@ async function getGeminiApiKey(): Promise<string> {
   return apiKey;
 }
 
-async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
+async function cleanupOldNews() {
+  try {
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    const dateStr = fifteenDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    console.log(`[NewsAPI] Cleaning up news older than: ${dateStr}`);
+
+    if (adminDb) {
+      const oldNews = await adminDb.collection("news").where("date", "<", dateStr).get();
+      if (!oldNews.empty) {
+        const batch = adminDb.batch();
+        oldNews.docs.forEach((doc: any) => batch.delete(doc.ref));
+        await batch.commit();
+        console.log(`[NewsAPI] Cleaned up ${oldNews.size} old news documents.`);
+      }
+    } else if (db) {
+      const q = query(collection(db, "news"), where("date", "<", dateStr));
+      const oldNews = await getDocs(q);
+      if (!oldNews.empty) {
+        const batch = writeBatch(db);
+        oldNews.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+        await batch.commit();
+        console.log(`[NewsAPI] Cleaned up ${oldNews.size} old news documents.`);
+      }
+    }
+  } catch (error) {
+    console.error("[NewsAPI] Error during news cleanup:", error);
+  }
+}
+
+async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en', targetDate?: string): Promise<any> {
   const apiKey = await getGeminiApiKey();
   const prefix = apiKey.substring(0, 4);
   console.log(`[NewsAPI] Using API key with prefix: ${prefix}... (Length: ${apiKey.length})`);
 
   const ai = new GoogleGenAI({ apiKey });
   const langName = language === 'bn' ? 'Bengali' : 'English';
-  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const displayDate = targetDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   
-  const prompt = `Find the latest news and trends for today (${today}) for the following categories:
+  const prompt = `Find the latest news and trends for the date: ${displayDate} for the following categories:
   
   1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
   2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
@@ -643,7 +674,7 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   }
   
   IMPORTANT: All text must be in ${langName}.
-  Return exactly 5 items per category.`;
+  Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
 
   try {
     console.log(`[NewsAPI] Calling Gemini API for ${langName} news...`);
@@ -1445,8 +1476,12 @@ async function startServer() {
         return res.json(data);
       }
 
-      // 2. If not found and it's the current news date, try to generate it on the server
-      if (date === currentNewsDate) {
+      // 2. If not found and it's within the last 3 days, try to generate it on the server
+      const dateObj = new Date(date as string);
+      const currentObj = new Date(currentNewsDate);
+      const diffDays = Math.floor((currentObj.getTime() - dateObj.getTime()) / (1000 * 3600 * 24));
+
+      if (diffDays >= 0 && diffDays <= 2) {
         // Check if generation is stuck (more than 2 minutes)
         if (isGeneratingNews && generationStartTime && (Date.now() - generationStartTime > 120000)) {
           console.warn("[NewsAPI] Generation appears stuck, resetting lock.");
@@ -1466,7 +1501,7 @@ async function startServer() {
         generationStartTime = Date.now();
         try {
           console.log(`[NewsAPI] Generating news for ${docId} on server...`);
-          const newsData = await fetchLiveNewsServer(language);
+          const newsData = await fetchLiveNewsServer(language, date as string);
           
           const dataToSave = {
             ...newsData,
@@ -1481,6 +1516,9 @@ async function startServer() {
           } else if (db) {
             await setDoc(doc(db, "news", docId), dataToSave);
           }
+
+          // Cleanup old news (older than 15 days) to save space
+          cleanupOldNews().catch(err => console.error("[NewsAPI] Cleanup failed:", err));
 
           isGeneratingNews = false;
           generationStartTime = null;
