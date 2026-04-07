@@ -1446,6 +1446,11 @@ async function startServer() {
     const docId = `${date}-${language}`;
     const currentNewsDate = getCurrentNewsDate();
 
+    // Cleanup old news (older than 15 days) periodically
+    if (date === currentNewsDate && Math.random() < 0.1) {
+      cleanupOldNews().catch(err => console.error("[NewsAPI] Cleanup failed:", err));
+    }
+
     try {
       let data: any = null;
       
@@ -1516,9 +1521,6 @@ async function startServer() {
           } else if (db) {
             await setDoc(doc(db, "news", docId), dataToSave);
           }
-
-          // Cleanup old news (older than 15 days) to save space
-          cleanupOldNews().catch(err => console.error("[NewsAPI] Cleanup failed:", err));
 
           isGeneratingNews = false;
           generationStartTime = null;

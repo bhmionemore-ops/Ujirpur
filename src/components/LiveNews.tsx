@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -25,6 +26,8 @@ export const LiveNews = () => {
     fbTrends: 0,
     igTrends: 0
   });
+
+  const { date: deepDate, tab: deepTab, index: deepIndex } = useParams();
 
   // Calculate "News Date" based on 6 AM IST refresh
   const getNewsDate = (offset: number = 0) => {
@@ -95,7 +98,16 @@ export const LiveNews = () => {
           throw new Error(data.error || "Failed to generate news");
         }
         setGenerating(false);
-        return { ...data, date };
+        
+        // Add date to each item for consistency
+        const processedData = {
+          local: (data.local || []).map((item: any) => ({ ...item, date })),
+          fbTrends: (data.fbTrends || []).map((item: any) => ({ ...item, date })),
+          igTrends: (data.igTrends || []).map((item: any) => ({ ...item, date })),
+          updatedAt: data.updatedAt || new Date().toISOString()
+        };
+        
+        return { ...processedData, date };
       } else {
         throw new Error("Server returned non-JSON response");
       }
@@ -130,6 +142,49 @@ export const LiveNews = () => {
 
     initNews();
   }, [language]);
+
+  // Handle Deep Links
+  useEffect(() => {
+    if (deepDate && deepTab && deepIndex) {
+      const loadDeepLink = async () => {
+        try {
+          // Check if we already have the news for this date
+          const items = news[deepTab as keyof typeof news];
+          const foundItem = Array.isArray(items) ? items.find((item: any) => item.date === deepDate && items.indexOf(item) % 5 === parseInt(deepIndex)) : null;
+
+          if (foundItem) {
+            setSelectedItem({ ...foundItem, index: parseInt(deepIndex) });
+            setActiveTab(deepTab as any);
+          } else {
+            // Fetch the specific date
+            const response = await fetch(`/api/news?date=${deepDate}&lang=${language}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data && !data.isError) {
+                const tabItems = data[deepTab as keyof typeof data];
+                if (Array.isArray(tabItems)) {
+                  const item = tabItems[parseInt(deepIndex)];
+                  if (item) {
+                    const itemsWithDate = tabItems.map((it: any) => ({ ...it, date: deepDate }));
+                    setNews((prev: any) => ({
+                      ...prev,
+                      [deepTab as string]: [...(prev[deepTab as keyof typeof prev] as any[] || []), ...itemsWithDate],
+                      dates: [...prev.dates, deepDate]
+                    }));
+                    setSelectedItem({ ...item, date: deepDate, index: parseInt(deepIndex) });
+                    setActiveTab(deepTab as any);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Deep link error:", e);
+        }
+      };
+      loadDeepLink();
+    }
+  }, [deepDate, deepTab, deepIndex, language, news.dates.length]);
 
   const handleSeeMore = async () => {
     const nextOffset = currentDayOffset[activeTab] + 1;
@@ -399,12 +454,15 @@ export const LiveNews = () => {
                       <Clock size={12} />
                       {item.date}
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                    <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-all md:translate-x-4 md:group-hover:translate-x-0">
                       <a 
                         href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => logEvent('share_news', { title: item.title, method: 'facebook' })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          logEvent('share_news', { title: item.title, method: 'facebook' });
+                        }}
                         className="p-2 rounded-xl bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-all"
                         title={t.news.shareOnFacebook}
                       >
@@ -414,14 +472,20 @@ export const LiveNews = () => {
                         href={`https://wa.me/?text=${encodeURIComponent(item.title + ' ' + shareUrl)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => logEvent('share_news', { title: item.title, method: 'whatsapp' })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          logEvent('share_news', { title: item.title, method: 'whatsapp' });
+                        }}
                         className="p-2 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all"
                         title={t.news.shareOnWhatsApp}
                       >
                         <MessageCircle size={14} />
                       </a>
                       <button 
-                        onClick={() => copyToClipboard(shareUrl, item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyToClipboard(shareUrl, item);
+                        }}
                         className="p-2 rounded-xl bg-zinc-100 text-zinc-600 hover:bg-zinc-800 hover:text-white transition-all"
                         title={t.news.copyLink}
                       >
