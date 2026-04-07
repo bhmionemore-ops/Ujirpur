@@ -482,13 +482,13 @@ function getCurrentNewsDate() {
 let isGeneratingNews = false;
 let generationStartTime: number | null = null;
 
-async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
+async function getGeminiApiKey(): Promise<string> {
   // Priority list of environment variables to check for the Gemini API key
   const keyNames = [
+    'GOOGLE_API_KEY', // Prioritize this as it's a common override name
     'GEMINI_API_KEY',
     'NEXT_PUBLIC_GEMINI_API_KEY',
     'API_KEY',
-    'GOOGLE_API_KEY',
     'VITE_GEMINI_API_KEY',
     'GOOGLE_GENERATIVE_AI_API_KEY'
   ];
@@ -496,6 +496,7 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   let apiKey: string | undefined;
 
   // 1. Try the known keys in order
+  // We prioritize GEMINI_API_KEY as it's the standard for AI Studio
   for (const name of keyNames) {
     const val = process.env[name];
     // Check for valid key: not empty, not placeholder, not the string "undefined", not the string "null"
@@ -504,10 +505,15 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
         val !== "" && 
         val !== "undefined" && 
         val !== "null" &&
-        val !== "AI Studio Free Tier" // This is a UI label, if it leaks into env it's invalid
+        val !== "AI Studio Free Tier"
     ) {
       apiKey = val;
       console.log(`[NewsAPI] Selected API key from: ${name} (Length: ${val.length})`);
+      
+      // If this key matches the Firebase key, we should warn that it might be restricted
+      if (firebaseConfig?.apiKey === val) {
+        console.warn(`[NewsAPI] WARNING: The selected key from ${name} matches the Firebase Browser Key. This key is often RESTRICTED by default in Google Cloud Console, which causes 'API_KEY_SERVICE_BLOCKED' errors.`);
+      }
       break;
     }
   }
@@ -603,11 +609,16 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
   console.log(`- Final API Key selected: ${apiKey ? apiKey.substring(0, 4) + "..." : "None"}`);
   
   if (!apiKey) {
-    const errorMsg = `Gemini API key is missing. I checked ${keyNames.length} variables, scanned ${allEnvKeys.length} total env vars, and checked Firebase config. Please ensure you have clicked 'Save' in the Secrets menu after selecting 'AI Studio Free Tier'.`;
+    const errorMsg = `Gemini API key is missing. Please ensure you have clicked 'Save' in the Secrets menu after selecting 'AI Studio Free Tier' or adding GOOGLE_API_KEY.`;
     console.error(`[NewsAPI] ${errorMsg}`);
     throw new Error(errorMsg);
   }
 
+  return apiKey;
+}
+
+async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en'): Promise<any> {
+  const apiKey = await getGeminiApiKey();
   const prefix = apiKey.substring(0, 4);
   console.log(`[NewsAPI] Using API key with prefix: ${prefix}... (Length: ${apiKey.length})`);
 
@@ -1303,6 +1314,33 @@ async function startServer() {
     };
 
     res.json(diag);
+  });
+
+  // Test Gemini API directly
+  app.get("/api/admin/test-gemini", async (req, res) => {
+    try {
+      console.log("[TestGemini] Starting test...");
+      const apiKey = await getGeminiApiKey();
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: "Hello, are you working?",
+      });
+      res.json({ 
+        status: "success", 
+        text: response.text,
+        keyPrefix: apiKey.substring(0, 8),
+        keyLength: apiKey.length
+      });
+    } catch (error: any) {
+      console.error("[TestGemini] Test failed:", error);
+      res.status(500).json({ 
+        status: "error", 
+        message: error.message,
+        details: error.stack,
+        code: error.code || "UNKNOWN"
+      });
+    }
   });
 
   // Debug endpoint for news generation parameters

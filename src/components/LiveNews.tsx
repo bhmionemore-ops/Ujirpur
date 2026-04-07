@@ -192,13 +192,40 @@ export const LiveNews = () => {
             <>
               <p>{language === 'bn' ? 'আপনার API কী এই পরিষেবার জন্য ব্লক করা হয়েছে। অনুগ্রহ করে Google Cloud Console-এ কী-এর সীমাবদ্ধতা পরীক্ষা করুন।' : 'Your API key is blocked for this service. This usually means the API key is restricted and doesn\'t allow the Generative Language API.'}</p>
               <p className="font-bold">{language === 'bn' ? 'সমাধান:' : 'Solution:'}</p>
-              <ol className="list-decimal text-left pl-4 space-y-1">
-                <li>{language === 'bn' ? 'Google Cloud Console-এ যান (প্রজেক্ট: 35806183265)' : 'Go to Google Cloud Console (Project: 35806183265)'}</li>
-                <li>{language === 'bn' ? 'API & Services > Credentials-এ যান' : 'Go to API & Services > Credentials'}</li>
-                <li>{language === 'bn' ? '"Browser key (auto created by Firebase)" এ ক্লিক করুন' : 'Click on "Browser key (auto created by Firebase)"'}</li>
-                <li>{language === 'bn' ? '"API restrictions" এর নিচে "Don\'t restrict key" নির্বাচন করুন' : 'Under "API restrictions", select "Don\'t restrict key"'}</li>
-                <li>{language === 'bn' ? '"Save" এ ক্লিক করুন এবং ১০ মিনিট অপেক্ষা করুন' : 'Click "Save" and wait 10 minutes for changes to apply.'}</li>
-              </ol>
+              <div className="bg-white p-4 rounded-xl border-2 border-red-100 text-left space-y-3">
+                <p className="font-bold text-red-600 underline">
+                  {language === 'bn' 
+                    ? 'গুরুত্বপূর্ণ: আপনার বর্তমান API কী (AIzaSyCW6a3r6p...) ব্লক করা হয়েছে।' 
+                    : 'CRITICAL: Your current API key (AIzaSyCW6a3r6p...) is BLOCKED.'}
+                </p>
+                <p>
+                  {language === 'bn'
+                    ? 'এটি সাধারণত ঘটে কারণ কী-টি শুধুমাত্র ফায়ারবেসের জন্য সীমাবদ্ধ। এটি ঠিক করতে:'
+                    : 'This happens because the key is restricted to only Firebase services. To fix this:'}
+                </p>
+                <ol className="list-decimal pl-4 space-y-1">
+                  <li>{language === 'bn' ? 'Google Cloud Console-এ যান (প্রজেক্ট: 35806183265)' : 'Go to Google Cloud Console (Project: 35806183265)'}</li>
+                  <li>{language === 'bn' ? 'API & Services > Credentials-এ যান' : 'Go to API & Services > Credentials'}</li>
+                  <li>{language === 'bn' ? '"Browser key (auto created by Firebase)" এ ক্লিক করুন' : 'Click on "Browser key (auto created by Firebase)"'}</li>
+                  <li>{language === 'bn' ? '"API restrictions" এর নিচে "Don\'t restrict key" নির্বাচন করুন' : 'Under "API restrictions", select "Don\'t restrict key"'}</li>
+                  <li>{language === 'bn' ? '"Save" এ ক্লিক করুন এবং ১০ মিনিট অপেক্ষা করুন' : 'Click "Save" and wait 10 minutes for changes to apply.'}</li>
+                </ol>
+                <div className="pt-2 border-t border-zinc-100">
+                  <p className="font-bold text-zinc-900">
+                    {language === 'bn' ? 'বিকল্প সমাধান (অধিক নিরাপদ):' : 'Alternative Solution (Recommended):'}
+                  </p>
+                  <p>
+                    {language === 'bn'
+                      ? '১. aistudio.google.com থেকে একটি নতুন API কী তৈরি করুন।'
+                      : '1. Create a NEW API key at aistudio.google.com.'}
+                  </p>
+                  <p>
+                    {language === 'bn'
+                      ? '২. এই অ্যাপের "Settings > Secrets" মেনুতে যান এবং GEMINI_API_KEY হিসেবে সেটি যোগ করুন।'
+                      : '2. Add it as GEMINI_API_KEY in the "Settings > Secrets" menu of this app.'}
+                  </p>
+                </div>
+              </div>
               <a 
                 href="https://console.cloud.google.com/apis/credentials?project=35806183265" 
                 target="_blank" 
@@ -249,35 +276,58 @@ export const LiveNews = () => {
           <h2 className="text-4xl font-bold text-zinc-900 mb-4">{t.news.title}</h2>
           <p className="text-zinc-500 max-w-2xl mx-auto">{t.news.subtitle}</p>
           
-          {/* Refresh Button */}
-          <button 
-            onClick={async () => {
-              setLoading(true);
-              setGenerating(true);
-              setError(null);
-              try {
-                const newsData = await fetchDayNews(0);
-                setNews({
-                  local: newsData.local || [],
-                  fbTrends: newsData.fbTrends || [],
-                  igTrends: newsData.igTrends || [],
-                  dates: [newsData.date],
-                  updatedAt: newsData.updatedAt
-                });
-                setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
-              } catch (e: any) {
-                console.error(e);
-                setError(e.message || "Failed to refresh news");
-              } finally {
-                setLoading(false);
-                setGenerating(false);
-              }
-            }}
-            className="absolute top-0 right-0 p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm group"
-            title={language === 'bn' ? 'সংবাদ রিফ্রেশ করুন' : 'Refresh News'}
-          >
-            <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
-          </button>
+          {/* Refresh Button Container */}
+          <div className="absolute top-0 right-0 flex gap-2">
+            {isAdmin && (
+              <button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/admin/test-gemini');
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                      alert(`Gemini is working! Response: ${data.text}`);
+                    } else {
+                      alert(`Gemini Test Failed: ${data.message}\nCode: ${data.code}`);
+                    }
+                  } catch (e: any) {
+                    alert(`Error: ${e.message}`);
+                  }
+                }}
+                className="p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-green-500 hover:border-green-200 transition-all shadow-sm group"
+                title="Test Gemini API"
+              >
+                <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+              </button>
+            )}
+            <button 
+              onClick={async () => {
+                setLoading(true);
+                setGenerating(true);
+                setError(null);
+                try {
+                  const newsData = await fetchDayNews(0);
+                  setNews({
+                    local: newsData.local || [],
+                    fbTrends: newsData.fbTrends || [],
+                    igTrends: newsData.igTrends || [],
+                    dates: [newsData.date],
+                    updatedAt: newsData.updatedAt
+                  });
+                  setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
+                } catch (e: any) {
+                  console.error(e);
+                  setError(e.message || "Failed to refresh news");
+                } finally {
+                  setLoading(false);
+                  setGenerating(false);
+                }
+              }}
+              className="p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm group"
+              title={language === 'bn' ? 'সংবাদ রিফ্রেশ করুন' : 'Refresh News'}
+            >
+              <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
