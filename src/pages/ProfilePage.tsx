@@ -88,7 +88,8 @@ export const ProfilePage = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -168,7 +169,8 @@ export const ProfilePage = () => {
       await updateDoc(doc(db, 'influencers', influencer.id), updatedData);
       
       setInfluencer(prev => prev ? { ...prev, ...updatedData } : null);
-      setIsEditing(false);
+      setIsEditingProfile(false);
+      setIsAddingVideo(false);
       toast.success(language === 'bn' ? 'প্রোফাইল আপডেট করা হয়েছে!' : 'Profile updated successfully!');
     } catch (err) {
       try {
@@ -310,7 +312,7 @@ export const ProfilePage = () => {
           </div>
 
           <div className="px-8 md:px-16 pb-16 -mt-24 relative">
-            {isEditing ? (
+            {isEditingProfile ? (
               <form onSubmit={handleUpdateProfile} className="pt-32 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
@@ -365,8 +367,28 @@ export const ProfilePage = () => {
                   </div>
                 </div>
 
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-zinc-500 hover:bg-zinc-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="bg-brand-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-xl shadow-brand-600/20 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {updating ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
+                    {updating ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            ) : isAddingVideo ? (
+              <form onSubmit={handleUpdateProfile} className="pt-32 space-y-8">
                 <div className="space-y-6 p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100">
-                  <h4 className="text-lg font-black text-zinc-900 tracking-tight">Manage Videos</h4>
+                  <h4 className="text-lg font-black text-zinc-900 tracking-tight">Add New Video</h4>
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-4">
                       <input
@@ -393,6 +415,7 @@ export const ProfilePage = () => {
                           if (newVideo.title && newVideo.url) {
                             setEditForm({ ...editForm, videos: [...editForm.videos, newVideo] });
                             setNewVideo({ title: '', url: '' });
+                            toast.success('Video added to list! Save changes to publish.');
                           }
                         }}
                         className="w-full h-full bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-2 py-4 md:py-0"
@@ -434,7 +457,7 @@ export const ProfilePage = () => {
                 <div className="flex justify-end gap-4">
                   <button
                     type="button"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => setIsAddingVideo(false)}
                     className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-zinc-500 hover:bg-zinc-100 transition-all"
                   >
                     Cancel
@@ -484,7 +507,7 @@ export const ProfilePage = () => {
                 <div className="flex flex-wrap gap-4">
                   {user?.uid === influencer.uid && (
                     <button 
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => setIsEditingProfile(true)}
                       className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand-600 text-white hover:bg-brand-700 transition-all text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-600/20"
                     >
                       <Edit size={16} />
@@ -563,16 +586,34 @@ export const ProfilePage = () => {
                   </div>
                 </div>
 
-                {influencer.videos && influencer.videos.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em] mb-8">Popular Videos</h3>
+                <div>
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em]">Popular Videos</h3>
+                    {user?.uid === influencer.uid && (
+                      <button 
+                        onClick={() => setIsAddingVideo(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 text-white hover:bg-brand-600 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-zinc-900/10"
+                      >
+                        <Plus size={14} />
+                        {language === 'bn' ? 'ভিডিও যোগ করুন' : 'Add Video'}
+                      </button>
+                    )}
+                  </div>
+                  
+                  {influencer.videos && influencer.videos.length > 0 ? (
                     <div className="grid grid-cols-1 gap-12">
                       {influencer.videos.map((vid: { title: string; url: string }, i: number) => (
                         <VideoPlayer key={`video-${i}`} url={vid.url} title={vid.title} />
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="py-12 text-center bg-zinc-50 rounded-[2rem] border-2 border-dashed border-zinc-200">
+                      <p className="text-zinc-400 font-medium text-sm">
+                        {language === 'bn' ? 'এখনও কোন ভিডিও যোগ করা হয়নি' : 'No videos added yet'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-8">

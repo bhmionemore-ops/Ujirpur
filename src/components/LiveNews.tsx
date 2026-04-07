@@ -309,34 +309,36 @@ export const LiveNews = () => {
                 <ShieldCheck size={20} className="group-hover:scale-110 transition-transform duration-500" />
               </button>
             )}
-            <button 
-              onClick={async () => {
-                setLoading(true);
-                setGenerating(true);
-                setError(null);
-                try {
-                  const newsData = await fetchDayNews(0);
-                  setNews({
-                    local: newsData.local || [],
-                    fbTrends: newsData.fbTrends || [],
-                    igTrends: newsData.igTrends || [],
-                    dates: [newsData.date],
-                    updatedAt: newsData.updatedAt
-                  });
-                  setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
-                } catch (e: any) {
-                  console.error(e);
-                  setError(e.message || "Failed to refresh news");
-                } finally {
-                  setLoading(false);
-                  setGenerating(false);
-                }
-              }}
-              className="p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm group"
-              title={language === 'bn' ? 'সংবাদ রিফ্রেশ করুন' : 'Refresh News'}
-            >
-              <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={async () => {
+                  setLoading(true);
+                  setGenerating(true);
+                  setError(null);
+                  try {
+                    const newsData = await fetchDayNews(0);
+                    setNews({
+                      local: newsData.local || [],
+                      fbTrends: newsData.fbTrends || [],
+                      igTrends: newsData.igTrends || [],
+                      dates: [newsData.date],
+                      updatedAt: newsData.updatedAt
+                    });
+                    setCurrentDayOffset({ local: 0, fbTrends: 0, igTrends: 0 });
+                  } catch (e: any) {
+                    console.error(e);
+                    setError(e.message || "Failed to refresh news");
+                  } finally {
+                    setLoading(false);
+                    setGenerating(false);
+                  }
+                }}
+                className="p-3 rounded-2xl bg-white border border-zinc-100 text-zinc-400 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm group"
+                title={language === 'bn' ? 'সংবাদ রিফ্রেশ করুন' : 'Refresh News'}
+              >
+                <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+              </button>
+            )}
           </div>
         </div>
 
