@@ -1028,26 +1028,27 @@ export const VillageTransportPage = () => {
     <div className="min-h-screen pt-24 pb-20 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-12 text-center">
+        <div className="mb-16 text-center relative">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-brand-500/5 blur-[100px] rounded-full -z-10" />
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-brand-50 border border-brand-100 text-brand-600 text-xs font-black uppercase tracking-widest mb-6"
+            className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 shadow-sm"
           >
-            <Car size={14} />
+            <Car size={14} className="animate-pulse" />
             {t.transport.title}
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-black text-zinc-900 tracking-tight mb-6 uppercase">
+          <h1 className="text-5xl md:text-7xl font-black text-zinc-900 tracking-tight mb-8 uppercase leading-[0.9]">
             {t.transport.barniaRide}
           </h1>
-          <p className="text-zinc-500 font-medium max-w-2xl mx-auto text-lg">
+          <p className="text-zinc-500 font-medium max-w-2xl mx-auto text-xl leading-relaxed">
             {t.transport.subtitle}
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex justify-center mb-12">
-          <div className="bg-white p-1.5 rounded-3xl border border-zinc-200 shadow-sm flex gap-1">
+        <div className="flex justify-center mb-16">
+          <div className="bg-white/80 backdrop-blur-xl p-2 rounded-[2.5rem] border border-zinc-200 shadow-2xl shadow-zinc-200/50 flex gap-2">
             {[
               { id: 'find', label: t.nav.transport, icon: Car },
               { id: 'driver', label: t.transport.driverMode, icon: User },
@@ -1056,16 +1057,16 @@ export const VillageTransportPage = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`relative flex items-center gap-3 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${
+                className={`relative flex items-center gap-3 px-10 py-5 rounded-[2rem] text-xs font-black uppercase tracking-widest transition-all duration-500 ${
                   activeTab === tab.id 
-                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20' 
+                    ? 'bg-zinc-900 text-white shadow-2xl shadow-zinc-900/40 scale-105' 
                     : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
                 }`}
               >
-                <tab.icon size={18} />
+                <tab.icon size={18} className={activeTab === tab.id ? 'text-brand-500' : ''} />
                 {tab.label}
                 {tab.id === 'requests' && currentRiderRide && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-500 rounded-full border-2 border-white animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-500 rounded-full border-2 border-white animate-pulse shadow-lg" />
                 )}
               </button>
             ))}
@@ -1081,13 +1082,13 @@ export const VillageTransportPage = () => {
               exit={{ opacity: 0, y: 100 }}
               className="fixed bottom-24 left-4 right-4 z-[50] md:left-auto md:right-8 md:w-[400px]"
             >
-              <div className="bg-white rounded-[2.5rem] shadow-2xl border border-brand-100 p-8 overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-100 overflow-hidden">
+              <div className="bg-white/95 backdrop-blur-2xl rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] border border-brand-100 p-10 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-2 bg-zinc-100 overflow-hidden">
                   {currentRiderRide.status === 'pending' && (
                     <motion.div
                       animate={{ x: ['-100%', '100%'] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="w-1/3 h-full bg-brand-600 shadow-[0_0_10px_rgba(234,88,12,0.5)]"
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-1/2 h-full bg-gradient-to-r from-transparent via-brand-500 to-transparent"
                     />
                   )}
                   {currentRiderRide.status === 'accepted' && (
@@ -1095,28 +1096,35 @@ export const VillageTransportPage = () => {
                   )}
                 </div>
 
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-8">
                   <div>
-                    <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">
+                    <h4 className="text-2xl font-black text-zinc-900 uppercase tracking-tight leading-none">
                       {currentRiderRide.status === 'pending' 
                         ? t.transport.findingRide 
                         : t.transport.driverAssigned}
                     </h4>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
+                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3">
                       Ride ID: #{currentRiderRide.id.slice(-6).toUpperCase()}
                     </p>
                   </div>
-                  <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center shadow-inner ${
+                  <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-inner ${
                     currentRiderRide.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
                   }`}>
                     {currentRiderRide.status === 'pending' ? (
                       <motion.div
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                       >
-                        <Clock size={28} />
+                        <Clock size={32} />
                       </motion.div>
-                    ) : <Car size={28} />}
+                    ) : (
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <Car size={32} />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
 
@@ -1209,27 +1217,39 @@ export const VillageTransportPage = () => {
               {/* Request Card */}
               {!showVehicleSelection && (
                 <div className="lg:col-span-1">
-                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 shadow-sm sticky top-32">
-                    <div className="w-16 h-16 rounded-3xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8">
-                      <Navigation size={32} />
-                    </div>
-                    <h3 className="text-2xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.requestRide}</h3>
-                    <p className="text-zinc-500 text-sm font-medium mb-8 leading-relaxed">
-                      {t.transport.enterDestination}
-                    </p>
+                  <div className="bg-white rounded-[3rem] border border-zinc-100 p-10 shadow-2xl shadow-zinc-200/30 sticky top-32 overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-brand-500" />
+                    <div className="absolute -right-12 -top-12 w-48 h-48 bg-brand-50 rounded-full blur-3xl group-hover:bg-brand-100 transition-colors duration-700" />
                     
-                    <button
-                      onClick={() => setShowRequestModal(true)}
-                      className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-3"
-                    >
-                      <Plus size={20} />
-                      {t.transport.requestRide}
-                    </button>
+                    <div className="relative z-10">
+                      <div className="w-20 h-20 rounded-[2rem] bg-zinc-900 flex items-center justify-center text-brand-500 mb-10 shadow-xl shadow-zinc-900/20">
+                        <Navigation size={36} />
+                      </div>
+                      <h3 className="text-3xl font-black text-zinc-900 mb-6 uppercase tracking-tight leading-none">{t.transport.requestRide}</h3>
+                      <p className="text-zinc-500 font-medium mb-10 leading-relaxed">
+                        {t.transport.enterDestination}
+                      </p>
+                      
+                      <button
+                        onClick={() => setShowRequestModal(true)}
+                        className="w-full py-6 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/30 flex items-center justify-center gap-4 group/btn"
+                      >
+                        <Plus size={24} className="group-hover/btn:rotate-90 transition-transform duration-500" />
+                        {t.transport.requestRide}
+                      </button>
 
-                    <div className="mt-8 pt-8 border-t border-zinc-100">
-                      <div className="flex items-center gap-4 text-zinc-500">
-                        <ShieldCheck size={20} className="text-emerald-500" />
-                        <span className="text-xs font-bold uppercase tracking-widest">{t.transport.safeReliable}</span>
+                      <div className="mt-10 pt-10 border-t border-zinc-100 flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-zinc-400">
+                          <ShieldCheck size={24} className="text-emerald-500" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{t.transport.safeReliable}</span>
+                        </div>
+                        <div className="flex -space-x-3">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-zinc-100 flex items-center justify-center overflow-hidden">
+                              <img src={`https://picsum.photos/seed/${i + 10}/32/32`} alt="User" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1237,9 +1257,10 @@ export const VillageTransportPage = () => {
               )}
 
               {/* Available Vehicles */}
-              <div className={`${showVehicleSelection ? 'col-span-full' : 'lg:col-span-2'} space-y-8`}>
+              <div className={`${showVehicleSelection ? 'col-span-full' : 'lg:col-span-2'} space-y-10`}>
                 {/* Live Map */}
-                <div className={`bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm relative z-0 transition-all duration-500 ${showVehicleSelection ? 'h-[calc(100vh-450px)]' : 'h-[400px]'}`}>
+                <div className={`bg-white rounded-[3rem] border-4 border-white overflow-hidden shadow-2xl relative z-0 transition-all duration-700 ${showVehicleSelection ? 'h-[calc(100vh-450px)]' : 'h-[450px]'}`}>
+                  <div className="absolute inset-0 border border-zinc-200 rounded-[2.8rem] pointer-events-none z-10" />
                   <MapContainer center={BARNIA_CENTER} zoom={14} style={{ height: '100%', width: '100%' }}>
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1357,10 +1378,13 @@ export const VillageTransportPage = () => {
                       </button>
                     </div>
                   )}
-                  <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">{t.transport.liveTracking}</span>
+                  <div className="absolute top-6 right-6 z-[1000] bg-zinc-900/90 backdrop-blur-xl px-6 py-3 rounded-2xl border border-white/10 shadow-2xl">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute inset-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">{t.transport.liveTracking}</span>
                     </div>
                   </div>
                   {showVehicleSelection && (
@@ -1377,63 +1401,69 @@ export const VillageTransportPage = () => {
                 </div>
 
                 {!showVehicleSelection && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {loading ? (
                       Array(4).fill(0).map((_, i) => (
-                        <div key={i} className="h-48 bg-zinc-100 rounded-[2.5rem] animate-pulse" />
+                        <div key={i} className="h-64 bg-zinc-100 rounded-[3rem] animate-pulse" />
                       ))
                     ) : vehicles.length > 0 ? (
-                      vehicles.map((vehicle) => (
+                      vehicles.map((vehicle, idx) => (
                         <motion.div
                           key={vehicle.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 hover:shadow-xl hover:shadow-zinc-200/50 transition-all group"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="bg-white rounded-[3rem] border border-zinc-100 p-10 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] transition-all group relative overflow-hidden"
                         >
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                              <Car size={28} />
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-zinc-50 rounded-full -mr-16 -mt-16 group-hover:bg-brand-50 transition-colors duration-500" />
+                          
+                          <div className="flex justify-between items-start mb-10 relative z-10">
+                            <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-900 flex items-center justify-center text-brand-500 shadow-xl shadow-zinc-900/20 group-hover:scale-110 transition-transform duration-500">
+                              <Car size={32} />
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                            <div className="flex flex-col items-end gap-3">
+                              <div className="px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                                 {t.transport.pending}
                               </div>
                               {vehicle.isVerified && (
-                                <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                                  <CheckCircle2 size={12} />
-                                  <span className="text-[8px] font-black uppercase tracking-widest">Verified</span>
+                                <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 shadow-sm">
+                                  <ShieldCheck size={14} />
+                                  <span className="text-[9px] font-black uppercase tracking-widest">Verified</span>
                                 </div>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{vehicle.vehicleType}</h4>
-                            <div className="flex items-center gap-1 text-amber-500">
-                              <Star size={14} fill="currentColor" />
-                              <span className="text-sm font-black">{vehicle.rating || '4.8'}</span>
-                            </div>
-                          </div>
-                          <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-6">{vehicle.vehicleNumber}</p>
-                          
-                          <div className="space-y-3 mb-8">
-                            <div className="flex items-center gap-3 text-zinc-600">
-                              <User size={16} className="text-brand-500" />
-                              <span className="text-sm font-bold">{vehicle.driverName}</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-zinc-600">
-                              <Phone size={16} className="text-brand-500" />
-                              <span className="text-sm font-bold">{vehicle.driverPhone}</span>
-                            </div>
-                          </div>
 
-                          <a
-                            href={`tel:${vehicle.driverPhone}`}
-                            className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-3"
-                          >
-                            <Phone size={16} />
-                            {t.transport.contact}
-                          </a>
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-2xl font-black text-zinc-900 uppercase tracking-tight leading-none">{vehicle.vehicleType}</h4>
+                              <div className="flex items-center gap-1.5 text-amber-500 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+                                <Star size={14} fill="currentColor" />
+                                <span className="text-sm font-black">{vehicle.rating || '4.8'}</span>
+                              </div>
+                            </div>
+                            <p className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8">{vehicle.vehicleNumber}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-10">
+                              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 group-hover:bg-white transition-colors">
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Driver</p>
+                                <p className="text-sm font-bold text-zinc-900 truncate">{vehicle.driverName}</p>
+                              </div>
+                              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 group-hover:bg-white transition-colors">
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Experience</p>
+                                <p className="text-sm font-bold text-zinc-900">3+ Years</p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={`tel:${vehicle.driverPhone}`}
+                              className="w-full py-5 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center justify-center gap-4 shadow-xl shadow-zinc-900/10 group-hover:shadow-brand-600/20"
+                            >
+                              <Phone size={18} />
+                              {t.transport.contact}
+                            </a>
+                          </div>
                         </motion.div>
                       ))
                     ) : (
@@ -1459,25 +1489,31 @@ export const VillageTransportPage = () => {
               className="max-w-4xl mx-auto"
             >
               {!myVehicle ? (
-                <div className="bg-white rounded-[2.5rem] border border-zinc-200 p-12 text-center shadow-sm">
-                  <div className="w-24 h-24 rounded-[2rem] bg-brand-50 flex items-center justify-center text-brand-600 mx-auto mb-8">
-                    <Car size={48} />
+                <div className="bg-white rounded-[3rem] border border-zinc-100 p-16 text-center shadow-2xl shadow-zinc-200/30 relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-brand-500" />
+                  <div className="absolute -left-24 -bottom-24 w-64 h-64 bg-brand-50 rounded-full blur-[100px] group-hover:bg-brand-100 transition-colors duration-700" />
+                  
+                  <div className="relative z-10">
+                    <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-900 flex items-center justify-center text-brand-500 mx-auto mb-10 shadow-2xl shadow-zinc-900/20">
+                      <Car size={48} />
+                    </div>
+                    <h3 className="text-4xl font-black text-zinc-900 mb-6 uppercase tracking-tight leading-none">{t.transport.becomeDriver}</h3>
+                    <p className="text-zinc-500 font-medium mb-12 max-w-md mx-auto text-lg leading-relaxed">
+                      {t.transport.registerVehicleDesc}
+                    </p>
+                    <button
+                      onClick={() => setShowRegisterModal(true)}
+                      className="px-16 py-6 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-2xl shadow-brand-500/30"
+                    >
+                      {t.transport.registerVehicle}
+                    </button>
                   </div>
-                  <h3 className="text-3xl font-black text-zinc-900 mb-4 uppercase tracking-tight">{t.transport.becomeDriver}</h3>
-                  <p className="text-zinc-500 font-medium mb-12 max-w-md mx-auto">
-                    {t.transport.registerVehicleDesc}
-                  </p>
-                  <button
-                    onClick={() => setShowRegisterModal(true)}
-                    className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20"
-                  >
-                    {t.transport.registerVehicle}
-                  </button>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-10">
                   {/* Driver Map */}
-                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm h-[300px] relative z-0">
+                  <div className="bg-white rounded-[3rem] border-4 border-white overflow-hidden shadow-2xl h-[350px] relative z-0">
+                    <div className="absolute inset-0 border border-zinc-200 rounded-[2.8rem] pointer-events-none z-10" />
                     <MapContainer 
                       center={myVehicle.location ? [myVehicle.location.lat, myVehicle.location.lng] : BARNIA_CENTER} 
                       zoom={15} 
@@ -1518,96 +1554,140 @@ export const VillageTransportPage = () => {
                     </div>
                   </div>
 
-                  {/* Driver Status Card */}
-                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 rounded-3xl bg-zinc-50 flex items-center justify-center text-brand-600 border border-zinc-100">
-                        <Car size={40} />
-                      </div>
-                      <div>
-                        <h4 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">{myVehicle.vehicleType}</h4>
-                        <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{myVehicle.vehicleNumber}</p>
+                  {/* Driver Dashboard Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Status Card */}
+                    <div className="md:col-span-1 bg-zinc-900 rounded-[3rem] p-10 text-white shadow-2xl shadow-zinc-900/20 relative overflow-hidden group">
+                      <div className="absolute -right-12 -top-12 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-10">
+                          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-brand-500 border border-white/10">
+                            <Activity size={32} />
+                          </div>
+                          <button
+                            onClick={toggleVehicleStatus}
+                            className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                              myVehicle.status === 'available' 
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40' 
+                                : 'bg-zinc-800 text-zinc-400'
+                            }`}
+                          >
+                            {myVehicle.status === 'available' ? 'Online' : 'Offline'}
+                          </button>
+                        </div>
+                        <h4 className="text-2xl font-black uppercase tracking-tight mb-2">Status</h4>
+                        <p className="text-zinc-400 text-xs font-bold leading-relaxed">
+                          {myVehicle.status === 'available' 
+                            ? "You are visible to riders. Stay alert!" 
+                            : "Go online to start receiving ride requests."}
+                        </p>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border ${
-                        myVehicle.status === 'available' 
-                          ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
-                          : 'bg-zinc-50 border-zinc-100 text-zinc-400'
-                      }`}>
-                        {myVehicle.status}
+
+                    {/* Vehicle Info Card */}
+                    <div className="md:col-span-2 bg-white rounded-[3rem] border border-zinc-100 p-10 shadow-2xl shadow-zinc-200/30 relative overflow-hidden group">
+                      <div className="absolute -right-12 -top-12 w-48 h-48 bg-brand-50 rounded-full blur-3xl group-hover:bg-brand-100 transition-colors duration-700" />
+                      <div className="flex items-center justify-between mb-10 relative z-10">
+                        <div className="flex items-center gap-6">
+                          <div className="w-20 h-20 rounded-[1.5rem] bg-zinc-900 flex items-center justify-center text-brand-500 shadow-xl shadow-zinc-900/20">
+                            <Car size={36} />
+                          </div>
+                          <div>
+                            <h4 className="text-3xl font-black text-zinc-900 uppercase tracking-tight leading-none">{myVehicle.vehicleType}</h4>
+                            <p className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3">{myVehicle.vehicleNumber}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Rating</p>
+                          <div className="flex items-center gap-1.5 text-amber-500 justify-end">
+                            <Star size={20} fill="currentColor" />
+                            <span className="text-2xl font-black">4.9</span>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        onClick={toggleVehicleStatus}
-                        className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                          myVehicle.status === 'available'
-                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
-                        }`}
-                      >
-                        {myVehicle.status === 'available' ? t.transport.goOffline : t.transport.goOnline}
-                      </button>
+                      
+                      <div className="grid grid-cols-3 gap-6 relative z-10">
+                        <div className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100 group-hover:bg-white transition-colors">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Today's Rides</p>
+                          <p className="text-3xl font-black text-zinc-900">12</p>
+                        </div>
+                        <div className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100 group-hover:bg-white transition-colors">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Earnings</p>
+                          <p className="text-3xl font-black text-emerald-600">₹450</p>
+                        </div>
+                        <div className="p-6 bg-zinc-50 rounded-2xl border border-zinc-100 group-hover:bg-white transition-colors">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Online</p>
+                          <p className="text-3xl font-black text-brand-600">4.5h</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {/* Incoming Requests */}
-                  <div className="space-y-6">
-                    <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-4">
-                      <AlertCircle className="text-brand-600" />
+                  <div className="space-y-8">
+                    <h3 className="text-3xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
+                        <AlertCircle size={24} />
+                      </div>
                       {t.transport.incomingRequests}
                     </h3>
                     
                     {rideRequests.length > 0 ? (
-                      rideRequests.map((request) => (
+                      rideRequests.map((request, idx) => (
                         <motion.div
                           key={request.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="bg-white rounded-[2.5rem] border border-zinc-200 p-8 shadow-sm hover:border-brand-300 transition-all"
+                          transition={{ delay: idx * 0.1 }}
+                          className="bg-white rounded-[3rem] border border-zinc-100 p-10 shadow-2xl shadow-zinc-200/30 hover:shadow-brand-500/10 transition-all relative overflow-hidden group"
                         >
-                          <div className="flex flex-col md:flex-row justify-between gap-8">
+                          <div className="absolute top-0 left-0 w-2 h-full bg-brand-500" />
+                          <div className="flex flex-col md:flex-row justify-between gap-10">
                             <div className="flex-1">
-                              <div className="flex items-center gap-4 mb-6">
-                                <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400">
-                                  <User size={24} />
+                              <div className="flex items-center gap-6 mb-8">
+                                <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-50 flex items-center justify-center text-zinc-400 shadow-inner">
+                                  <User size={32} />
                                 </div>
                                 <div>
-                                  <h5 className="font-black text-zinc-900 uppercase tracking-tight">{request.riderName}</h5>
-                                  <p className="text-zinc-500 text-xs font-bold">{request.riderPhone}</p>
+                                  <h5 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{request.riderName}</h5>
+                                  <p className="text-zinc-400 text-xs font-bold mt-1">{request.riderPhone}</p>
                                 </div>
                               </div>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div className="space-y-1">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                <div className="space-y-2">
                                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.transport.from}</p>
-                                  <p className="font-bold text-zinc-900">{request.from}</p>
+                                  <p className="font-bold text-zinc-900 leading-tight">{request.from}</p>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-2">
                                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t.transport.to}</p>
-                                  <p className="font-bold text-zinc-900">{request.to}</p>
+                                  <p className="font-bold text-zinc-900 leading-tight">{request.to}</p>
                                 </div>
                               </div>
 
-                              {request.fare && (
-                                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 mb-6">
-                                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Estimated Fare</p>
-                                  <p className="text-2xl font-black text-emerald-700">₹{request.fare}</p>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-6">
+                                {request.fare && (
+                                  <div className="px-6 py-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Estimated Fare</p>
+                                    <p className="text-2xl font-black text-emerald-700">₹{request.fare}</p>
+                                  </div>
+                                )}
 
-                              {request.pickupCoords && request.dropoffCoords && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedRide(request);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }}
-                                  className="flex items-center gap-2 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:text-brand-700 transition-colors"
-                                >
-                                  <Navigation size={14} />
-                                  View Route on Map
-                                </button>
-                              )}
+                                {request.pickupCoords && request.dropoffCoords && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedRide(request);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    className="flex items-center gap-3 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:text-brand-700 transition-all group/map"
+                                  >
+                                    <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center group-hover/map:scale-110 transition-transform">
+                                      <Navigation size={18} />
+                                    </div>
+                                    View Route
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex flex-row md:flex-col gap-3 justify-end">
