@@ -20,6 +20,7 @@ interface Influencer {
   bio: string;
   socials: string[];
   avatar: string;
+  cover?: string;
   uid?: string;
   videos?: { title: string; url: string }[];
 }
@@ -95,6 +96,7 @@ export const ProfilePage = () => {
     name: '',
     bio: '',
     avatar: '',
+    cover: '',
     socials: ['', '', ''],
     videos: [] as { title: string; url: string }[]
   });
@@ -120,6 +122,7 @@ export const ProfilePage = () => {
             name: data.name,
             bio: data.bio,
             avatar: data.avatar,
+            cover: data.cover || '',
             socials: [...(data.socials || []), '', '', ''].slice(0, 3),
             videos: data.videos || []
           });
@@ -134,6 +137,7 @@ export const ProfilePage = () => {
               name: data.name,
               bio: data.bio,
               avatar: data.avatar,
+              cover: data.cover || '',
               socials: [...(data.socials || []), '', '', ''].slice(0, 3),
               videos: data.videos || []
             });
@@ -161,6 +165,7 @@ export const ProfilePage = () => {
         name: editForm.name,
         bio: editForm.bio,
         avatar: editForm.avatar,
+        cover: editForm.cover,
         socials: editForm.socials.filter(s => s.trim() !== ''),
         videos: editForm.videos,
         updatedAt: serverTimestamp()
@@ -307,8 +312,19 @@ export const ProfilePage = () => {
           className="bg-white rounded-[3rem] border-4 border-brand-600 shadow-2xl overflow-hidden"
         >
           {/* Header/Cover Area */}
-          <div className="h-48 bg-gradient-to-r from-brand-600 to-brand-400 relative">
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+          <div className="h-48 md:h-64 bg-zinc-100 relative overflow-hidden">
+            {influencer.cover ? (
+              <img 
+                src={influencer.cover} 
+                alt="Cover" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-r from-brand-600 to-brand-400 relative">
+                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+              </div>
+            )}
           </div>
 
           <div className="px-8 md:px-16 pb-16 -mt-24 relative">
@@ -332,6 +348,15 @@ export const ProfilePage = () => {
                       type="text"
                       value={editForm.avatar}
                       onChange={(e) => setEditForm({ ...editForm, avatar: e.target.value })}
+                      className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Cover URL</label>
+                    <input
+                      type="text"
+                      value={editForm.cover}
+                      onChange={(e) => setEditForm({ ...editForm, cover: e.target.value })}
                       className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                     />
                   </div>

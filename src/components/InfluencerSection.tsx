@@ -35,6 +35,7 @@ interface Influencer {
   bio: string;
   socials: string[];
   avatar: string;
+  cover?: string;
   uid?: string;
   videos?: { title: string; url: string }[];
   isVerified?: boolean;
@@ -73,6 +74,7 @@ export const InfluencerSection = () => {
     name: '',
     bio: '',
     avatarUrl: '',
+    coverUrl: '',
     social1: '',
     social2: '',
     social3: '',
@@ -157,6 +159,7 @@ export const InfluencerSection = () => {
             name: myProfile.name,
             bio: myProfile.bio,
             avatarUrl: myProfile.avatar,
+            coverUrl: myProfile.cover || '',
             social1: myProfile.socials[0] || '',
             social2: myProfile.socials[1] || '',
             social3: myProfile.socials[2] || '',
@@ -429,6 +432,7 @@ export const InfluencerSection = () => {
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
       avatar: getGoogleDriveImageUrl(newInfluencer.avatarUrl) || `https://picsum.photos/seed/${Math.random()}/200/200`,
+      cover: getGoogleDriveImageUrl(newInfluencer.coverUrl) || null,
       category: 'Influencer',
       videos: newInfluencer.videos.filter(v => v.url.trim() !== ''),
       isVerified: isVerified,
@@ -474,7 +478,7 @@ export const InfluencerSection = () => {
       }
       setShowForm(false);
       setEditingId(null);
-      setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '', videos: [] });
+      setNewInfluencer({ name: '', bio: '', avatarUrl: '', coverUrl: '', social1: '', social2: '', social3: '', videos: [] });
     } catch (err) {
       try {
         handleFirestoreError(err, OperationType.CREATE, 'influencers');
@@ -812,6 +816,17 @@ export const InfluencerSection = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-3 md:col-span-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Cover Picture URL</label>
+                  <input
+                    type="text"
+                    value={newInfluencer.coverUrl}
+                    onChange={(e) => setNewInfluencer({ ...newInfluencer, coverUrl: e.target.value })}
+                    className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                    placeholder="https://example.com/cover.jpg (Optional)"
+                  />
                 </div>
 
                 <div className="space-y-4 md:col-span-2">
