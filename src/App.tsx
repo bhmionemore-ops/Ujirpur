@@ -12,6 +12,7 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AdminAnalytics } from './pages/AdminAnalytics';
+import { AdminUserManagement } from './pages/AdminUserManagement';
 import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
@@ -19,7 +20,7 @@ import { VisitorCounter } from './components/VisitorCounter';
 import { InstallPrompt } from './components/InstallPrompt';
 import { useLanguage } from './LanguageContext';
 import { useFirebase } from './FirebaseContext';
-import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar, Activity, Car } from 'lucide-react';
+import { MapPin, Mail, Phone, Facebook, Instagram, Languages, LogIn, User as UserIcon, LogOut, Menu, X, Calendar, Activity, Car, Users } from 'lucide-react';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -261,14 +262,24 @@ function AppContent() {
                         <p className="text-[10px] text-zinc-500 truncate font-medium">{user.email}</p>
                       </div>
                       {isAdmin && (
-                        <Link 
-                          to="/admin/analytics"
-                          onClick={() => setShowUserMenu(false)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors"
-                        >
-                          <Activity size={16} className="text-brand-600" />
-                          Analytics
-                        </Link>
+                        <>
+                          <Link 
+                            to="/admin/analytics"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors"
+                          >
+                            <Activity size={16} className="text-brand-600" />
+                            Analytics
+                          </Link>
+                          <Link 
+                            to="/admin/users"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors"
+                          >
+                            <Users size={16} className="text-brand-600" />
+                            Manage Users
+                          </Link>
+                        </>
                       )}
                       <button 
                         onClick={() => {
@@ -358,6 +369,7 @@ function AppContent() {
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/logo-fixer" element={<LogoFixerPage />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/users" element={<AdminUserManagement />} />
           <Route path="/facebook-verification" element={<FacebookVerificationPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
