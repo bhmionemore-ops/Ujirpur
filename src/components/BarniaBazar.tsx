@@ -201,22 +201,28 @@ export const BarniaBazar = () => {
     // Fetch Market Rates
     const ratesRef = collection(db, 'market_rates');
     const ratesQuery = query(ratesRef, orderBy('updatedAt', 'desc'));
+    
+    const setFallbackRates = () => {
+      setMarketRates([
+        { itemName: t.bazar.potato, price: '₹20/kg', trend: 'up' },
+        { itemName: t.bazar.onion, price: '₹35/kg', trend: 'down' },
+        { itemName: t.bazar.tomato, price: '₹40/kg', trend: 'stable' },
+        { itemName: t.bazar.rice, price: '₹45/kg', trend: 'stable' },
+        { itemName: t.bazar.dal, price: '₹120/kg', trend: 'up' },
+        { itemName: t.bazar.oil, price: '₹145/L', trend: 'down' },
+      ]);
+    };
+
     const unsubRates = onSnapshot(ratesQuery, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (items.length > 0) {
+      if (!snapshot.empty) {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setMarketRates(items);
       } else {
-        setMarketRates([
-          { itemName: t.bazar.potato, price: '₹20/kg', trend: 'up' },
-          { itemName: t.bazar.onion, price: '₹35/kg', trend: 'down' },
-          { itemName: t.bazar.tomato, price: '₹40/kg', trend: 'stable' },
-          { itemName: t.bazar.rice, price: '₹45/kg', trend: 'stable' },
-          { itemName: t.bazar.dal, price: '₹120/kg', trend: 'up' },
-          { itemName: t.bazar.oil, price: '₹145/L', trend: 'down' },
-        ]);
+        setFallbackRates();
       }
     }, (error) => {
       console.warn("Market rates listener error:", error);
+      setFallbackRates();
     });
 
     return () => {
@@ -379,16 +385,20 @@ export const BarniaBazar = () => {
             </div>
             <div className="text-right">
               <p className="text-zinc-400 text-xs font-black uppercase tracking-widest mb-2">Last Updated</p>
-              <p className="text-xl font-bold text-brand-400">Today, 08:30 AM</p>
+              <p className="text-xl font-bold text-brand-400">
+                {marketRates[0]?.updatedAt 
+                  ? new Date(marketRates[0].updatedAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : 'Today, 08:30 AM'}
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {marketRates.map((item, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all group">
-                <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.itemName}</p>
+                <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.itemName || item.name}</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-xl font-black text-white">{item.price}</p>
+                  <p className="text-xl font-black text-white">{item.price || 'N/A'}</p>
                   <div className={`text-[10px] font-black uppercase flex items-center gap-1 ${
                     item.trend === 'up' ? 'text-rose-500' : 
                     item.trend === 'down' ? 'text-emerald-500' : 
