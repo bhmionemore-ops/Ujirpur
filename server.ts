@@ -1,4 +1,21 @@
 // Server entry point
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION! 💥');
+  console.error(err.name, err.message, err.stack);
+  // In production, we might want to exit and let the orchestrator restart us
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (err: any) => {
+  console.error('UNHANDLED REJECTION! 💥');
+  console.error(err?.name, err?.message, err?.stack);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -2287,12 +2304,24 @@ async function startServer() {
   } else {
     app.use(express.static("dist", { index: false }));
 
+    let cachedIndexHtml: string | null = null;
+
     app.get("*", async (req, res) => {
       try {
         // Always use barnia.in as the canonical base in production
         const baseUrl = "https://barnia.in";
 
-        let html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+        if (!cachedIndexHtml) {
+          try {
+            cachedIndexHtml = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
+            console.log("[SSR] Production index.html cached successfully.");
+          } catch (readError) {
+            console.error("[SSR] Failed to read production index.html:", readError);
+            return res.status(500).send("Internal Server Error: Missing index file");
+          }
+        }
+        
+        let html = cachedIndexHtml;
         
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
@@ -2319,7 +2348,17 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    
+    // Heartbeat to monitor server health and memory
+    setInterval(() => {
+      const memoryUsage = process.memoryUsage();
+      console.log(`[Heartbeat] ${new Date().toISOString()} - RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`);
+    }, 60000);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("FATAL ERROR DURING STARTUP! 💥");
+  console.error(err);
+  process.exit(1);
+});
