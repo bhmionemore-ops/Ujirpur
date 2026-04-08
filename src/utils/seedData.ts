@@ -105,6 +105,23 @@ export const seedDatabase = async () => {
       });
     }
 
+    // Seed Market Rates
+    const marketRates = [
+      { itemName: "Potato", price: "₹20/kg", trend: "up" },
+      { itemName: "Onion", price: "₹35/kg", trend: "down" },
+      { itemName: "Tomato", price: "₹40/kg", trend: "stable" },
+      { itemName: "Rice", price: "₹45/kg", trend: "stable" },
+      { itemName: "Dal", price: "₹120/kg", trend: "up" },
+      { itemName: "Oil", price: "₹145/L", trend: "down" },
+    ];
+
+    for (const rate of marketRates) {
+      await addDoc(collection(db, 'market_rates'), {
+        ...rate,
+        updatedAt: serverTimestamp()
+      });
+    }
+
     console.log("Seeding complete!");
   } catch (error) {
     console.error("Error seeding database:", error);

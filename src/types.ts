@@ -44,6 +44,7 @@ export interface Shop {
   phone: string;
   products: any[]; // Legacy array, we'll use sub-collection now
   image: string;
+  todayOffer?: string;
   uid?: string;
 }
 

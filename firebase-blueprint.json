@@ -86,10 +86,23 @@
         "description": { "type": "string" },
         "imageUrl": { "type": "string" },
         "contact": { "type": "string" },
+        "todayOffer": { "type": "string", "description": "Current special offer or discount." },
         "createdAt": { "type": "string", "format": "date-time" },
         "uid": { "type": "string" }
       },
       "required": ["name", "category", "description", "uid"]
+    },
+    "market_rate": {
+      "title": "Market Rate",
+      "description": "Daily market rate for a specific item.",
+      "type": "object",
+      "properties": {
+        "itemName": { "type": "string" },
+        "price": { "type": "string" },
+        "trend": { "type": "string", "enum": ["up", "down", "stable"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["itemName", "price", "trend", "updatedAt"]
     },
     "user": {
       "title": "User",
@@ -343,6 +356,10 @@
     "/ride_chat_messages/{messageId}": {
       "schema": "ride_chat_message",
       "description": "Messages sent between a rider and a driver for a specific ride."
+    },
+    "/market_rates/{rateId}": {
+      "schema": "market_rate",
+      "description": "Daily market rates for items in Barnia Bazar."
     }
   }
 }

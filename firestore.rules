@@ -117,7 +117,14 @@ service cloud.firestore {
       return hasRequiredFields(['name', 'category', 'location', 'phone']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.location is string && data.location.size() > 0 && data.location.size() < 500 &&
+             (!('todayOffer' in data) || (data.todayOffer is string && data.todayOffer.size() < 500)) &&
              (isAdmin() || (hasRequiredFields(['uid']) && data.uid == request.auth.uid));
+    }
+
+    function isValidMarketRate(data) {
+      return hasRequiredFields(['itemName', 'price', 'trend', 'updatedAt']) &&
+             data.itemName is string && data.price is string &&
+             data.trend in ['up', 'down', 'stable'];
     }
 
     function isValidMessage(data) {
@@ -259,6 +266,11 @@ service cloud.firestore {
 
     match /_health_check/{docId} {
       allow read, write: if true;
+    }
+
+    match /market_rates/{rateId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /news/{newsId} {

@@ -5,7 +5,8 @@ import { Helmet } from 'react-helmet-async';
 import { 
   Store, MapPin, Phone, ShoppingBag, Tag, ChevronLeft, Share2, 
   MessageSquare, CheckCircle, Zap, ExternalLink, Plus, Trash2, 
-  ShoppingCart, X, Map as MapIcon, Loader2, ClipboardList
+  ShoppingCart, X, Map as MapIcon, Loader2, ClipboardList,
+  Gift, Utensils, Edit2, Camera
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { 
@@ -41,6 +42,8 @@ export const ShopProfilePage = () => {
   // Management State
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [isEditingOffer, setIsEditingOffer] = useState(false);
+  const [offerText, setOfferText] = useState('');
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
@@ -50,6 +53,12 @@ export const ShopProfilePage = () => {
   });
 
   const isOwner = user && shop && shop.uid === user.uid;
+
+  useEffect(() => {
+    if (shop) {
+      setOfferText(shop.todayOffer || '');
+    }
+  }, [shop]);
 
   useEffect(() => {
     const fetchShop = async () => {
@@ -262,6 +271,18 @@ export const ShopProfilePage = () => {
     }
   };
 
+  const handleUpdateOffer = async () => {
+    if (!shop || !isOwner) return;
+    try {
+      await updateDoc(doc(db, 'shops', shop.id), { todayOffer: offerText });
+      setShop({ ...shop, todayOffer: offerText });
+      setIsEditingOffer(false);
+      toast.success("Today's offer updated!");
+    } catch (err) {
+      toast.error("Failed to update offer");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
@@ -463,8 +484,9 @@ export const ShopProfilePage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end">
                   <div>
-                    <span className="inline-block px-4 py-1.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-4 shadow-xl">
-                      {shop.category}
+                    <span className="inline-block px-4 py-1.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-4 shadow-xl flex items-center gap-2">
+                      {shop.category === 'Restaurant' ? <Utensils size={12} /> : <Store size={12} />}
+                      {shop.category === 'Restaurant' ? t.bazar.restaurant : shop.category}
                     </span>
                     <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">
                       {shop.name}
@@ -512,12 +534,71 @@ export const ShopProfilePage = () => {
               </div>
             </motion.div>
 
+            {/* Today's Offer Section */}
+            {(shop.todayOffer || isOwner) && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-brand-600 rounded-[2.5rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-brand-600/20"
+              >
+                <div className="absolute top-0 right-0 p-12 opacity-10">
+                  <Gift size={150} />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <Gift className="text-white" size={32} />
+                      <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">{t.bazar.todayOffer}</h2>
+                    </div>
+                    {isOwner && (
+                      <button 
+                        onClick={() => setIsEditingOffer(!isEditingOffer)}
+                        className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all"
+                      >
+                        <Edit2 size={20} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {isEditingOffer ? (
+                    <div className="space-y-4">
+                      <textarea
+                        value={offerText}
+                        onChange={(e) => setOfferText(e.target.value)}
+                        className="w-full bg-white/10 border-2 border-white/20 rounded-2xl p-6 text-white placeholder-white/50 focus:border-white/40 outline-none transition-all"
+                        placeholder={t.bazar.offerPlaceholder}
+                        rows={3}
+                      />
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={handleUpdateOffer}
+                          className="px-8 py-3 bg-white text-brand-600 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-zinc-100 transition-all"
+                        >
+                          Save Offer
+                        </button>
+                        <button 
+                          onClick={() => setIsEditingOffer(false)}
+                          className="px-8 py-3 bg-white/10 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-white/20 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xl md:text-2xl font-bold leading-tight max-w-2xl">
+                      {shop.todayOffer || (isOwner ? "Add a special offer for your customers today!" : "")}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {/* Product Section */}
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-4xl font-black tracking-tight flex items-center gap-4">
                   <ShoppingBag size={40} className="text-brand-600" />
-                  Our Products
+                  {shop.category === 'Restaurant' ? t.bazar.menu : 'Our Products'}
                 </h2>
                 {isOwner && (
                   <button 

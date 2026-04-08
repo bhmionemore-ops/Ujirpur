@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, Camera, LogIn, CheckCircle, ExternalLink, RefreshCw, Zap } from 'lucide-react';
+import { 
+  Store, Plus, Search, Tag, Phone, MapPin, X, ShoppingBag, Share2, 
+  Camera, LogIn, CheckCircle, ExternalLink, RefreshCw, Zap,
+  Utensils, Gift, TrendingUp, TrendingDown, Minus
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
@@ -26,6 +30,7 @@ interface Shop {
   phone: string;
   products: Product[];
   image: string;
+  todayOffer?: string;
   isVerified?: boolean;
   uid?: string;
 }
@@ -36,11 +41,13 @@ export const BarniaBazar = () => {
   const { logEvent } = useTracking();
   const { user, signIn, isAdmin, setAuthModalOpen } = useFirebase();
   const [shops, setShops] = useState<Shop[]>([]);
+  const [marketRates, setMarketRates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const [showAddShop, setShowAddShop] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterOffer, setFilterOffer] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
 
@@ -51,6 +58,7 @@ export const BarniaBazar = () => {
     location: '',
     phone: '',
     imageUrl: '',
+    todayOffer: '',
     products: [{ name: '', price: '' }]
   });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,6 +79,7 @@ export const BarniaBazar = () => {
           location: myShop.location,
           phone: myShop.phone,
           imageUrl: myShop.image,
+          todayOffer: myShop.todayOffer || '',
           products: myShop.products.length > 0 ? myShop.products : [{ name: '', price: '' }]
         });
       } else if (!newShop.name && !editingId) {
@@ -85,6 +94,7 @@ export const BarniaBazar = () => {
         location: '',
         phone: '',
         imageUrl: '',
+        todayOffer: '',
         products: [{ name: '', price: '' }]
       });
     }
@@ -165,25 +175,16 @@ export const BarniaBazar = () => {
         ...doc.data()
       })) as Shop[];
       
-      // Sort: 
-      // 1. Current user's shop first
-      // 2. Real shops (not seed) next
-      // 3. Seed shops last
       const sorted = [...items].sort((a, b) => {
-        // If current user is logged in, prioritize their shop
         if (user) {
           if (a.uid === user.uid) return -1;
           if (b.uid === user.uid) return 1;
         }
-        
-        // Prioritize non-seed shops
         const aIsSeed = (a as any).isSeed === true;
         const bIsSeed = (b as any).isSeed === true;
-        
         if (!aIsSeed && bIsSeed) return -1;
         if (aIsSeed && !bIsSeed) return 1;
-        
-        return 0; // Maintain createdAt desc order from query
+        return 0;
       });
 
       setShops(sorted);
@@ -197,8 +198,32 @@ export const BarniaBazar = () => {
       setLoading(false);
     });
 
-    return () => unsub();
-  }, []);
+    // Fetch Market Rates
+    const ratesRef = collection(db, 'market_rates');
+    const ratesQuery = query(ratesRef, orderBy('updatedAt', 'desc'));
+    const unsubRates = onSnapshot(ratesQuery, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (items.length > 0) {
+        setMarketRates(items);
+      } else {
+        setMarketRates([
+          { itemName: t.bazar.potato, price: '₹20/kg', trend: 'up' },
+          { itemName: t.bazar.onion, price: '₹35/kg', trend: 'down' },
+          { itemName: t.bazar.tomato, price: '₹40/kg', trend: 'stable' },
+          { itemName: t.bazar.rice, price: '₹45/kg', trend: 'stable' },
+          { itemName: t.bazar.dal, price: '₹120/kg', trend: 'up' },
+          { itemName: t.bazar.oil, price: '₹145/L', trend: 'down' },
+        ]);
+      }
+    }, (error) => {
+      console.warn("Market rates listener error:", error);
+    });
+
+    return () => {
+      unsub();
+      unsubRates();
+    };
+  }, [user, t.bazar]);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -324,11 +349,15 @@ export const BarniaBazar = () => {
     }
   };
 
-  const filteredShops = Array.from(new Map<string, Shop>(shops.map(shop => [shop.id, shop])).values()).filter(shop => 
-    shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    shop.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredShops = Array.from(new Map<string, Shop>(shops.map(shop => [shop.id, shop])).values()).filter(shop => {
+    const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      shop.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      shop.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesOffer = filterOffer ? !!shop.todayOffer : true;
+    
+    return matchesSearch && matchesOffer;
+  });
 
   return (
     <div className="relative">
@@ -355,24 +384,17 @@ export const BarniaBazar = () => {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[
-              { name: t.bazar.potato, price: '₹20/kg', trend: 'up' },
-              { name: t.bazar.onion, price: '₹35/kg', trend: 'down' },
-              { name: t.bazar.tomato, price: '₹40/kg', trend: 'stable' },
-              { name: t.bazar.rice, price: '₹45/kg', trend: 'stable' },
-              { name: t.bazar.dal, price: '₹120/kg', trend: 'up' },
-              { name: t.bazar.oil, price: '₹145/L', trend: 'down' },
-            ].map((item, i) => (
+            {marketRates.map((item, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all group">
-                <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.name}</p>
+                <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">{item.itemName}</p>
                 <div className="flex items-end justify-between">
                   <p className="text-xl font-black text-white">{item.price}</p>
-                  <div className={`text-[10px] font-black uppercase ${
+                  <div className={`text-[10px] font-black uppercase flex items-center gap-1 ${
                     item.trend === 'up' ? 'text-rose-500' : 
                     item.trend === 'down' ? 'text-emerald-500' : 
                     'text-zinc-500'
                   }`}>
-                    {item.trend === 'up' ? '↑' : item.trend === 'down' ? '↓' : '•'}
+                    {item.trend === 'up' ? <TrendingUp size={12} /> : item.trend === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
                   </div>
                 </div>
               </div>
@@ -389,6 +411,17 @@ export const BarniaBazar = () => {
         </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <button
+              onClick={() => setFilterOffer(!filterOffer)}
+              className={`px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm border-2 ${
+                filterOffer 
+                  ? 'bg-brand-600 text-white border-brand-600' 
+                  : 'bg-white text-zinc-500 border-zinc-100 hover:border-brand-200'
+              }`}
+            >
+              <Gift size={16} />
+              {t.bazar.todayOffer}
+            </button>
             {isAdmin && (
               <button
                 onClick={handleSeed}
@@ -481,9 +514,16 @@ export const BarniaBazar = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
                   <div className="absolute top-6 left-6 flex flex-col gap-2">
-                    <span className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest shadow-xl">
-                      {shop.category}
+                    <span className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black text-brand-600 uppercase tracking-widest shadow-xl flex items-center gap-2">
+                      {shop.category === 'Restaurant' ? <Utensils size={12} /> : <Store size={12} />}
+                      {shop.category === 'Restaurant' ? t.bazar.restaurant : shop.category}
                     </span>
+                    {shop.todayOffer && (
+                      <div className="bg-brand-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 animate-pulse">
+                        <Gift size={12} />
+                        {t.bazar.todayOffer}
+                      </div>
+                    )}
                     {shop.isVerified && (
                       <div className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-1">
                         <CheckCircle size={12} />
@@ -667,6 +707,7 @@ export const BarniaBazar = () => {
                               className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             >
                               <option>Grocery</option>
+                              <option>Restaurant</option>
                               <option>Stationery</option>
                               <option>Medicine</option>
                               <option>Electronics</option>
@@ -684,6 +725,17 @@ export const BarniaBazar = () => {
                               className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                             />
                           </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-zinc-500 uppercase">{t.bazar.offerLabel}</label>
+                          <input
+                            type="text"
+                            value={newShop.todayOffer}
+                            onChange={(e) => setNewShop({ ...newShop, todayOffer: e.target.value })}
+                            className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
+                            placeholder={t.bazar.offerPlaceholder}
+                          />
                         </div>
 
                         <div className="space-y-1">
