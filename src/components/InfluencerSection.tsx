@@ -25,6 +25,7 @@ const getSocialIcon = (url: string) => {
   if (lowerUrl.includes('youtube.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/youtube.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(12%) sepia(100%) saturate(7483%) hue-rotate(359deg) brightness(95%) contrast(117%)' }} alt="YouTube" />;
   if (lowerUrl.includes('linkedin.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg" style={{ width: iconSize, height: iconSize, filter: 'invert(34%) sepia(98%) saturate(1471%) hue-rotate(180deg) brightness(92%) contrast(101%)' }} alt="LinkedIn" />;
   if (lowerUrl.includes('github.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/github.svg" style={{ width: iconSize, height: iconSize }} alt="GitHub" />;
+  if (lowerUrl.includes('tiktok.com')) return <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/tiktok.svg" style={{ width: iconSize, height: iconSize }} alt="TikTok" />;
   return <Globe size={20} className="text-zinc-400" />;
 };
 

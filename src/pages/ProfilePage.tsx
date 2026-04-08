@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { 
   Instagram, Twitter, Facebook, Youtube, Linkedin, Github, Globe, 
-  ChevronLeft, Share2, MessageSquare, Send, CheckCircle, Zap, Edit, Trash2, Plus, X, Save, RefreshCw
+  ChevronLeft, Share2, MessageSquare, Send, CheckCircle, Zap, Edit, Trash2, Plus, X, Save, RefreshCw, Music
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
@@ -33,6 +33,7 @@ const getSocialIcon = (url: string) => {
   if (lowerUrl.includes('youtube.com')) return <Youtube size={24} className="text-[#FF0000]" />;
   if (lowerUrl.includes('linkedin.com')) return <Linkedin size={24} className="text-[#0077B5]" />;
   if (lowerUrl.includes('github.com')) return <Github size={24} className="text-[#181717]" />;
+  if (lowerUrl.includes('tiktok.com')) return <Music size={24} className="text-[#000000]" />;
   return <Globe size={24} className="text-zinc-400" />;
 };
 
@@ -55,31 +56,46 @@ const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) =
       const id = url.split('youtu.be/')[1]?.split('?')[0];
       return `https://www.youtube.com/embed/${id}`;
     }
+    if (url.includes('youtube.com/shorts/')) {
+      const id = url.split('/shorts/')[1]?.split('?')[0];
+      return `https://www.youtube.com/embed/${id}`;
+    }
     if (url.includes('drive.google.com/file/d/')) {
       const id = url.split('/d/')[1]?.split('/')[0];
       return `https://drive.google.com/file/d/${id}/preview`;
     }
     if (url.includes('facebook.com')) {
-      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=500`;
     }
     if (url.includes('instagram.com')) {
       const cleanUrl = url.split('?')[0].replace(/\/$/, '');
       return `${cleanUrl}/embed`;
     }
+    if (url.includes('tiktok.com')) {
+      // TikTok doesn't have a simple iframe embed like others without their SDK, 
+      // but we can try their oEmbed or just link it.
+      // For now, let's just use the URL if it's already an embed URL or return empty to show link.
+      if (url.includes('/embed/')) return url;
+      return '';
+    }
     return url;
   };
 
   const embedUrl = getEmbedUrl(url);
-  const isInstagram = url.includes('instagram.com');
+  const isVertical = url.includes('instagram.com') || 
+                     url.includes('facebook.com/reels') || 
+                     url.includes('facebook.com/reel') ||
+                     url.includes('youtube.com/shorts') ||
+                     url.includes('tiktok.com');
 
   if (!embedUrl) {
     return (
       <div className="space-y-4">
         <div className="rounded-[2rem] overflow-hidden bg-zinc-100 border-4 border-dashed border-zinc-200 aspect-video flex flex-col items-center justify-center p-8 text-center">
-          <Youtube size={48} className="text-zinc-300 mb-4" />
-          <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Invalid or Unsupported Video URL</p>
-          <a href={url} target="_blank" rel="noopener noreferrer" className="mt-4 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:underline">
-            Open Link Directly
+          {url.includes('facebook.com') ? <Facebook size={48} className="text-zinc-300 mb-4" /> : <Youtube size={48} className="text-zinc-300 mb-4" />}
+          <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Video Player</p>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="mt-4 px-6 py-2 bg-zinc-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-600 transition-all">
+            Watch Video
           </a>
         </div>
         <p className="text-sm font-black text-zinc-900 px-4 uppercase tracking-widest text-center">{title}</p>
@@ -89,7 +105,7 @@ const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) =
 
   return (
     <div className="space-y-4">
-      <div className={`rounded-[2rem] overflow-hidden bg-zinc-900 border-4 border-zinc-100 shadow-xl ${isInstagram ? 'aspect-[9/16] max-w-[400px] mx-auto' : 'aspect-video'}`}>
+      <div className={`rounded-[2rem] overflow-hidden bg-zinc-900 border-4 border-zinc-100 shadow-xl transition-all duration-500 ${isVertical ? 'aspect-[9/16] max-w-[350px] mx-auto' : 'aspect-video w-full'}`}>
         <iframe
           src={embedUrl}
           title={title}
