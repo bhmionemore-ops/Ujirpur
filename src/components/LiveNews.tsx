@@ -76,27 +76,11 @@ export const LiveNews = () => {
     const date = getNewsDate(offset);
     setGenerating(true);
     try {
+      // 1. Try to fetch from backend cache first
       const response = await fetch(`/api/news?date=${date}&lang=${language}`);
       
-      const contentType = response.headers.get("content-type");
-      if (!response.ok) {
-        let errorMessage = "Failed to fetch news";
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } else {
-          const text = await response.text();
-          console.error(`Non-JSON error response for ${date}:`, text.substring(0, 200));
-          errorMessage = `Server error (${response.status}). Please check logs.`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      if (contentType && contentType.includes("application/json")) {
+      if (response.ok) {
         const data = await response.json();
-        if (data.isError) {
-          throw new Error(data.error || "Failed to generate news");
-        }
         setGenerating(false);
         
         // Add date to each item for consistency
@@ -108,12 +92,31 @@ export const LiveNews = () => {
         };
         
         return { ...processedData, date };
-      } else {
-        throw new Error("Server returned non-JSON response");
       }
+      
+      // 2. If not in cache (404) or server error, generate in frontend
+      console.log(`[LiveNews] News not found in cache for ${date}. Generating in frontend...`);
+      const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
+      
+      setGenerating(false);
+      
+      // Add date to each item for consistency
+      const processedData = {
+        local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
+        fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
+        igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+        updatedAt: generatedData.updatedAt || new Date().toISOString(),
+        isMock: generatedData.isMock
+      };
+      
+      if (generatedData.isMock) {
+        toast.info(language === 'bn' ? "লাইভ নিউজ সার্ভার ব্যস্ত, ডেমো নিউজ দেখানো হচ্ছে।" : "News server busy, showing demo news.");
+      }
+      
+      return { ...processedData, date };
     } catch (err: any) {
       setGenerating(false);
-      console.error(`Error fetching news for ${date}:`, err);
+      console.error(`Error fetching/generating news for ${date}:`, err);
       throw err;
     }
   };

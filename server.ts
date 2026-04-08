@@ -478,10 +478,7 @@ function getCurrentNewsDate() {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-// Global lock to prevent multiple simultaneous news generations
-let isGeneratingNews = false;
-let generationStartTime: number | null = null;
-
+// Priority list of environment variables to check for the Gemini API key
 async function getGeminiApiKey(): Promise<string> {
   // Priority list of environment variables to check for the Gemini API key
   const keyNames = [
@@ -664,151 +661,6 @@ async function cleanupOldNews() {
 /**
  * Mock news data as a last resort fallback
  */
-function getMockNews(language: 'bn' | 'en', date: string) {
-  const isBn = language === 'bn';
-  return {
-    local: [
-      {
-        title: isBn ? "বার্নিয়া এবং নদীয়া জেলায় নতুন উন্নয়ন প্রকল্প" : "New Development Projects in Barnia and Nadia District",
-        content: isBn 
-          ? "বার্নিয়া এবং নদীয়া জেলার বিভিন্ন স্থানে নতুন উন্নয়নমূলক কাজ শুরু হয়েছে। স্থানীয় প্রশাসন রাস্তাঘাট সংস্কার এবং পানীয় জলের সুব্যবস্থার ওপর জোর দিচ্ছে। এই প্রকল্পগুলো সম্পন্ন হলে এলাকার মানুষের জীবনযাত্রার মান উন্নত হবে বলে আশা করা হচ্ছে।"
-          : "New developmental works have started in various parts of Barnia and Nadia districts. The local administration is emphasizing on road repairs and better drinking water facilities. It is expected that once these projects are completed, the standard of living of the local people will improve.",
-        source: "Barnia News Desk",
-        date: date
-      },
-      {
-        title: isBn ? "স্থানীয় বাজারে কৃষিপণ্যের ভালো ফলন" : "Good Harvest of Agricultural Products in Local Markets",
-        content: isBn
-          ? "এই মৌসুমে নদীয়া জেলার কৃষকরা ভালো ফলন পেয়েছেন। স্থানীয় বাজারে টাটকা শাকসবজি এবং ফলের সরবরাহ বৃদ্ধি পেয়েছে। কৃষকরা তাদের পণ্যের ন্যায্য মূল্য পাচ্ছেন বলে জানিয়েছেন, যা গ্রামীণ অর্থনীতিতে ইতিবাচক প্রভাব ফেলছে।"
-          : "Farmers in Nadia district have had a good harvest this season. The supply of fresh vegetables and fruits in local markets has increased. Farmers have reported getting fair prices for their products, which is having a positive impact on the rural economy.",
-        source: "Krishi Samachar",
-        date: date
-      },
-      {
-        title: isBn ? "বার্নিয়া স্কুলে সাংস্কৃতিক অনুষ্ঠানের আয়োজন" : "Cultural Program Organized at Barnia School",
-        content: isBn
-          ? "বার্নিয়ার একটি স্থানীয় স্কুলে বার্ষিক সাংস্কৃতিক অনুষ্ঠান অত্যন্ত ধুমধাম করে পালিত হয়েছে। ছাত্রছাত্রীরা নাচ, গান এবং নাটকের মাধ্যমে তাদের প্রতিভা প্রদর্শন করেছে। অনুষ্ঠানে এলাকার বিশিষ্ট ব্যক্তিবর্গ উপস্থিত ছিলেন এবং বিজয়ীদের পুরস্কৃত করা হয়েছে।"
-          : "The annual cultural program at a local school in Barnia was celebrated with great pomp. Students showcased their talent through dance, song, and drama. Eminent personalities of the area were present at the event and winners were rewarded.",
-        source: "Local Education News",
-        date: date
-      }
-    ],
-    fbTrends: [
-      {
-        title: "Top 1 (WB): #BarniaVibes",
-        content: "Viral Strategy: Share photos of local scenic beauty. Hook Idea: 'Did you know Barnia looks this beautiful at sunset?' Creation Tips: Use warm filters and local folk music. Viral Secret: Tag local community groups. Engagement Booster: Ask followers to share their favorite local spot.",
-        source: "Social Trends India",
-        date: date
-      }
-    ],
-    igTrends: [
-      {
-        title: "Top 1 (WB): Local Food Reels",
-        content: "Viral Strategy: Showcasing street food of Nadia. Hook Idea: 'Best Jhalmuri in Nadia?' Creation Tips: Fast cuts, close-ups of food preparation. Viral Secret: Use trending Bengali audio tracks. Engagement Booster: Poll about favorite street food. Monetization Tip: Partner with local eateries.",
-        source: "Insta Insights",
-        date: date
-      }
-    ],
-    isMock: true
-  };
-}
-
-async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en', targetDate?: string): Promise<any> {
-  const apiKey = await getGeminiApiKey();
-  const ai = new GoogleGenAI({ apiKey });
-  const langName = language === 'bn' ? 'Bengali' : 'English';
-  const displayDate = targetDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  
-  const prompt = `Find the latest news and trends for the date: ${displayDate} for the following categories:
-  
-  1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
-  2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
-  3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
-  
-  For News items, provide: Title, Content (150-200 words), Source, Date.
-  For Trends, provide: Title (e.g., "Top 1 (WB): ..."), Content (Viral Strategy: Why it's trending, Hook Idea, Creation Tips, Viral Secret, Engagement Booster, Monetization Tip, Hashtags), Source, Date.
-  
-  Return the data in exactly this JSON format:
-  {
-    "local": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
-    "fbTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}],
-    "igTrends": [{"title": "...", "content": "...", "source": "...", "date": "..."}]
-  }
-  
-  IMPORTANT: All text must be in ${langName}.
-  Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
-
-  const models = [
-    { name: "gemini-3-flash-preview", useTools: true },
-    { name: "gemini-flash-latest", useTools: false },
-    { name: "gemini-3.1-flash-lite-preview", useTools: false },
-    { name: "gemini-1.5-flash", useTools: false }
-  ];
-
-  for (let i = 0; i < models.length; i++) {
-    const modelInfo = models[i];
-    console.log(`[NewsAPI] Attempt ${i + 1}: Using model ${modelInfo.name} (Tools: ${modelInfo.useTools})`);
-    
-    try {
-      const config: any = {
-        responseMimeType: "application/json",
-        maxOutputTokens: 8192,
-      };
-      
-      if (modelInfo.useTools) {
-        config.tools = [{ googleSearch: {} }];
-      }
-
-      // Add a timeout to the API call
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error(`Gemini API timeout (60s) for ${modelInfo.name}`)), 60000)
-      );
-
-      const generatePromise = ai.models.generateContent({
-        model: modelInfo.name,
-        contents: prompt,
-        config: config,
-      });
-
-      const response: any = await Promise.race([generatePromise, timeoutPromise]);
-      
-      if (!response || !response.text) {
-        throw new Error(`Empty response from ${modelInfo.name}`);
-      }
-
-      const text = response.text;
-      const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-      const parsed = JSON.parse(cleanedText);
-      
-      console.log(`[NewsAPI] Successfully generated news with ${modelInfo.name}`);
-      return {
-        local: parsed.local || [],
-        fbTrends: parsed.fbTrends || [],
-        igTrends: parsed.igTrends || [],
-        modelUsed: modelInfo.name
-      };
-    } catch (error: any) {
-      const errorMsg = error.message || "";
-      const isQuotaError = errorMsg.includes("429") || errorMsg.includes("RESOURCE_EXHAUSTED");
-      const isUnavailable = errorMsg.includes("503") || errorMsg.includes("UNAVAILABLE");
-      
-      console.warn(`[NewsAPI] Attempt ${i + 1} (${modelInfo.name}) failed:`, errorMsg);
-      
-      // If it's the last model or a non-retryable error, we might want to stop, 
-      // but here we just continue to the next model.
-      
-      // Add a small delay before trying the next model, especially for quota/unavailable
-      if (i < models.length - 1) {
-        const delay = isQuotaError ? 3000 : 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  // If all models failed, return mock data
-  console.error("[NewsAPI] All Gemini models failed. Returning mock news data.");
-  return getMockNews(language, displayDate);
-}
 
 function escapeHtml(text: string) {
   return text
@@ -1397,8 +1249,8 @@ async function startServer() {
         databaseId: firebaseConfig?.firestoreDatabaseId,
       },
       newsStatus: {
-        isGenerating: isGeneratingNews,
-        startTime: generationStartTime ? new Date(generationStartTime).toISOString() : null,
+        isGenerating: false,
+        startTime: null,
       }
     };
 
@@ -1473,8 +1325,8 @@ async function startServer() {
       serverTime: now.toISOString(),
       currentNewsDate,
       istParts: parts,
-      isGeneratingNews,
-      generationStartTime: generationStartTime ? new Date(generationStartTime).toISOString() : null,
+      isGeneratingNews: false,
+      generationStartTime: null,
       env: {
         GEMINI_API_KEY_PRESENT: !!process.env.GEMINI_API_KEY,
         GEMINI_API_KEY_PREFIX: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 4) : null,
@@ -1531,92 +1383,12 @@ async function startServer() {
         return res.json(data);
       }
 
-      // 2. If not found and it's within the last 3 days, try to generate it on the server
-      const dateObj = new Date(date as string);
-      const currentObj = new Date(currentNewsDate);
-      const diffDays = Math.floor((currentObj.getTime() - dateObj.getTime()) / (1000 * 3600 * 24));
-
-      if (diffDays >= 0 && diffDays <= 2) {
-        // Check if generation is stuck (more than 2 minutes)
-        if (isGeneratingNews && generationStartTime && (Date.now() - generationStartTime > 120000)) {
-          console.warn("[NewsAPI] Generation appears stuck, resetting lock.");
-          isGeneratingNews = false;
-          generationStartTime = null;
-        }
-
-        if (isGeneratingNews) {
-          return res.status(503).json({ 
-            error: language === 'bn' 
-              ? "দুঃখিত, আমাদের সংবাদ সার্ভার এখন ব্যস্ত। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।" 
-              : "Sorry, our news server is busy. Please try again later." 
-          });
-        }
-
-        isGeneratingNews = true;
-        generationStartTime = Date.now();
-        try {
-          console.log(`[NewsAPI] Generating news for ${docId} on server...`);
-          const newsData = await fetchLiveNewsServer(language, date as string);
-          
-          const dataToSave = {
-            ...newsData,
-            date,
-            lang: language,
-            updatedAt: new Date().toISOString(),
-            createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
-          };
-
-          // Save to Firestore
-          if (adminDb) {
-            await adminDb.collection("news").doc(docId).set(dataToSave);
-          } else if (db) {
-            await setDoc(doc(db, "news", docId), dataToSave);
-          }
-
-          isGeneratingNews = false;
-          generationStartTime = null;
-          return res.json(dataToSave);
-        } catch (genError: any) {
-          isGeneratingNews = false;
-          generationStartTime = null;
-          console.error(`[NewsAPI] Generation failed for ${docId}:`, genError);
-          
-          // Check for specific error types
-          const errorMsg = genError.message || "";
-          const isQuotaError = errorMsg.includes("429") || errorMsg.toLowerCase().includes("quota");
-          const isBlockedError = errorMsg.includes("API_KEY_SERVICE_BLOCKED") || errorMsg.includes("blocked");
-          const isDisabledError = errorMsg.includes("SERVICE_DISABLED") || errorMsg.includes("not been used in project");
-          
-          let userErrorMessage = language === 'bn'
-            ? "সংবাদ তৈরি করতে ব্যর্থ হয়েছে। অনুগ্রহ করে পরে চেষ্টা করুন।"
-            : "Failed to generate news. Please try again later.";
-
-          if (isQuotaError) {
-            userErrorMessage = language === 'bn'
-              ? "আমরা প্রতিদিনের সংবাদের কোটা অতিক্রম করেছি। আমরা শীঘ্রই এটি ঠিক করার চেষ্টা করছি।"
-              : "We have exceeded our daily news quota. We are trying to fix it soon.";
-          } else if (isBlockedError) {
-            userErrorMessage = language === 'bn'
-              ? "আপনার API কী এই পরিষেবার জন্য ব্লক করা হয়েছে। অনুগ্রহ করে Google Cloud Console-এ কী-এর সীমাবদ্ধতা পরীক্ষা করুন।"
-              : "Your API key is blocked for this service. Please check the API key restrictions in the Google Cloud Console (https://console.cloud.google.com/apis/credentials). Ensure 'Generative Language API' is allowed.";
-          } else if (isDisabledError) {
-            userErrorMessage = language === 'bn'
-              ? "Generative Language API নিষ্ক্রিয় করা হয়েছে। অনুগ্রহ করে এটি সক্ষম করুন।"
-              : "Generative Language API is disabled. Please enable it at: https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview?project=35806183265";
-          }
-          
-          return res.status(200).json({ 
-            error: userErrorMessage,
-            details: isBlockedError || isDisabledError ? errorMsg : undefined,
-            code: isBlockedError ? "API_KEY_SERVICE_BLOCKED" : (isDisabledError ? "SERVICE_DISABLED" : "UNKNOWN"),
-            isError: true,
-            isQuotaError: isQuotaError
-          });
-        }
-      }
-
-      // 3. For older dates, just return 404
-      return res.status(404).json({ error: "News not found for this date", docId });
+      // 2. If not in Firestore, return 404 to trigger frontend generation
+      return res.status(404).json({ 
+        error: "News not found in cache", 
+        docId,
+        triggerFrontendGen: true 
+      });
     } catch (error: any) {
       console.error(`[NewsAPI] Error fetching news for ${docId}:`, error);
       res.status(500).json({ error: "Internal server error" });
