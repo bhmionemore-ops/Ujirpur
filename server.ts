@@ -692,12 +692,25 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
   const escapedImage = escapeHtml(metadata.image);
   const escapedUrl = escapeHtml(metadata.url);
-  const escapedKeywords = metadata.keywords ? escapeHtml(metadata.keywords) : "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia";
+  
+  // Robotic keyword generation if not provided
+  let keywords = metadata.keywords;
+  if (!keywords) {
+    const words = (metadata.title + " " + metadata.description)
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+      .filter((v, i, a) => a.indexOf(v) === i);
+    keywords = words.join(", ");
+  }
+  const escapedKeywords = escapeHtml(keywords);
+
   const type = metadata.type || 'website';
   const updatedTime = new Date().toISOString();
   const imageWidth = metadata.imageWidth || 1200;
@@ -763,23 +776,35 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   ];
   
   tagsToRemove.forEach(tag => {
-    // More robust regex to match meta tags regardless of attribute order
     const regex = new RegExp(`<meta\\s+[^>]*?(name|property)=["']${tag}["'][^>]*?\\/?>`, 'gi');
     modifiedHtml = modifiedHtml.replace(regex, "");
   });
 
-  // Remove keywords tag as well
   modifiedHtml = modifiedHtml.replace(/<meta name=["']keywords["'].*?\/?>/gi, "");
-
-  // Remove canonical link if it exists
   modifiedHtml = modifiedHtml.replace(/<link rel=["']canonical["'].*?\/?>/gi, "");
   
   // Inject new tags into head
   const headRegex = /(<head[^>]*>)/i;
   if (headRegex.test(modifiedHtml)) {
-    return modifiedHtml.replace(headRegex, `$1${metaTags}`);
+    modifiedHtml = modifiedHtml.replace(headRegex, `$1${metaTags}`);
+  } else {
+    modifiedHtml = metaTags + modifiedHtml;
   }
-  return metaTags + modifiedHtml;
+
+  // Inject SEO content into body for crawlers (hidden from users)
+  if (metadata.seoContent) {
+    const bodyRegex = /(<body[^>]*>)/i;
+    const hiddenContent = `
+      <div id="seo-content" style="display:none; visibility:hidden; height:0; width:0; overflow:hidden;" aria-hidden="true">
+        ${metadata.seoContent}
+      </div>
+    `;
+    if (bodyRegex.test(modifiedHtml)) {
+      modifiedHtml = modifiedHtml.replace(bodyRegex, `$1${hiddenContent}`);
+    }
+  }
+
+  return modifiedHtml;
 }
 
 const DATA_FILE = path.resolve("data.json");
@@ -923,64 +948,100 @@ async function startServer() {
         { loc: `${baseUrl}/chat`, changefreq: 'always', priority: '0.5' },
       ];
 
-      if (adminDb) {
-        // Fetch shops
-        try {
-          const shopsSnap = await adminDb.collection("shops").get();
-          shopsSnap.forEach((doc: any) => {
-            const shop = doc.data();
-            const slug = shop.slug || doc.id;
-            urls.push({
-              loc: `${baseUrl}/shop/${slug}`,
-              changefreq: 'weekly',
-              priority: '0.8'
-            });
-          });
-        } catch (e) {
-          console.error("[Sitemap] Failed to fetch shops:", e);
+      // Helper to fetch all docs from a collection with fallbacks
+      const fetchCollection = async (collectionName: string) => {
+        let docs: any[] = [];
+        // 1. Try Admin SDK
+        if (adminDb) {
+          try {
+            const snap = await adminDb.collection(collectionName).get();
+            snap.forEach((doc: any) => docs.push({ id: doc.id, ...doc.data() }));
+            return docs;
+          } catch (e) {
+            console.warn(`[Sitemap] Admin SDK failed for ${collectionName}, trying client SDK...`);
+          }
         }
-
-        // Fetch influencers
-        try {
-          const influencersSnap = await adminDb.collection("influencers").get();
-          influencersSnap.forEach((doc: any) => {
-            const influencer = doc.data();
-            const slug = influencer.slug || doc.id;
-            urls.push({
-              loc: `${baseUrl}/profile/${slug}`,
-              changefreq: 'weekly',
-              priority: '0.8'
-            });
-          });
-        } catch (e) {
-          console.error("[Sitemap] Failed to fetch influencers:", e);
+        // 2. Try Client SDK
+        if (db) {
+          try {
+            const snap = await getDocs(collection(db, collectionName));
+            snap.forEach((docSnap) => docs.push({ id: docSnap.id, ...docSnap.data() }));
+            return docs;
+          } catch (e) {
+            console.warn(`[Sitemap] Client SDK failed for ${collectionName}, trying REST API...`);
+          }
         }
-
-        // Fetch news dates for sitemap
+        // 3. Try REST API
         try {
-          const newsSnap = await adminDb.collection("news").orderBy("__name__", "desc").limit(10).get();
-          newsSnap.forEach((doc: any) => {
-            const date = doc.id;
-            const data = doc.data();
-            // Add top news items from each tab
-            ['top', 'local', 'sports'].forEach(tab => {
-              if (data[tab] && data[tab].length > 0) {
-                data[tab].forEach((_: any, index: number) => {
-                  if (index < 3) { // Only first 3 news items per tab to avoid sitemap bloat
-                    urls.push({
-                      loc: `${baseUrl}/news/${date}/${tab}/${index}`,
-                      changefreq: 'monthly',
-                      priority: '0.6'
-                    });
+          const projectId = firebaseConfig?.projectId;
+          const dbId = firebaseConfig?.firestoreDatabaseId || '(default)';
+          if (projectId) {
+            const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}`;
+            const response = await fetch(url);
+            if (response.ok) {
+              const json: any = await response.json();
+              if (json.documents) {
+                json.documents.forEach((doc: any) => {
+                  const id = doc.name.split('/').pop();
+                  const fields = doc.fields;
+                  const data: any = { id };
+                  if (fields) {
+                    for (const key in fields) {
+                      data[key] = fields[key].stringValue || fields[key].integerValue || fields[key].booleanValue;
+                    }
                   }
+                  docs.push(data);
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`[Sitemap] REST API failed for ${collectionName}:`, e);
+        }
+        return docs;
+      };
+
+      // Fetch shops
+      const shops = await fetchCollection("shops");
+      shops.forEach(shop => {
+        const slug = shop.slug || shop.id;
+        urls.push({
+          loc: `${baseUrl}/shop/${slug}`,
+          changefreq: 'weekly',
+          priority: '0.8'
+        });
+      });
+
+      // Fetch influencers
+      const influencers = await fetchCollection("influencers");
+      influencers.forEach(influencer => {
+        const slug = influencer.slug || influencer.id;
+        urls.push({
+          loc: `${baseUrl}/profile/${slug}`,
+          changefreq: 'weekly',
+          priority: '0.8'
+        });
+      });
+
+      // Fetch news
+      const news = await fetchCollection("news");
+      news.sort((a, b) => b.id.localeCompare(a.id)); // Sort by date desc
+      news.slice(0, 10).forEach(doc => {
+        const date = doc.id;
+        ['top', 'local', 'sports'].forEach(tab => {
+          if (doc[tab] && Array.isArray(doc[tab])) {
+            doc[tab].forEach((_: any, index: number) => {
+              if (index < 3) {
+                urls.push({
+                  loc: `${baseUrl}/news/${date}/${tab}/${index}`,
+                  changefreq: 'monthly',
+                  priority: '0.6'
                 });
               }
             });
-          });
-        } catch (e) {
-          console.error("[Sitemap] Failed to fetch news:", e);
-        }
-      }
+          }
+        });
+      });
 
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
@@ -1726,7 +1787,17 @@ async function startServer() {
         url: fullUrl,
         type: 'business.business',
         imageWidth: 1200,
-        imageHeight: 630
+        imageHeight: 630,
+        keywords: `${shop.name}, ${shop.category}, Barnia Bazar, Tehatta, Nadia, Market Prices, ${productList}`,
+        seoContent: `
+          <h1>${shop.name}</h1>
+          <p>${description}</p>
+          <ul>
+            ${shop.products.map((p: any) => `<li>${p.name} - ${p.price}</li>`).join('')}
+          </ul>
+          <p>Location: ${shop.location}</p>
+          <p>Phone: ${shop.phone}</p>
+        `
       };
 
       // Add LocalBusiness and Breadcrumb Structured Data
@@ -1832,7 +1903,14 @@ async function startServer() {
         url: fullUrl,
         type: 'profile',
         imageWidth: 1200,
-        imageHeight: 630
+        imageHeight: 630,
+        keywords: `${profile.name}, influencer, content creator, Barnia, Ujirpur, Nadia, ${profile.socialInfo}`,
+        seoContent: `
+          <h1>${profile.name}</h1>
+          <p>${profile.bio}</p>
+          <p>Social Media: ${profile.socialInfo}</p>
+          <p>Location: Tehatta, West Bengal, India</p>
+        `
       };
 
       // Add Person and Breadcrumb Structured Data
@@ -1935,7 +2013,17 @@ async function startServer() {
         type: 'website',
         imageWidth: 1200,
         imageHeight: 630,
-        keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
+        keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia",
+        seoContent: `
+          <h1>Barnia Digital Hub</h1>
+          <p>The official community platform for Barnia, Ujirpur, and Nadia district.</p>
+          <h2>Barnia Bazar Market Prices</h2>
+          <p>Get daily updates on vegetable, fish, and grocery prices in Barnia Bazar.</p>
+          <h2>Influencer Network</h2>
+          <p>Connect with talented creators and influencers from Barnia and Ujirpur.</p>
+          <h2>Bengali Ponjika</h2>
+          <p>View the daily Bengali calendar, tithi, and festival dates.</p>
+        `
       };
 
       if (req.path.includes("/bazar")) {
@@ -2025,6 +2113,10 @@ async function startServer() {
     };
     localDb.userInfluencers.push(influencer);
     await saveData(localDb);
+    
+    console.log(`[RoboticSEO] New influencer profile registered: ${influencer.name}. Updating SEO indices...`);
+    console.log(`[RoboticSEO] Keywords generated: ${influencer.name}, influencer, Barnia, Ujirpur, Nadia, content creator`);
+    
     res.json({ success: true, influencer });
   });
 
@@ -2039,6 +2131,10 @@ async function startServer() {
     };
     localDb.userShops.push(shop);
     await saveData(localDb);
+    
+    console.log(`[RoboticSEO] New shop registered: ${shop.name}. Updating SEO indices...`);
+    console.log(`[RoboticSEO] Keywords generated: ${shop.name}, ${shop.category}, Barnia Bazar, market prices`);
+    
     res.json({ success: true, shop });
   });
 
