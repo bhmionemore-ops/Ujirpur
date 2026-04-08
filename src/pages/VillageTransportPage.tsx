@@ -390,6 +390,10 @@ const VoiceCallModal = ({
               cleanup();
               onClose();
             }
+          }, (error) => {
+            console.warn("Call snapshot error:", error);
+            cleanup();
+            onClose();
           });
           return unsub;
         }
@@ -691,6 +695,8 @@ export const VillageTransportPage = () => {
             }
           }
         });
+      }, (error) => {
+        console.warn("Ride requests notification error:", error);
       });
       return () => unsub();
     }
@@ -730,42 +736,51 @@ export const VillageTransportPage = () => {
 
   useEffect(() => {
     // Listen for available and busy vehicles (to track assigned drivers)
+    // Only listen if authenticated to avoid permission errors
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const qVehicles = query(collection(db, 'vehicles'), where('status', 'in', ['available', 'busy']));
     const unsubVehicles = onSnapshot(qVehicles, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
       setVehicles(docs);
       setLoading(false);
+    }, (error) => {
+      console.warn("Vehicles listener error:", error);
+      setLoading(false);
     });
 
     // Listen for my vehicle
-    if (user) {
-      const qMyVehicle = query(collection(db, 'vehicles'), where('driverUid', '==', user.uid));
-      const unsubMyVehicle = onSnapshot(qMyVehicle, (snapshot) => {
-        if (!snapshot.empty) {
-          setMyVehicle({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Vehicle);
-        } else {
-          setMyVehicle(null);
-        }
-      });
+    const qMyVehicle = query(collection(db, 'vehicles'), where('driverUid', '==', user.uid));
+    const unsubMyVehicle = onSnapshot(qMyVehicle, (snapshot) => {
+      if (!snapshot.empty) {
+        setMyVehicle({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Vehicle);
+      } else {
+        setMyVehicle(null);
+      }
+    }, (error) => {
+      console.warn("My vehicle listener error:", error);
+    });
 
-      // Listen for my ride requests (as a rider)
-      const qMyRequests = query(
-        collection(db, 'ride_requests'), 
-        where('riderUid', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const unsubMyRequests = onSnapshot(qMyRequests, (snapshot) => {
-        setMyRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RideRequest)));
-      });
+    // Listen for my ride requests (as a rider)
+    const qMyRequests = query(
+      collection(db, 'ride_requests'), 
+      where('riderUid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubMyRequests = onSnapshot(qMyRequests, (snapshot) => {
+      setMyRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RideRequest)));
+    }, (error) => {
+      console.warn("My requests listener error:", error);
+    });
 
-      return () => {
-        unsubVehicles();
-        unsubMyVehicle();
-        unsubMyRequests();
-      };
-    }
-
-    return () => unsubVehicles();
+    return () => {
+      unsubVehicles();
+      unsubMyVehicle();
+      unsubMyRequests();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -778,6 +793,8 @@ export const VillageTransportPage = () => {
       );
       const unsubIncoming = onSnapshot(qIncoming, (snapshot) => {
         setRideRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RideRequest)));
+      }, (error) => {
+        console.warn("Incoming requests listener error:", error);
       });
 
       // Also listen for my active rides (accepted)
@@ -790,6 +807,8 @@ export const VillageTransportPage = () => {
       const unsubActive = onSnapshot(qActive, (snapshot) => {
         const activeDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RideRequest));
         setRideRequests(prev => [...prev, ...activeDocs]);
+      }, (error) => {
+        console.warn("Active rides listener error:", error);
       });
 
       return () => {
@@ -808,6 +827,8 @@ export const VillageTransportPage = () => {
       );
       const unsub = onSnapshot(q, (snapshot) => {
         setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage)));
+      }, (error) => {
+        console.warn("Chat messages listener error:", error);
       });
       return () => unsub();
     } else {
@@ -845,6 +866,8 @@ export const VillageTransportPage = () => {
           });
         }
       });
+    }, (error) => {
+      console.warn("Incoming calls listener error:", error);
     });
 
     return () => unsub();

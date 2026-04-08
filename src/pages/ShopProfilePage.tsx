@@ -78,6 +78,8 @@ export const ShopProfilePage = () => {
           const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
             const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
             setProducts(items);
+          }, (error) => {
+            console.warn("Products listener error:", error);
           });
 
           // Fetch orders if owner
@@ -87,6 +89,8 @@ export const ShopProfilePage = () => {
             const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
               const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
               setOrders(items);
+            }, (error) => {
+              console.warn("Orders listener error:", error);
             });
             return () => {
               unsubProducts();
