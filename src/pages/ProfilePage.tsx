@@ -38,6 +38,15 @@ const getSocialIcon = (url: string) => {
 
 const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) => {
   const getEmbedUrl = (url: string) => {
+    if (!url || url.trim() === '') return '';
+    
+    // Prevent embedding the site itself
+    const currentHost = window.location.host;
+    const origin = window.location.origin;
+    if (url.includes(currentHost) || url.startsWith(origin) || url === '/' || url.startsWith('./') || url.startsWith('../')) {
+      return '';
+    }
+
     if (url.includes('youtube.com/watch?v=')) {
       const id = url.split('v=')[1]?.split('&')[0];
       return `https://www.youtube.com/embed/${id}`;
@@ -62,6 +71,21 @@ const VideoPlayer: React.FC<{ url: string, title: string }> = ({ url, title }) =
 
   const embedUrl = getEmbedUrl(url);
   const isInstagram = url.includes('instagram.com');
+
+  if (!embedUrl) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-[2rem] overflow-hidden bg-zinc-100 border-4 border-dashed border-zinc-200 aspect-video flex flex-col items-center justify-center p-8 text-center">
+          <Youtube size={48} className="text-zinc-300 mb-4" />
+          <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Invalid or Unsupported Video URL</p>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="mt-4 text-brand-600 font-black text-[10px] uppercase tracking-widest hover:underline">
+            Open Link Directly
+          </a>
+        </div>
+        <p className="text-sm font-black text-zinc-900 px-4 uppercase tracking-widest text-center">{title}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

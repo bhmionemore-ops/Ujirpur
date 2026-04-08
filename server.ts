@@ -1650,6 +1650,11 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Redirects for common typos
+  app.get("/bazaar", (req, res) => {
+    res.redirect(301, "/bazar");
+  });
+
   // Load initial data
   let localDb = await loadData();
 
