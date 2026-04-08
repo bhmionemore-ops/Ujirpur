@@ -81,6 +81,15 @@ export const LiveNews = () => {
       
       if (response.ok) {
         const data = await response.json();
+        
+        // Handle "generating" status
+        if (response.status === 202 && data.status === "generating") {
+          console.log(`[LiveNews] News is being generated elsewhere for ${date}. Waiting...`);
+          // Wait 5 seconds and retry once
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          return fetchDayNews(offset); 
+        }
+
         setGenerating(false);
         
         // Add date to each item for consistency
@@ -94,26 +103,45 @@ export const LiveNews = () => {
         return { ...processedData, date };
       }
       
-      // 2. If not in cache (404) or server error, generate in frontend
-      console.log(`[LiveNews] News not found in cache for ${date}. Generating in frontend...`);
-      const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
-      
-      setGenerating(false);
-      
-      // Add date to each item for consistency
-      const processedData = {
-        local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
-        fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
-        igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
-        updatedAt: generatedData.updatedAt || new Date().toISOString(),
-        isMock: generatedData.isMock
-      };
-      
-      if (generatedData.isMock) {
-        toast.info(language === 'bn' ? "লাইভ নিউজ সার্ভার ব্যস্ত, ডেমো নিউজ দেখানো হচ্ছে।" : "News server busy, showing demo news.");
+      // 2. If not in cache (404), try to acquire lock and generate
+      if (response.status === 404) {
+        console.log(`[LiveNews] News not found in cache for ${date}. Attempting to acquire lock...`);
+        
+        const lockRes = await fetch('/api/news/lock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, lang: language })
+        });
+
+        if (!lockRes.ok) {
+          // If lock failed (someone else got it), wait and retry
+          console.log(`[LiveNews] Failed to acquire lock for ${date}. Retrying fetch...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return fetchDayNews(offset);
+        }
+
+        console.log(`[LiveNews] Lock acquired. Generating in frontend...`);
+        const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
+        
+        setGenerating(false);
+        
+        // Add date to each item for consistency
+        const processedData = {
+          local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
+          fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
+          igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+          updatedAt: generatedData.updatedAt || new Date().toISOString(),
+          isMock: generatedData.isMock
+        };
+        
+        if (generatedData.isMock) {
+          toast.info(language === 'bn' ? "লাইভ নিউজ সার্ভার ব্যস্ত, ডেমো নিউজ দেখানো হচ্ছে।" : "News server busy, showing demo news.");
+        }
+        
+        return { ...processedData, date };
       }
-      
-      return { ...processedData, date };
+
+      throw new Error(`Server returned ${response.status}`);
     } catch (err: any) {
       setGenerating(false);
       console.error(`Error fetching/generating news for ${date}:`, err);
