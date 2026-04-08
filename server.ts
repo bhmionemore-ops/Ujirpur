@@ -661,11 +661,60 @@ async function cleanupOldNews() {
   }
 }
 
+/**
+ * Mock news data as a last resort fallback
+ */
+function getMockNews(language: 'bn' | 'en', date: string) {
+  const isBn = language === 'bn';
+  return {
+    local: [
+      {
+        title: isBn ? "বার্নিয়া এবং নদীয়া জেলায় নতুন উন্নয়ন প্রকল্প" : "New Development Projects in Barnia and Nadia District",
+        content: isBn 
+          ? "বার্নিয়া এবং নদীয়া জেলার বিভিন্ন স্থানে নতুন উন্নয়নমূলক কাজ শুরু হয়েছে। স্থানীয় প্রশাসন রাস্তাঘাট সংস্কার এবং পানীয় জলের সুব্যবস্থার ওপর জোর দিচ্ছে। এই প্রকল্পগুলো সম্পন্ন হলে এলাকার মানুষের জীবনযাত্রার মান উন্নত হবে বলে আশা করা হচ্ছে।"
+          : "New developmental works have started in various parts of Barnia and Nadia districts. The local administration is emphasizing on road repairs and better drinking water facilities. It is expected that once these projects are completed, the standard of living of the local people will improve.",
+        source: "Barnia News Desk",
+        date: date
+      },
+      {
+        title: isBn ? "স্থানীয় বাজারে কৃষিপণ্যের ভালো ফলন" : "Good Harvest of Agricultural Products in Local Markets",
+        content: isBn
+          ? "এই মৌসুমে নদীয়া জেলার কৃষকরা ভালো ফলন পেয়েছেন। স্থানীয় বাজারে টাটকা শাকসবজি এবং ফলের সরবরাহ বৃদ্ধি পেয়েছে। কৃষকরা তাদের পণ্যের ন্যায্য মূল্য পাচ্ছেন বলে জানিয়েছেন, যা গ্রামীণ অর্থনীতিতে ইতিবাচক প্রভাব ফেলছে।"
+          : "Farmers in Nadia district have had a good harvest this season. The supply of fresh vegetables and fruits in local markets has increased. Farmers have reported getting fair prices for their products, which is having a positive impact on the rural economy.",
+        source: "Krishi Samachar",
+        date: date
+      },
+      {
+        title: isBn ? "বার্নিয়া স্কুলে সাংস্কৃতিক অনুষ্ঠানের আয়োজন" : "Cultural Program Organized at Barnia School",
+        content: isBn
+          ? "বার্নিয়ার একটি স্থানীয় স্কুলে বার্ষিক সাংস্কৃতিক অনুষ্ঠান অত্যন্ত ধুমধাম করে পালিত হয়েছে। ছাত্রছাত্রীরা নাচ, গান এবং নাটকের মাধ্যমে তাদের প্রতিভা প্রদর্শন করেছে। অনুষ্ঠানে এলাকার বিশিষ্ট ব্যক্তিবর্গ উপস্থিত ছিলেন এবং বিজয়ীদের পুরস্কৃত করা হয়েছে।"
+          : "The annual cultural program at a local school in Barnia was celebrated with great pomp. Students showcased their talent through dance, song, and drama. Eminent personalities of the area were present at the event and winners were rewarded.",
+        source: "Local Education News",
+        date: date
+      }
+    ],
+    fbTrends: [
+      {
+        title: "Top 1 (WB): #BarniaVibes",
+        content: "Viral Strategy: Share photos of local scenic beauty. Hook Idea: 'Did you know Barnia looks this beautiful at sunset?' Creation Tips: Use warm filters and local folk music. Viral Secret: Tag local community groups. Engagement Booster: Ask followers to share their favorite local spot.",
+        source: "Social Trends India",
+        date: date
+      }
+    ],
+    igTrends: [
+      {
+        title: "Top 1 (WB): Local Food Reels",
+        content: "Viral Strategy: Showcasing street food of Nadia. Hook Idea: 'Best Jhalmuri in Nadia?' Creation Tips: Fast cuts, close-ups of food preparation. Viral Secret: Use trending Bengali audio tracks. Engagement Booster: Poll about favorite street food. Monetization Tip: Partner with local eateries.",
+        source: "Insta Insights",
+        date: date
+      }
+    ],
+    isMock: true
+  };
+}
+
 async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en', targetDate?: string): Promise<any> {
   const apiKey = await getGeminiApiKey();
-  const prefix = apiKey.substring(0, 4);
-  console.log(`[NewsAPI] Using API key with prefix: ${prefix}... (Length: ${apiKey.length})`);
-
   const ai = new GoogleGenAI({ apiKey });
   const langName = language === 'bn' ? 'Bengali' : 'English';
   const displayDate = targetDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -689,88 +738,76 @@ async function fetchLiveNewsServer(language: 'bn' | 'en' = 'en', targetDate?: st
   IMPORTANT: All text must be in ${langName}.
   Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
 
-  try {
-    console.log(`[NewsAPI] Calling Gemini API for ${langName} news...`);
-    
-    // Add a timeout to the API call
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Gemini API timeout (60s)")), 60000)
-    );
+  const models = [
+    { name: "gemini-3-flash-preview", useTools: true },
+    { name: "gemini-flash-latest", useTools: false },
+    { name: "gemini-3.1-flash-lite-preview", useTools: false },
+    { name: "gemini-1.5-flash", useTools: false }
+  ];
 
-    const generatePromise = ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
+  for (let i = 0; i < models.length; i++) {
+    const modelInfo = models[i];
+    console.log(`[NewsAPI] Attempt ${i + 1}: Using model ${modelInfo.name} (Tools: ${modelInfo.useTools})`);
+    
+    try {
+      const config: any = {
         responseMimeType: "application/json",
         maxOutputTokens: 8192,
-      },
-    });
+      };
+      
+      if (modelInfo.useTools) {
+        config.tools = [{ googleSearch: {} }];
+      }
 
-    const response: any = await Promise.race([generatePromise, timeoutPromise]);
-    console.log("[NewsAPI] Gemini API response received.");
+      // Add a timeout to the API call
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Gemini API timeout (60s) for ${modelInfo.name}`)), 60000)
+      );
 
-    if (!response || !response.text) {
-      console.error("[NewsAPI] Empty or invalid response from Gemini:", JSON.stringify(response));
-      throw new Error("Empty response from Gemini API");
-    }
+      const generatePromise = ai.models.generateContent({
+        model: modelInfo.name,
+        contents: prompt,
+        config: config,
+      });
 
-    const text = response.text;
-    const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-    const parsed = JSON.parse(cleanedText);
-    
-    return {
-      local: parsed.local || [],
-      fbTrends: parsed.fbTrends || [],
-      igTrends: parsed.igTrends || []
-    };
-  } catch (error: any) {
-    console.error("News generation failed on server:", error);
-    
-    // If it failed with googleSearch, PERMISSION_DENIED, or RESOURCE_EXHAUSTED, try fallback
-    const isToolError = error.message?.includes("googleSearch") || error.message?.includes("tool");
-    const isPermissionError = error.message?.includes("PERMISSION_DENIED") || error.message?.includes("403");
-    const isQuotaError = error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED");
-    
-    if (isToolError || isPermissionError || isQuotaError) {
-      const reason = isQuotaError ? 'quota' : (isPermissionError ? 'permission' : 'tool');
-      console.log(`[NewsAPI] Retrying with fallback model due to ${reason} error...`);
-      try {
-        // Wait 2 seconds before retry if it's a quota error
-        if (isQuotaError) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        
-        // Try gemini-flash-latest as it often has higher free tier quotas
-        const response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            maxOutputTokens: 8192,
-          },
-        });
-        
-        if (!response || !response.text) {
-          throw new Error("Empty response from Gemini API (retry)");
-        }
+      const response: any = await Promise.race([generatePromise, timeoutPromise]);
+      
+      if (!response || !response.text) {
+        throw new Error(`Empty response from ${modelInfo.name}`);
+      }
 
-        const text = response.text;
-        const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-        const parsed = JSON.parse(cleanedText);
-        return {
-          local: parsed.local || [],
-          fbTrends: parsed.fbTrends || [],
-          igTrends: parsed.igTrends || []
-        };
-      } catch (retryError: any) {
-        console.error("[NewsAPI] Retry failed:", retryError);
-        throw retryError;
+      const text = response.text;
+      const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
+      const parsed = JSON.parse(cleanedText);
+      
+      console.log(`[NewsAPI] Successfully generated news with ${modelInfo.name}`);
+      return {
+        local: parsed.local || [],
+        fbTrends: parsed.fbTrends || [],
+        igTrends: parsed.igTrends || [],
+        modelUsed: modelInfo.name
+      };
+    } catch (error: any) {
+      const errorMsg = error.message || "";
+      const isQuotaError = errorMsg.includes("429") || errorMsg.includes("RESOURCE_EXHAUSTED");
+      const isUnavailable = errorMsg.includes("503") || errorMsg.includes("UNAVAILABLE");
+      
+      console.warn(`[NewsAPI] Attempt ${i + 1} (${modelInfo.name}) failed:`, errorMsg);
+      
+      // If it's the last model or a non-retryable error, we might want to stop, 
+      // but here we just continue to the next model.
+      
+      // Add a small delay before trying the next model, especially for quota/unavailable
+      if (i < models.length - 1) {
+        const delay = isQuotaError ? 3000 : 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    
-    throw error;
   }
+
+  // If all models failed, return mock data
+  console.error("[NewsAPI] All Gemini models failed. Returning mock news data.");
+  return getMockNews(language, displayDate);
 }
 
 function escapeHtml(text: string) {
@@ -1572,7 +1609,8 @@ async function startServer() {
             error: userErrorMessage,
             details: isBlockedError || isDisabledError ? errorMsg : undefined,
             code: isBlockedError ? "API_KEY_SERVICE_BLOCKED" : (isDisabledError ? "SERVICE_DISABLED" : "UNKNOWN"),
-            isError: true
+            isError: true,
+            isQuotaError: isQuotaError
           });
         }
       }
