@@ -257,17 +257,20 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    match /_health_check/{docId} {
+      allow read, write: if true;
+    }
+
     match /news/{newsId} {
       allow read: if true; // Publicly viewable
       
       // Allow creation and update by anyone if it's valid news data
-      // We allow this so the server-side generation can cache news even if Admin SDK is limited
       allow create, update: if isValidNews(request.resource.data) && 
                             (newsId == request.resource.data.date || 
                              newsId == request.resource.data.date + "-" + request.resource.data.lang);
       
       // Allow deletion of old news (older than 14 days)
-      // We use both createdAt (timestamp) and date (string) for robustness
+      // We allow anyone to delete old news to support server-side cleanup when Admin SDK is unavailable
       allow delete: if isAdmin() || 
                     (resource.data.createdAt != null && request.time > resource.data.createdAt + duration.value(14, 'd')) ||
                     (resource.data.date != null && request.time > timestamp.date(resource.data.date + "T00:00:00Z") + duration.value(14, 'd'));

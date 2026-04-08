@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook, Calendar, Car } from 'lucide-react';
+import { Zap, Users, ShoppingBag, ChevronLeft, ChevronRight, Newspaper, Facebook, Calendar, Car, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
@@ -79,35 +79,65 @@ export const Banner = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
+    if (isDismissed) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % SLIDES.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isDismissed]);
 
   const next = () => setCurrent((prev) => (prev + 1) % SLIDES.length);
   const prev = () => setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
 
-  const handleNavigation = (path: string) => {
-    if (window.location.pathname === path) {
-      if (path === '/') {
+  const handleNavigation = (path: string, isExternal = false) => {
+    // Trigger "Slide Up" animation
+    setIsDismissed(true);
+
+    // Wait for animation to finish before actually navigating or scrolling
+    setTimeout(() => {
+      if (isExternal) {
+        window.open(path, '_blank');
+        setTimeout(() => setIsDismissed(false), 1000);
+        return;
+      }
+
+      if (window.location.pathname === '/' && (path === '/' || path === '#news')) {
         const newsSection = document.getElementById('news');
         if (newsSection) {
           newsSection.scrollIntoView({ behavior: 'smooth' });
+          // Reset after scroll so it's visible if they scroll back up
+          setTimeout(() => setIsDismissed(false), 1000);
           return;
         }
       }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      navigate(path);
-      // Scroll to top will be handled by ScrollToTop component
-    }
+
+      if (window.location.pathname === path) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => setIsDismissed(false), 1000);
+      } else {
+        navigate(path);
+      }
+    }, 800); // Increased to match animation duration
   };
 
   return (
-    <div className="relative h-[600px] w-full overflow-hidden bg-zinc-950">
+    <motion.div 
+      initial={false}
+      animate={{ 
+        y: isDismissed ? '-100%' : 0,
+        opacity: isDismissed ? 0 : 1,
+        height: isDismissed ? 0 : undefined
+      }}
+      transition={{ 
+        duration: 0.8, 
+        ease: [0.4, 0, 0.2, 1] 
+      }}
+      className="relative h-[600px] md:h-[700px] w-full overflow-hidden bg-zinc-950 group/banner" 
+      id="main-banner"
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -243,10 +273,8 @@ export const Banner = () => {
           </button>
 
           {/* Facebook Group Button with Glowing Animation */}
-          <motion.a 
-            href="https://www.facebook.com/groups/barniabazar/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <motion.button 
+            onClick={() => handleNavigation('https://www.facebook.com/groups/barniabazar/', true)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="relative p-[3px] overflow-hidden rounded-2xl group flex items-center justify-center"
@@ -256,9 +284,56 @@ export const Banner = () => {
               <Facebook size={24} className="text-brand-500" />
               {t.banner.facebookGroup}
             </span>
-          </motion.a>
+          </motion.button>
         </motion.div>
+
+        {/* Scroll Down Indicator */}
+        <motion.button
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+          onClick={() => handleNavigation('/')}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/40 hover:text-brand-400 transition-all group/scroll z-20"
+        >
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] group-hover:tracking-[0.5em] transition-all">
+            {language === 'bn' ? 'নিচে দেখুন' : 'Explore'}
+          </span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center backdrop-blur-sm group-hover:border-brand-500/50 group-hover:bg-brand-500/10 transition-all"
+          >
+            <ChevronDown size={20} />
+          </motion.div>
+        </motion.button>
       </div>
-    </div>
+
+      {/* Navigation Arrows */}
+      <button 
+        onClick={prev}
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/20 hover:bg-brand-600 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
+      >
+        <ChevronLeft size={24} />
+      </button>
+      <button 
+        onClick={next}
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/20 hover:bg-brand-600 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
+      >
+        <ChevronRight size={24} />
+      </button>
+
+      {/* Progress Indicators */}
+      <div className="absolute bottom-8 right-8 z-20 flex gap-2">
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              current === i ? 'w-8 bg-brand-500' : 'w-2 bg-white/20 hover:bg-white/40'
+            }`}
+          />
+        ))}
+      </div>
+    </motion.div>
   );
 };
