@@ -102,11 +102,22 @@ export {
 // Connection Test
 async function testConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    // Use a promise with timeout for the connection test
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Firebase connection timed out")), 10000)
+    );
+    
+    await Promise.race([
+      getDocFromServer(doc(db, 'test', 'connection')),
+      timeoutPromise
+    ]);
+    
     console.log("Firebase connection successful");
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. The client is offline.");
+    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('timed out'))) {
+      console.error("Firebase connection failed: The client is offline or the connection timed out. Please check your Firebase configuration.");
+    } else {
+      console.warn("Firebase connection test warning:", error);
     }
   }
 }

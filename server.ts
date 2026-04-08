@@ -830,6 +830,17 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Start listening immediately to avoid "Web server is down" errors
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    
+    // Heartbeat to monitor server health and memory
+    setInterval(() => {
+      const memoryUsage = process.memoryUsage();
+      console.log(`[Heartbeat] ${new Date().toISOString()} - RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`);
+    }, 60000);
+  });
+
   // Email Transporter
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
@@ -1061,75 +1072,73 @@ async function startServer() {
     }
   });
 
-  try {
-    const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
-    firebaseConfig = JSON.parse(configData);
-    
-    // Initialize Client SDK (for client-side compatible operations if needed)
-    console.log(`[Firebase] Initializing Client SDK for project: ${firebaseConfig.projectId}`);
-    const clientApp = initializeClientApp(firebaseConfig);
-    
-    // Use initializeFirestore with long polling to avoid gRPC issues in Node.js environment
-    db = initializeFirestore(clientApp, {
-      experimentalForceLongPolling: true
-    }, firebaseConfig.firestoreDatabaseId || undefined);
-    clientAuth = getAuth(clientApp);
-    
-    // Initialize Admin SDK for server-side administrative tasks (bypasses rules)
-    if (!admin.apps.length) {
-      try {
-        // Try initializing with application default credentials
-        console.log("[Firebase] Attempting Admin SDK initialization with Application Default Credentials...");
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-          projectId: firebaseConfig.projectId
-        });
-        console.log("[Firebase] Admin SDK initialized with Application Default Credentials.");
-      } catch (credError: any) {
-        console.warn("[Firebase] Could not load default credentials, trying to initialize with project ID only:", credError.message);
+  // Initialize Firebase asynchronously so it doesn't block server startup
+  (async () => {
+    try {
+      const configData = await fs.readFile(path.resolve("firebase-applet-config.json"), "utf-8");
+      firebaseConfig = JSON.parse(configData);
+      
+      // Initialize Client SDK
+      console.log(`[Firebase] Initializing Client SDK for project: ${firebaseConfig.projectId}`);
+      const clientApp = initializeClientApp(firebaseConfig);
+      
+      db = initializeFirestore(clientApp, {
+        experimentalForceLongPolling: true
+      }, firebaseConfig.firestoreDatabaseId || undefined);
+      clientAuth = getAuth(clientApp);
+      
+      // Initialize Admin SDK
+      if (!admin.apps.length) {
         try {
-          // Fallback: Initialize with just the project ID. 
+          console.log("[Firebase] Attempting Admin SDK initialization...");
           admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
             projectId: firebaseConfig.projectId
           });
-          console.log("[Firebase] Admin SDK initialized with project ID only.");
-        } catch (initError: any) {
-          console.error("[Firebase] Admin SDK failed to initialize even with project ID fallback:", initError.message);
+          console.log("[Firebase] Admin SDK initialized.");
+        } catch (credError: any) {
+          console.warn("[Firebase] Admin SDK fallback initialization...");
+          try {
+            admin.initializeApp({
+              projectId: firebaseConfig.projectId
+            });
+          } catch (initError: any) {
+            console.error("[Firebase] Admin SDK failed to initialize:", initError.message);
+          }
         }
       }
-    }
-    
-    try {
-      adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
-      console.log(`Admin Firestore instance created for database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
       
-      // Test Admin SDK permissions with a more robust check
-      try {
-        // Try to write and then delete a test document to ensure full permissions
-        const testRef = adminDb.collection("_health_check").doc("server_init_test");
-        await testRef.set({ 
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          status: "testing"
-        });
-        await testRef.delete();
-        console.log("Admin SDK permissions verified (Read/Write).");
-      } catch (permError: any) {
-        console.warn(`Admin SDK health check failed: ${permError.message} (Code: ${permError.code})`);
-        if (permError.message && (permError.message.includes("PERMISSION_DENIED") || permError.code === 7)) {
-          console.warn("Admin SDK lacks Firestore permissions. Disabling Admin SDK for Firestore operations.");
-          adminDb = null;
-        } else {
-          console.warn("Admin SDK health check failed (non-permission error). Continuing with Admin SDK enabled.");
+      if (admin.apps.length) {
+        try {
+          adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
+          
+          // Async health check
+          (async () => {
+            try {
+              const testRef = adminDb.collection("_health_check").doc("server_init_test");
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Health check timed out")), 10000)
+              );
+              await Promise.race([
+                testRef.set({ timestamp: admin.firestore.FieldValue.serverTimestamp(), status: "testing" }),
+                timeoutPromise
+              ]);
+              await testRef.delete();
+              console.log("[Firebase] Admin SDK verified.");
+            } catch (permError: any) {
+              console.warn(`[Firebase] Admin SDK health check failed: ${permError.message}`);
+              if (permError.message?.includes("PERMISSION_DENIED")) adminDb = null;
+            }
+          })();
+        } catch (dbError) {
+          console.error("[Firebase] Failed to create Admin Firestore instance:", dbError);
         }
       }
-    } catch (dbError) {
-      console.error("Failed to create Admin Firestore instance:", dbError);
+      console.log(`[Firebase] SDKs initialized. Project: ${firebaseConfig.projectId}`);
+    } catch (error) {
+      console.error("[Firebase] Initialization failed:", error);
     }
-
-    console.log(`Firebase SDKs initialized. Project: ${firebaseConfig.projectId}, Database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
-  }
+  })();
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -2441,16 +2450,6 @@ async function startServer() {
       }
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    
-    // Heartbeat to monitor server health and memory
-    setInterval(() => {
-      const memoryUsage = process.memoryUsage();
-      console.log(`[Heartbeat] ${new Date().toISOString()} - RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`);
-    }, 60000);
-  });
 }
 
 startServer().catch(err => {
