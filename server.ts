@@ -1799,25 +1799,67 @@ async function startServer() {
   });
 
   // Meta Tag Routes (MUST be before static/vite middleware)
+  app.get("/api/image/shop/:id", async (req, res) => {
+    try {
+      let { id } = req.params;
+      id = id.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+      const decodedId = decodeURIComponent(id);
+      
+      const shop = firebaseConfig ? await getShopItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+      
+      if (!shop || !shop.image) {
+        return res.status(404).send("Image not found");
+      }
+
+      const imageUrl = shop.image;
+
+      if (imageUrl.startsWith('data:image')) {
+        const parts = imageUrl.split(',');
+        const base64Data = parts[1];
+        const img = Buffer.from(base64Data, 'base64');
+        const mimeType = imageUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+        res.writeHead(200, { 'Content-Type': mimeType, 'Content-Length': img.length, 'Cache-Control': 'public, max-age=86400' });
+        return res.end(img);
+      }
+
+      console.log(`[ShopImageProxy] Fetching image: ${imageUrl}`);
+      const response = await fetch(imageUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        timeout: 10000
+      });
+
+      if (!response.ok) return res.status(response.status).send("Failed to fetch image");
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = await response.buffer();
+      res.writeHead(200, { 'Content-Type': contentType, 'Content-Length': buffer.length, 'Cache-Control': 'public, max-age=86400' });
+      res.end(buffer);
+    } catch (error) {
+      res.status(500).send("Internal server error");
+    }
+  });
+
   app.get("/api/image/influencer/:id", async (req, res) => {
     try {
       let { id } = req.params;
-      // Remove extension if present (e.g. .jpg)
       id = id.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+      const decodedId = decodeURIComponent(id);
       
-      const profile = firebaseConfig ? await getProfileItem(id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+      const profile = firebaseConfig ? await getProfileItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       
       if (!profile || !profile.rawAvatar) {
         return res.status(404).send("Image not found");
       }
 
-      if (profile.rawAvatar.startsWith('data:image')) {
-        const parts = profile.rawAvatar.split(',');
+      const avatarUrl = profile.rawAvatar;
+
+      if (avatarUrl.startsWith('data:image')) {
+        const parts = avatarUrl.split(',');
         if (parts.length < 2) return res.status(400).send("Invalid image data");
         
         const base64Data = parts[1];
         const img = Buffer.from(base64Data, 'base64');
-        const mimeType = profile.rawAvatar.split(';')[0].split(':')[1] || 'image/jpeg';
+        const mimeType = avatarUrl.split(';')[0].split(':')[1] || 'image/jpeg';
         
         res.writeHead(200, {
           'Content-Type': mimeType,
@@ -1825,11 +1867,33 @@ async function startServer() {
           'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
           'X-Content-Type-Options': 'nosniff'
         });
-        res.end(img);
-      } else {
-        // If it's already a URL, redirect to it
-        res.redirect(profile.rawAvatar);
+        return res.end(img);
       }
+
+      // Fetch the image and serve it directly to avoid redirect issues with social crawlers
+      console.log(`[InfluencerImageProxy] Fetching image: ${avatarUrl}`);
+      const response = await fetch(avatarUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        timeout: 10000
+      });
+
+      if (!response.ok) {
+        console.error(`[InfluencerImageProxy] Failed to fetch image: ${response.status} ${response.statusText}`);
+        return res.status(response.status).send("Failed to fetch image");
+      }
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = await response.buffer();
+
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': buffer.length,
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      res.end(buffer);
     } catch (error) {
       console.error("Error serving proxy image:", error);
       res.status(500).send("Internal server error");
@@ -1871,12 +1935,17 @@ async function startServer() {
   });
 
   app.get("/shop/:slug", async (req, res) => {
+    const userAgent = req.get('User-Agent') || '';
     const { slug } = req.params;
     // Decode slug for Firestore query if it's encoded
     const decodedSlug = decodeURIComponent(slug);
-    console.log(`[ShopRoute] Request for Slug: ${slug}, Decoded: ${decodedSlug}`);
+    console.log(`[ShopRoute] Request for Slug: ${slug}, Decoded: ${decodedSlug}, User-Agent: ${userAgent}`);
     
-    const shop = firebaseConfig ? await getShopItem(decodedSlug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    // Add a timeout to the database fetch to prevent hanging requests
+    const fetchPromise = firebaseConfig ? getShopItem(decodedSlug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : Promise.resolve(null);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 8000));
+    
+    const shop = await Promise.race([fetchPromise, timeoutPromise]);
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
@@ -1899,7 +1968,7 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        image: shop.image,
+        image: `${baseUrl}/api/image/shop/${encodeURIComponent(decodedSlug)}.jpg`,
         url: fullUrl,
         type: 'business.business',
         imageWidth: 1200,
@@ -1985,7 +2054,11 @@ async function startServer() {
     const decodedId = decodeURIComponent(id);
     console.log(`[ProfileRoute] Request for ID/Slug: ${id}, Decoded: ${decodedId}, User-Agent: ${userAgent}`);
     
-    const profile = firebaseConfig ? await getProfileItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    // Add a timeout to the database fetch to prevent hanging requests
+    const fetchPromise = firebaseConfig ? getProfileItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : Promise.resolve(null);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 8000));
+    
+    const profile = await Promise.race([fetchPromise, timeoutPromise]);
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
@@ -2004,10 +2077,9 @@ async function startServer() {
       // Use proxy URL for Base64 images to satisfy social media crawlers
       // Adding .jpg extension helps Facebook recognize it as an image
       let imageUrl = profile.avatar;
-      if (imageUrl && imageUrl.startsWith('data:image')) {
-        imageUrl = `${baseUrl}/api/image/influencer/${id}.jpg`;
-      } else if (imageUrl && imageUrl.startsWith('/')) {
-        imageUrl = `${baseUrl}${imageUrl}`;
+      if (imageUrl) {
+        // Always use proxy for social images to ensure reliability and handle redirects/base64
+        imageUrl = `${baseUrl}/api/image/influencer/${encodeURIComponent(decodedId)}.jpg`;
       }
 
       const bioText = profile.bio.length > 60 ? profile.bio.substring(0, 57) + "..." : profile.bio;
