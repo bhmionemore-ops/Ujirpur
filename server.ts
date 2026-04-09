@@ -867,10 +867,10 @@ async function startServer() {
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL/TLS for better production compatibility
-    pool: false,  // Disable pooling for serverless/Cloud Run environments
-    family: 4,    // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
+    port: 587,
+    secure: false, // Use STARTTLS for port 587
+    pool: false,   // Disable pooling for serverless/Cloud Run environments
+    family: 4,     // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1680,7 +1680,7 @@ async function startServer() {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
           host: 'smtp.gmail.com',
-          port: 465
+          port: 587
         }
       });
     }
@@ -1696,7 +1696,7 @@ async function startServer() {
         message: "SMTP connection verified successfully",
         config: {
           host: 'smtp.gmail.com',
-          port: 465,
+          port: 587,
           family: 4,
           user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 3)}...` : 'Not Set'
         }
@@ -1711,7 +1711,7 @@ async function startServer() {
         stack: err.stack,
         config: {
           host: 'smtp.gmail.com',
-          port: 465,
+          port: 587,
           family: 4
         }
       });
