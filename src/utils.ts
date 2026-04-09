@@ -21,6 +21,14 @@ export const shareContent = async (title: string, text: string, url: string = wi
     shareUrl = shareUrl.replace('ais-dev-', 'ais-pre-');
   }
 
+  // Decode the URL at the very end to ensure human-readable characters (like Bengali) 
+  // are preserved instead of showing long %E0%A6... encoded strings in the clipboard/share
+  try {
+    shareUrl = decodeURIComponent(shareUrl);
+  } catch (e) {
+    console.warn('Failed to decode share URL:', e);
+  }
+
   if (navigator.share) {
     try {
       await navigator.share({ title, text, url: shareUrl });

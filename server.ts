@@ -1887,8 +1887,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    // Use the original slug in the URL to maintain consistency, but ensure it's not double-encoded
-    const fullUrl = `${baseUrl}/shop/${slug}`;
+    // Use the decoded slug in the URL for cleaner display in social media and canonical tags
+    const fullUrl = `${baseUrl}/shop/${decodedSlug}`;
     
     let metadata;
     if (shop) {
@@ -1996,7 +1996,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}/profile/${id}`;
+    // Use the decoded ID/Slug in the URL for cleaner display in social media and canonical tags
+    const fullUrl = `${baseUrl}/profile/${decodedId}`;
     
     let metadata;
     if (profile) {
