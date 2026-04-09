@@ -866,19 +866,20 @@ async function startServer() {
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use STARTTLS
-    pool: true, // Reuse connections
+    port: 465,
+    secure: true, // Use SSL/TLS
+    pool: true,
     auth: {
       user: emailUser,
       pass: emailPass,
     },
     tls: {
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
     },
-    connectionTimeout: 20000, // 20 seconds
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
+    connectionTimeout: 30000, // Increase to 30 seconds
+    greetingTimeout: 30000,
+    socketTimeout: 45000,
     debug: true,
     logger: true
   });
@@ -1344,6 +1345,9 @@ async function startServer() {
       }).format(now),
       currentNewsDate,
       env: process.env.NODE_ENV || 'development',
+      isProduction: process.env.NODE_ENV === 'production',
+      emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
+      lastKeepAlivePing: lastPingTimestamp,
       aizaKeys,
       keys: {
         GEMINI_API_KEY: getMaskedKey(process.env.GEMINI_API_KEY),
@@ -1634,6 +1638,50 @@ async function startServer() {
   // API Routes
   app.get("/api/influencers", (req, res) => {
     res.json(localDb.userInfluencers);
+  });
+
+  // Detailed Email Test Route
+  app.get("/api/admin/test-email-detailed", async (req, res) => {
+    const testEmail = req.query.email as string || RECIPIENT;
+    console.log(`[EmailTest] Starting detailed test to: ${testEmail}`);
+    
+    const startTime = Date.now();
+    try {
+      const info = await transporter.sendMail({
+        from: `"Barnia Test" <${process.env.EMAIL_USER}>`,
+        to: testEmail,
+        subject: "Detailed Email Connection Test",
+        text: `Test sent at ${new Date().toISOString()}. Connection took ${Date.now() - startTime}ms.`,
+      });
+      
+      res.json({
+        success: true,
+        message: "Email sent successfully",
+        info: {
+          messageId: info.messageId,
+          response: info.response,
+          accepted: info.accepted,
+          rejected: info.rejected,
+          timeMs: Date.now() - startTime
+        }
+      });
+    } catch (err: any) {
+      console.error("[EmailTest] Detailed test failed:", err);
+      res.status(500).json({
+        success: false,
+        error: err.message,
+        code: err.code,
+        command: err.command,
+        stack: err.stack,
+        timeMs: Date.now() - startTime,
+        config: {
+          user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
+          pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
+          host: 'smtp.gmail.com',
+          port: 465
+        }
+      });
+    }
   });
 
   // Welcome Email Endpoint

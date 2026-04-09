@@ -72,6 +72,10 @@ service cloud.firestore {
       );
     }
 
+    function isRecent(time) {
+      return time != null && request.time < time + duration.value(5, 'm');
+    }
+
     function uidNotModified() {
        return isAdmin() || !('uid' in request.resource.data) ||
          request.resource.data.uid == resource.data.uid;
@@ -139,8 +143,7 @@ service cloud.firestore {
     }
 
     function isValidStat(data) {
-      return hasRequiredFields(['count']) &&
-             data.count is int;
+      return hasRequiredFields(['count']);
     }
 
     function isValidCollabRequest(data) {
@@ -151,12 +154,9 @@ service cloud.firestore {
     }
 
     function isValidNews(data) {
-      return hasRequiredFields(['date', 'local', 'fbTrends', 'igTrends', 'updatedAt', 'lang']) &&
+      return hasRequiredFields(['date', 'updatedAt', 'lang']) &&
              data.date is string &&
              data.lang is string &&
-             data.local is list &&
-             data.fbTrends is list &&
-             data.igTrends is list &&
              data.updatedAt is string;
     }
 
@@ -284,8 +284,8 @@ service cloud.firestore {
       // Allow deletion of old news (older than 14 days)
       // We allow anyone to delete old news to support server-side cleanup when Admin SDK is unavailable
       allow delete: if isAdmin() || 
-                    (resource.data.createdAt != null && request.time > resource.data.createdAt + duration.value(14, 'd')) ||
-                    (resource.data.date != null && request.time > timestamp.date(resource.data.date + "T00:00:00Z") + duration.value(14, 'd'));
+                    resource.data.date == null ||
+                    request.time > timestamp(resource.data.date + "T00:00:00Z") + duration.value(14, 'd');
     }
 
     match /shops/{shopId}/products/{productId} {

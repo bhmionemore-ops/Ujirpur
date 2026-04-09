@@ -296,24 +296,23 @@ export const AdminAnalytics = () => {
                   }
                   try {
                     toast.loading("Sending test welcome email...", { id: 'test-email' });
-                    const response = await fetch('/api/send-welcome-email', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        email: user.email,
-                        name: user.displayName || 'Admin'
-                      })
-                    });
+                    const response = await fetch(`/api/admin/test-email-detailed?email=${user.email}`);
                     const data = await response.json();
+                    
                     if (response.ok) {
-                      toast.success(`Welcome email sent to ${user.email}!`, { id: 'test-email' });
+                      toast.success(`Email sent! (Took ${data.info.timeMs}ms)`, { id: 'test-email' });
                     } else {
+                      console.error("Test email failed:", data);
                       const detail = data.details ? `: ${data.details}` : '';
                       const errorMsg = data.error || 'Unknown error';
-                      toast.error(`Failed to send email: ${errorMsg}${detail}`, { id: 'test-email', duration: 5000 });
+                      toast.error(`Failed: ${errorMsg}${detail}`, { 
+                        id: 'test-email',
+                        duration: 10000,
+                        description: "Check console for full stack trace."
+                      });
                     }
                   } catch (err: any) {
-                    console.error(err);
+                    console.error("Error sending test email:", err);
                     toast.error(`Error: ${err.message}`, { id: 'test-email' });
                   }
                 }}
