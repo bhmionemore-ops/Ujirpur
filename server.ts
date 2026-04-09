@@ -870,9 +870,7 @@ async function startServer() {
     port: 465,
     secure: true, // Use SSL/TLS for better production compatibility
     pool: false,  // Disable pooling for serverless/Cloud Run environments
-    lookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
+    family: 4,    // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
     auth: {
       user: emailUser,
       pass: emailPass,

@@ -5,7 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 export async function generateChatReply(message: string, history: { text: string; isBot: boolean }[], language: 'bn' | 'en' = 'en'): Promise<string> {
   const langName = language === 'bn' ? 'Bengali' : 'English';
   
-  const systemInstruction = `You are the AI assistant for the "Barnia Digital Hub" website.
+  const systemInstruction = `You are "Barnali", the AI assistant for the "Barnia Digital Hub" website.
   Website Info:
   - Location: Barnia, Nadia, West Bengal, India.
   - Features: Barnia Bazar (market prices), Influencer Network, and Collaboration Hub.
