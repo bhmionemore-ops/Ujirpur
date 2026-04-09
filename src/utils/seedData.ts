@@ -53,7 +53,7 @@ export const seedDatabase = async () => {
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       console.log("Database already seeded.");
-      return;
+      return { success: true, alreadySeeded: true };
     }
 
     console.log("Seeding database...");
@@ -123,7 +123,9 @@ export const seedDatabase = async () => {
     }
 
     console.log("Seeding complete!");
+    return { success: true, alreadySeeded: false };
   } catch (error) {
     console.error("Error seeding database:", error);
+    throw error;
   }
 };

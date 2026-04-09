@@ -866,8 +866,8 @@ async function startServer() {
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL/TLS
+    port: 587,
+    secure: false, // Use STARTTLS
     pool: true,
     auth: {
       user: emailUser,
@@ -877,7 +877,7 @@ async function startServer() {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2'
     },
-    connectionTimeout: 30000, // Increase to 30 seconds
+    connectionTimeout: 30000, 
     greetingTimeout: 30000,
     socketTimeout: 45000,
     debug: true,
@@ -1678,7 +1678,7 @@ async function startServer() {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
           host: 'smtp.gmail.com',
-          port: 465
+          port: 587
         }
       });
     }
@@ -2086,16 +2086,16 @@ async function startServer() {
 
       let metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Ponjika",
-        description: "The official community platform for Barnia, Ujirpur, Nadia. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
+        description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
         image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
         url: fullUrl,
         type: 'website',
         imageWidth: 1200,
         imageHeight: 630,
-        keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia",
+        keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia, Pallashi Para, 741156",
         seoContent: `
           <h1>Barnia Digital Hub</h1>
-          <p>The official community platform for Barnia, Ujirpur, and Nadia district.</p>
+          <p>The official community platform for Barnia, Ujirpur, and Nadia district. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156.</p>
           <h2>Barnia Bazar Market Prices</h2>
           <p>Get daily updates on vegetable, fish, and grocery prices in Barnia Bazar.</p>
           <h2>Influencer Network</h2>
@@ -2466,11 +2466,11 @@ async function startServer() {
         
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
-          description: "The official community platform for Barnia, Ujirpur, Nadia.",
+          description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path === '/' ? '' : req.path}`,
           type: 'website',
-          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
+          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia, Pallashi Para, 741156"
         };
         
         html = await injectMetaTags(html, metadata);
@@ -2504,11 +2504,11 @@ async function startServer() {
         
         const metadata = {
           title: "Barnia Digital Hub | Community Platform",
-          description: "The official community platform for Barnia, Ujirpur, Nadia.",
+          description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
           url: `${baseUrl}${req.path === '/' ? '' : req.path}`,
           type: 'website',
-          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia"
+          keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia, Pallashi Para, 741156"
         };
         
         html = await injectMetaTags(html, metadata);

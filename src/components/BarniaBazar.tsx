@@ -345,8 +345,12 @@ export const BarniaBazar = () => {
     if (!isAdmin) return;
     setSeeding(true);
     try {
-      await seedDatabase();
-      toast.success(t.bazar.seedSuccess);
+      const result = await seedDatabase();
+      if (result?.alreadySeeded) {
+        toast.info(t.bazar.alreadySeeded);
+      } else {
+        toast.success(t.bazar.seedSuccess);
+      }
     } catch (err) {
       toast.error(t.bazar.seedFailed);
       console.error(err);

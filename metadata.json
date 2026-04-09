@@ -1,5 +1,5 @@
 {
   "name": "Barnia Digital Hub",
-  "description": "The official community platform for Barnia, Ujirpur, and Nadia. Featuring daily market prices at Barnia Bazar, village vehicle services (Uber-like), local influencers, Bengali Ponjika, and a professional app inbox.",
+  "description": "The official community platform for Barnia, Ujirpur, and Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156. Featuring daily market prices at Barnia Bazar, village vehicle services (Uber-like), local influencers, Bengali Ponjika, and a professional app inbox.",
   "requestFramePermissions": ["geolocation", "microphone"]
 }

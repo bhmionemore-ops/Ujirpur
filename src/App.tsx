@@ -425,7 +425,7 @@ function AppContent() {
                   <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
                     <MapPin size={18} className="text-brand-500" />
                   </div>
-                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">Barnia, Nadia, WB, India</span>
+                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156</span>
                 </li>
                 <li className="flex items-start gap-4 group">
                   <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">

@@ -551,8 +551,12 @@ export const InfluencerSection = () => {
     if (!isAdmin) return;
     setSeeding(true);
     try {
-      await seedDatabase();
-      toast.success(language === 'bn' ? 'সফলভাবে ডেটা যোগ করা হয়েছে!' : 'Data seeded successfully!');
+      const result = await seedDatabase();
+      if (result?.alreadySeeded) {
+        toast.info(language === 'bn' ? 'ডেটা ইতিমধ্যে যোগ করা আছে।' : 'Database is already seeded.');
+      } else {
+        toast.success(language === 'bn' ? 'সফলভাবে ডেটা যোগ করা হয়েছে!' : 'Data seeded successfully!');
+      }
     } catch (err) {
       toast.error(language === 'bn' ? 'ডেটা যোগ করতে সমস্যা হয়েছে' : 'Failed to seed data');
       console.error(err);

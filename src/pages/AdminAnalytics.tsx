@@ -69,8 +69,12 @@ export const AdminAnalytics = () => {
     if (!confirm("Are you sure you want to seed the database with 30 influencers and 17 shops? This will only run if seed data doesn't exist yet.")) return;
     setSeeding(true);
     try {
-      await seedDatabase();
-      toast.success("Database seeded successfully!");
+      const result = await seedDatabase();
+      if (result?.alreadySeeded) {
+        toast.info("Database is already seeded with initial data.");
+      } else {
+        toast.success("Database seeded successfully!");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Error seeding database.");
