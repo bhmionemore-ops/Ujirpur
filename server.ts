@@ -20,6 +20,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import nodemailer from "nodemailer";
+import dns from "dns";
 import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import path from "path";
@@ -869,7 +870,9 @@ async function startServer() {
     port: 465,
     secure: true, // Use SSL/TLS for better production compatibility
     pool: false,  // Disable pooling for serverless/Cloud Run environments
-    family: 4,    // Force IPv4 to avoid ENETUNREACH on IPv6 in some cloud environments
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
     auth: {
       user: emailUser,
       pass: emailPass,

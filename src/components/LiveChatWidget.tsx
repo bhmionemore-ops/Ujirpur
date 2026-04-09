@@ -16,17 +16,14 @@ export const LiveChatWidget = () => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<{ text: string; isBot: boolean; id?: string }[]>([]);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  if (error) throw error;
 
   useEffect(() => {
     if (isOpen) {
       const q = query(
         collection(db, 'support_messages'), 
         where('sessionId', '==', SESSION_ID),
-        orderBy('createdAt', 'asc'), 
         limit(50)
       );
       
@@ -36,6 +33,13 @@ export const LiveChatWidget = () => {
           ...doc.data()
         })) as any[];
         
+        // Sort client-side to avoid composite index requirement
+        items.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis?.() || 0;
+          const timeB = b.createdAt?.toMillis?.() || 0;
+          return timeA - timeB;
+        });
+
         if (items.length === 0) {
           setMessages([{ text: t.chat.welcome, isBot: true }]);
         } else {
@@ -47,11 +51,14 @@ export const LiveChatWidget = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
           }
         }, 100);
-      }, (error) => setError(handleFirestoreError(error, OperationType.LIST, 'support_messages')));
+      }, (err) => {
+        console.error("Chat Error:", err);
+        setError(language === 'bn' ? 'চ্যাট লোড করতে সমস্যা হচ্ছে' : 'Error loading chat');
+      });
       
       return () => unsub();
     }
-  }, [isOpen, t.chat.welcome]);
+  }, [isOpen, t.chat.welcome, language]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +66,7 @@ export const LiveChatWidget = () => {
 
     const userMessage = message.trim();
     setMessage('');
+    setError(null);
 
     try {
       await addDoc(collection(db, 'support_messages'), {
@@ -82,8 +90,9 @@ export const LiveChatWidget = () => {
       });
       
       setIsTyping(false);
-    } catch (error) {
-      setError(handleFirestoreError(error, OperationType.CREATE, 'support_messages'));
+    } catch (err) {
+      console.error("Send Error:", err);
+      setError(language === 'bn' ? 'বার্তা পাঠাতে সমস্যা হচ্ছে' : 'Error sending message');
       setIsTyping(false);
     }
   };
@@ -128,6 +137,11 @@ export const LiveChatWidget = () => {
               ref={scrollRef}
               className="flex-1 p-5 overflow-y-auto bg-zinc-50/50 space-y-4 custom-scrollbar"
             >
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 mb-4">
+                  {error}
+                </div>
+              )}
               {messages.map((msg, i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
