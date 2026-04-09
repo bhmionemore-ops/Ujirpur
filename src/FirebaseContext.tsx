@@ -60,10 +60,10 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   name: currentUser.displayName || 'User'
                 })
               }).then(res => {
-                if (!res.ok) {
-                  console.error(`[FirebaseContext] Welcome email API failed with status: ${res.status}`);
-                } else {
+                if (res.ok) {
                   console.log(`[FirebaseContext] Welcome email API call successful for: ${currentUser.email}`);
+                } else {
+                  console.error(`[FirebaseContext] Welcome email API failed with status: ${res.status}`);
                 }
               }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
             }
@@ -235,7 +235,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         email: email,
         name: name
       })
-    }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
+    })
+    .then(res => {
+      if (res.ok) console.log("[FirebaseContext] Welcome email triggered successfully");
+      else console.error("[FirebaseContext] Welcome email trigger failed:", res.status);
+    })
+    .catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
   };
 
   const signOut = async () => {

@@ -869,6 +869,7 @@ async function startServer() {
     port: 465,
     secure: true, // Use SSL/TLS for better production compatibility
     pool: false,  // Disable pooling for serverless/Cloud Run environments
+    family: 4,    // Force IPv4 to avoid ENETUNREACH on IPv6 in some cloud environments
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1687,15 +1688,31 @@ async function startServer() {
   // SMTP Verification Route
   app.get("/api/admin/verify-smtp", async (req, res) => {
     try {
+      console.log(`[SMTP-Verify] Attempting verification for user: ${process.env.EMAIL_USER?.substring(0, 3)}...`);
       await transporter.verify();
-      res.json({ success: true, message: "SMTP connection verified successfully" });
+      res.json({ 
+        success: true, 
+        message: "SMTP connection verified successfully",
+        config: {
+          host: 'smtp.gmail.com',
+          port: 465,
+          family: 4,
+          user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 3)}...` : 'Not Set'
+        }
+      });
     } catch (err: any) {
       console.error("[SMTP-Verify] Failed:", err);
       res.status(500).json({ 
         success: false, 
         error: err.message,
         code: err.code,
-        command: err.command
+        command: err.command,
+        stack: err.stack,
+        config: {
+          host: 'smtp.gmail.com',
+          port: 465,
+          family: 4
+        }
       });
     }
   });
