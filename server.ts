@@ -866,9 +866,9 @@ async function startServer() {
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use STARTTLS
-    pool: true,
+    port: 465,
+    secure: true, // Use SSL/TLS for better production compatibility
+    pool: false,  // Disable pooling for serverless/Cloud Run environments
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -877,12 +877,12 @@ async function startServer() {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2'
     },
-    connectionTimeout: 30000, 
-    greetingTimeout: 30000,
-    socketTimeout: 45000,
+    connectionTimeout: 20000, 
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
     debug: true,
     logger: true
-  });
+  } as any);
 
   // Verify transporter on startup
   transporter.verify((error, success) => {
@@ -1678,8 +1678,24 @@ async function startServer() {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
           host: 'smtp.gmail.com',
-          port: 587
+          port: 465
         }
+      });
+    }
+  });
+
+  // SMTP Verification Route
+  app.get("/api/admin/verify-smtp", async (req, res) => {
+    try {
+      await transporter.verify();
+      res.json({ success: true, message: "SMTP connection verified successfully" });
+    } catch (err: any) {
+      console.error("[SMTP-Verify] Failed:", err);
+      res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        code: err.code,
+        command: err.command
       });
     }
   });

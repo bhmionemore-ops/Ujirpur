@@ -294,6 +294,29 @@ export const AdminAnalytics = () => {
             <div className="flex items-center gap-3">
               <button 
                 onClick={async () => {
+                  try {
+                    toast.loading("Verifying SMTP connection...", { id: 'verify-smtp' });
+                    const response = await fetch('/api/admin/verify-smtp');
+                    const data = await response.json();
+                    if (response.ok) {
+                      toast.success("SMTP Connection Verified!", { id: 'verify-smtp' });
+                    } else {
+                      toast.error(`Verification Failed: ${data.error}`, { 
+                        id: 'verify-smtp',
+                        description: `Code: ${data.code || 'N/A'}`
+                      });
+                    }
+                  } catch (err: any) {
+                    toast.error(`Error: ${err.message}`, { id: 'verify-smtp' });
+                  }
+                }}
+                className="px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2"
+              >
+                <CheckCircle size={14} />
+                Verify SMTP
+              </button>
+              <button 
+                onClick={async () => {
                   if (!user?.email) {
                     toast.error("You must have an email associated with your account.");
                     return;
