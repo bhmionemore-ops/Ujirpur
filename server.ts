@@ -1872,9 +1872,11 @@ async function startServer() {
 
   app.get("/shop/:slug", async (req, res) => {
     const { slug } = req.params;
-    console.log(`[ShopRoute] Request for Slug: ${slug}`);
+    // Decode slug for Firestore query if it's encoded
+    const decodedSlug = decodeURIComponent(slug);
+    console.log(`[ShopRoute] Request for Slug: ${slug}, Decoded: ${decodedSlug}`);
     
-    const shop = firebaseConfig ? await getShopItem(slug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    const shop = firebaseConfig ? await getShopItem(decodedSlug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
@@ -1885,7 +1887,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.path}`;
+    // Use the original slug in the URL to maintain consistency, but ensure it's not double-encoded
+    const fullUrl = `${baseUrl}/shop/${slug}`;
     
     let metadata;
     if (shop) {
@@ -1978,9 +1981,11 @@ async function startServer() {
 
   app.get("/profile/:id", async (req, res) => {
     const userAgent = req.get('User-Agent') || '';
-    console.log(`[ProfileRoute] Request for ID/Slug: ${req.params.id}, User-Agent: ${userAgent}`);
+    const { id } = req.params;
+    const decodedId = decodeURIComponent(id);
+    console.log(`[ProfileRoute] Request for ID/Slug: ${id}, Decoded: ${decodedId}, User-Agent: ${userAgent}`);
     
-    const profile = firebaseConfig ? await getProfileItem(req.params.id, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    const profile = firebaseConfig ? await getProfileItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
@@ -1991,7 +1996,7 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.path}`;
+    const fullUrl = `${baseUrl}/profile/${id}`;
     
     let metadata;
     if (profile) {
@@ -1999,7 +2004,7 @@ async function startServer() {
       // Adding .jpg extension helps Facebook recognize it as an image
       let imageUrl = profile.avatar;
       if (imageUrl && imageUrl.startsWith('data:image')) {
-        imageUrl = `${baseUrl}/api/image/influencer/${req.params.id}.jpg`;
+        imageUrl = `${baseUrl}/api/image/influencer/${id}.jpg`;
       } else if (imageUrl && imageUrl.startsWith('/')) {
         imageUrl = `${baseUrl}${imageUrl}`;
       }

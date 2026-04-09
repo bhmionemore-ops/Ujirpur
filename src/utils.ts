@@ -58,7 +58,7 @@ export const slugify = (text: string) => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w\u0980-\u09FF-]+/g, '') // Remove all non-word chars (including Bengali characters)
+    .replace(/[^\w-]+/g, '')  // Remove all non-word chars (only allow English letters, numbers, and hyphens)
     .replace(/--+/g, '-')     // Replace multiple - with single -
     .replace(/^-+/, '')       // Trim - from start of text
     .replace(/-+$/, '');      // Trim - from end of text
