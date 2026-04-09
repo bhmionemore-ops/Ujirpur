@@ -866,14 +866,30 @@ async function startServer() {
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // use SSL
+    port: 587,
+    secure: false, // Use STARTTLS
+    pool: true, // Reuse connections
     auth: {
       user: emailUser,
       pass: emailPass,
     },
-    debug: true, // show debug output
-    logger: true // log information in console
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 20000, // 20 seconds
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
+    debug: true,
+    logger: true
+  });
+
+  // Verify transporter on startup
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('[Server] Email Transporter Verification Failed:', error.message);
+    } else {
+      console.log('[Server] Email Transporter is ready to send messages');
+    }
   });
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "info@barnia.in";
@@ -1690,7 +1706,13 @@ async function startServer() {
       res.status(200).json({ success: true, messageId: info.messageId });
     } catch (error: any) {
       console.error("[WelcomeEmail] Failed to send email:", error.message);
-      res.status(500).json({ error: "Failed to send email", details: error.message });
+      let errorMessage = error.message;
+      if (error.message.includes('ETIMEDOUT') || error.message.includes('timeout')) {
+        errorMessage = "Connection timeout. This might be due to network restrictions or incorrect SMTP settings.";
+      } else if (error.message.includes('Invalid login')) {
+        errorMessage = "Invalid email credentials. Please check your EMAIL_USER and EMAIL_PASS (App Password).";
+      }
+      res.status(500).json({ error: "Failed to send email", details: errorMessage });
     }
   });
 
@@ -2181,8 +2203,8 @@ async function startServer() {
           `,
         });
       }
-    } catch (error) {
-      console.error("Error sending collab email:", error);
+    } catch (error: any) {
+      console.error("Error sending collab email:", error.message);
     }
 
     res.json({ success: true, request: newRequest });
@@ -2229,9 +2251,13 @@ async function startServer() {
         console.log(`Text: ${text}`);
         res.json({ success: true, message: "Logged to console (no email credentials)" });
       }
-    } catch (error) {
-      console.error("Error sending email:", error);
-      res.status(500).json({ success: false, error: "Failed to send notification" });
+    } catch (error: any) {
+      console.error("Error sending email:", error.message);
+      let errorMessage = error.message;
+      if (error.message.includes('ETIMEDOUT') || error.message.includes('timeout')) {
+        errorMessage = "Connection timeout. Please check SMTP settings.";
+      }
+      res.status(500).json({ success: false, error: "Failed to send notification", details: errorMessage });
     }
   });
 
