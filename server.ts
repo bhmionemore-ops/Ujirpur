@@ -694,10 +694,15 @@ function escapeHtml(text: string) {
 }
 
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
+  // Ensure URLs are properly encoded for ASCII-only HTML attributes
+  // encodeURI is used to handle non-ASCII characters like Bengali in the URL
+  const safeUrl = metadata.url ? encodeURI(metadata.url) : '';
+  const safeImage = metadata.image ? encodeURI(metadata.image) : '';
+  
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
-  const escapedImage = escapeHtml(metadata.image);
-  const escapedUrl = escapeHtml(metadata.url);
+  const escapedImage = escapeHtml(safeImage);
+  const escapedUrl = escapeHtml(safeUrl);
   
   // Robotic keyword generation if not provided
   let keywords = metadata.keywords;
@@ -1811,7 +1816,18 @@ async function startServer() {
         return res.status(404).send("Image not found");
       }
 
-      const imageUrl = shop.image;
+      let imageUrl = shop.image;
+
+      // Handle Google Drive links
+      if (imageUrl.includes('drive.google.com')) {
+        if (imageUrl.includes('/file/d/')) {
+          const driveId = imageUrl.split('/d/')[1]?.split('/')[0];
+          imageUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+        } else if (imageUrl.includes('id=')) {
+          const driveId = imageUrl.split('id=')[1]?.split('&')[0];
+          imageUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+        }
+      }
 
       if (imageUrl.startsWith('data:image')) {
         const parts = imageUrl.split(',');
@@ -1851,7 +1867,18 @@ async function startServer() {
         return res.status(404).send("Image not found");
       }
 
-      const avatarUrl = profile.rawAvatar;
+      let avatarUrl = profile.rawAvatar;
+
+      // Handle Google Drive links
+      if (avatarUrl.includes('drive.google.com')) {
+        if (avatarUrl.includes('/file/d/')) {
+          const driveId = avatarUrl.split('/d/')[1]?.split('/')[0];
+          avatarUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+        } else if (avatarUrl.includes('id=')) {
+          const driveId = avatarUrl.split('id=')[1]?.split('&')[0];
+          avatarUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+        }
+      }
 
       if (avatarUrl.startsWith('data:image')) {
         const parts = avatarUrl.split(',');
@@ -1902,7 +1929,12 @@ async function startServer() {
 
   app.get("/news/:date/:tab/:index", async (req, res) => {
     const { date, tab, index } = req.params;
-    const newsItem = firebaseConfig ? await getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
+    
+    // Add a timeout to the database fetch to prevent hanging requests
+    const fetchPromise = firebaseConfig ? getNewsItem(date, tab, index, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : Promise.resolve(null);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 8000));
+    
+    const newsItem = await Promise.race([fetchPromise, timeoutPromise]);
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
