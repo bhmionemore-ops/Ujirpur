@@ -94,13 +94,16 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
         }
 
         if (!shopsBySlug.empty) {
-          data = shopsBySlug.docs[0].data();
-          console.log(`[MetaTags] Shop found via Admin SDK (slug): "${idOrSlug}"`);
+          const doc = shopsBySlug.docs[0];
+          data = doc.data();
+          data.id = doc.id; // Ensure ID is included
+          console.log(`[MetaTags] Shop found via Admin SDK (slug): "${idOrSlug}" (ID: ${doc.id})`);
         } else {
           // Fallback to ID
           const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
           if (shopById.exists) {
             data = shopById.data();
+            data.id = shopById.id;
             console.log(`[MetaTags] Shop found via Admin SDK (ID): "${idOrSlug}"`);
           }
         }
@@ -124,12 +127,15 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
         }
 
         if (!shopsBySlug.empty) {
-          data = shopsBySlug.docs[0].data();
-          console.log(`[MetaTags] Shop found via Client SDK (slug): "${idOrSlug}"`);
+          const docSnap = shopsBySlug.docs[0];
+          data = docSnap.data();
+          data.id = docSnap.id;
+          console.log(`[MetaTags] Shop found via Client SDK (slug): "${idOrSlug}" (ID: ${docSnap.id})`);
         } else {
           const shopById = await getDocFromServer(doc(db, "shops", idOrSlug));
           if (shopById.exists()) {
             data = shopById.data();
+            data.id = shopById.id;
             console.log(`[MetaTags] Shop found via Client SDK (ID): "${idOrSlug}"`);
           }
         }
@@ -226,6 +232,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
     if (!data) return null;
 
     const result = {
+      id: data.id || idOrSlug, // Store the ID for more reliable lookups
       name: data.name || "Barnia Shop",
       category: data.category || "General",
       location: data.location || "Barnia Bazar",
@@ -436,6 +443,7 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       .join(' • ');
 
     const result = {
+      id: data.id || idOrSlug,
       name: data.name || "Barnia Profile",
       bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
@@ -769,10 +777,11 @@ function escapeHtml(text: string) {
 }
 
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
-  // We keep the page URL decoded for readability ("not big")
-  // But we encode the image URL because it's a direct resource link
+  // We keep both page URL and image URL decoded in the HTML.
+  // Facebook's crawler will encode them correctly on its end.
+  // Providing already encoded URLs often leads to double-encoding (%25E0) errors.
   const safeUrl = metadata.url || '';
-  const safeImage = metadata.image ? encodeURI(metadata.image) : '';
+  const safeImage = metadata.image || '';
   
   console.log(`[MetaTags] Injecting - Title: "${metadata.title}", URL: "${safeUrl}", Image: "${safeImage.substring(0, 50)}..."`);
   
@@ -1902,10 +1911,10 @@ async function startServer() {
       if (imageUrl.includes('drive.google.com')) {
         if (imageUrl.includes('/file/d/')) {
           const driveId = imageUrl.split('/d/')[1]?.split('/')[0];
-          imageUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+          imageUrl = `https://drive.google.com/uc?id=${driveId}`;
         } else if (imageUrl.includes('id=')) {
           const driveId = imageUrl.split('id=')[1]?.split('&')[0];
-          imageUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+          imageUrl = `https://drive.google.com/uc?id=${driveId}`;
         }
       }
 
@@ -1956,10 +1965,10 @@ async function startServer() {
       if (avatarUrl.includes('drive.google.com')) {
         if (avatarUrl.includes('/file/d/')) {
           const driveId = avatarUrl.split('/d/')[1]?.split('/')[0];
-          avatarUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+          avatarUrl = `https://drive.google.com/uc?id=${driveId}`;
         } else if (avatarUrl.includes('id=')) {
           const driveId = avatarUrl.split('id=')[1]?.split('&')[0];
-          avatarUrl = `https://drive.google.com/uc?export=view&id=${driveId}`;
+          avatarUrl = `https://drive.google.com/uc?id=${driveId}`;
         }
       }
 
@@ -2090,8 +2099,8 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        // Use raw decoded slug here, injectMetaTags will handle encodeURI to avoid double encoding
-        image: `${baseUrl}/api/image/shop/${decodedSlug}.jpg`,
+        // Use the document ID for the image proxy if available, otherwise fallback to decoded slug
+        image: `${baseUrl}/api/image/shop/${shop.id || decodedSlug}.jpg`,
         url: fullUrl,
         type: 'business.business',
         imageWidth: 1200,
@@ -2213,8 +2222,8 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        // Use raw decoded ID here, injectMetaTags will handle encodeURI to avoid double encoding
-        image: `${baseUrl}/api/image/influencer/${decodedId}.jpg`,
+        // Use the document ID for the image proxy if available, otherwise fallback to decoded ID
+        image: `${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`,
         url: fullUrl,
         type: 'profile',
         imageWidth: 1200,
