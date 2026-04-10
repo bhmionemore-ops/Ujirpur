@@ -83,7 +83,16 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
     if (adminDb) {
       try {
         // Try fetching by slug first
-        const shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+        let shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+        if (shopsBySlug.empty) {
+          // Fallback: Try encoded slug in case it was stored encoded
+          const encodedSlug = encodeURIComponent(idOrSlug);
+          if (encodedSlug !== idOrSlug) {
+            console.log(`[MetaTags] Trying encoded slug fallback for shop: ${encodedSlug}`);
+            shopsBySlug = await adminDb.collection("shops").where("slug", "==", encodedSlug).limit(1).get();
+          }
+        }
+
         if (!shopsBySlug.empty) {
           data = shopsBySlug.docs[0].data();
           console.log(`[MetaTags] Shop found via Admin SDK (slug): "${idOrSlug}"`);
@@ -103,8 +112,17 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
     // Fallback to Client SDK if Admin SDK failed or was not available
     if (!data && db) {
       try {
-        const q = query(collection(db, "shops"), where("slug", "==", idOrSlug), limit(1));
-        const shopsBySlug = await getDocs(q);
+        let q = query(collection(db, "shops"), where("slug", "==", idOrSlug), limit(1));
+        let shopsBySlug = await getDocs(q);
+        
+        if (shopsBySlug.empty) {
+          const encodedSlug = encodeURIComponent(idOrSlug);
+          if (encodedSlug !== idOrSlug) {
+            q = query(collection(db, "shops"), where("slug", "==", encodedSlug), limit(1));
+            shopsBySlug = await getDocs(q);
+          }
+        }
+
         if (!shopsBySlug.empty) {
           data = shopsBySlug.docs[0].data();
           console.log(`[MetaTags] Shop found via Client SDK (slug): "${idOrSlug}"`);
@@ -240,7 +258,14 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
     if (adminDb) {
       try {
         // Try fetching by slug first
-        const influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+        let influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+        if (influencersBySlug.empty) {
+          const encodedSlug = encodeURIComponent(idOrSlug);
+          if (encodedSlug !== idOrSlug) {
+            influencersBySlug = await adminDb.collection("influencers").where("slug", "==", encodedSlug).limit(1).get();
+          }
+        }
+
         if (!influencersBySlug.empty) {
           data = influencersBySlug.docs[0].data();
         } else {
@@ -258,8 +283,17 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
     // Fallback to Client SDK if Admin SDK failed or was not available
     if (!data && db) {
       try {
-        const q = query(collection(db, "influencers"), where("slug", "==", idOrSlug), limit(1));
-        const influencersBySlug = await getDocs(q);
+        let q = query(collection(db, "influencers"), where("slug", "==", idOrSlug), limit(1));
+        let influencersBySlug = await getDocs(q);
+        
+        if (influencersBySlug.empty) {
+          const encodedSlug = encodeURIComponent(idOrSlug);
+          if (encodedSlug !== idOrSlug) {
+            q = query(collection(db, "influencers"), where("slug", "==", encodedSlug), limit(1));
+            influencersBySlug = await getDocs(q);
+          }
+        }
+
         if (!influencersBySlug.empty) {
           data = influencersBySlug.docs[0].data();
         } else {
@@ -1994,7 +2028,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    const fullUrl = `${baseUrl}${req.path}`;
+    // Use decoded path for cleaner display in social media and canonical tags
+    const fullUrl = `${baseUrl}${decodeURIComponent(req.path)}`;
 
     const metadata = newsItem ? {
       title: newsItem.title,
@@ -2044,8 +2079,7 @@ async function startServer() {
     
     const baseUrl = "https://barnia.in";
     // Use the decoded slug in the URL for cleaner display in social media and canonical tags
-    // We explicitly decodeURI just in case baseUrl or other parts were encoded
-    const fullUrl = decodeURI(`${baseUrl}/shop/${decodedSlug}`);
+    const fullUrl = `${baseUrl}/shop/${decodedSlug}`;
     
     let metadata;
     if (shop) {
@@ -2056,7 +2090,8 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        image: `${baseUrl}/api/image/shop/${encodeURIComponent(decodedSlug)}.jpg`,
+        // Use raw decoded slug here, injectMetaTags will handle encodeURI to avoid double encoding
+        image: `${baseUrl}/api/image/shop/${decodedSlug}.jpg`,
         url: fullUrl,
         type: 'business.business',
         imageWidth: 1200,
@@ -2158,7 +2193,7 @@ async function startServer() {
     
     const baseUrl = "https://barnia.in";
     // Use the decoded ID/Slug in the URL for cleaner display in social media and canonical tags
-    const fullUrl = decodeURI(`${baseUrl}/profile/${decodedId}`);
+    const fullUrl = `${baseUrl}/profile/${decodedId}`;
     
     let metadata;
     if (profile) {
@@ -2178,7 +2213,8 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        image: imageUrl,
+        // Use raw decoded ID here, injectMetaTags will handle encodeURI to avoid double encoding
+        image: `${baseUrl}/api/image/influencer/${decodedId}.jpg`,
         url: fullUrl,
         type: 'profile',
         imageWidth: 1200,
