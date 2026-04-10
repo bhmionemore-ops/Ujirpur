@@ -110,7 +110,8 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
       try {
         console.log(`[MetaTags] Falling back to REST API for shop ${idOrSlug}`);
         const dbId = databaseId || '(default)';
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/shops/${idOrSlug}`;
+        const encodedId = encodeURIComponent(idOrSlug);
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/shops/${encodedId}`;
         const response = await fetch(url);
         if (response.ok) {
           const json: any = await response.json();
@@ -252,7 +253,8 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       try {
         console.log(`[MetaTags] Falling back to REST API for profile ${idOrSlug}`);
         const dbId = databaseId || '(default)';
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${idOrSlug}`;
+        const encodedId = encodeURIComponent(idOrSlug);
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/influencers/${encodedId}`;
         const response = await fetch(url);
         if (response.ok) {
           const json: any = await response.json();
@@ -423,7 +425,8 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     // 2. Fallback to REST API
     if (!data) {
       const dbId = databaseId || '(default)';
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/news/${date}`;
+      const encodedDate = encodeURIComponent(date);
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/news/${encodedDate}`;
       const response = await fetch(url);
       if (response.ok) {
         const restData = await response.json();
@@ -694,10 +697,10 @@ function escapeHtml(text: string) {
 }
 
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
-  // Ensure URLs are properly encoded for ASCII-only HTML attributes
-  // encodeURI is used to handle non-ASCII characters like Bengali in the URL
-  const safeUrl = metadata.url ? encodeURI(metadata.url) : '';
-  const safeImage = metadata.image ? encodeURI(metadata.image) : '';
+  // We remove encodeURI to keep Bengali characters readable in the HTML source and social debuggers.
+  // Modern crawlers handle UTF-8 URLs in meta tags correctly.
+  const safeUrl = metadata.url || '';
+  const safeImage = metadata.image || '';
   
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
@@ -1975,9 +1978,15 @@ async function startServer() {
     
     // Add a timeout to the database fetch to prevent hanging requests
     const fetchPromise = firebaseConfig ? getShopItem(decodedSlug, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : Promise.resolve(null);
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 8000));
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 12000));
     
     const shop = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    if (!shop) {
+      console.warn(`[ShopRoute] Shop NOT found for slug: "${decodedSlug}" (or fetch timed out). FirebaseConfig: ${!!firebaseConfig}, adminDb: ${!!adminDb}`);
+    } else {
+      console.log(`[ShopRoute] Shop found: ${shop.name}, Image: ${shop.image?.substring(0, 50)}...`);
+    }
     
     let html: string;
     if (process.env.NODE_ENV !== "production" && vite) {
