@@ -63,8 +63,19 @@ const newsLocks = new Map<string, number>();
 
 
 
+// Metadata Cache to prevent redundant DB calls and timeouts
+const metadataCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutes
+
 async function getShopItem(idOrSlug: string, projectId: string, databaseId: string) {
-  console.log(`[MetaTags] Fetching shop for ID/Slug: ${idOrSlug}`);
+  const cacheKey = `shop:${idOrSlug}`;
+  const cached = metadataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[MetaTags] Serving shop from cache: "${idOrSlug}"`);
+    return cached.data;
+  }
+
+  console.log(`[MetaTags] Fetching shop for ID/Slug: "${idOrSlug}" (Length: ${idOrSlug.length}, Codes: ${Array.from(idOrSlug).map(c => c.charCodeAt(0)).join(',')})`);
   try {
     let data: any = null;
     
@@ -75,15 +86,17 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
         const shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
         if (!shopsBySlug.empty) {
           data = shopsBySlug.docs[0].data();
+          console.log(`[MetaTags] Shop found via Admin SDK (slug): "${idOrSlug}"`);
         } else {
           // Fallback to ID
           const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
           if (shopById.exists) {
             data = shopById.data();
+            console.log(`[MetaTags] Shop found via Admin SDK (ID): "${idOrSlug}"`);
           }
         }
       } catch (adminError) {
-        console.warn(`[MetaTags] Admin SDK failed to fetch shop ${idOrSlug}, falling back to client SDK:`, adminError);
+        console.warn(`[MetaTags] Admin SDK failed to fetch shop "${idOrSlug}":`, adminError);
       }
     }
 
@@ -94,14 +107,16 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
         const shopsBySlug = await getDocs(q);
         if (!shopsBySlug.empty) {
           data = shopsBySlug.docs[0].data();
+          console.log(`[MetaTags] Shop found via Client SDK (slug): "${idOrSlug}"`);
         } else {
           const shopById = await getDocFromServer(doc(db, "shops", idOrSlug));
           if (shopById.exists()) {
             data = shopById.data();
+            console.log(`[MetaTags] Shop found via Client SDK (ID): "${idOrSlug}"`);
           }
         }
       } catch (clientError) {
-        console.error(`[MetaTags] Client SDK also failed to fetch shop ${idOrSlug}:`, clientError);
+        console.error(`[MetaTags] Client SDK also failed to fetch shop "${idOrSlug}":`, clientError);
       }
     }
 
@@ -192,7 +207,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
 
     if (!data) return null;
 
-    return {
+    const result = {
       name: data.name || "Barnia Shop",
       category: data.category || "General",
       location: data.location || "Barnia Bazar",
@@ -200,6 +215,9 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
       phone: data.phone || "",
       products: data.products || []
     };
+
+    metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
   } catch (error) {
     console.error(`[MetaTags] Error fetching shop for ${idOrSlug}:`, error);
     return null;
@@ -207,6 +225,13 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
 }
 
 async function getProfileItem(idOrSlug: string, projectId: string, databaseId: string) {
+  const cacheKey = `profile:${idOrSlug}`;
+  const cached = metadataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[MetaTags] Serving profile from cache: ${idOrSlug}`);
+    return cached.data;
+  }
+
   console.log(`[MetaTags] Fetching profile for ID/Slug: ${idOrSlug}`);
   try {
     let data: any = null;
@@ -376,7 +401,7 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
       .join(' • ');
 
-    return {
+    const result = {
       name: data.name || "Barnia Profile",
       bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
       avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
@@ -385,6 +410,9 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       socialIconsStr: socialIconsStr || '',
       socials: data.socials || []
     };
+
+    metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
   } catch (error) {
     console.error(`[MetaTags] Error fetching profile for ${idOrSlug}:`, error);
     return null;
@@ -392,6 +420,13 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
 }
 
 async function getNewsItem(date: string, tab: string, index: string, projectId: string, databaseId: string) {
+  const cacheKey = `news:${date}:${tab}:${index}`;
+  const cached = metadataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[MetaTags] Serving news from cache: ${cacheKey}`);
+    return cached.data;
+  }
+
   try {
     let data: any = null;
     
@@ -459,11 +494,14 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     if (!tabData || !tabData[parseInt(index)]) return null;
     
     const item = tabData[parseInt(index)];
-    return {
+    const result = {
       title: item.title || "Barnia News",
       content: item.content || "Latest news from our community.",
       image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200"
     };
+
+    metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
   } catch (error) {
     console.error("Error fetching news for meta tags:", error);
     return null;
@@ -697,10 +735,12 @@ function escapeHtml(text: string) {
 }
 
 async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
-  // We remove encodeURI to keep Bengali characters readable in the HTML source and social debuggers.
-  // Modern crawlers handle UTF-8 URLs in meta tags correctly.
+  // We keep the page URL decoded for readability ("not big")
+  // But we encode the image URL because it's a direct resource link
   const safeUrl = metadata.url || '';
-  const safeImage = metadata.image || '';
+  const safeImage = metadata.image ? encodeURI(metadata.image) : '';
+  
+  console.log(`[MetaTags] Injecting - Title: "${metadata.title}", URL: "${safeUrl}", Image: "${safeImage.substring(0, 50)}..."`);
   
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
@@ -1812,14 +1852,17 @@ async function startServer() {
       let { id } = req.params;
       id = id.replace(/\.(jpg|jpeg|png|webp)$/i, '');
       const decodedId = decodeURIComponent(id);
+      console.log(`[ShopImageProxy] Request for ID: "${decodedId}"`);
       
       const shop = firebaseConfig ? await getShopItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       
       if (!shop || !shop.image) {
+        console.warn(`[ShopImageProxy] Shop or image NOT found for ID: "${decodedId}"`);
         return res.status(404).send("Image not found");
       }
 
       let imageUrl = shop.image;
+      console.log(`[ShopImageProxy] Found image URL: ${imageUrl.substring(0, 50)}...`);
 
       // Handle Google Drive links
       if (imageUrl.includes('drive.google.com')) {
@@ -1863,14 +1906,17 @@ async function startServer() {
       let { id } = req.params;
       id = id.replace(/\.(jpg|jpeg|png|webp)$/i, '');
       const decodedId = decodeURIComponent(id);
+      console.log(`[InfluencerImageProxy] Request for ID: "${decodedId}"`);
       
       const profile = firebaseConfig ? await getProfileItem(decodedId, firebaseConfig.projectId, firebaseConfig.firestoreDatabaseId) : null;
       
       if (!profile || !profile.rawAvatar) {
+        console.warn(`[InfluencerImageProxy] Profile or avatar NOT found for ID: "${decodedId}"`);
         return res.status(404).send("Image not found");
       }
 
       let avatarUrl = profile.rawAvatar;
+      console.log(`[InfluencerImageProxy] Found avatar URL: ${avatarUrl.substring(0, 50)}...`);
 
       // Handle Google Drive links
       if (avatarUrl.includes('drive.google.com')) {
@@ -1998,7 +2044,8 @@ async function startServer() {
     
     const baseUrl = "https://barnia.in";
     // Use the decoded slug in the URL for cleaner display in social media and canonical tags
-    const fullUrl = `${baseUrl}/shop/${decodedSlug}`;
+    // We explicitly decodeURI just in case baseUrl or other parts were encoded
+    const fullUrl = decodeURI(`${baseUrl}/shop/${decodedSlug}`);
     
     let metadata;
     if (shop) {
@@ -2111,7 +2158,7 @@ async function startServer() {
     
     const baseUrl = "https://barnia.in";
     // Use the decoded ID/Slug in the URL for cleaner display in social media and canonical tags
-    const fullUrl = `${baseUrl}/profile/${decodedId}`;
+    const fullUrl = decodeURI(`${baseUrl}/profile/${decodedId}`);
     
     let metadata;
     if (profile) {
