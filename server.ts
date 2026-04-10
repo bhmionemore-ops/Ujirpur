@@ -1905,7 +1905,7 @@ async function startServer() {
       }
 
       let imageUrl = shop.image;
-      console.log(`[ShopImageProxy] Found image URL: ${imageUrl.substring(0, 50)}...`);
+      console.log(`[ShopImageProxy] Found image URL: ${imageUrl.substring(0, 100)}...`);
 
       // Handle Google Drive links
       if (imageUrl.includes('drive.google.com')) {
@@ -1923,23 +1923,52 @@ async function startServer() {
         const base64Data = parts[1];
         const img = Buffer.from(base64Data, 'base64');
         const mimeType = imageUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-        res.writeHead(200, { 'Content-Type': mimeType, 'Content-Length': img.length, 'Cache-Control': 'public, max-age=86400' });
+        res.writeHead(200, { 
+          'Content-Type': mimeType, 
+          'Content-Length': img.length, 
+          'Cache-Control': 'public, max-age=86400',
+          'X-Content-Type-Options': 'nosniff'
+        });
         return res.end(img);
       }
 
       console.log(`[ShopImageProxy] Fetching image: ${imageUrl}`);
       const response = await fetch(imageUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        timeout: 10000
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        },
+        timeout: 15000,
+        follow: 5
       });
 
-      if (!response.ok) return res.status(response.status).send("Failed to fetch image");
+      console.log(`[ShopImageProxy] Fetch response: ${response.status} ${response.statusText}, Content-Type: ${response.headers.get('content-type')}`);
+
+      if (!response.ok) {
+        console.error(`[ShopImageProxy] Failed to fetch image: ${response.status} ${response.statusText} for URL: ${imageUrl}`);
+        return res.status(response.status).send(`Failed to fetch image: ${response.status}`);
+      }
 
       const contentType = response.headers.get('content-type') || 'image/jpeg';
       const buffer = await response.buffer();
-      res.writeHead(200, { 'Content-Type': contentType, 'Content-Length': buffer.length, 'Cache-Control': 'public, max-age=86400' });
+      
+      console.log(`[ShopImageProxy] Successfully fetched image. Type: ${contentType}, Size: ${buffer.length} bytes`);
+      
+      if (buffer.length === 0) {
+        console.warn(`[ShopImageProxy] Fetched image buffer is empty!`);
+        return res.status(500).send("Empty image buffer");
+      }
+
+      res.writeHead(200, { 
+        'Content-Type': contentType, 
+        'Content-Length': buffer.length, 
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Allow-Origin': '*'
+      });
       res.end(buffer);
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`[ShopImageProxy] Error serving proxy image:`, error.message);
       res.status(500).send("Internal server error");
     }
   });
@@ -1993,28 +2022,40 @@ async function startServer() {
       console.log(`[InfluencerImageProxy] Fetching image: ${avatarUrl}`);
       const response = await fetch(avatarUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
         },
-        timeout: 10000
+        timeout: 15000,
+        follow: 5
       });
 
+      console.log(`[InfluencerImageProxy] Fetch response: ${response.status} ${response.statusText}, Content-Type: ${response.headers.get('content-type')}`);
+
       if (!response.ok) {
-        console.error(`[InfluencerImageProxy] Failed to fetch image: ${response.status} ${response.statusText}`);
-        return res.status(response.status).send("Failed to fetch image");
+        console.error(`[InfluencerImageProxy] Failed to fetch image: ${response.status} ${response.statusText} for URL: ${avatarUrl}`);
+        return res.status(response.status).send(`Failed to fetch image: ${response.status}`);
       }
 
       const contentType = response.headers.get('content-type') || 'image/jpeg';
       const buffer = await response.buffer();
+      
+      console.log(`[InfluencerImageProxy] Successfully fetched image. Type: ${contentType}, Size: ${buffer.length} bytes`);
+      
+      if (buffer.length === 0) {
+        console.warn(`[InfluencerImageProxy] Fetched image buffer is empty!`);
+        return res.status(500).send("Empty image buffer");
+      }
 
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': buffer.length,
         'Cache-Control': 'public, max-age=86400',
-        'X-Content-Type-Options': 'nosniff'
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Allow-Origin': '*'
       });
       res.end(buffer);
-    } catch (error) {
-      console.error("Error serving proxy image:", error);
+    } catch (error: any) {
+      console.error(`[InfluencerImageProxy] Error serving proxy image:`, error.message);
       res.status(500).send("Internal server error");
     }
   });
