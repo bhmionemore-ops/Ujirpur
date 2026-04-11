@@ -808,7 +808,7 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string, twitterCard?: string }) {
   // We keep both page URL and image URL decoded in the HTML.
   // Facebook's crawler will encode them correctly on its end.
   // Providing already encoded URLs often leads to double-encoding (%25E0) errors.
@@ -864,7 +864,7 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
     <meta property="og:updated_time" content="${updatedTime}" />
-    <meta name="twitter:card" content="${safeImage ? 'summary_large_image' : 'summary'}" />
+    <meta name="twitter:card" content="${metadata.twitterCard || (safeImage ? 'summary_large_image' : 'summary')}" />
     ${safeImage ? `
     <meta name="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
@@ -2120,15 +2120,17 @@ async function startServer() {
     const metadata = newsItem ? {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
-      image: "https://barnia.in/logo.png", // Use real URL instead of data URI for Facebook
+      image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png", // Use correct logo URL
       url: fullUrl,
-      type: 'article'
+      type: 'article',
+      twitterCard: 'summary' // Use small summary card for news
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://barnia.in/logo.png", // Use real URL instead of data URI for Facebook
+      image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png", // Use correct logo URL
       url: fullUrl,
-      type: 'article'
+      type: 'article',
+      twitterCard: 'summary'
     };
 
     console.log(`[MetaTags] Injecting tags for news: ${metadata.title}, URL: ${fullUrl}`);
