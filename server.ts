@@ -2379,7 +2379,7 @@ async function startServer() {
   });
 
   // Generic Meta Tag Injection for other routes
-  app.get(["/", "/bazar", "/influencers", "/ponjika"], async (req, res) => {
+  app.get(["/", "/bazar", "/influencers", "/ponjika", "/transport"], async (req, res) => {
     try {
       const isProd = process.env.NODE_ENV === "production";
       const indexPath = isProd ? path.resolve("dist", "index.html") : path.resolve("index.html");
@@ -2416,7 +2416,7 @@ async function startServer() {
       let metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Ponjika",
         description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
-        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
+        image: "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
         url: fullUrl,
         type: 'website',
         imageWidth: 1200,
@@ -2431,21 +2431,35 @@ async function startServer() {
           <p>Connect with talented creators and influencers from Barnia and Ujirpur.</p>
           <h2>Bengali Ponjika</h2>
           <p>View the daily Bengali calendar, tithi, and festival dates.</p>
+          <h2>Barnia Ride</h2>
+          <p>Book local transport and track rides within the village.</p>
         `
       };
 
       if (req.path.includes("/bazar")) {
         metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
         metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
-        metadata.image = "https://images.unsplash.com/photo-1464226184884-fa280b87c399?fm=jpg&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png";
+        metadata.imageWidth = 1200;
+        metadata.imageHeight = 630;
       } else if (req.path.includes("/influencers")) {
         metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
         metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
-        metadata.image = "https://images.unsplash.com/photo-1590005354167-6da97870c921?fm=jpg&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png";
+        metadata.imageWidth = 1200;
+        metadata.imageHeight = 630;
       } else if (req.path.includes("/ponjika")) {
         metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
         metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
-        metadata.image = "https://i.postimg.cc/mD0v888S/ponjika-bg.jpg"; // Use a more reliable image
+        metadata.image = "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png";
+        metadata.imageWidth = 1200;
+        metadata.imageHeight = 630;
+      } else if (req.path.includes("/transport")) {
+        metadata.title = "Barnia Ride | Local Village Transport";
+        metadata.description = "Book rides and track local transport easily within Barnia and surrounding villages.";
+        metadata.image = "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png";
+        metadata.imageWidth = 1200;
+        metadata.imageHeight = 630;
       }
 
       try {
