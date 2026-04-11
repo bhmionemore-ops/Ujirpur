@@ -2120,21 +2120,21 @@ async function startServer() {
     const metadata = newsItem ? {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
-      image: "https://placehold.co/200x200/ffffff/ffffff.png", // 200x200 white image (appears as 'no picture')
-      imageWidth: 200,
-      imageHeight: 200,
+      image: "https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png", // Use provided news image
+      imageWidth: 1200,
+      imageHeight: 630,
       url: fullUrl,
       type: 'article',
-      twitterCard: 'summary' // Use small summary card for news
+      twitterCard: 'summary_large_image' // Use large card for the new image
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://placehold.co/200x200/ffffff/ffffff.png", // 200x200 white image
-      imageWidth: 200,
-      imageHeight: 200,
+      image: "https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png", // Use provided news image
+      imageWidth: 1200,
+      imageHeight: 630,
       url: fullUrl,
       type: 'article',
-      twitterCard: 'summary'
+      twitterCard: 'summary_large_image'
     };
 
     console.log(`[MetaTags] Injecting tags for news: ${metadata.title}, URL: ${fullUrl}`);
