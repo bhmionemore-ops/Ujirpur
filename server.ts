@@ -2121,6 +2121,8 @@ async function startServer() {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
       image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png", // Use correct logo URL
+      imageWidth: 120,
+      imageHeight: 120,
       url: fullUrl,
       type: 'article',
       twitterCard: 'summary' // Use small summary card for news
@@ -2128,6 +2130,8 @@ async function startServer() {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
       image: "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png", // Use correct logo URL
+      imageWidth: 120,
+      imageHeight: 120,
       url: fullUrl,
       type: 'article',
       twitterCard: 'summary'
