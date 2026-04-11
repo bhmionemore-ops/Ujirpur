@@ -536,16 +536,28 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
       }
     }
 
-    if (!data) return null;
+    if (!data) {
+      console.warn(`[MetaTags] News document NOT found for date: ${date}`);
+      return null;
+    }
     
     const tabData = data[tab];
-    if (!tabData || !tabData[parseInt(index)]) return null;
+    if (!tabData) {
+      console.warn(`[MetaTags] Tab "${tab}" NOT found in news document for date: ${date}. Available tabs: ${Object.keys(data).join(', ')}`);
+      return null;
+    }
     
-    const item = tabData[parseInt(index)];
+    const idx = parseInt(index);
+    if (!tabData[idx]) {
+      console.warn(`[MetaTags] Index ${idx} NOT found in tab "${tab}" for date: ${date}. Tab size: ${tabData.length}`);
+      return null;
+    }
+    
+    const item = tabData[idx];
     const result = {
       title: item.title || "Barnia News",
       content: item.content || "Latest news from our community.",
-      image: item.image || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200"
+      image: item.image || ""
     };
 
     metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
@@ -828,17 +840,21 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="${type}" />
+    ${safeImage ? `
     <meta property="og:image" content="${escapedImage}" />
     <meta property="og:image:secure_url" content="${escapedImage}" />
     <meta property="og:image:width" content="${imageWidth}" />
     <meta property="og:image:height" content="${imageHeight}" />
     <meta property="og:image:alt" content="${escapedTitle}" />
+    ` : ''}
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
     <meta property="og:updated_time" content="${updatedTime}" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="${safeImage ? 'summary_large_image' : 'summary'}" />
+    ${safeImage ? `
     <meta name="twitter:image" content="${escapedImage}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
+    ` : ''}
     <meta name="twitter:title" content="${escapedTitle}" />
     <meta name="twitter:description" content="${escapedDescription}" />
     <meta name="twitter:url" content="${escapedUrl}" />
@@ -2089,14 +2105,14 @@ async function startServer() {
 
     const metadata = newsItem ? {
       title: newsItem.title,
-      description: newsItem.content.substring(0, 200) + "...",
-      image: newsItem.image,
+      description: newsItem.content, // Show full news content in description
+      image: "", // User requested no picture for news
       url: fullUrl,
       type: 'article'
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200&h=630",
+      image: "", // No picture for fallback either as per request
       url: fullUrl,
       type: 'article'
     };
