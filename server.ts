@@ -478,13 +478,19 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
   try {
     let data: any = null;
     
+    // Try multiple document ID formats: date, date-en, date-bn
+    const docIdsToTry = [date, `${date}-en`, `${date}-bn`];
+    
     // 1. Try Admin SDK (preferred on server)
     if (adminDb) {
       try {
-        const docSnap = await adminDb.collection("news").doc(date).get();
-        if (docSnap.exists) {
-          data = docSnap.data();
-          console.log(`[MetaTags] News found via Admin SDK for date: ${date}`);
+        for (const docId of docIdsToTry) {
+          const docSnap = await adminDb.collection("news").doc(docId).get();
+          if (docSnap.exists) {
+            data = docSnap.data();
+            console.log(`[MetaTags] News found via Admin SDK for docId: ${docId}`);
+            break;
+          }
         }
       } catch (e) {
         console.warn(`[MetaTags] Admin SDK news fetch failed for date ${date}:`, e);
@@ -494,43 +500,50 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     // 2. Try Client SDK (fallback)
     if (!data && db) {
       try {
-        const docRef = doc(db, "news", date);
-        const docSnap = await getDocFromServer(docRef);
-        if (docSnap.exists()) {
-          data = docSnap.data();
-          console.log(`[MetaTags] News found via Client SDK for date: ${date}`);
+        for (const docId of docIdsToTry) {
+          const docRef = doc(db, "news", docId);
+          const docSnap = await getDocFromServer(docRef);
+          if (docSnap.exists()) {
+            data = docSnap.data();
+            console.log(`[MetaTags] News found via Client SDK for docId: ${docId}`);
+            break;
+          }
         }
       } catch (e) {
         console.warn(`[MetaTags] Client SDK news fetch failed for date ${date}:`, e);
       }
     }
 
-    // 2. Fallback to REST API
+    // 3. Fallback to REST API
     if (!data) {
       const dbId = databaseId || '(default)';
-      const encodedDate = encodeURIComponent(date);
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/news/${encodedDate}`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const restData = await response.json();
-        const fields = restData.fields;
-        if (fields) {
-          // Map REST fields to regular object
-          data = {};
-          for (const key in fields) {
-            if (fields[key].arrayValue) {
-              data[key] = fields[key].arrayValue.values?.map((v: any) => {
-                if (v.mapValue) {
-                  const mapFields = v.mapValue.fields;
-                  const item: any = {};
-                  for (const mk in mapFields) {
-                    item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+      for (const docId of docIdsToTry) {
+        const encodedDocId = encodeURIComponent(docId);
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/news/${encodedDocId}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const restData = await response.json();
+          const fields = restData.fields;
+          if (fields) {
+            // Map REST fields to regular object
+            data = {};
+            for (const key in fields) {
+              if (fields[key].arrayValue) {
+                data[key] = fields[key].arrayValue.values?.map((v: any) => {
+                  if (v.mapValue) {
+                    const mapFields = v.mapValue.fields;
+                    const item: any = {};
+                    for (const mk in mapFields) {
+                      item[mk] = mapFields[mk].stringValue || mapFields[mk].integerValue || mapFields[mk].booleanValue;
+                    }
+                    return item;
                   }
-                  return item;
-                }
-                return v.stringValue;
-              });
+                  return v.stringValue;
+                });
+              }
             }
+            console.log(`[MetaTags] News found via REST API for docId: ${docId}`);
+            break;
           }
         }
       }
@@ -541,7 +554,8 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
       return null;
     }
     
-    const tabData = data[tab];
+    const tabKey = Object.keys(data).find(k => k.toLowerCase() === tab.toLowerCase());
+    const tabData = tabKey ? data[tabKey] : null;
     if (!tabData) {
       console.warn(`[MetaTags] Tab "${tab}" NOT found in news document for date: ${date}. Available tabs: ${Object.keys(data).join(', ')}`);
       return null;
@@ -2106,13 +2120,13 @@ async function startServer() {
     const metadata = newsItem ? {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
-      image: "", // User requested no picture for news
+      image: "https://barnia.in/logo.png", // Use real URL instead of data URI for Facebook
       url: fullUrl,
       type: 'article'
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "", // No picture for fallback either as per request
+      image: "https://barnia.in/logo.png", // Use real URL instead of data URI for Facebook
       url: fullUrl,
       type: 'article'
     };
