@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
   {
-    url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
     title: "Live News Hub",
     subtitle: "Stay updated with the latest news from Barnia and beyond.",
     path: "/",
@@ -14,7 +14,7 @@ const SLIDES = [
     labelKey: 'news'
   },
   {
-    url: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png",
     title: "Village Transport",
     subtitle: "Book rides and track local transport easily within the village.",
     path: "/transport",
@@ -22,7 +22,7 @@ const SLIDES = [
     labelKey: 'transport'
   },
   {
-    url: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png",
     title: "Barnia Bazar",
     subtitle: "Explore local shops and check daily market prices online.",
     path: "/bazar",
@@ -30,7 +30,7 @@ const SLIDES = [
     labelKey: 'bazar'
   },
   {
-    url: "https://images.unsplash.com/photo-1590005354167-6da97870c921?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png",
     title: "Influencer Network",
     subtitle: "Connect with local talent and collaborate on creative projects.",
     path: "/influencers",
@@ -38,7 +38,7 @@ const SLIDES = [
     labelKey: 'influencer'
   },
   {
-    url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/3RXK5xb8/Gemini-Generated-Image-3luc943luc943luc.png",
     title: "Collaboration Hub",
     subtitle: "Tools designed for seamless partnership between creators.",
     path: "/influencers",
@@ -46,7 +46,7 @@ const SLIDES = [
     labelKey: 'collab'
   },
   {
-    url: "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?auto=format&fit=crop&q=80&w=1920",
+    url: "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png",
     title: "Bengali Ponjika",
     subtitle: "Check daily Tithi, Nakshatra, and special festivals in our digital Panjika.",
     path: "/ponjika",
