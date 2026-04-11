@@ -65,7 +65,7 @@ const newsLocks = new Map<string, number>();
 
 // Metadata Cache to prevent redundant DB calls and timeouts
 const metadataCache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 10; // 10 minutes
+const CACHE_TTL = 1000 * 60 * 2; // 2 minutes
 
 async function getShopItem(idOrSlug: string, projectId: string, databaseId: string) {
   const cacheKey = `shop:${idOrSlug}`;
@@ -274,12 +274,15 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
         }
 
         if (!influencersBySlug.empty) {
-          data = influencersBySlug.docs[0].data();
+          const docSnap = influencersBySlug.docs[0];
+          data = docSnap.data();
+          data.id = docSnap.id;
         } else {
           // Fallback to ID
           const influencerById = await adminDb.collection("influencers").doc(idOrSlug).get();
           if (influencerById.exists) {
             data = influencerById.data();
+            data.id = influencerById.id;
           }
         }
       } catch (adminError) {
@@ -302,11 +305,14 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
         }
 
         if (!influencersBySlug.empty) {
-          data = influencersBySlug.docs[0].data();
+          const docSnap = influencersBySlug.docs[0];
+          data = docSnap.data();
+          data.id = docSnap.id;
         } else {
           const influencerById = await getDocFromServer(doc(db, "influencers", idOrSlug));
           if (influencerById.exists()) {
             data = influencerById.data();
+            data.id = influencerById.id;
           }
         }
       } catch (clientError) {
@@ -2128,8 +2134,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    // Use the decoded slug in the URL for cleaner display in social media and canonical tags
-    const fullUrl = `${baseUrl}/shop/${decodedSlug}`;
+    // Use the document ID in the URL for shorter canonical tags and og:url if available
+    const fullUrl = `${baseUrl}/shop/${shop?.id || decodedSlug}`;
     
     let metadata;
     if (shop) {
@@ -2242,8 +2248,8 @@ async function startServer() {
     }
     
     const baseUrl = "https://barnia.in";
-    // Use the decoded ID/Slug in the URL for cleaner display in social media and canonical tags
-    const fullUrl = `${baseUrl}/profile/${decodedId}`;
+    // Use the document ID in the URL for shorter canonical tags and og:url if available
+    const fullUrl = `${baseUrl}/profile/${profile?.id || decodedId}`;
     
     let metadata;
     if (profile) {
@@ -2252,7 +2258,8 @@ async function startServer() {
       let imageUrl = profile.avatar;
       if (imageUrl) {
         // Always use proxy for social images to ensure reliability and handle redirects/base64
-        imageUrl = `${baseUrl}/api/image/influencer/${encodeURIComponent(decodedId)}.jpg`;
+        // Use the document ID for the image proxy if available, otherwise fallback to decoded ID/Slug
+        imageUrl = `${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`;
       }
 
       const bioText = profile.bio.length > 60 ? profile.bio.substring(0, 57) + "..." : profile.bio;
@@ -2402,7 +2409,7 @@ async function startServer() {
       } else if (req.path.includes("/ponjika")) {
         metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
         metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
-        metadata.image = "https://images.unsplash.com/photo-1506784919141-177b7ec8eead?fm=jpg&fit=crop&q=80&w=1200&h=630";
+        metadata.image = "https://i.postimg.cc/mD0v888S/ponjika-bg.jpg"; // Use a more reliable image
       }
 
       try {
