@@ -2113,7 +2113,9 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const baseUrl = "https://barnia.in";
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
     // Use decoded path for cleaner display in social media and canonical tags
     const fullUrl = `${baseUrl}${decodeURIComponent(req.path)}`;
 
@@ -2169,7 +2171,9 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const baseUrl = "https://barnia.in";
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
     // Use the document ID in the URL for shorter canonical tags and og:url if available
     const fullUrl = `${baseUrl}/shop/${shop?.id || decodedSlug}`;
     
@@ -2283,7 +2287,9 @@ async function startServer() {
       html = await fs.readFile(path.resolve("dist", "index.html"), "utf-8");
     }
     
-    const baseUrl = "https://barnia.in";
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
     // Use the document ID in the URL for shorter canonical tags and og:url if available
     const fullUrl = `${baseUrl}/profile/${profile?.id || decodedId}`;
     

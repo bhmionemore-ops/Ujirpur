@@ -519,6 +519,17 @@ export const LiveNews = () => {
                 >
                   <div className="absolute top-0 left-0 w-2 h-full bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
+                  {/* News Image */}
+                  <div className="relative h-48 -mx-10 -mt-10 mb-8 overflow-hidden rounded-t-[2.5rem]">
+                    <img 
+                      src="https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png" 
+                      alt={item.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-[10px] font-black text-brand-600 uppercase tracking-widest">
                       <Clock size={12} />
@@ -688,6 +699,16 @@ export const LiveNews = () => {
                   </button>
                 </div>
                 <div className="p-8 overflow-y-auto custom-scrollbar">
+                  {/* Modal Image */}
+                  <div className="relative h-64 -mx-8 -mt-8 mb-8 overflow-hidden">
+                    <img 
+                      src="https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png" 
+                      alt={selectedItem.title}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                  </div>
                   <h3 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
                     {selectedItem.title}
                   </h3>
