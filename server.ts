@@ -2122,7 +2122,7 @@ async function startServer() {
     const metadata = newsItem ? {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
-      image: "https://i.postimg.cc/pL350L6f/Gemini-Generated-Image-n2ic9hn2ic9hn2ic.png", // Use provided news image
+      image: "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png", // Use provided news image
       imageWidth: 1200,
       imageHeight: 630,
       url: fullUrl,
@@ -2131,7 +2131,7 @@ async function startServer() {
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://i.postimg.cc/pL350L6f/Gemini-Generated-Image-n2ic9hn2ic9hn2ic.png", // Use provided news image
+      image: "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png", // Use provided news image
       imageWidth: 1200,
       imageHeight: 630,
       url: fullUrl,
