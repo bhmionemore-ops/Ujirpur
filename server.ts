@@ -808,18 +808,18 @@ function escapeHtml(text: string) {
     .replace(/'/g, "&#039;");
 }
 
-async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string, url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string, twitterCard?: string }) {
+async function injectMetaTags(html: string, metadata: { title: string, description: string, image: string | string[], url: string, type?: string, imageWidth?: number, imageHeight?: number, keywords?: string, seoContent?: string, twitterCard?: string }) {
   // We keep both page URL and image URL decoded in the HTML.
   // Facebook's crawler will encode them correctly on its end.
   // Providing already encoded URLs often leads to double-encoding (%25E0) errors.
   const safeUrl = metadata.url || '';
-  const safeImage = metadata.image || '';
+  const images = Array.isArray(metadata.image) ? metadata.image : [metadata.image].filter(Boolean);
+  const primaryImage = images[0] || '';
   
-  console.log(`[MetaTags] Injecting - Title: "${metadata.title}", URL: "${safeUrl}", Image: "${safeImage.substring(0, 50)}..."`);
+  console.log(`[MetaTags] Injecting - Title: "${metadata.title}", URL: "${safeUrl}", Images: ${images.length}`);
   
   const escapedTitle = escapeHtml(metadata.title);
   const escapedDescription = escapeHtml(metadata.description);
-  const escapedImage = escapeHtml(safeImage);
   const escapedUrl = escapeHtml(safeUrl);
   
   // Robotic keyword generation if not provided
@@ -840,6 +840,20 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   const imageWidth = metadata.imageWidth || 1200;
   const imageHeight = metadata.imageHeight || 630;
 
+  let imageTags = '';
+  images.forEach((img) => {
+    const escapedImg = escapeHtml(img);
+    const imgType = img.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    imageTags += `
+    <meta property="og:image" content="${escapedImg}" />
+    <meta property="og:image:secure_url" content="${escapedImg}" />
+    <meta property="og:image:width" content="${imageWidth}" />
+    <meta property="og:image:height" content="${imageHeight}" />
+    <meta property="og:image:type" content="${imgType}" />
+    <meta property="og:image:alt" content="${escapedTitle}" />
+    `;
+  });
+
   const metaTags = `
     <!-- Meta Injected -->
     <title>${escapedTitle}</title>
@@ -854,19 +868,13 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
     <meta property="og:description" content="${escapedDescription}" />
     <meta property="og:url" content="${escapedUrl}" />
     <meta property="og:type" content="${type}" />
-    ${safeImage ? `
-    <meta property="og:image" content="${escapedImage}" />
-    <meta property="og:image:secure_url" content="${escapedImage}" />
-    <meta property="og:image:width" content="${imageWidth}" />
-    <meta property="og:image:height" content="${imageHeight}" />
-    <meta property="og:image:alt" content="${escapedTitle}" />
-    ` : ''}
+    ${imageTags}
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
     <meta property="og:updated_time" content="${updatedTime}" />
-    <meta name="twitter:card" content="${metadata.twitterCard || (safeImage ? 'summary_large_image' : 'summary')}" />
-    ${safeImage ? `
-    <meta name="twitter:image" content="${escapedImage}" />
+    <meta name="twitter:card" content="${metadata.twitterCard || (primaryImage ? 'summary_large_image' : 'summary')}" />
+    ${primaryImage ? `
+    <meta name="twitter:image" content="${escapeHtml(primaryImage)}" />
     <meta name="twitter:image:alt" content="${escapedTitle}" />
     ` : ''}
     <meta name="twitter:title" content="${escapedTitle}" />
@@ -2122,7 +2130,7 @@ async function startServer() {
     const metadata = newsItem ? {
       title: newsItem.title,
       description: newsItem.content, // Show full news content in description
-      image: "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png", // Use provided news image
+      image: ["https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"], // Use provided news image
       imageWidth: 1200,
       imageHeight: 630,
       url: fullUrl,
@@ -2131,7 +2139,7 @@ async function startServer() {
     } : {
       title: "Latest News | Barnia community",
       description: "Stay updated with the latest news, events, and announcements from the Barnia community.",
-      image: "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png", // Use provided news image
+      image: ["https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"], // Use provided news image
       imageWidth: 1200,
       imageHeight: 630,
       url: fullUrl,
@@ -2187,7 +2195,7 @@ async function startServer() {
         title: title,
         description: description,
         // Use the document ID for the image proxy if available, otherwise fallback to decoded slug
-        image: `${baseUrl}/api/image/shop/${shop.id || decodedSlug}.jpg`,
+        image: [`${baseUrl}/api/image/shop/${shop.id || decodedSlug}.jpg`],
         url: fullUrl,
         type: 'business.business',
         imageWidth: 1200,
@@ -2256,7 +2264,7 @@ async function startServer() {
       metadata = {
         title: "Shop Profile | Barnia Bazar",
         description: "Explore local shops and market prices at Barnia Bazar, Nadia.",
-        image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200&h=630",
+        image: ["https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200&h=630"],
         url: fullUrl,
         type: 'website'
       };
@@ -2313,7 +2321,7 @@ async function startServer() {
         title: title,
         description: description,
         // Use the document ID for the image proxy if available, otherwise fallback to decoded ID
-        image: `${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`,
+        image: [`${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`],
         url: fullUrl,
         type: 'profile',
         imageWidth: 1200,
@@ -2419,10 +2427,30 @@ async function startServer() {
       const baseUrl = process.env.APP_URL || (host ? `${protocol}://${host}` : "https://barnia.in");
       const fullUrl = `${baseUrl}${req.path}`;
 
+      // Support multiple images and selection via query param
+      const allImages = [
+        "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png", // News Hub
+        "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png", // Bazar
+        "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png", // Influencers
+        "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png", // Ponjika
+        "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png", // Transport
+        "https://i.postimg.cc/3RXK5xb8/Gemini-Generated-Image-3luc943luc943luc.png"  // Collab
+      ];
+
+      const imgParam = req.query.img ? parseInt(req.query.img as string) : 0;
+      let selectedImages = [...allImages];
+      
+      // If a specific image is requested via ?img=N, move it to the front
+      if (!isNaN(imgParam) && imgParam > 0 && imgParam <= allImages.length) {
+        const index = imgParam - 1;
+        const picked = selectedImages.splice(index, 1)[0];
+        selectedImages.unshift(picked);
+      }
+
       let metadata = {
         title: "Barnia Digital Hub | Barnia Bazar, Influencers & Ponjika",
         description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156. Check daily Barnia Bazar market prices, connect with local influencers, and view the Bengali Ponjika.",
-        image: "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
+        image: selectedImages,
         url: fullUrl,
         type: 'website',
         imageWidth: 1200,
@@ -2445,25 +2473,25 @@ async function startServer() {
       if (req.path.includes("/bazar")) {
         metadata.title = "Barnia Bazar | Daily Market Prices in Barnia";
         metadata.description = "Get the latest market prices for vegetables, fish, and groceries at Barnia Bazar, Nadia.";
-        metadata.image = "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png";
+        metadata.image = ["https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png"];
         metadata.imageWidth = 1200;
         metadata.imageHeight = 630;
       } else if (req.path.includes("/influencers")) {
-        metadata.title = "Influencer Network | Barnia & Ujirpur Talents";
-        metadata.description = "Meet the top influencers and creators from Barnia and Ujirpur. Collaborate and grow together.";
-        metadata.image = "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png";
+        metadata.title = "Influencer Network | Barnia & Ujirpur Talents ✅";
+        metadata.description = "Meet the top influencers and content creators from Barnia and Ujirpur. Connect, collaborate, and grow with our local digital community.";
+        metadata.image = ["https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png"];
         metadata.imageWidth = 1200;
         metadata.imageHeight = 630;
       } else if (req.path.includes("/ponjika")) {
         metadata.title = "Bengali Ponjika | Daily Tithi & Festivals in Barnia";
         metadata.description = "Check the daily Bengali Ponjika, auspicious timings, and upcoming festivals for Barnia and Nadia.";
-        metadata.image = "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png";
+        metadata.image = ["https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png"];
         metadata.imageWidth = 1200;
         metadata.imageHeight = 630;
       } else if (req.path.includes("/transport")) {
         metadata.title = "Barnia Ride | Local Village Transport";
         metadata.description = "Book rides and track local transport easily within Barnia and surrounding villages.";
-        metadata.image = "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png";
+        metadata.image = ["https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png"];
         metadata.imageWidth = 1200;
         metadata.imageHeight = 630;
       }
