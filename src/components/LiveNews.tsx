@@ -522,7 +522,7 @@ export const LiveNews = () => {
                   {/* News Image */}
                   <div className="relative h-48 -mx-10 -mt-10 mb-8 overflow-hidden rounded-t-[2.5rem]">
                     <img 
-                      src="https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png" 
+                      src="https://i.postimg.cc/pL350L6f/Gemini-Generated-Image-n2ic9hn2ic9hn2ic.png" 
                       alt={item.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       referrerPolicy="no-referrer"
@@ -702,7 +702,7 @@ export const LiveNews = () => {
                   {/* Modal Image */}
                   <div className="relative h-64 -mx-8 -mt-8 mb-8 overflow-hidden">
                     <img 
-                      src="https://i.postimg.cc/FsKrfmBt/Gemini-Generated-Image-2idzhj2idzhj2idz.png" 
+                      src="https://i.postimg.cc/pL350L6f/Gemini-Generated-Image-n2ic9hn2ic9hn2ic.png" 
                       alt={selectedItem.title}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
