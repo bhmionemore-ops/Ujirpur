@@ -843,7 +843,13 @@ async function injectMetaTags(html: string, metadata: { title: string, descripti
   let imageTags = '';
   images.forEach((img) => {
     const escapedImg = escapeHtml(img);
-    const imgType = img.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    let imgType = 'image/jpeg';
+    const lowerImg = img.toLowerCase();
+    if (lowerImg.includes('.png')) imgType = 'image/png';
+    else if (lowerImg.includes('.webp')) imgType = 'image/webp';
+    else if (lowerImg.includes('.gif')) imgType = 'image/gif';
+    else if (lowerImg.includes('.svg')) imgType = 'image/svg+xml';
+
     imageTags += `
     <meta property="og:image" content="${escapedImg}" />
     <meta property="og:image:secure_url" content="${escapedImg}" />
@@ -2303,14 +2309,18 @@ async function startServer() {
     
     let metadata;
     if (profile) {
-      // Use proxy URL for Base64 images to satisfy social media crawlers
-      // Adding .jpg extension helps Facebook recognize it as an image
-      let imageUrl = profile.avatar;
-      if (imageUrl) {
-        // Always use proxy for social images to ensure reliability and handle redirects/base64
-        // Use the document ID for the image proxy if available, otherwise fallback to decoded ID/Slug
+      // Use direct URL if it's a standard web link, otherwise use proxy for Base64/Drive
+      let imageUrl = profile.rawAvatar || profile.avatar;
+      const isDirectLink = imageUrl && (imageUrl.startsWith('http') && !imageUrl.includes('drive.google.com') && !imageUrl.includes('data:image'));
+      
+      if (!isDirectLink) {
+        // Use proxy for reliability with Base64, Google Drive, or local files
         imageUrl = `${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`;
       }
+
+      // Add a cache buster to force social media to refresh the image
+      const cacheBuster = profile.updatedAt ? (profile.updatedAt._seconds || profile.updatedAt.seconds || Date.now()) : Date.now();
+      imageUrl = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${cacheBuster}`;
 
       const bioText = profile.bio.length > 60 ? profile.bio.substring(0, 57) + "..." : profile.bio;
       // Put bio and social icons in the title so they are visible on mobile
@@ -2320,8 +2330,7 @@ async function startServer() {
       metadata = {
         title: title,
         description: description,
-        // Use the document ID for the image proxy if available, otherwise fallback to decoded ID
-        image: [`${baseUrl}/api/image/influencer/${profile.id || decodedId}.jpg`],
+        image: [imageUrl],
         url: fullUrl,
         type: 'profile',
         imageWidth: 1200,
