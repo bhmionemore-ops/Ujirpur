@@ -433,6 +433,7 @@ export const InfluencerSection = () => {
       bio: newInfluencer.bio,
       socials: [newInfluencer.social1, newInfluencer.social2, newInfluencer.social3].filter(s => s.trim() !== ''),
       avatar: getGoogleDriveImageUrl(newInfluencer.avatarUrl) || `https://picsum.photos/seed/${Math.random()}/200/200`,
+      imageUrl: getGoogleDriveImageUrl(newInfluencer.avatarUrl) || `https://picsum.photos/seed/${Math.random()}/200/200`,
       cover: getGoogleDriveImageUrl(newInfluencer.coverUrl) || null,
       category: 'Influencer',
       videos: newInfluencer.videos.filter(v => v.url.trim() !== ''),

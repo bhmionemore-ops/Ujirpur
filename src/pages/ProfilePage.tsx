@@ -156,14 +156,24 @@ export const ProfilePage = () => {
         
         if (!querySnapshot.empty) {
           const docSnap = querySnapshot.docs[0];
-          const data = docSnap.data() as Influencer;
-          setInfluencer({ id: docSnap.id, ...data } as Influencer);
+          const data = docSnap.data();
+          const avatar = data.avatar || data.imageUrl || '';
+          const socials = data.socials || data.socialLinks || [];
+          
+          const influencerData = { 
+            id: docSnap.id, 
+            ...data,
+            avatar,
+            socials
+          } as any;
+          
+          setInfluencer(influencerData);
           setEditForm({
-            name: data.name,
-            bio: data.bio,
-            avatar: data.avatar,
-            cover: data.cover || '',
-            socials: [...(data.socials || []), '', '', ''].slice(0, 3),
+            name: data.name || '',
+            bio: data.bio || '',
+            avatar: avatar,
+            cover: data.cover || data.coverImage || '',
+            socials: [...(socials || []), '', '', ''].slice(0, 3),
             videos: data.videos || []
           });
         } else {
@@ -171,14 +181,24 @@ export const ProfilePage = () => {
           const docRef = doc(db, 'influencers', slug);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            const data = docSnap.data() as Influencer;
-            setInfluencer({ id: docSnap.id, ...data } as Influencer);
+            const data = docSnap.data();
+            const avatar = data.avatar || data.imageUrl || '';
+            const socials = data.socials || data.socialLinks || [];
+            
+            const influencerData = { 
+              id: docSnap.id, 
+              ...data,
+              avatar,
+              socials
+            } as any;
+            
+            setInfluencer(influencerData);
             setEditForm({
-              name: data.name,
-              bio: data.bio,
-              avatar: data.avatar,
-              cover: data.cover || '',
-              socials: [...(data.socials || []), '', '', ''].slice(0, 3),
+              name: data.name || '',
+              bio: data.bio || '',
+              avatar: avatar,
+              cover: data.cover || data.coverImage || '',
+              socials: [...(socials || []), '', '', ''].slice(0, 3),
               videos: data.videos || []
             });
           } else {
@@ -205,6 +225,7 @@ export const ProfilePage = () => {
         name: editForm.name,
         bio: editForm.bio,
         avatar: editForm.avatar,
+        imageUrl: editForm.avatar, // Save to both for compatibility
         cover: editForm.cover,
         socials: editForm.socials.filter(s => s.trim() !== ''),
         videos: editForm.videos,

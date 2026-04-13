@@ -67,6 +67,20 @@ const newsLocks = new Map<string, number>();
 const metadataCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 1000 * 60 * 2; // 2 minutes
 
+// Helper to match frontend slugify logic
+function slugify(text: string) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Replace spaces with -
+    // Allow English alphanumeric, hyphens, and Bengali characters (\u0980-\u09FF)
+    .replace(/[^\w\u0980-\u09FF-]+/g, '') 
+    .replace(/--+/g, '-')     // Replace multiple - with single -
+    .replace(/^-+/, '')       // Trim - from start of text
+    .replace(/-+$/, '');      // Trim - from end of text
+}
+
 async function getShopItem(idOrSlug: string, projectId: string, databaseId: string) {
   const cacheKey = `shop:${idOrSlug}`;
   const cached = metadataCache.get(cacheKey);
@@ -78,18 +92,24 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
   console.log(`[MetaTags] Fetching shop for ID/Slug: "${idOrSlug}" (Length: ${idOrSlug.length}, Codes: ${Array.from(idOrSlug).map(c => c.charCodeAt(0)).join(',')})`);
   try {
     let data: any = null;
+    const decodedId = decodeURIComponent(idOrSlug);
     
     // Try Admin SDK first (bypasses rules)
     if (adminDb) {
       try {
         // Try fetching by slug first
         let shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+        
         if (shopsBySlug.empty) {
-          // Fallback: Try encoded slug in case it was stored encoded
-          const encodedSlug = encodeURIComponent(idOrSlug);
-          if (encodedSlug !== idOrSlug) {
-            console.log(`[MetaTags] Trying encoded slug fallback for shop: ${encodedSlug}`);
-            shopsBySlug = await adminDb.collection("shops").where("slug", "==", encodedSlug).limit(1).get();
+          // Try fetching by decoded slug
+          shopsBySlug = await adminDb.collection("shops").where("slug", "==", decodedId).limit(1).get();
+        }
+
+        if (shopsBySlug.empty) {
+          // Try matching with server-side slugify
+          const serverSlug = slugify(decodedId);
+          if (serverSlug !== decodedId) {
+            shopsBySlug = await adminDb.collection("shops").where("slug", "==", serverSlug).limit(1).get();
           }
         }
 
@@ -119,10 +139,15 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
         let shopsBySlug = await getDocs(q);
         
         if (shopsBySlug.empty) {
-          const encodedSlug = encodeURIComponent(idOrSlug);
-          if (encodedSlug !== idOrSlug) {
-            q = query(collection(db, "shops"), where("slug", "==", encodedSlug), limit(1));
-            shopsBySlug = await getDocs(q);
+          const qDecoded = query(collection(db, "shops"), where("slug", "==", decodedId), limit(1));
+          shopsBySlug = await getDocs(qDecoded);
+        }
+
+        if (shopsBySlug.empty) {
+          const serverSlug = slugify(decodedId);
+          if (serverSlug !== decodedId) {
+            const qSlugified = query(collection(db, "shops"), where("slug", "==", serverSlug), limit(1));
+            shopsBySlug = await getDocs(qSlugified);
           }
         }
 
@@ -236,7 +261,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
       name: data.name || "Barnia Shop",
       category: data.category || "General",
       location: data.location || "Barnia Bazar",
-      image: data.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200",
+      image: data.image || data.imageUrl || "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png",
       phone: data.phone || "",
       products: data.products || []
     };
@@ -260,16 +285,24 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
   console.log(`[MetaTags] Fetching profile for ID/Slug: ${idOrSlug}`);
   try {
     let data: any = null;
+    const decodedId = decodeURIComponent(idOrSlug);
     
     // Try Admin SDK first (bypasses rules)
     if (adminDb) {
       try {
         // Try fetching by slug first
         let influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+        
         if (influencersBySlug.empty) {
-          const encodedSlug = encodeURIComponent(idOrSlug);
-          if (encodedSlug !== idOrSlug) {
-            influencersBySlug = await adminDb.collection("influencers").where("slug", "==", encodedSlug).limit(1).get();
+          // Try fetching by decoded slug
+          influencersBySlug = await adminDb.collection("influencers").where("slug", "==", decodedId).limit(1).get();
+        }
+
+        if (influencersBySlug.empty) {
+          // Try matching with server-side slugify
+          const serverSlug = slugify(decodedId);
+          if (serverSlug !== decodedId) {
+            influencersBySlug = await adminDb.collection("influencers").where("slug", "==", serverSlug).limit(1).get();
           }
         }
 
@@ -297,10 +330,15 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
         let influencersBySlug = await getDocs(q);
         
         if (influencersBySlug.empty) {
-          const encodedSlug = encodeURIComponent(idOrSlug);
-          if (encodedSlug !== idOrSlug) {
-            q = query(collection(db, "influencers"), where("slug", "==", encodedSlug), limit(1));
-            influencersBySlug = await getDocs(q);
+          const qDecoded = query(collection(db, "influencers"), where("slug", "==", decodedId), limit(1));
+          influencersBySlug = await getDocs(qDecoded);
+        }
+
+        if (influencersBySlug.empty) {
+          const serverSlug = slugify(decodedId);
+          if (serverSlug !== decodedId) {
+            const qSlugified = query(collection(db, "influencers"), where("slug", "==", serverSlug), limit(1));
+            influencersBySlug = await getDocs(qSlugified);
           }
         }
 
@@ -410,10 +448,8 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       return null;
     }
 
-    // Fallback for missing avatar
-    if (!data.avatar) {
-      data.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`;
-    }
+    // Fallback for missing avatar (check both avatar and imageUrl)
+    const avatar = data.avatar || data.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`;
 
     // Format social media info for description - using cleaner emojis for "real" feel
     const socialIcons: { [key: string]: string } = {
@@ -431,7 +467,8 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       'threads.net': '🧵'
     };
 
-    const socialPlatforms = (data.socials || [])
+    const socialLinks = data.socials || data.socialLinks || [];
+    const socialPlatforms = socialLinks
       .map((url: string) => {
         const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
         return match ? socialIcons[match] : '🌐';
@@ -439,7 +476,7 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i); // Unique platforms
 
     const socialIconsStr = socialPlatforms.join(' ');
-    const socialInfo = (data.socials || [])
+    const socialInfo = socialLinks
       .map((url: string) => {
         const match = Object.keys(socialIcons).find(key => url.toLowerCase().includes(key));
         const name = match ? match.split('.')[0].charAt(0).toUpperCase() + match.split('.')[0].slice(1) : 'Social';
@@ -452,11 +489,12 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
       id: data.id || idOrSlug,
       name: data.name || "Barnia Profile",
       bio: data.bio || "Explore professional influencer profiles and collaboration opportunities in our community network.",
-      avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random&color=fff&size=512`,
-      rawAvatar: data.avatar, // Keep original for proxy
+      avatar: avatar,
+      rawAvatar: data.avatar || data.imageUrl,
       socialInfo: socialInfo || '',
       socialIconsStr: socialIconsStr || '',
-      socials: data.socials || []
+      socials: socialLinks,
+      updatedAt: data.updatedAt
     };
 
     metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
@@ -2270,7 +2308,7 @@ async function startServer() {
       metadata = {
         title: "Shop Profile | Barnia Bazar",
         description: "Explore local shops and market prices at Barnia Bazar, Nadia.",
-        image: ["https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&q=80&w=1200&h=630"],
+        image: ["https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png"],
         url: fullUrl,
         type: 'website'
       };
@@ -2390,7 +2428,7 @@ async function startServer() {
       metadata = {
         title: "Influencer Profile | Barnia Digital Hub",
         description: "Explore professional influencer profiles and collaboration opportunities in our community network.",
-        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?fm=jpg&fit=crop&q=80&w=1200&h=630",
+        image: ["https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"],
         url: fullUrl,
         type: 'profile'
       };
