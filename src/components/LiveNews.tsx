@@ -72,12 +72,34 @@ export const LiveNews = () => {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
 
-  const fetchDayNews = async (offset: number) => {
+  const fetchDayNews = async (offset: number, retries = 3): Promise<any> => {
     const date = getNewsDate(offset);
     setGenerating(true);
     try {
       // 1. Try to fetch from backend cache first
-      const response = await fetch(`/api/news?date=${date}&lang=${language}`);
+      let response;
+      try {
+        response = await fetch(`/api/news?date=${date}&lang=${language}`);
+      } catch (fetchErr: any) {
+        if (retries > 0) {
+          console.warn(`[LiveNews] Network error fetching news for ${date}, retrying... (${retries})`, fetchErr.message);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return fetchDayNews(offset, retries - 1);
+        }
+        // If it's a persistent network error, we can try to generate it locally as a fallback
+        // instead of giving up, assuming it's a backend connectivity issue
+        console.warn(`[LiveNews] Persistent network error for ${date}. Attempting local generation fallback...`);
+        const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
+        setGenerating(false);
+        return { 
+          local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
+          fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
+          igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+          updatedAt: generatedData.updatedAt || new Date().toISOString(),
+          isMock: generatedData.isMock,
+          date 
+        };
+      }
       
       if (response.ok) {
         const data = await response.json();
@@ -85,9 +107,11 @@ export const LiveNews = () => {
         // Handle "generating" status
         if (response.status === 202 && data.status === "generating") {
           console.log(`[LiveNews] News is being generated elsewhere for ${date}. Waiting...`);
-          // Wait 5 seconds and retry once
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          return fetchDayNews(offset); 
+          // Wait 5 seconds and retry
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            return fetchDayNews(offset, retries - 1);
+          }
         }
 
         setGenerating(false);
@@ -105,47 +129,73 @@ export const LiveNews = () => {
       
       // 2. If not in cache (404), try to acquire lock and generate
       if (response.status === 404) {
-        console.log(`[LiveNews] News not found in cache for ${date}. Attempting to acquire lock...`);
+        console.log(`[LiveNews] News not found in cache for ${date}. Attempting to generate on server...`);
         
-        const lockRes = await fetch('/api/news/lock', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date, lang: language })
-        });
+        try {
+          const genRes = await fetch('/api/news/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, lang: language })
+          });
 
-        if (!lockRes.ok) {
-          // If lock failed (someone else got it), wait and retry
-          console.log(`[LiveNews] Failed to acquire lock for ${date}. Retrying fetch...`);
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return fetchDayNews(offset);
-        }
+          if (genRes.status === 202) {
+            console.log(`[LiveNews] Server is already generating news for ${date}. Retrying...`);
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              return fetchDayNews(offset, retries - 1);
+            }
+          }
 
-        console.log(`[LiveNews] Lock acquired. Generating in frontend...`);
-        const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
-        
-        setGenerating(false);
-        
-        // Add date to each item for consistency
-        const processedData = {
-          local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
-          fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
-          igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
-          updatedAt: generatedData.updatedAt || new Date().toISOString(),
-          isMock: generatedData.isMock
-        };
-        
-        if (generatedData.isMock) {
-          toast.info(language === 'bn' ? "লাইভ নিউজ সার্ভার ব্যস্ত, ডেমো নিউজ দেখানো হচ্ছে।" : "News server busy, showing demo news.");
+          if (genRes.ok) {
+            const generatedData = await genRes.json();
+            setGenerating(false);
+            
+            const processedData = {
+              local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
+              fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
+              igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+              updatedAt: generatedData.updatedAt || new Date().toISOString(),
+              isMock: generatedData.isMock
+            };
+            
+            if (generatedData.isMock) {
+              toast.info(language === 'bn' ? "লাইভ নিউজ সার্ভার ব্যস্ত, ডেমো নিউজ দেখানো হচ্ছে।" : "News server busy, showing demo news.");
+            }
+            
+            return { ...processedData, date };
+          }
+          
+          throw new Error(`Server generation failed: ${genRes.status}`);
+        } catch (genErr: any) {
+          console.warn(`[LiveNews] Server generation failed for ${date}, trying frontend fallback...`, genErr.message);
+          // Fallback to frontend generation if server generation fails
+          const frontendGenData = await fetchLiveNews(language as 'bn' | 'en', date);
+          setGenerating(false);
+          return {
+            local: (frontendGenData.local || []).map((item: any) => ({ ...item, date })),
+            fbTrends: (frontendGenData.fbTrends || []).map((item: any) => ({ ...item, date })),
+            igTrends: (frontendGenData.igTrends || []).map((item: any) => ({ ...item, date })),
+            updatedAt: frontendGenData.updatedAt || new Date().toISOString(),
+            isMock: frontendGenData.isMock,
+            date
+          };
         }
-        
-        return { ...processedData, date };
       }
 
       throw new Error(`Server returned ${response.status}`);
     } catch (err: any) {
       setGenerating(false);
       console.error(`Error fetching/generating news for ${date}:`, err);
-      throw err;
+      // Last resort: If absolutely everything fails, return mock data directly to keep UI alive
+      console.warn(`[LiveNews] Complete failure for ${date}. Using emergency mock data.`);
+      return {
+        local: [],
+        fbTrends: [],
+        igTrends: [],
+        date,
+        isError: true,
+        errorMessage: err.message
+      };
     }
   };
 
@@ -251,7 +301,7 @@ export const LiveNews = () => {
 
   if (loading && news.dates.length === 0) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center text-zinc-500 bg-zinc-50">
+      <div className="py-20 flex flex-col items-center justify-center text-zinc-500 bg-culture-bg">
         <RefreshCw className="animate-spin mb-4" size={32} />
         <p>{generating ? t.news.generating : t.news.loading}</p>
       </div>
@@ -263,7 +313,7 @@ export const LiveNews = () => {
     const isBlocked = error.includes('API_KEY_SERVICE_BLOCKED') || error.includes('blocked') || error.includes('403');
     
     return (
-      <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-zinc-50 px-4 text-center">
+      <div className="py-20 flex flex-col items-center justify-center text-red-500 bg-culture-bg px-4 text-center">
         <RefreshCw className="mb-4" size={32} />
         <p className="font-bold mb-2">
           {isQuotaExceeded 
@@ -349,7 +399,7 @@ export const LiveNews = () => {
   };
 
   return (
-    <section id="news" className="py-20 px-4 bg-zinc-50">
+    <section id="news" className="py-20 px-4 bg-culture-bg">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12 relative">
           <motion.div
@@ -647,7 +697,7 @@ export const LiveNews = () => {
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
               >
-                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-culture-bg">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-brand-600 uppercase tracking-widest">
                       <Clock size={12} />

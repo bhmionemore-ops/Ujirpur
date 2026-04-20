@@ -317,7 +317,7 @@ export const ShopProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-culture-bg pb-24 relative overflow-hidden">
       <Helmet>
         <title>{`${shop.name} | Barnia Bazar - Best ${shop.category} in Tehatta, Nadia`}</title>
         <meta name="description" content={`Visit ${shop.name} at Barnia Bazar, Tehatta. Best ${shop.category} with premium products. Contact: ${shop.phone}`} />

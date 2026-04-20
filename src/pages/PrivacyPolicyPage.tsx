@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
-import { Shield, Lock, Eye, FileText } from 'lucide-react';
+import { Shield, Lock, Eye, FileText, Facebook } from 'lucide-react';
 
 export const PrivacyPolicyPage = () => {
   const { language } = useLanguage();
@@ -21,6 +21,16 @@ export const PrivacyPolicyPage = () => {
           title: "How We Use Your Information",
           icon: <Lock className="text-brand-600" size={24} />,
           content: "We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to personalize your experience on our platform."
+        },
+        {
+          title: "Facebook User Data",
+          icon: <Facebook className="text-brand-600" size={24} />,
+          content: "When you use 'Facebook Login', we collect your public profile information (name, profile picture) and email address. This data is used solely to create your account and link your influencer status. We do not post to Facebook on your behalf without explicit permission."
+        },
+        {
+          title: "Data Deletion & Instructions",
+          icon: <Shield className="text-brand-600" size={24} />,
+          content: "You have the right to request the deletion of your data. To do so, you can: 1. Remove our app from your Facebook 'Settings & Privacy > Apps and Websites' section. 2. Contact us directly at info@barnia.in with the subject 'Data Deletion Request'. We will process and delete all your stored data within 48 hours."
         },
         {
           title: "Data Security",
@@ -50,6 +60,16 @@ export const PrivacyPolicyPage = () => {
           content: "আমরা আমাদের পরিষেবাগুলি প্রদান, রক্ষণাবেক্ষণ এবং উন্নত করতে, আপনার সাথে যোগাযোগ করতে এবং আমাদের প্ল্যাটফর্মে আপনার অভিজ্ঞতা ব্যক্তিগতকৃত করতে সংগৃহীত তথ্য ব্যবহার করি।"
         },
         {
+          title: "ফেসবুক ব্যবহারকারীর তথ্য",
+          icon: <Facebook className="text-brand-600" size={24} />,
+          content: "আপনি যখন 'ফেসবুক লগইন' ব্যবহার করেন, আমরা আপনার পাবলিক প্রোফাইল তথ্য (নাম, প্রোফাইল ছবি) এবং ইমেল ঠিকানা সংগ্রহ করি। এই তথ্যটি শুধুমাত্র আপনার অ্যাকাউন্ট তৈরি করতে এবং আপনার ইনফ্লুয়েন্সার স্ট্যাটাস লিঙ্ক করতে ব্যবহৃত হয়। আমরা আপনার অনুমতি ছাড়া আপনার পক্ষ থেকে ফেসবুকে কিছু পোস্ট করি না।"
+        },
+        {
+          title: "ডেটা মুছে ফেলার নির্দেশাবলী",
+          icon: <Shield className="text-brand-600" size={24} />,
+          content: "আপনার ডেটা মুছে ফেলার অনুরোধ করার অধিকার আপনার আছে। এটি করার জন্য আপনি: ১. আপনার ফেসবুক 'সেটিংস এবং গোপনীয়তা > অ্যাপস এবং ওয়েবসাইট' বিভাগে আমাদের অ্যাপটি সরিয়ে ফেলুন। ২. 'Data Deletion Request' বিকল্প সহ আমাদের সরাসরি info@barnia.in এ যোগাযোগ করুন। আমরা ৪৮ ঘণ্টার মধ্যে আপনার সমস্ত সংরক্ষিত ডেটা মুছে ফেলব।"
+        },
+        {
           title: "তথ্য নিরাপত্তা",
           icon: <Shield className="text-brand-600" size={24} />,
           content: "আমরা আপনার ব্যক্তিগত তথ্যের নিরাপত্তা বজায় রাখতে বিভিন্ন নিরাপত্তা ব্যবস্থা বাস্তবায়ন করি। আপনার তথ্য ফায়ারবেসের শিল্প-মান এনক্রিপশন ব্যবহার করে সুরক্ষিতভাবে সংরক্ষণ করা হয়।"
@@ -66,7 +86,7 @@ export const PrivacyPolicyPage = () => {
   const activeContent = language === 'bn' ? content.bn : content.en;
 
   return (
-    <div className="min-h-screen bg-zinc-50 pt-32 pb-24">
+    <div className="min-h-screen bg-culture-bg pt-32 pb-24">
       <div className="max-w-4xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

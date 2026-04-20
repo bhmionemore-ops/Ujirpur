@@ -312,7 +312,7 @@ export const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-culture-bg pb-24 relative overflow-hidden">
       <Helmet>
         <title>{`${influencer.name} | Barnia Influencer Network - Best Creator in Tehatta`}</title>
         <meta name="description" content={`${influencer.name} is a top influencer in Tehatta, Nadia. Bio: ${influencer.bio}. Connect with ${influencer.name} on Barnia Influencer Network.`} />

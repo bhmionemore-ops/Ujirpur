@@ -66,7 +66,7 @@ export const TermsOfServicePage = () => {
   const activeContent = language === 'bn' ? content.bn : content.en;
 
   return (
-    <div className="min-h-screen bg-zinc-50 pt-32 pb-24">
+    <div className="min-h-screen bg-culture-bg pt-32 pb-24">
       <div className="max-w-4xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

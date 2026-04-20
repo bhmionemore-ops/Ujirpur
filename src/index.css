@@ -27,6 +27,7 @@
   --color-luxury-gold: #D4AF37;
   --color-luxury-black: #0A0A0A;
   --color-luxury-cream: #F5F2ED;
+  --color-culture-bg: #FFFAF0;
 }
 
 @layer base {
@@ -35,7 +36,7 @@
   }
   
   body {
-    @apply bg-zinc-50 text-zinc-900 antialiased selection:bg-brand-200 selection:text-brand-900;
+    @apply bg-culture-bg text-zinc-900 antialiased selection:bg-brand-200 selection:text-brand-900;
   }
   
   h1, h2, h3, h4, h5, h6 {

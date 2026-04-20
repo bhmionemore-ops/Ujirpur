@@ -42,7 +42,7 @@ export const auth = getAuth(app);
 
 // Use initializeFirestore for more robust connection in iframes/proxies
 export const db = initializeFirestore(app, {
-  // Removing experimentalForceLongPolling as it can sometimes cause issues in certain environments
+  experimentalForceLongPolling: true,
 }, firebaseConfig.firestoreDatabaseId);
 
 export const googleProvider = new GoogleAuthProvider();

@@ -1632,6 +1632,73 @@ async function startServer() {
     });
   });
 
+  // News Generation Endpoint (Server-side)
+  app.post("/api/news/generate", async (req, res) => {
+    const { date, lang } = req.body;
+    if (!date) return res.status(400).json({ error: "Date is required" });
+    
+    const language = (lang === 'bn' ? 'bn' : 'en') as 'bn' | 'en';
+    const docId = `${date}-${language}`;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    if (!geminiKey) {
+      console.warn("[NewsAPI] No GEMINI_API_KEY found on server. Falling back to mock data.");
+      return res.json({
+        local: [], fbTrends: [], igTrends: [], 
+        isMock: true, 
+        message: "No API key on server"
+      });
+    }
+
+    // Try to acquire lock
+    const now = Date.now();
+    const existingLock = newsLocks.get(docId);
+    if (existingLock && (now - existingLock < 120000)) {
+      return res.status(202).json({ status: "generating" });
+    }
+    newsLocks.set(docId, now);
+
+    try {
+      console.log(`[NewsAPI] Generating news on server for ${docId}...`);
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const langName = language === 'bn' ? 'Bengali' : 'English';
+      
+      const prompt = `Find the latest news and trends for the date: ${date} for these categories:
+      1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
+      2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal.
+      3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal.
+      Format: JSON with keys "local", "fbTrends", "igTrends". Text in ${langName}. 5 items each.`;
+
+      const response = await ai.models.generateContent({ 
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const newsData = JSON.parse(response.text || '{}');
+      
+      const processedData = {
+        ...newsData,
+        updatedAt: new Date().toISOString(),
+        date,
+        isMock: false
+      };
+
+      // Save to Firestore
+      if (adminDb) {
+        await adminDb.collection("news").doc(docId).set(processedData);
+        console.log(`[NewsAPI] Saved generated news to Firestore for ${docId}`);
+      }
+      
+      newsLocks.delete(docId);
+      res.json(processedData);
+    } catch (error: any) {
+      newsLocks.delete(docId);
+      console.error(`[NewsAPI] Server generation failed for ${docId}:`, error);
+      res.status(500).json({ error: "Generation failed", details: error.message });
+    }
+  });
+
   app.get("/api/news", async (req, res) => {
     const { date, lang } = req.query;
     if (!date) return res.status(400).json({ error: "Date is required" });
@@ -1649,9 +1716,11 @@ async function startServer() {
     }
 
     const currentNewsDate = getCurrentNewsDate();
+    console.log(`[NewsAPI] GET request for ${docId}, currentNewsDate is ${currentNewsDate}`);
 
     // Cleanup old news (older than 15 days) periodically
     if (date === currentNewsDate && Math.random() < 0.1) {
+      console.log(`[NewsAPI] Triggering periodic cleanup...`);
       cleanupOldNews().catch(err => console.error("[NewsAPI] Cleanup failed:", err));
     }
 
@@ -1664,9 +1733,10 @@ async function startServer() {
           const docSnap = await adminDb.collection("news").doc(docId).get();
           if (docSnap.exists) {
             data = docSnap.data();
+            console.log(`[NewsAPI] Found news in Firestore (Admin) for ${docId}`);
           }
-        } catch (adminError) {
-          console.warn(`[NewsAPI] Admin SDK fetch failed for ${docId}:`, adminError);
+        } catch (adminError: any) {
+          console.warn(`[NewsAPI] Admin SDK fetch failed for ${docId}:`, adminError.message);
         }
       }
 
@@ -1675,9 +1745,10 @@ async function startServer() {
           const docSnap = await getDocFromServer(doc(db, "news", docId));
           if (docSnap.exists()) {
             data = docSnap.data();
+            console.log(`[NewsAPI] Found news in Firestore (Client) for ${docId}`);
           }
-        } catch (clientError) {
-          console.warn(`[NewsAPI] Client SDK fetch failed for ${docId}:`, clientError);
+        } catch (clientError: any) {
+          console.warn(`[NewsAPI] Client SDK fetch failed for ${docId}:`, clientError.message);
         }
       }
 

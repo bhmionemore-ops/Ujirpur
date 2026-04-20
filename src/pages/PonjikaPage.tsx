@@ -331,7 +331,7 @@ export const PonjikaPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFCF8] pb-24 font-sans selection:bg-brand-200">
+    <div className="min-h-screen bg-culture-bg pb-24 font-sans selection:bg-brand-200">
       <Banner />
       
       <div className="max-w-7xl mx-auto px-4 mt-12">

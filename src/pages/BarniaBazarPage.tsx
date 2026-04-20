@@ -26,7 +26,7 @@ export const BarniaBazarPage = () => {
   }, [location]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-24">
+    <div className="min-h-screen bg-culture-bg pb-24">
       <Banner />
       
       <div className="max-w-7xl mx-auto px-4 mt-12">

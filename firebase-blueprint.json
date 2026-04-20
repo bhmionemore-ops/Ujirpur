@@ -104,6 +104,20 @@
       },
       "required": ["itemName", "price", "trend", "updatedAt"]
     },
+    "fact_check_submission": {
+      "title": "Fact Check Submission",
+      "description": "A claim submitted by a user for fact-checking.",
+      "type": "object",
+      "properties": {
+        "claim": { "type": "string" },
+        "evidence": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewing", "checked"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "userEmail": { "type": "string" },
+        "userUid": { "type": "string" }
+      },
+      "required": ["claim", "status", "createdAt"]
+    },
     "user": {
       "title": "User",
       "description": "A user of the application.",
@@ -360,6 +374,10 @@
     "/market_rates/{rateId}": {
       "schema": "market_rate",
       "description": "Daily market rates for items in Barnia Bazar."
+    },
+    "/fact_check_submissions/{submissionId}": {
+      "schema": "fact_check_submission",
+      "description": "User submitted claims for fact-checking."
     }
   }
 }

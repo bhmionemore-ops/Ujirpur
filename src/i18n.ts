@@ -56,7 +56,7 @@ export const translations = {
       news: 'সংবাদ',
       ponjika: 'পঞ্জিকা',
       transport: 'পরিবহন',
-      showcase: 'ডেমো শোকেস',
+      factCheck: 'সনাতনী ফ্যাক্ট-চেক',
     },
     transport: {
       title: 'গ্রাম্য পরিবহন সেবা',
@@ -380,7 +380,7 @@ export const translations = {
       news: 'News',
       ponjika: 'Ponjika',
       transport: 'Transport',
-      showcase: 'Demo Showcase',
+      factCheck: 'Sanatani Fact Check',
     },
     transport: {
       title: 'Village Transport Service',

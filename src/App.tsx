@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { InfluencerPage } from './pages/InfluencerPage';
-import { ShowcasePage } from './pages/ShowcasePage';
+import { SanataniFactCheckPage } from './pages/SanataniFactCheckPage';
 import { BarniaBazarPage } from './pages/BarniaBazarPage';
 import { VillageTransportPage } from './pages/VillageTransportPage';
 import { PonjikaPage } from './pages/PonjikaPage';
@@ -154,7 +154,7 @@ function AppContent() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
+    <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
       <ScrollToTop />
       {/* Background Decorative Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -187,7 +187,7 @@ function AppContent() {
                   { to: '/bazar', label: t.nav.bazar },
                   { to: '/transport', label: t.nav.transport },
                   { to: '/influencers', label: t.nav.influencers },
-                  { to: '/showcase', label: t.nav.showcase },
+                  { to: '/fact-check', label: t.nav.factCheck },
                   { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
                 ].map((link) => (
                   <Link 
@@ -322,7 +322,7 @@ function AppContent() {
               { to: '/bazar', label: t.nav.bazar },
               { to: '/transport', label: t.nav.transport },
               { to: '/influencers', label: t.nav.influencers },
-              { to: '/showcase', label: t.nav.showcase },
+              { to: '/fact-check', label: t.nav.factCheck },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
               <Link 
@@ -359,7 +359,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/influencers" element={<InfluencerPage />} />
-          <Route path="/showcase" element={<ShowcasePage />} />
+          <Route path="/fact-check" element={<SanataniFactCheckPage />} />
           <Route path="/bazar" element={<BarniaBazarPage />} />
           <Route path="/transport" element={<VillageTransportPage />} />
           <Route path="/profile/:slug" element={<ProfilePage />} />
@@ -444,6 +444,7 @@ function AppContent() {
                   { to: '/bazar', label: t.nav.bazar },
                   { to: '/transport', label: t.nav.transport },
                   { to: '/influencers', label: t.nav.influencers },
+                  { to: '/fact-check', label: t.nav.factCheck },
                   { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (
                   <Link 

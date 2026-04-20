@@ -194,6 +194,12 @@ service cloud.firestore {
              data.status in ['calling', 'ongoing', 'ended', 'missed'];
     }
 
+    function isValidFactCheckSubmission(data) {
+      return hasRequiredFields(['claim', 'status', 'createdAt']) &&
+             data.claim is string && data.claim.size() > 0 && data.claim.size() < 2000 &&
+             data.status in ['pending', 'reviewing', 'checked'];
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -361,6 +367,12 @@ service cloud.firestore {
         resource.data.receiverUid == request.auth.uid ||
         isAdmin()
       );
+    }
+
+    match /fact_check_submissions/{submissionId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userUid == request.auth.uid);
+      allow create: if isValidFactCheckSubmission(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /system/{docId} {
