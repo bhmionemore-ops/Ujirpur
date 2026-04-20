@@ -6,6 +6,32 @@ import { useLanguage } from '../LanguageContext';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+/**
+ * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
+ */
+async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
+  let lastError: any;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await ai.models.generateContent(options);
+    } catch (error: any) {
+      lastError = error;
+      const isUnavailable = error?.message?.includes("503") || 
+                          error?.error?.code === 503 || 
+                          error?.status === "UNAVAILABLE";
+      
+      if (isUnavailable && i < maxRetries) {
+        const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
+        console.warn(`[Gemini] Model high demand (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 interface BotFactCheck {
   claim: string;
   verdict: 'verified' | 'false' | 'misleading' | 'not_applicable';
@@ -50,7 +76,7 @@ export const SanataniBot = () => {
   const generateDailyViralFacts = async () => {
     setIsGeneratingDaily(true);
     try {
-      const response = await ai.models.generateContent({
+      const response = await callGeminiWithRetry(ai, {
         model: "gemini-3-flash-preview",
         contents: "List 5 viral or common misconceptions currently trending on social media regarding Sanatana Dharma and provide a fact-check for each.",
         config: {
@@ -89,7 +115,7 @@ export const SanataniBot = () => {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await ai.models.generateContent({
+      const response = await callGeminiWithRetry(ai, {
         model: "gemini-3-flash-preview",
         contents: `Fact check this claim: "${input}"`,
         config: {

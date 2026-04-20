@@ -19,6 +19,32 @@ process.on('unhandledRejection', (err: any) => {
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+
+/**
+ * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
+ */
+async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
+  let lastError: any;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await ai.models.generateContent(options);
+    } catch (error: any) {
+      lastError = error;
+      const isUnavailable = error?.message?.includes("503") || 
+                          error?.error?.code === 503 || 
+                          error?.status === "UNAVAILABLE";
+      
+      if (isUnavailable && i < maxRetries) {
+        const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
+        console.warn(`[Gemini] Model high demand (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
 import nodemailer from "nodemailer";
 import dns from "dns";
 import { simpleParser } from "mailparser";
@@ -863,7 +889,7 @@ async function generateDailySanataniFacts() {
 
     Respond ONLY with the JSON array.`;
 
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry(ai, {
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: { responseMimeType: "application/json" }
@@ -1760,7 +1786,7 @@ async function startServer() {
       3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal.
       Format: JSON with keys "local", "fbTrends", "igTrends". Text in ${langName}. 5 items each.`;
 
-      const response = await ai.models.generateContent({ 
+      const response = await callGeminiWithRetry(ai, { 
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { responseMimeType: "application/json" }
@@ -3050,7 +3076,7 @@ async function startServer() {
         // Always use barnia.in as the canonical base in production
         const baseUrl = (process.env.NODE_ENV === "production") ? "https://barnia.in" : (process.env.APP_URL || `http://${req.headers.host}`);
         
-        const metadata = {
+        const metadata: any = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
@@ -3058,6 +3084,12 @@ async function startServer() {
           type: 'website',
           keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia, Pallashi Para, 741156"
         };
+
+        if (req.path === '/fact-check') {
+          metadata.title = "Sanatani Fact Check | Barnia Digital Hub";
+          metadata.description = "Research, Verification, and Truth. The official fact-checking platform for Sanatana Dharma claims, guided by authentic traditions.";
+          metadata.image = "https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png";
+        }
         
         html = await injectMetaTags(html, metadata);
         res.status(200).set({ "Content-Type": "text/html" }).end(html);
@@ -3088,7 +3120,7 @@ async function startServer() {
         
         let html = cachedIndexHtml;
         
-        const metadata = {
+        const metadata: any = {
           title: "Barnia Digital Hub | Community Platform",
           description: "The official community platform for Barnia, Ujirpur, Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156.",
           image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?fm=jpg&fit=crop&q=80&w=1200&h=630",
@@ -3096,6 +3128,12 @@ async function startServer() {
           type: 'website',
           keywords: "barnia, ujirpur, barnia bazar, nadia, thatta, west bengal, influencer, market prices, bengali ponjika, community hub, digital barnia, Pallashi Para, 741156"
         };
+
+        if (req.path === '/fact-check') {
+          metadata.title = "Sanatani Fact Check | Barnia Digital Hub";
+          metadata.description = "Research, Verification, and Truth. The official fact-checking platform for Sanatana Dharma claims, guided by authentic traditions.";
+          metadata.image = "https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png";
+        }
         
         html = await injectMetaTags(html, metadata);
         res.status(200)
