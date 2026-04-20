@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Bot, Sparkles, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Info, RefreshCw, ExternalLink, Share2 } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useLanguage } from '../LanguageContext';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -73,34 +75,86 @@ export const SanataniBot = () => {
     Respond ONLY with the JSON. Always prioritize Shankaracharya's stance on current events.
   `;
 
+  const getFactDate = () => {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const dateParts: { [key: string]: string } = {};
+    parts.forEach(p => dateParts[p.type] = p.value);
+    
+    let year = parseInt(dateParts.year);
+    let month = parseInt(dateParts.month);
+    let day = parseInt(dateParts.day);
+    let hour = parseInt(dateParts.hour);
+    
+    if (hour < 8) {
+      const d = new Date(year, month - 1, day);
+      d.setDate(d.getDate() - 1);
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    }
+    
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
   const generateDailyViralFacts = async () => {
     setIsGeneratingDaily(true);
     try {
-      const response = await callGeminiWithRetry(ai, {
-        model: "gemini-3-flash-preview",
-        contents: "List 5 viral or common misconceptions currently trending on social media regarding Sanatana Dharma and provide a fact-check for each.",
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                claim: { type: Type.STRING },
-                verdict: { type: Type.STRING, enum: ["verified", "false", "misleading", "not_applicable"] },
-                explanation: { type: Type.STRING },
-                source: { type: Type.STRING },
-                guidance: { type: Type.STRING }
-              },
-              required: ["claim", "verdict", "explanation", "source", "guidance"]
-            }
-          }
-        }
-      });
+      const today = getFactDate();
       
-      const data = JSON.parse(response.text);
-      setDailyTopics(data);
+      // Try to fetch today's facts from Firestore first
+      const q = query(
+        collection(db, "fact_checks"), 
+        where("date", "==", today),
+        limit(5)
+      );
+      
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => {
+          const d = doc.data();
+          return {
+            claim: d.claim,
+            verdict: d.status || d.verdict || 'verified',
+            explanation: d.explanation,
+            source: d.source,
+            guidance: d.guidance || "Follow the path of Dharma."
+          } as BotFactCheck;
+        });
+        setDailyTopics(data);
+        setIsGeneratingDaily(false);
+        return;
+      }
+
+      // Fallback to any recent facts if today's aren't ready
+      const fallbackQ = query(
+        collection(db, "fact_checks"),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      );
+      const fallbackSnap = await getDocs(fallbackQ);
+      if (!fallbackSnap.empty) {
+        const data = fallbackSnap.docs.map(doc => {
+          const d = doc.data();
+          return {
+            claim: d.claim,
+            verdict: d.status || d.verdict || 'verified',
+            explanation: d.explanation,
+            source: d.source,
+            guidance: d.guidance || "Follow the path of Dharma."
+          } as BotFactCheck;
+        });
+        setDailyTopics(data);
+      }
     } catch (error) {
       console.error("Daily Bot Error:", error);
     } finally {
@@ -139,12 +193,15 @@ export const SanataniBot = () => {
     const handleExternalSearch = (e: any) => {
       if (e.detail?.claim) {
         setInput(e.detail.claim);
-        // We need a way to trigger handleFactCheck with the new input
-        // Since we are setting it now, we can use a small delay or a ref
-        // But for now, setting input is good, we can also trigger a check
         setResult(null); // Clear old results
         
-        // Use a timeout to ensure state is updated if we want to auto-trigger
+        // If we have pre-generated data, show it immediately without API call
+        if (e.detail.preGenerated) {
+          setResult(e.detail.preGenerated);
+          return;
+        }
+        
+        // Otherwise (manual user input from search), prompt verification
         setTimeout(() => {
           const verifyBtn = document.getElementById('verify-button');
           if (verifyBtn) verifyBtn.click();

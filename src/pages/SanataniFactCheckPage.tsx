@@ -91,7 +91,7 @@ export const SanataniFactCheckPage = () => {
     }
   };
 
-  const handleDeepDive = (claim: string) => {
+  const handleDeepDive = (fact: any) => {
     // Scroll to the Bot section and dispatch event
     const botSection = document.getElementById('sanatani-bot-section');
     if (botSection) {
@@ -99,7 +99,16 @@ export const SanataniFactCheckPage = () => {
       // Small delay for scroll to start
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('sanatani-bot-search', { 
-          detail: { claim } 
+          detail: { 
+            claim: fact.claim,
+            preGenerated: {
+              claim: fact.claim,
+              verdict: fact.status || fact.verdict || 'verified',
+              explanation: fact.explanation,
+              source: fact.source,
+              guidance: fact.guidance || "Follow the path of Dharma."
+            }
+          } 
         }));
       }, 500);
     }
@@ -305,7 +314,7 @@ export const SanataniFactCheckPage = () => {
                         <Share2 size={20} />
                       </button>
                       <button 
-                        onClick={() => handleDeepDive(fact.claim)}
+                        onClick={() => handleDeepDive(fact)}
                         className="flex items-center gap-3 px-8 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand-500/20 hover:scale-105 active:scale-95 transition-all"
                       >
                         Deep Dive <ArrowRight size={16} />
