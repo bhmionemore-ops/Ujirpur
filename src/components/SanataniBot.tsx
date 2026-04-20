@@ -48,7 +48,8 @@ export const SanataniBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BotFactCheck | null>(null);
   const [dailyTopics, setDailyTopics] = useState<BotFactCheck[]>([]);
-  const [isGeneratingDaily, setIsGeneratingDaily] = useState(false);
+  const [isGeneratingDaily, setIsGeneratingDaily] = useState(true);
+  const [hasCheckedDaily, setHasCheckedDaily] = useState(false);
 
   const systemInstruction = `
     You are "Sanatani Truth Bot", an AI guardian of Sanatana Dharma. 
@@ -159,6 +160,7 @@ export const SanataniBot = () => {
       console.error("Daily Bot Error:", error);
     } finally {
       setIsGeneratingDaily(false);
+      setHasCheckedDaily(true);
     }
   };
 
@@ -354,8 +356,16 @@ export const SanataniBot = () => {
           <div className="w-12 h-1 bg-orange-600 rounded-full" />
           <h2 className="text-2xl font-black text-zinc-900 uppercase tracking-widest flex items-center gap-3">
             Today's Viral Verifications
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${dailyTopics.length > 0 ? 'bg-red-500' : 'bg-zinc-300'} animate-pulse`} />
           </h2>
+          <button 
+            onClick={() => generateDailyViralFacts()}
+            disabled={isGeneratingDaily}
+            className="ml-auto p-3 rounded-2xl bg-white border-2 border-zinc-100 text-zinc-400 hover:text-orange-600 hover:border-orange-500 transition-all disabled:opacity-50"
+            title="Refresh facts"
+          >
+            <RefreshCw size={16} className={isGeneratingDaily ? 'animate-spin' : ''} />
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -363,7 +373,7 @@ export const SanataniBot = () => {
             Array(3).fill(0).map((_, i) => (
               <div key={i} className="h-64 rounded-[2.5rem] bg-white animate-pulse border-4 border-zinc-100" />
             ))
-          ) : (
+          ) : dailyTopics.length > 0 ? (
             dailyTopics.map((topic, index) => (
               <motion.div
                 key={index}
@@ -414,6 +424,18 @@ export const SanataniBot = () => {
                 </div>
               </motion.div>
             ))
+          ) : (
+            <div className="col-span-full py-20 bg-white rounded-[3rem] border-4 border-dashed border-zinc-100 text-center">
+              <ShieldCheck size={48} className="mx-auto text-zinc-100 mb-4" />
+              <h3 className="text-xl font-bold text-zinc-400">Searching for new viral topics...</h3>
+              <p className="text-zinc-300 text-sm mt-2 font-medium">Check back later or ask the bot to verify something now.</p>
+              <button 
+                onClick={() => generateDailyViralFacts()}
+                className="mt-6 px-8 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 transition-all"
+              >
+                Refresh Board
+              </button>
+            </div>
           )}
         </div>
       </div>

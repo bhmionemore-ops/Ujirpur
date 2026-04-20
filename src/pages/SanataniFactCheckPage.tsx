@@ -57,9 +57,10 @@ export const SanataniFactCheckPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [facts, setFacts] = useState<FactCheck[]>(MOCK_FACTS);
   const [isLoading, setIsLoading] = useState(true);
+  const [itemsLimit, setItemsLimit] = useState(12);
 
   React.useEffect(() => {
-    const q = query(collection(db, 'fact_checks'), orderBy('date', 'desc'), limit(50));
+    const q = query(collection(db, 'fact_checks'), orderBy('date', 'desc'), limit(itemsLimit));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetched = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -334,6 +335,17 @@ export const SanataniFactCheckPage = () => {
             </div>
           )}
         </div>
+
+        {facts.length >= itemsLimit && (
+          <div className="flex justify-center mb-20">
+            <button 
+              onClick={() => setItemsLimit(prev => prev + 12)}
+              className="px-10 py-5 bg-white border-4 border-zinc-100 rounded-3xl font-black text-xs uppercase tracking-widest text-zinc-900 hover:border-brand-500 hover:shadow-xl transition-all"
+            >
+              Load More Truth
+            </button>
+          </div>
+        )}
 
         {/* Submit Section */}
         <motion.div 
