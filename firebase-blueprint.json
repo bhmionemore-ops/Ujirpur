@@ -118,6 +118,21 @@
       },
       "required": ["claim", "status", "createdAt"]
     },
+    "fact_check": {
+      "title": "Fact Check",
+      "description": "A verified fact-check item.",
+      "type": "object",
+      "properties": {
+        "claim": { "type": "string" },
+        "status": { "type": "string", "enum": ["verified", "false", "misleading"] },
+        "explanation": { "type": "string" },
+        "source": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["claim", "status", "explanation", "date"]
+    },
     "user": {
       "title": "User",
       "description": "A user of the application.",
@@ -378,6 +393,10 @@
     "/fact_check_submissions/{submissionId}": {
       "schema": "fact_check_submission",
       "description": "User submitted claims for fact-checking."
+    },
+    "/fact_checks/{factId}": {
+      "schema": "fact_check",
+      "description": "Verified fact checks."
     }
   }
 }

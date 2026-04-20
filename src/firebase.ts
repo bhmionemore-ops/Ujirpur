@@ -99,25 +99,41 @@ export {
   onSnapshot
 };
 
-// Connection Test
-async function testConnection() {
-  try {
-    // Use a promise with timeout for the connection test
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Firebase connection timed out")), 10000)
-    );
-    
-    await Promise.race([
-      getDocFromServer(doc(db, 'test', 'connection')),
-      timeoutPromise
-    ]);
-    
-    console.log("Firebase connection successful");
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('timed out'))) {
-      console.error("Firebase connection failed: The client is offline or the connection timed out. Please check your Firebase configuration.");
-    } else {
-      console.warn("Firebase connection test warning:", error);
+// Connection Test with Retries
+async function testConnection(retries = 3, delay = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`[Firebase] Connection attempt ${i + 1}/${retries}...`);
+      
+      // Use a promise with timeout for the connection test
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Firebase connection timed out")), 15000)
+      );
+      
+      // We try to get a non-existent doc just to check network reachability
+      await Promise.race([
+        getDocFromServer(doc(db, '_connection_test_', 'ping')),
+        timeoutPromise
+      ]);
+      
+      console.log("[Firebase] Connection successful");
+      return;
+    } catch (error) {
+      const isLastRetry = i === retries - 1;
+      const isOffline = error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('unavailable'));
+      
+      if (isOffline || error instanceof Error && error.message.includes('timed out')) {
+        if (isLastRetry) {
+          console.error("Firebase connection failed permanently: The client is offline or the connection timed out. Please check your Firebase configuration and ensure the database exists.");
+        } else {
+          console.warn(`[Firebase] Connection attempt ${i + 1} failed. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } else {
+        // Other errors (like permissions) might actually mean the connection IS working but we just can't read that specific doc
+        console.log("[Firebase] Connection test received response (possibly limited permissions):", error instanceof Error ? error.message : String(error));
+        return;
+      }
     }
   }
 }

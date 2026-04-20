@@ -200,6 +200,13 @@ service cloud.firestore {
              data.status in ['pending', 'reviewing', 'checked'];
     }
 
+    function isValidFactCheck(data) {
+      return hasRequiredFields(['claim', 'status', 'explanation', 'date']) &&
+             data.claim is string && data.claim.size() > 0 &&
+             data.status in ['verified', 'false', 'misleading'] &&
+             data.date is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -373,6 +380,12 @@ service cloud.firestore {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.userUid == request.auth.uid);
       allow create: if isValidFactCheckSubmission(request.resource.data);
       allow delete: if isAdmin();
+    }
+
+    match /fact_checks/{factId} {
+      allow read: if true;
+      allow create, update: if isValidFactCheck(request.resource.data);
+      allow delete: if true; // Allow cleanup of old facts if needed
     }
 
     match /system/{docId} {

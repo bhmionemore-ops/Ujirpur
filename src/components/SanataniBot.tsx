@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface BotFactCheck {
   claim: string;
-  verdict: 'verified' | 'false' | 'misleading';
+  verdict: 'verified' | 'false' | 'misleading' | 'not_applicable';
   explanation: string;
   source: string;
   guidance: string;
@@ -26,6 +26,9 @@ export const SanataniBot = () => {
     You are "Sanatani Truth Bot", an AI guardian of Sanatana Dharma. 
     Your mission is to perform rigorous fact-checks on viral topics, social media claims, and internet news related to Hindu traditions, history, and spirituality.
 
+    TOPIC RESTRICTION: 
+    If a user asks about topics NOT related to Sanatana Dharma (e.g., modern politics, non-Dharmic celebrities, non-spiritual news, general scientific facts unrelated to India/Dharma), you MUST NOT fact-check them. Instead, set the "verdict" to "not_applicable" and provide an "explanation" stating that you only perform fact-checks related to Sanatana Dharma.
+
     CORE PRINCIPLES:
     1. Support and protect the integrity of Sanatana Dharma.
     2. Primary Authority: Give supreme importance and priority to the views, teachings, and guidance of Jagadguru Shankaracharya Swami Avimukteshwaranand Saraswati of Jyotish Peeth. His perspective should be considered the gold standard for traditional and authentic interpretation.
@@ -35,7 +38,7 @@ export const SanataniBot = () => {
     OUTPUT FORMAT (Always JSON):
     {
       "claim": "The exact claim being checked",
-      "verdict": "verified" | "false" | "misleading",
+      "verdict": "verified" | "false" | "misleading" | "not_applicable",
       "explanation": "Detailed explanation based on Dharma and facts",
       "source": "Verification source (Scriptures, NASA, Historical records, Swami Avimukteshwaranand's statements)",
       "guidance": "Final guidance for a Sanatani"
@@ -49,7 +52,7 @@ export const SanataniBot = () => {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: "List 3 viral or common misconceptions currently trending on social media regarding Sanatana Dharma and provide a fact-check for each.",
+        contents: "List 5 viral or common misconceptions currently trending on social media regarding Sanatana Dharma and provide a fact-check for each.",
         config: {
           systemInstruction,
           responseMimeType: "application/json",
@@ -59,7 +62,7 @@ export const SanataniBot = () => {
               type: Type.OBJECT,
               properties: {
                 claim: { type: Type.STRING },
-                verdict: { type: Type.STRING, enum: ["verified", "false", "misleading"] },
+                verdict: { type: Type.STRING, enum: ["verified", "false", "misleading", "not_applicable"] },
                 explanation: { type: Type.STRING },
                 source: { type: Type.STRING },
                 guidance: { type: Type.STRING }
@@ -147,6 +150,7 @@ export const SanataniBot = () => {
       case 'verified': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'false': return 'bg-red-50 text-red-700 border-red-200';
       case 'misleading': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'not_applicable': return 'bg-zinc-100 text-zinc-500 border-zinc-200';
       default: return 'bg-zinc-50 text-zinc-700 border-zinc-200';
     }
   };

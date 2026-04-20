@@ -833,6 +833,71 @@ async function cleanupOldNews() {
   }
 }
 
+async function generateDailySanataniFacts() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const apiKey = await getGeminiApiKey();
+    const ai = new GoogleGenAI({ apiKey });
+    
+    if (adminDb) {
+      const existing = await adminDb.collection("fact_checks").where("date", "==", today).limit(1).get();
+      if (!existing.empty) {
+        console.log(`[FactCheckAPI] Facts for ${today} already exist. Skipping.`);
+        return;
+      }
+    }
+
+    console.log(`[FactCheckAPI] Generating daily fact checks for ${today}...`);
+    
+    const prompt = `Act as the Sanatani Truth Bot, an AI guardian of Sanatana Dharma. 
+    Find 5 viral topics, rumors, or common myths about Sanatana Dharma currently trending on social media or the internet.
+    Perform a rigorous fact-check for each. 
+    Supreme priority must be given to the teachings of Shankaracharya Swami Avimukteshwaranand Saraswati of Jyotish Peeth.
+    
+    Format the output strictly as a JSON array of objects with these keys: 
+    - claim: The specific myth or rumor.
+    - status: One of "verified", "false", "misleading".
+    - explanation: A detailed, respectful breakdown based on facts and Dharma.
+    - source: Where the information comes from.
+    - category: One of "History", "Science", "General", "Tradition".
+
+    Respond ONLY with the JSON array.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+
+    const text = response.text || '[]';
+    
+    const startIdx = text.indexOf('[');
+    const endIdx = text.lastIndexOf(']');
+    if (startIdx === -1 || endIdx === -1) {
+      throw new Error("Invalid Gemini response format");
+    }
+    const jsonStr = text.substring(startIdx, endIdx + 1);
+    const facts = JSON.parse(jsonStr || '[]');
+    
+    if (adminDb && Array.isArray(facts)) {
+      const batch = adminDb.batch();
+      facts.forEach((fact: any) => {
+        const id = slugify(fact.claim).substring(0, 50) + '-' + Math.random().toString(36).substring(2, 7);
+        const docRef = adminDb.collection("fact_checks").doc(id);
+        batch.set(docRef, {
+          ...fact,
+          date: today,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      console.log(`[FactCheckAPI] Successfully generated and saved ${facts.length} facts for ${today}`);
+    }
+  } catch (error) {
+    console.error("[FactCheckAPI] Generation failed:", error);
+  }
+}
+
 /**
  * Mock news data as a last resort fallback
  */
@@ -1019,6 +1084,15 @@ async function startServer() {
       const memoryUsage = process.memoryUsage();
       console.log(`[Heartbeat] ${new Date().toISOString()} - RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`);
     }, 60000);
+
+    // Daily Fact Check Generation (Check every hour if today's facts are ready)
+    setTimeout(() => {
+      generateDailySanataniFacts().catch(e => console.error("Initial fact generation failed:", e));
+    }, 10000); // 10 second delay for Firebase stabilization
+
+    setInterval(() => {
+      generateDailySanataniFacts().catch(e => console.error("Periodic fact generation failed:", e));
+    }, 3600000); // Every hour
   });
 
   // Email Transporter
@@ -1281,10 +1355,27 @@ async function startServer() {
       const clientApp = initializeClientApp(firebaseConfig);
       
       db = initializeFirestore(clientApp, {
-        experimentalForceLongPolling: true
+        experimentalForceLongPolling: true,
+        // Increase timeout for server-side client operations
       }, firebaseConfig.firestoreDatabaseId || undefined);
       clientAuth = getAuth(clientApp);
       
+      // Async Client SDK health check
+      (async () => {
+        try {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Client SDK connection timed out")), 15000)
+          );
+          await Promise.race([
+            getDocFromServer(doc(db!, '_health_check', 'ping')),
+            timeoutPromise
+          ]);
+          console.log("[Firebase] Client SDK verified.");
+        } catch (err: any) {
+          console.warn(`[Firebase] Client SDK health check warning: ${err.message}. This is normal if permissions are restricted or connection is slow.`);
+        }
+      })();
+
       // Initialize Admin SDK
       if (!admin.apps.length) {
         try {

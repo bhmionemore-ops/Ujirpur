@@ -4,12 +4,12 @@ import { Search, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Info, Share2, 
 import { useLanguage } from '../LanguageContext';
 import { SanataniBot } from '../components/SanataniBot';
 import { db, auth } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 
 interface FactCheck {
   id: string;
   claim: string;
-  status: 'verified' | 'false' | 'misleading';
+  status: 'verified' | 'false' | 'misleading' | 'not_applicable';
   explanation: string;
   source?: string;
   category: string;
@@ -55,6 +55,27 @@ export const SanataniFactCheckPage = () => {
   const [evidenceText, setEvidenceText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [facts, setFacts] = useState<FactCheck[]>(MOCK_FACTS);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'fact_checks'), orderBy('date', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as FactCheck[];
+      
+      if (fetched.length > 0) {
+        setFacts(fetched);
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching facts:", error);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleShare = (fact: FactCheck) => {
     const text = `Fact Check: "${fact.claim}"\nVerdict: ${fact.status.toUpperCase()}\nVerified by Sanatani Fact Check.`;
@@ -112,7 +133,7 @@ export const SanataniFactCheckPage = () => {
     }
   };
 
-  const filteredFacts = MOCK_FACTS.filter(fact => {
+  const filteredFacts = facts.filter(fact => {
     const matchesSearch = fact.claim.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          fact.explanation.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = activeFilter === 'all' || fact.status === activeFilter;
@@ -124,6 +145,7 @@ export const SanataniFactCheckPage = () => {
       case 'verified': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
       case 'false': return 'text-red-600 bg-red-50 border-red-100';
       case 'misleading': return 'text-amber-600 bg-amber-50 border-amber-100';
+      case 'not_applicable': return 'text-zinc-500 bg-zinc-50 border-zinc-100';
       default: return 'text-zinc-600 bg-culture-bg border-zinc-100';
     }
   };
