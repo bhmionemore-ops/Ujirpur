@@ -15,8 +15,42 @@ interface FamilyMember {
   id: string;
   name: string;
   role: string;
+  photo?: string; // Base64 or URL
+  birthYear?: string;
+  partner?: {
+    name: string;
+    photo?: string;
+    birthYear?: string;
+  };
   children: FamilyMember[];
 }
+
+const GoldenFrame = ({ photo, name, pulse = false }: { photo?: string; name: string; pulse?: boolean }) => (
+  <div className={`relative p-1 rounded-[45%] bg-gradient-to-b from-[#e7c062] via-[#b68c2f] to-[#e7c062] shadow-[0_10px_30px_rgba(0,0,0,0.4)] border-2 border-[#8a6821] ${pulse ? 'animate-pulse' : ''} group-hover:scale-105 transition-transform duration-500`}>
+    <div className="absolute inset-0 rounded-[45%] border border-[rgba(255,255,255,0.2)] pointer-events-none" />
+    <div className="relative aspect-[4/5] w-20 md:w-28 rounded-[43%] overflow-hidden bg-[#2a2a2a]">
+      {photo ? (
+        <img src={photo} alt={name} className="w-full h-full object-cover grayscale-[0.2] sepia-[0.1] hover:grayscale-0 transition-all duration-700" />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-[#1a1a1a] text-[#8a6821]">
+          <User size={32} strokeWidth={1} />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.8)] via-transparent to-transparent opacity-60" />
+    </div>
+  </div>
+);
+
+const VintageScroll = ({ title }: { title: string }) => (
+  <div className="relative inline-block px-10 py-1 pt-3 mb-6">
+    <div className="absolute inset-0 bg-[#f4e4bc] border-y-2 border-[#b68d40] rounded-sm transform -skew-x-6" />
+    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-8 bg-[#b68d40] rounded-r-full -ml-1.5 shadow-lg" />
+    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-8 bg-[#b68d40] rounded-l-full -mr-1.5 shadow-lg" />
+    <span className="relative z-10 font-serif font-black text-[#58441c] uppercase tracking-[0.2em] text-[8px] md:text-xs italic whitespace-nowrap">
+      {title}
+    </span>
+  </div>
+);
 
 interface VamshavaliProfile {
   id: string;
@@ -132,7 +166,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         toast.success("Data saved successfully");
         setIsEditing(false);
       } else {
-        toast.error("Failed to save data");
+        const data = await res.json();
+        toast.error(data.details || "Failed to save data");
       }
     } catch (error) {
       toast.error("Network error");
@@ -147,53 +182,31 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     const toastId = toast.loading("Generating high-quality PDF...");
     
     try {
-      // Ensure the content is visible and layout is stable
-      const element = treeRef.current;
+      const element = document.getElementById('genealogy_container');
+      if (!element) return;
       
-      // Use html2canvas with improved settings for high DPI and reliability
       const canvas = await html2canvas(element, {
-        scale: 2, // High resolution
+        scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#fcf8f1',
         logging: false,
-        onclone: (clonedDoc) => {
-          // Find the tree container in the cloned document
-          const clonedElement = clonedDoc.getElementById('genealogy-tree-container');
-          if (clonedElement) {
-            clonedElement.style.overflow = 'visible';
-            clonedElement.style.width = 'fit-content';
-            clonedElement.style.height = 'auto';
-            clonedElement.style.padding = '40px';
-          }
-        }
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
+      const imgProps = canvas;
       
-      // Calculate PDF dimensions based on canvas aspect ratio
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
+      // Landscape for wide trees
+      const orientation = imgProps.width > imgProps.height ? 'l' : 'p';
+      const pdf = new jsPDF(orientation, 'mm', 'a4');
+      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      // Handle multi-page if content is too long for a single A4
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let heightLeft = pdfHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Barnia_Vamshavali_${profile.name || 'Profile'}.pdf`);
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.save(`Barnia_Vamshavali_Grand_History.pdf`);
+      
       toast.dismiss(toastId);
-      toast.success("PDF Downloaded Successfully");
+      toast.success("Family History Saved");
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast.dismiss(toastId);
@@ -217,13 +230,30 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     setOtp('');
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 200 * 1024) { // 200KB limit for base64 storage efficiency
+      toast.error("Image too large. Please use an image under 200KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      callback(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Tree management helpers
   const addMember = (parentId: string | null) => {
     if (!profile) return;
     const newMember: FamilyMember = {
       id: Math.random().toString(36).substring(7),
-      name: "New Member",
-      role: "Member",
+      name: "Full Name",
+      role: "Generation Node",
+      birthYear: "b. 1900",
       children: []
     };
 
@@ -240,6 +270,19 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     setProfile({ ...profile, members: updateRecursive(profile.members) });
   };
 
+  const addPartner = (id: string) => {
+    if (!profile) return;
+    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
+      return members.map(m => {
+        if (m.id === id) {
+          return { ...m, partner: { name: "Partner Name", birthYear: "b. 1900" } };
+        }
+        return { ...m, children: updateRecursive(m.children) };
+      });
+    };
+    setProfile({ ...profile, members: updateRecursive(profile.members) });
+  };
+
   const removeMember = (id: string) => {
     if (!profile) return;
     const filterRecursive = (members: FamilyMember[]): FamilyMember[] => {
@@ -250,11 +293,22 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     setProfile({ ...profile, members: filterRecursive(profile.members) });
   };
 
-  const updateMember = (id: string, name: string, role: string) => {
+  const updateMember = (id: string, updates: Partial<FamilyMember>) => {
     if (!profile) return;
     const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
       return members.map(m => {
-        if (m.id === id) return { ...m, name, role };
+        if (m.id === id) return { ...m, ...updates };
+        return { ...m, children: updateRecursive(m.children) };
+      });
+    };
+    setProfile({ ...profile, members: updateRecursive(profile.members) });
+  };
+
+  const updatePartner = (id: string, updates: any) => {
+    if (!profile) return;
+    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
+      return members.map(m => {
+        if (m.id === id && m.partner) return { ...m, partner: { ...m.partner, ...updates } };
         return { ...m, children: updateRecursive(m.children) };
       });
     };
@@ -581,21 +635,36 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                    )}
                 </div>
 
-                <div 
-                  ref={treeRef}
-                  id="genealogy-tree-container"
-                  className="bg-white p-12 rounded-[3.5rem] border-4 border-white shadow-2xl overflow-x-auto min-h-[400px]"
-                >
-                  <div className="inline-block min-w-full">
-                     <TreeStructure 
-                      members={profile.members} 
-                      isEditing={isEditing} 
-                      onUpdate={updateMember}
-                      onRemove={removeMember}
-                      onAddChild={addMember}
-                     />
+                  <div 
+                    ref={treeRef}
+                    id="genealogy_container"
+                    className="bg-[#fcf8f1] rounded-[3.5rem] border-[8px] border-[#d4af37] shadow-2xl overflow-x-auto min-h-[600px] p-16 relative"
+                    style={{
+                      backgroundImage: `url('https://www.transparenttextures.com/patterns/old-map.png')`,
+                      backgroundBlendMode: 'multiply'
+                    }}
+                  >
+                    {/* Decorative Borders - Using explicit rgba to avoid oklch issues in html2canvas */}
+                    <div className="absolute top-4 left-4 right-4 bottom-4 border-2 border-[rgba(182,141,64,0.2)] pointer-events-none rounded-[2.5rem]" />
+                    <div className="absolute top-2 left-2 right-2 bottom-2 border border-[rgba(182,141,64,0.3)] pointer-events-none rounded-[3rem]" />
+
+                    <div className="inline-block min-w-full text-center relative z-10">
+                       <div className="mb-20">
+                          <VintageScroll title="The Eternal Lineage of Barnia" />
+                          <h3 className="mt-4 font-serif text-[#b68d40] text-3xl italic font-bold">Vamshavali Genealogy</h3>
+                       </div>
+                       <TreeStructure 
+                        members={profile.members} 
+                        isEditing={isEditing} 
+                        onUpdate={updateMember}
+                        onRemove={removeMember}
+                        onAddChild={addMember}
+                        onAddPartner={addPartner}
+                        onUpdatePartner={updatePartner}
+                        handlePhotoUpload={handlePhotoUpload}
+                       />
+                    </div>
                   </div>
-                </div>
               </div>
             </motion.div>
           )}
@@ -605,60 +674,164 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   );
 };
 
-const TreeStructure = ({ members, isEditing, onUpdate, onRemove, onAddChild }: any) => {
+const TreeStructure = ({ members, isEditing, onUpdate, onRemove, onAddChild, onAddPartner, onUpdatePartner, handlePhotoUpload }: any) => {
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col items-center gap-24">
       {members.map((member: FamilyMember) => (
-        <div key={member.id} className="relative">
-          <div className="flex items-center gap-4">
-            <div className={`p-6 rounded-[2rem] shadow-xl border-4 transition-all ${isEditing ? 'bg-zinc-50 border-zinc-100' : 'bg-brand-50 border-brand-500/20'} min-w-[200px]`}>
-              {isEditing ? (
-                <div className="space-y-3">
-                  <input 
-                    value={member.name}
-                    onChange={(e) => onUpdate(member.id, e.target.value, member.role)}
-                    className="w-full bg-transparent font-black text-zinc-900 text-lg outline-none"
-                  />
-                  <input 
-                    value={member.role}
-                    onChange={(e) => onUpdate(member.id, member.name, e.target.value)}
-                    className="w-full bg-transparent font-bold text-zinc-400 text-[10px] uppercase tracking-widest outline-none"
-                  />
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                    <button onClick={() => onRemove(member.id)} className="text-red-400 hover:text-red-600 transition-colors">
-                      <Trash2 size={16}/>
-                    </button>
-                    <button onClick={() => onAddChild(member.id)} className="text-brand-400 hover:text-brand-600 transition-colors">
-                      <Plus size={16}/>
-                    </button>
-                  </div>
+        <div key={member.id} className="relative flex flex-col items-center">
+          {/* Node Wrapper */}
+          <div className="flex flex-col items-center">
+            {/* The Couple / Individual */}
+            <div className="flex items-center gap-4 relative">
+              {/* Member */}
+              <div className="flex flex-col items-center group">
+                <div className="relative">
+                  <GoldenFrame photo={member.photo} name={member.name} />
+                  {isEditing && (
+                    <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                      <Plus size={14} />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={(e) => handlePhotoUpload(e, (base64) => onUpdate(member.id, { photo: base64 }))} 
+                      />
+                    </label>
+                  )}
                 </div>
-              ) : (
+                
+                <div className="mt-4 flex flex-col items-center">
+                  {isEditing ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <input 
+                        value={member.name}
+                        onChange={(e) => onUpdate(member.id, { name: e.target.value })}
+                        className="bg-transparent font-serif font-black text-[#58441c] text-center text-sm md:text-lg border-b border-[#b68d40]/30 outline-none w-28 md:w-40"
+                      />
+                      <input 
+                        value={member.birthYear}
+                        onChange={(e) => onUpdate(member.id, { birthYear: e.target.value })}
+                        placeholder="Birth date"
+                        className="bg-transparent text-[10px] text-zinc-500 text-center italic border-none outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight">{member.name}</h4>
+                      <p className="text-[10px] text-zinc-500 font-bold italic">{member.birthYear}</p>
+                    </>
+                  )}
+                  <p className="text-[#b68d40] text-[9px] font-black uppercase tracking-[0.2em] mt-1">{member.role}</p>
+                </div>
+              </div>
+
+              {/* Partner Section */}
+              {member.partner ? (
                 <>
-                  <p className="font-black text-zinc-900 text-xl tracking-tight">{member.name}</p>
-                  <p className="text-brand-600 text-[10px] font-black uppercase tracking-widest mt-1">{member.role}</p>
+                  {/* Connector Rings */}
+                  <div className="w-8 flex items-center justify-center relative">
+                    <div className="absolute top-1/2 -translate-y-1/2 w-8 h-20 border-t-2 border-b-2 border-dashed border-[rgba(182,141,64,0.3)] rounded-full" />
+                    <div className="text-[#b68d40] bg-[#fcf8f1] p-1 rounded-full border border-[rgba(182,141,64,0.2)]">
+                      <Users size={12} />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center group">
+                    <div className="relative">
+                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} />
+                      {isEditing && (
+                        <label className="absolute -bottom-2 -left-2 w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                          <Plus size={14} />
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={(e) => handlePhotoUpload(e, (base64) => onUpdatePartner(member.id, { photo: base64 }))} 
+                          />
+                        </label>
+                      )}
+                    </div>
+                    
+                    <div className="mt-4 flex flex-col items-center">
+                      {isEditing ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <input 
+                            value={member.partner.name}
+                            onChange={(e) => onUpdatePartner(member.id, { name: e.target.value })}
+                            className="bg-transparent font-serif font-black text-[#58441c] text-center text-sm md:text-lg border-b border-[#b68d40]/30 outline-none w-28 md:w-40"
+                          />
+                          <input 
+                            value={member.partner.birthYear}
+                            onChange={(e) => onUpdatePartner(member.id, { birthYear: e.target.value })}
+                            placeholder="Birth date"
+                            className="bg-transparent text-[10px] text-zinc-500 text-center italic border-none outline-none"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight">{member.partner.name}</h4>
+                          <p className="text-[10px] text-zinc-500 font-bold italic">{member.partner.birthYear}</p>
+                        </>
+                      )}
+                      <p className="text-[#b68d40] text-[9px] font-black uppercase tracking-[0.2em] mt-1">Partner</p>
+                    </div>
+                  </div>
                 </>
+              ) : isEditing && (
+                <button 
+                  onClick={() => onAddPartner(member.id)}
+                  className="w-20 md:w-28 aspect-[4/5] rounded-[43%] border-2 border-dashed border-[rgba(182,141,64,0.4)] flex flex-col items-center justify-center text-[#b68d40] hover:bg-[rgba(255,255,255,0.5)] transition-all gap-2"
+                >
+                  <Plus size={24} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Partner</span>
+                </button>
               )}
             </div>
 
-            {member.children.length > 0 && (
-              <div className="pl-12 relative">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-0.5 bg-zinc-200" />
+            {/* Action Buttons for Editing */}
+            {isEditing && (
+              <div className="flex gap-4 mt-6">
+                <button 
+                  onClick={() => onAddChild(member.id)}
+                  className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                >
+                  <Plus size={14}/> Add Child
+                </button>
+                <button 
+                  onClick={() => onRemove(member.id)}
+                  className="px-4 py-2 bg-red-50 text-red-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={14}/> Node
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Children / Recursive Section */}
+          {member.children.length > 0 && (
+            <div className="pt-24 relative w-full flex justify-center">
+              {/* Vertical Line from parent */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-24 bg-gradient-to-b from-[#b68d40] to-[rgba(182,141,64,0.1)]" />
+              
+              {/* Horizontal line for multiple children */}
+              {member.children.length > 1 && (
+                <div className="absolute top-24 left-0 right-0 h-0.5 bg-[rgba(182,141,64,0.2)]" />
+              )}
+
+              <div className="flex gap-16 relative">
                 <TreeStructure 
                   members={member.children} 
                   isEditing={isEditing} 
                   onUpdate={onUpdate}
                   onRemove={onRemove}
                   onAddChild={onAddChild}
+                  onAddPartner={onAddPartner}
+                  onUpdatePartner={onUpdatePartner}
+                  handlePhotoUpload={handlePhotoUpload}
                 />
               </div>
-            )}
-            {isEditing && member.children.length === 0 && (
-               <div className="w-12 h-12 flex items-center justify-center text-zinc-200">
-                  <ChevronRight size={24}/>
-               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

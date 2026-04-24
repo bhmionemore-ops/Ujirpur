@@ -2626,18 +2626,27 @@ async function startServer() {
 
     try {
       let saved = false;
+      let lastError = null;
+
+      // Ensure serverKey is present in the data for rules verification
+      const updateData = {
+        ...data,
+        updatedAt: null as any, // Placeholder for timestamp
+        serverKey: FIRESTORE_SERVER_KEY
+      };
 
       // 1. Try Admin SDK
       if (adminDb) {
         try {
           await adminDb.collection("vamshavali_profiles").doc(id).update({
-            ...data,
+            ...updateData,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
           console.log("[Vamshavali] Profile updated using Admin SDK");
           saved = true;
         } catch (adminError: any) {
           console.warn("[Vamshavali] Admin SDK profile update failed:", adminError.message);
+          lastError = adminError.message;
         }
       }
 
@@ -2645,16 +2654,20 @@ async function startServer() {
       if (!saved && db) {
         try {
           await updateDoc(doc(db, "vamshavali_profiles", id), {
-            ...data,
-            updatedAt: serverTimestamp(),
-            serverKey: FIRESTORE_SERVER_KEY
+            ...updateData,
+            updatedAt: serverTimestamp()
           });
           console.log("[Vamshavali] Profile updated using Client SDK fallback");
           saved = true;
         } catch (clientError: any) {
           console.error("[Vamshavali] Client SDK profile update failed:", clientError.message);
+          lastError = clientError.message;
           if (clientError.message.includes("permission") || clientError.code === "permission-denied") {
-             handleFirestoreError(clientError, OperationType.UPDATE, `vamshavali_profiles/${id}`);
+             try {
+               handleFirestoreError(clientError, OperationType.UPDATE, `vamshavali_profiles/${id}`);
+             } catch (e: any) {
+               lastError = e.message;
+             }
           }
         }
       }
@@ -2662,11 +2675,14 @@ async function startServer() {
       if (saved) {
         res.json({ success: true });
       } else {
-        res.status(500).json({ error: "Failed to update profile", details: "Database connection failed" });
+        res.status(500).json({ 
+          error: "Failed to update profile", 
+          details: lastError || "Database connection failed" 
+        });
       }
     } catch (error: any) {
        console.error("[Vamshavali] Unexpected update error:", error);
-       res.status(500).json({ error: "An unexpected error occurred" });
+       res.status(500).json({ error: "An unexpected error occurred", details: error.message });
     }
   });
 
