@@ -14,6 +14,7 @@ import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AdminAnalytics } from './pages/AdminAnalytics';
 import { AdminUserManagement } from './pages/AdminUserManagement';
 import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
+import { VamshavaliPage } from './pages/VamshavaliPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -152,6 +153,7 @@ function AppContent() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const isVamshavali = location.pathname.startsWith('/vamshavali');
 
   return (
     <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
@@ -163,7 +165,8 @@ function AppContent() {
       </div>
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
+      {!isVamshavali && (
+        <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-4 group cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>
             <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(245,142,39,0.3)] border border-white/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
@@ -186,6 +189,7 @@ function AppContent() {
                   { to: '/', label: t.nav.news, sectionId: 'news' },
                   { to: '/bazar', label: t.nav.bazar },
                   { to: '/transport', label: t.nav.transport },
+                  { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
                   { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
@@ -321,6 +325,7 @@ function AppContent() {
               { to: '/', label: t.nav.news, sectionId: 'news' },
               { to: '/bazar', label: t.nav.bazar },
               { to: '/transport', label: t.nav.transport },
+              { to: '/vamshavali', label: t.nav.vamshavali },
               { to: '/influencers', label: t.nav.influencers },
               { to: '/fact-check', label: t.nav.factCheck },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
@@ -354,6 +359,7 @@ function AppContent() {
           </div>
         )}
       </nav>
+      )}
 
       <main className="relative z-10">
         <Routes>
@@ -373,17 +379,20 @@ function AppContent() {
           <Route path="/facebook-verification" element={<FacebookVerificationPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
+          <Route path="/vamshavali" element={<VamshavaliPage />} />
+          <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
         </Routes>
       </main>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
-      <LiveChatWidget />
+      {!isVamshavali && <LiveChatWidget />}
       <InstallPrompt />
       <GlobalBookingAlert />
       <Toaster position="top-center" richColors />
 
       {/* Footer */}
-      <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">
+      {!isVamshavali && (
+        <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
@@ -443,6 +452,7 @@ function AppContent() {
                   { to: '/', label: t.nav.news },
                   { to: '/bazar', label: t.nav.bazar },
                   { to: '/transport', label: t.nav.transport },
+                  { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
                   { to: '/ponjika', label: t.nav.ponjika },
@@ -476,6 +486,7 @@ function AppContent() {
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 }

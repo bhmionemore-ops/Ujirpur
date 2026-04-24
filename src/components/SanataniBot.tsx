@@ -180,7 +180,17 @@ export const SanataniBot = () => {
         }
       });
 
-      const data = JSON.parse(response.text);
+      const rawText = response.text || "{}";
+      // Robustly clean JSON: remove markdown and escape literal control characters in strings
+      let cleaned = rawText.trim();
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+      }
+      const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
+        m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+      );
+
+      const data = JSON.parse(sanitized);
       setResult(data);
     } catch (error) {
       console.error("Bot Error:", error);

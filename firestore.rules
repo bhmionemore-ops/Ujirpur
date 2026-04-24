@@ -155,8 +155,8 @@ service cloud.firestore {
 
     function isValidNews(data) {
       return data.date is string &&
-             data.lang is string &&
-             data.updatedAt is string;
+             data.updatedAt is string &&
+             (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin());
     }
 
     function isValidInboundEmail(data) {
@@ -204,7 +204,22 @@ service cloud.firestore {
       return hasRequiredFields(['claim', 'status', 'explanation', 'date']) &&
              data.claim is string && data.claim.size() > 0 &&
              data.status in ['verified', 'false', 'misleading'] &&
-             data.date is string;
+             data.date is string &&
+             (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin());
+    }
+
+    function isValidVamshavaliOtp(data) {
+      return hasRequiredFields(['otp', 'expiresAt']) &&
+             data.otp is string && data.otp.size() == 6 &&
+             (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin());
+    }
+
+    function isValidVamshavaliProfile(data) {
+      // For creation, we require email and shareId
+      // For updates, we check the resulting state
+      return (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin()) &&
+             (!('email' in data) || data.email is string) &&
+             (!('shareId' in data) || data.shareId is string);
     }
 
     // ===============================================================
@@ -288,8 +303,8 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true;
-      allow create, update: if isValidNews(request.resource.data);
-      allow delete: if true; // Allow cleanup of old news
+      allow create, update: if isValidNews(request.resource.data) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /shops/{shopId}/products/{productId} {
@@ -384,8 +399,20 @@ service cloud.firestore {
 
     match /fact_checks/{factId} {
       allow read: if true;
-      allow create, update: if isValidFactCheck(request.resource.data);
-      allow delete: if true; // Allow cleanup of old facts if needed
+      allow create, update: if isValidFactCheck(request.resource.data) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /vamshavali_otps/{email} {
+      allow get: if resource.data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin();
+      allow list: if isAdmin();
+      allow write: if isAdmin() || isValidVamshavaliOtp(request.resource.data);
+    }
+
+    match /vamshavali_profiles/{profileId} {
+      allow read: if true; // Shareable profiles
+      allow create, update: if isAdmin() || isValidVamshavaliProfile(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /system/{docId} {

@@ -1042,7 +1042,19 @@ export const InfluencerSection = () => {
               key={inf.id} 
               whileHover={{ y: -10 }}
               className="group bg-white p-8 rounded-[2.5rem] border-4 border-zinc-100 shadow-sm hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col relative overflow-hidden"
+              itemScope
+              itemType="https://schema.org/Person"
             >
+              {/* Dynamic Meta-like data for SEO for each influencer */}
+              <div className="sr-only" aria-hidden="true">
+                <span itemProp="name">{inf.name}</span>
+                <span itemProp="jobTitle">Content Creator</span>
+                <span itemProp="description">{inf.bio}</span>
+                <span itemProp="image">{inf.avatar}</span>
+                {(inf.socials || []).map((s, idx) => (
+                  <link key={idx} itemProp="sameAs" href={s.startsWith('http') ? s : `https://${s}`} />
+                ))}
+              </div>
               <div className="absolute top-0 left-0 w-full h-1 bg-zinc-50 group-hover:bg-brand-600 transition-colors"></div>
               
               <div className="flex justify-between items-start mb-8">

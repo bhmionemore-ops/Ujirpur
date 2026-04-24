@@ -323,6 +323,36 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["requestId", "callerUid", "receiverUid", "status"]
+    },
+    "vamshavali_otp": {
+      "title": "Vamshavali OTP",
+      "description": "Temporary OTP for Vamshavali dashboard login.",
+      "type": "object",
+      "properties": {
+        "otp": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["otp", "expiresAt"]
+    },
+    "vamshavali_profile": {
+      "title": "Vamshavali Profile",
+      "description": "A user's family tree profile.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "shareId": { "type": "string" },
+        "name": { "type": "string" },
+        "parents": { "type": "string" },
+        "grandparents": { "type": "string" },
+        "gotra": { "type": "string" },
+        "kuldevi": { "type": "string" },
+        "kuldevta": { "type": "string" },
+        "nativePlace": { "type": "string" },
+        "additionalNotes": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "object" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "shareId"]
     }
   },
   "firestore": {
@@ -397,6 +427,14 @@
     "/fact_checks/{factId}": {
       "schema": "fact_check",
       "description": "Verified fact checks."
+    },
+    "/vamshavali_otps/{email}": {
+      "schema": "vamshavali_otp",
+      "description": "OTP storage for Vamshavali login."
+    },
+    "/vamshavali_profiles/{profileId}": {
+      "schema": "vamshavali_profile",
+      "description": "User family tree profiles."
     }
   }
 }

@@ -114,9 +114,18 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
         throw new Error(`Empty response from ${modelInfo.name}`);
       }
 
-      const text = response.text;
-      const cleanedText = text.trim().replace(/```json/g, "").replace(/```/g, "");
-      const parsed = JSON.parse(cleanedText);
+      const text = response.text || "{}";
+      // Robustly clean JSON: remove markdown and escape literal control characters in strings
+      let cleaned = text.trim();
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+      }
+      
+      const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
+        m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+      );
+
+      const parsed = JSON.parse(sanitized);
       
       console.log(`[NewsService] Successfully generated news with ${modelInfo.name}`);
       

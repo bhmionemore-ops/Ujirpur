@@ -57,6 +57,7 @@ export const translations = {
       ponjika: 'পঞ্জিকা',
       transport: 'পরিবহন',
       factCheck: 'সনাতনী ফ্যাক্ট-চেক',
+      vamshavali: 'বংশাবলী',
     },
     transport: {
       title: 'গ্রাম্য পরিবহন সেবা',
@@ -381,6 +382,7 @@ export const translations = {
       ponjika: 'Ponjika',
       transport: 'Transport',
       factCheck: 'Sanatani Fact Check',
+      vamshavali: 'Family Tree',
     },
     transport: {
       title: 'Village Transport Service',

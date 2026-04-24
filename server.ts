@@ -19,6 +19,7 @@ process.on('unhandledRejection', (err: any) => {
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleAuth } from "google-auth-library";
 
 /**
  * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
@@ -34,9 +35,15 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
                           error?.error?.code === 503 || 
                           error?.status === "UNAVAILABLE";
       
-      if (isUnavailable && i < maxRetries) {
-        const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
-        console.warn(`[Gemini] Model high demand (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+      const isQuotaExceeded = error?.message?.includes("429") || 
+                            error?.message?.includes("RESOURCE_EXHAUSTED") ||
+                            error?.error?.code === 429 || 
+                            error?.status === "RESOURCE_EXHAUSTED";
+
+      if ((isUnavailable || isQuotaExceeded) && i < maxRetries) {
+        const factor = isQuotaExceeded ? 10000 : 2000; // Longer wait for quota
+        const delay = Math.pow(2, i) * factor + Math.random() * 1000;
+        console.warn(`[Gemini] ${isQuotaExceeded ? 'Quota exceeded (429)' : 'High demand (503)'}. Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -72,6 +79,7 @@ import {
   limit,
   deleteDoc,
   addDoc,
+  updateDoc,
   Firestore,
   initializeFirestore,
   getDocFromServer
@@ -84,8 +92,43 @@ let adminDb: any = null;
 let clientAuth: any = null;
 let firebaseConfig: any = null;
 
+// Helper for Firestore Errors according to guidelines
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: any;
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid || null,
+      email: auth?.currentUser?.email || null,
+    },
+    operationType,
+    path
+  };
+  const jsonErr = JSON.stringify(errInfo);
+  console.error('[Firestore Error Details]:', jsonErr);
+  throw new Error(jsonErr);
+}
+
 // News generation locks
 const newsLocks = new Map<string, number>();
+
+// Server-to-Firestore Auth Key (for when Admin SDK fails)
+const FIRESTORE_SERVER_KEY = "barnia-system-2024-v1";
 
 
 
@@ -848,6 +891,51 @@ async function getGeminiApiKey(): Promise<string> {
   return apiKey;
 }
 
+/**
+ * Robustly cleans a Gemini response that might contain JSON.
+ * Removes markdown formatting and fixes literal control characters inside strings.
+ */
+function cleanGeminiJson(text: string): string {
+  if (!text) return "{}";
+  
+  // 1. Remove Markdown code blocks if present
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+  }
+  
+  // 2. Handle literal control characters (LF, CR, TAB) inside JSON strings that break JSON.parse
+  // This regex matches double-quoted strings and replaces literal control characters within them.
+  return cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (match) => {
+    return match
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+  });
+}
+
+/**
+ * Robustly parses JSON from Gemini's response.
+ */
+function parseGeminiJson(text: string, defaultValue: any = {}) {
+  try {
+    const cleaned = cleanGeminiJson(text);
+    return JSON.parse(cleaned);
+  } catch (error: any) {
+    console.error(`[AI-Parse] Failed to parse AI response: ${error.message}`);
+    // If it's a syntax error, try one more aggressive cleanup: remove all non-printable 
+    // control characters (except maybe newlines handled above)
+    try {
+      const aggressive = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
+      const stillCleaned = cleanGeminiJson(aggressive);
+      return JSON.parse(stillCleaned);
+    } catch (innerError) {
+      console.error(`[AI-Parse] Aggressive parse also failed`);
+      return defaultValue;
+    }
+  }
+}
+
 async function cleanupOldNews() {
   try {
     const fifteenDaysAgo = new Date();
@@ -904,13 +992,25 @@ async function generateDailySanataniFacts() {
     const ai = new GoogleGenAI({ apiKey });
     
     let alreadyExists = false;
+    let usedAdminForCheck = false;
     if (adminDb) {
-      const existing = await adminDb.collection("fact_checks").where("date", "==", today).limit(1).get();
-      alreadyExists = !existing.empty;
-    } else if (db) {
-      const q = query(collection(db, "fact_checks"), where("date", "==", today), limit(1));
-      const existing = await getDocs(q);
-      alreadyExists = !existing.empty;
+      try {
+        const existing = await adminDb.collection("fact_checks").where("date", "==", today).limit(1).get();
+        alreadyExists = !existing.empty;
+        usedAdminForCheck = true;
+      } catch (adminError: any) {
+        console.warn(`[FactCheckAPI] Admin SDK check failed: ${adminError.message}. Falling back to Client SDK.`);
+      }
+    }
+    
+    if (!usedAdminForCheck && db) {
+      try {
+        const q = query(collection(db, "fact_checks"), where("date", "==", today), limit(1));
+        const existing = await getDocs(q);
+        alreadyExists = !existing.empty;
+      } catch (clientError: any) {
+        console.error("[FactCheckAPI] Client SDK also failed to check for existing facts:", clientError.message);
+      }
     }
 
     if (alreadyExists) {
@@ -944,43 +1044,60 @@ async function generateDailySanataniFacts() {
       config: { responseMimeType: "application/json" }
     });
 
-    const text = response.text || '[]';
-    const facts = JSON.parse(text || '[]');
+    const facts = parseGeminiJson(response.text || '[]', []);
     
     if (!Array.isArray(facts) || facts.length === 0) {
       console.warn("[FactCheckAPI] Generated empty or invalid facts array.");
       return;
     }
 
+    let saved = false;
     if (adminDb) {
-      const batch = adminDb.batch();
-      facts.forEach((fact: any) => {
-        const id = slugify(fact.claim).substring(0, 50) + '-' + Math.random().toString(36).substring(2, 7);
-        const docRef = adminDb.collection("fact_checks").doc(id);
-        batch.set(docRef, {
-          ...fact,
-          date: today,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+      try {
+        const batch = adminDb.batch();
+        facts.forEach((fact: any) => {
+          const id = slugify(fact.claim).substring(0, 50) + '-' + Math.random().toString(36).substring(2, 7);
+          const docRef = adminDb.collection("fact_checks").doc(id);
+          batch.set(docRef, {
+            ...fact,
+            date: today,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          });
         });
-      });
-      await batch.commit();
-      console.log(`[FactCheckAPI] Successfully generated and saved ${facts.length} facts via Admin SDK for ${today}`);
-    } else if (db) {
-      const batch = writeBatch(db);
-      facts.forEach((fact: any) => {
-        const id = slugify(fact.claim).substring(0, 50) + '-' + Math.random().toString(36).substring(2, 7);
-        const docRef = doc(db, "fact_checks", id);
-        batch.set(docRef, {
-          ...fact,
-          date: today,
-          createdAt: serverTimestamp()
-        });
-      });
-      await batch.commit();
-      console.log(`[FactCheckAPI] Successfully generated and saved ${facts.length} facts via Client SDK for ${today}`);
+        await batch.commit();
+        console.log(`[FactCheckAPI] Successfully saved ${facts.length} facts via Admin SDK for ${today}`);
+        saved = true;
+      } catch (adminError: any) {
+        console.warn("[FactCheckAPI] Admin SDK batch failed:", adminError.message);
+      }
     }
-  } catch (error) {
-    console.error("[FactCheckAPI] Daily generation failed:", error);
+
+    if (!saved && db) {
+      try {
+        const batch = writeBatch(db);
+        facts.forEach((fact: any) => {
+          const id = slugify(fact.claim).substring(0, 50) + '-' + Math.random().toString(36).substring(2, 7);
+          const docRef = doc(db, "fact_checks", id);
+          batch.set(docRef, {
+            ...fact,
+            date: today,
+            createdAt: serverTimestamp(),
+            serverKey: FIRESTORE_SERVER_KEY
+          });
+        });
+        await batch.commit();
+        console.log(`[FactCheckAPI] Successfully saved ${facts.length} facts via Client SDK fallback for ${today}`);
+        saved = true;
+      } catch (clientError: any) {
+        console.error("[FactCheckAPI] Client SDK batch failed:", clientError.message);
+      }
+    }
+  } catch (error: any) {
+    if (error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
+      console.warn("[FactCheckAPI] Daily generation skipped: Quota exceeded (429).");
+    } else {
+      console.error("[FactCheckAPI] Daily generation failed:", error);
+    }
   }
 }
 
@@ -1002,14 +1119,34 @@ async function autoGenerateDailyNews() {
       const language = lang as 'bn' | 'en';
       const docId = `${date}-${language}`;
       
-      // Check if exists in Firestore to avoid duplicate generation
-      if (adminDb) {
+    // Check if exists in Firestore to avoid duplicate generation
+    let newsAlreadyExists = false;
+    if (adminDb) {
+      try {
         const docSnap = await adminDb.collection("news").doc(docId).get();
         if (docSnap.exists) {
-          console.log(`[NewsAPI] [Auto] News for ${docId} already exists. Skipping.`);
-          continue;
+          newsAlreadyExists = true;
         }
+      } catch (e: any) {
+        console.warn(`[NewsAPI] [Auto] Admin SDK exist-check failed for ${docId}:`, e.message);
       }
+    }
+
+    if (!newsAlreadyExists && db) {
+      try {
+        const docSnap = await getDoc(doc(db, "news", docId));
+        if (docSnap.exists()) {
+          newsAlreadyExists = true;
+        }
+      } catch (e: any) {
+        // Safe to ignore or log minimally
+      }
+    }
+
+    if (newsAlreadyExists) {
+      console.log(`[NewsAPI] [Auto] News for ${docId} already exists. Skipping.`);
+      continue;
+    }
 
       console.log(`[NewsAPI] [Auto] Generating daily news for ${docId}...`);
       const langName = language === 'bn' ? 'Bengali' : 'English';
@@ -1026,21 +1163,42 @@ async function autoGenerateDailyNews() {
         config: { responseMimeType: "application/json" }
       });
 
-      const newsData = JSON.parse(response.text || '{}');
+      const newsData = parseGeminiJson(response.text || '{}', {});
       const processedData = {
         ...newsData,
         updatedAt: new Date().toISOString(),
         date,
-        isMock: false
+        isMock: false,
+        serverKey: FIRESTORE_SERVER_KEY
       };
 
+      let saved = false;
       if (adminDb) {
-        await adminDb.collection("news").doc(docId).set(processedData);
-        console.log(`[NewsAPI] [Auto] Saved news to Firestore for ${docId}`);
+        try {
+          await adminDb.collection("news").doc(docId).set(processedData);
+          console.log(`[NewsAPI] [Auto] Saved news to Firestore (Admin) for ${docId}`);
+          saved = true;
+        } catch (e: any) {
+          console.warn(`[NewsAPI] [Auto] Admin save failed for ${docId}:`, e.message);
+        }
+      }
+
+      if (!saved && db) {
+        try {
+          await setDoc(doc(db, "news", docId), processedData);
+          console.log(`[NewsAPI] [Auto] Saved news to Firestore (Client) for ${docId}`);
+          saved = true;
+        } catch (e: any) {
+          console.error(`[NewsAPI] [Auto] Client save failed for ${docId}:`, e.message);
+        }
       }
     }
-  } catch (error) {
-    console.error("[NewsAPI] [Auto] Generation failed:", error);
+  } catch (error: any) {
+    if (error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
+      console.warn("[NewsAPI] [Auto] Daily generation skipped: Quota exceeded (429).");
+    } else {
+      console.error("[NewsAPI] [Auto] Daily generation failed:", error);
+    }
   }
 }
 
@@ -1329,7 +1487,8 @@ async function startServer() {
     if (req.path !== '/' && req.path.endsWith('/') && !req.path.startsWith('/api/')) {
       const query = req.url.slice(req.path.length);
       const safepath = req.path.slice(0, -1).replace(/\/+/g, '/');
-      return res.redirect(301, safepath + query);
+      const protocol = req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+      return res.redirect(301, `${protocol}://${req.get('host')}${safepath}${query}`);
     }
 
     next();
@@ -1534,48 +1693,48 @@ async function startServer() {
       // Initialize Admin SDK
       if (!admin.apps.length) {
         try {
-          console.log("[Firebase] Attempting Admin SDK initialization...");
+          console.log(`[Firebase] Initializing Admin SDK for project: ${firebaseConfig.projectId}...`);
           admin.initializeApp({
             credential: admin.credential.applicationDefault(),
             projectId: firebaseConfig.projectId
           });
           console.log("[Firebase] Admin SDK initialized.");
-        } catch (credError: any) {
-          console.warn("[Firebase] Admin SDK fallback initialization...");
+        } catch (initError: any) {
+          console.warn(`[Firebase] Admin SDK initialization failed: ${initError.message}. Trying simple init...`);
           try {
             admin.initializeApp({
               projectId: firebaseConfig.projectId
             });
-          } catch (initError: any) {
-            console.error("[Firebase] Admin SDK failed to initialize:", initError.message);
+            console.log("[Firebase] Admin SDK initialized with projectId only.");
+          } catch (lastError: any) {
+            console.error("[Firebase] Admin SDK totally failed to initialize:", lastError.message);
           }
         }
       }
       
       if (admin.apps.length) {
         try {
-          adminDb = getAdminFirestore(admin.app(), firebaseConfig.firestoreDatabaseId || undefined);
+          const dbId = firebaseConfig.firestoreDatabaseId;
+          console.log(`[Firebase] Connecting Admin Firestore to database: ${dbId || '(default)'}`);
           
-          // Async health check
-          (async () => {
-            try {
-              const testRef = adminDb.collection("_health_check").doc("server_init_test");
-              const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error("Health check timed out")), 10000)
-              );
-              await Promise.race([
-                testRef.set({ timestamp: admin.firestore.FieldValue.serverTimestamp(), status: "testing" }),
-                timeoutPromise
-              ]);
-              await testRef.delete();
-              console.log("[Firebase] Admin SDK verified.");
-            } catch (permError: any) {
-              console.warn(`[Firebase] Admin SDK health check failed: ${permError.message}`);
-              if (permError.message?.includes("PERMISSION_DENIED")) adminDb = null;
-            }
-          })();
-        } catch (dbError) {
-          console.error("[Firebase] Failed to create Admin Firestore instance:", dbError);
+          // Use getAdminFirestore to ensure proper database mapping
+          adminDb = getAdminFirestore(admin.app(), dbId || undefined);
+          
+      // Reachability check
+      try {
+        const testRef = adminDb!.collection("_health_check").doc("reachability_test");
+        await testRef.set({ 
+          time: admin.firestore.FieldValue.serverTimestamp(),
+          node: process.env.K_REVISION || 'local'
+        });
+        await testRef.delete();
+        console.log("[Firebase] Admin SDK reachability verified successfully.");
+      } catch (err: any) {
+        console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. Disabling Admin SDK for this process session.`);
+        adminDb = null;
+      }
+        } catch (dbError: any) {
+          console.error("[Firebase] Error getting Firestore Admin instance:", dbError.message);
         }
       }
       console.log(`[Firebase] SDKs initialized. Project: ${firebaseConfig.projectId}`);
@@ -1723,6 +1882,27 @@ async function startServer() {
     } catch (error) {
       console.error("[Webhook] Error processing inbound email:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+  app.get("/api/debug-env", async (req, res) => {
+    try {
+      const auth = new GoogleAuth();
+      const projectId = await auth.getProjectId();
+      const client = await auth.getClient();
+      const credentials = await client.getCredentials();
+      
+      res.json({
+        projectId,
+        clientEmail: credentials.client_email,
+        firebaseProjectId: firebaseConfig?.projectId,
+        firebaseDatabaseId: firebaseConfig?.firestoreDatabaseId,
+        adminApps: admin.apps.length,
+        adminDbActive: !!adminDb,
+        instanceId: process.env.K_REVISION || "local"
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -1921,19 +2101,36 @@ async function startServer() {
         config: { responseMimeType: "application/json" }
       });
 
-      const newsData = JSON.parse(response.text || '{}');
+      const newsData = parseGeminiJson(response.text || '{}', {});
       
       const processedData = {
         ...newsData,
         updatedAt: new Date().toISOString(),
         date,
-        isMock: false
+        isMock: false,
+        serverKey: FIRESTORE_SERVER_KEY
       };
 
       // Save to Firestore
+      let saved = false;
       if (adminDb) {
-        await adminDb.collection("news").doc(docId).set(processedData);
-        console.log(`[NewsAPI] Saved generated news to Firestore for ${docId}`);
+        try {
+          await adminDb.collection("news").doc(docId).set(processedData);
+          console.log(`[NewsAPI] Saved generated news to Firestore (Admin) for ${docId}`);
+          saved = true;
+        } catch (adminError: any) {
+          console.warn(`[NewsAPI] Admin SDK save failed for ${docId}:`, adminError.message);
+        }
+      }
+
+      if (!saved && db) {
+        try {
+          await setDoc(doc(db, "news", docId), processedData);
+          console.log(`[NewsAPI] Saved generated news to Firestore (Client) for ${docId}`);
+          saved = true;
+        } catch (clientError: any) {
+          console.error(`[NewsAPI] Client SDK save failed for ${docId}:`, clientError.message);
+        }
       }
       
       newsLocks.delete(docId);
@@ -2136,9 +2333,330 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // --- Vamshavali (Family Tree) App Endpoints ---
+
+  // Send OTP
+  app.post("/api/vamshavali/send-otp", async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    try {
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error("[Vamshavali] Email configuration is missing (EMAIL_USER/EMAIL_PASS)");
+        return res.status(400).json({ 
+          error: "OTP service not configured", 
+          details: "Administrator needs to configure EMAIL_USER and EMAIL_PASS in Settings." 
+        });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Try Admin SDK first (bypasses rules)
+      let saved = false;
+      if (adminDb) {
+        try {
+          await adminDb.collection("vamshavali_otps").doc(email).set({
+            otp,
+            expiresAt,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log("[Vamshavali] OTP saved using Admin SDK");
+          saved = true;
+        } catch (adminError: any) {
+          console.warn("[Vamshavali] Admin SDK failed to save OTP:", adminError.message);
+        }
+      }
+      
+      if (!saved && db) {
+        try {
+          await setDoc(doc(db, "vamshavali_otps", email), {
+            otp,
+            expiresAt,
+            createdAt: serverTimestamp(),
+            serverKey: FIRESTORE_SERVER_KEY
+          });
+          console.log("[Vamshavali] OTP saved using Client SDK fallback");
+          saved = true;
+        } catch (clientError: any) {
+          console.error("[Vamshavali] Client SDK also failed to save OTP:", clientError.message);
+        }
+      }
+
+      if (!saved) {
+        return res.status(500).json({ 
+          error: "Failed to store OTP", 
+          details: "Database connection failed. Please check server logs." 
+        });
+      }
+
+      // Send email
+      const mailOptions = {
+        from: `"Barnia Vamshavali" <${process.env.EMAIL_USER || 'no-reply@barnia.in'}>`,
+        to: email,
+        subject: "Your OTP for Barnia Vamshavali Login",
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
+            <h2 style="color: #f58e27;">Barnia Vamshavali Login</h2>
+            <p>Your One-Time Password (OTP) for logging into your digital family tree is:</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; padding: 10px; background: #f9f9f9; text-align: center; border-radius: 5px;">${otp}</div>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">This OTP will expire in 10 minutes. If you didn't request this, please ignore this email.</p>
+          </div>
+        `
+      };
+
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+        family: 4,
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+
+      await transporter.sendMail(mailOptions);
+      res.json({ success: true, message: "OTP sent successfully" });
+    } catch (error: any) {
+      console.error("[Vamshavali] Error sending OTP:", error);
+      res.status(500).json({ error: "Failed to send OTP", details: error.message });
+    }
+  });
+
+  // Verify OTP
+  app.post("/api/vamshavali/verify-otp", async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+    try {
+      let otpDoc: any = null;
+      let usedAdmin = false;
+
+      // 1. Try Admin SDK to get OTP
+      if (adminDb) {
+        try {
+          const snap = await adminDb.collection("vamshavali_otps").doc(email).get();
+          if (snap.exists) {
+            otpDoc = snap.data();
+            usedAdmin = true;
+          }
+        } catch (e: any) {
+          console.warn("[Vamshavali] Admin SDK OTP read failed:", e.message);
+        }
+      }
+
+      // 2. Try Client SDK if needed
+      if (!otpDoc && db) {
+        try {
+          const snap = await getDoc(doc(db, "vamshavali_otps", email));
+          if (snap.exists()) {
+            otpDoc = snap.data();
+            console.log(`[Vamshavali] OTP found via Client SDK for ${email}`);
+          } else {
+             console.warn(`[Vamshavali] OTP not found in Client SDK for ${email}`);
+          }
+        } catch (e: any) {
+          console.error(`[Vamshavali] Client SDK OTP read failed for ${email}:`, e.message);
+          if (e.message.includes("PERMISSION_DENIED")) {
+            console.error("[Vamshavali] READ PERMISSION_DENIED on vamshavali_otps. Check rules.");
+          }
+        }
+      }
+
+      if (!otpDoc) {
+        console.warn(`[Vamshavali] OTP not found in any database for ${email}`);
+        return res.status(400).json({ 
+          error: "OTP not found", 
+          details: "The verification code might have expired or was never generated. Please request a new one." 
+        });
+      }
+      
+      if (otpDoc.otp !== otp) {
+        console.warn(`[Vamshavali] OTP mismatch for ${email}. Expected: ${otpDoc.otp}, Got: ${otp}`);
+        return res.status(400).json({ error: "Invalid OTP code." });
+      }
+
+      const expiresAtDate = otpDoc.expiresAt?.toDate ? otpDoc.expiresAt.toDate() : new Date(otpDoc.expiresAt);
+      const now = new Date();
+      console.log(`[Vamshavali] Checking expiry for ${email}: ${expiresAtDate.toISOString()} vs now: ${now.toISOString()}`);
+      
+      if (expiresAtDate < now) {
+        console.warn(`[Vamshavali] OTP expired for ${email}`);
+        return res.status(400).json({ error: "OTP expired", details: "The verification code is older than 10 minutes." });
+      }
+
+      // OTP is valid!
+      // Delete it
+      try {
+        if (usedAdmin && adminDb) {
+          await adminDb.collection("vamshavali_otps").doc(email).delete();
+        } else if (db) {
+          await deleteDoc(doc(db, "vamshavali_otps", email));
+        }
+      } catch (e) {
+        console.warn("[Vamshavali] Could not delete used OTP:", e);
+      }
+
+      // Find or create profile
+      let profile: any = null;
+      
+      // Try Admin SDK first
+      if (adminDb) {
+        try {
+          const profileSnap = await adminDb.collection("vamshavali_profiles").where("email", "==", email).limit(1).get();
+          if (!profileSnap.empty) {
+            profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
+          } else {
+            const shareId = Math.random().toString(36).substring(2, 10);
+            const newProfile = {
+              email,
+              shareId,
+              name: "",
+              parents: "",
+              grandparents: "",
+              gotra: "",
+              kuldevi: "",
+              kuldevta: "",
+              nativePlace: "",
+              additionalNotes: "",
+              members: [],
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+            const docRef = await adminDb.collection("vamshavali_profiles").add(newProfile);
+            profile = { id: docRef.id, ...newProfile };
+          }
+        } catch (adminError: any) {
+          console.warn("[Vamshavali] Admin SDK profile op failed:", adminError.message);
+        }
+      }
+
+      // Try Client SDK fallback
+      if (!profile && db) {
+        try {
+          const q = query(collection(db, "vamshavali_profiles"), where("email", "==", email), limit(1));
+          const profileSnap = await getDocs(q);
+          if (!profileSnap.empty) {
+            profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
+          } else {
+            const shareId = Math.random().toString(36).substring(2, 10);
+            const newProfile = {
+              email,
+              shareId,
+              name: "",
+              parents: "",
+              grandparents: "",
+              gotra: "",
+              kuldevi: "",
+              kuldevta: "",
+              nativePlace: "",
+              additionalNotes: "",
+              members: [],
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              serverKey: FIRESTORE_SERVER_KEY
+            };
+            const docRef = await addDoc(collection(db, "vamshavali_profiles"), newProfile);
+            profile = { id: docRef.id, ...newProfile };
+          }
+        } catch (clientError: any) {
+          console.error("[Vamshavali] Client SDK also failed profile op:", clientError.message);
+        }
+      }
+
+      if (!profile) {
+        return res.status(500).json({ error: "Could not retrieve or create profile" });
+      }
+
+      res.json({ success: true, profile });
+    } catch (error: any) {
+      console.error("[Vamshavali] Error verifying OTP:", error);
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  // Fetch public profile by shareId
+  app.get("/api/vamshavali/p/:shareId", async (req, res) => {
+    const { shareId } = req.params;
+    try {
+      let profile;
+      if (adminDb) {
+        const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId).limit(1).get();
+        if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      } else {
+        console.error("[Vamshavali] Admin SDK not initialized for public profile lookup");
+        return res.status(500).json({ error: "Database error" });
+      }
+
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+      // Strip sensitive info (email)
+      const { email, ...publicData } = profile;
+      res.json(publicData);
+    } catch (error) {
+       res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Update profile
+  app.post("/api/vamshavali/update-profile", async (req, res) => {
+    const { id, ...data } = req.body;
+    if (!id) return res.status(400).json({ error: "Profile ID is required" });
+
+    try {
+      let saved = false;
+
+      // 1. Try Admin SDK
+      if (adminDb) {
+        try {
+          await adminDb.collection("vamshavali_profiles").doc(id).update({
+            ...data,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log("[Vamshavali] Profile updated using Admin SDK");
+          saved = true;
+        } catch (adminError: any) {
+          console.warn("[Vamshavali] Admin SDK profile update failed:", adminError.message);
+        }
+      }
+
+      // 2. Fallback to Client SDK
+      if (!saved && db) {
+        try {
+          await updateDoc(doc(db, "vamshavali_profiles", id), {
+            ...data,
+            updatedAt: serverTimestamp(),
+            serverKey: FIRESTORE_SERVER_KEY
+          });
+          console.log("[Vamshavali] Profile updated using Client SDK fallback");
+          saved = true;
+        } catch (clientError: any) {
+          console.error("[Vamshavali] Client SDK profile update failed:", clientError.message);
+          if (clientError.message.includes("permission") || clientError.code === "permission-denied") {
+             handleFirestoreError(clientError, OperationType.UPDATE, `vamshavali_profiles/${id}`);
+          }
+        }
+      }
+
+      if (saved) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ error: "Failed to update profile", details: "Database connection failed" });
+      }
+    } catch (error: any) {
+       console.error("[Vamshavali] Unexpected update error:", error);
+       res.status(500).json({ error: "An unexpected error occurred" });
+    }
+  });
+
   // Redirects for common typos
   app.get("/bazaar", (req, res) => {
-    res.redirect(301, "/bazar");
+    const protocol = req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    res.redirect(301, `${protocol}://${req.get('host')}/bazar`);
   });
 
   // Load initial data
