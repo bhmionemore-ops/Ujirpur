@@ -142,25 +142,62 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
 
   const downloadPDF = async () => {
-    if (!treeRef.current) return;
+    if (!treeRef.current || !profile) return;
     setIsLoading(true);
+    const toastId = toast.loading("Generating high-quality PDF...");
+    
     try {
-      const canvas = await html2canvas(treeRef.current, {
-        scale: 2,
+      // Ensure the content is visible and layout is stable
+      const element = treeRef.current;
+      
+      // Use html2canvas with improved settings for high DPI and reliability
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Find the tree container in the cloned document
+          const clonedElement = clonedDoc.getElementById('genealogy-tree-container');
+          if (clonedElement) {
+            clonedElement.style.overflow = 'visible';
+            clonedElement.style.width = 'fit-content';
+            clonedElement.style.height = 'auto';
+            clonedElement.style.padding = '40px';
+          }
+        }
       });
-      const imgData = canvas.toDataURL('image/png');
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      // Calculate PDF dimensions based on canvas aspect ratio
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Vamshavali_${profile?.name || 'Shared'}.pdf`);
-      toast.success("PDF Downloaded");
+      // Handle multi-page if content is too long for a single A4
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Barnia_Vamshavali_${profile.name || 'Profile'}.pdf`);
+      toast.dismiss(toastId);
+      toast.success("PDF Downloaded Successfully");
     } catch (error) {
-      toast.error("Failed to generate PDF");
+      console.error("PDF Generation Error:", error);
+      toast.dismiss(toastId);
+      toast.error("Failed to generate PDF. Please try again or use a desktop browser.");
     } finally {
       setIsLoading(false);
     }
@@ -477,6 +514,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                 <div 
                   ref={treeRef}
+                  id="genealogy-tree-container"
                   className="bg-white p-12 rounded-[3.5rem] border-4 border-white shadow-2xl overflow-x-auto min-h-[400px]"
                 >
                   <div className="inline-block min-w-full">

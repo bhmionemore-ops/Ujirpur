@@ -2584,12 +2584,28 @@ async function startServer() {
     const { shareId } = req.params;
     try {
       let profile;
+      
+      // 1. Try Admin SDK
       if (adminDb) {
-        const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId).limit(1).get();
-        if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
-      } else {
-        console.error("[Vamshavali] Admin SDK not initialized for public profile lookup");
-        return res.status(500).json({ error: "Database error" });
+        try {
+          const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId).limit(1).get();
+          if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        } catch (e: any) {
+          console.warn("[Vamshavali] Admin SDK public profile lookup failed:", e.message);
+        }
+      }
+
+      // 2. Try Client SDK Fallback
+      if (!profile && db) {
+        try {
+          const q = query(collection(db, "vamshavali_profiles"), where("shareId", "==", shareId), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          }
+        } catch (e: any) {
+          console.error("[Vamshavali] Client SDK public profile lookup failed:", e.message);
+        }
       }
 
       if (!profile) return res.status(404).json({ error: "Profile not found" });
@@ -2598,6 +2614,7 @@ async function startServer() {
       const { email, ...publicData } = profile;
       res.json(publicData);
     } catch (error) {
+       console.error("[Vamshavali] Public profile fetch error:", error);
        res.status(500).json({ error: "Failed to fetch profile" });
     }
   });
