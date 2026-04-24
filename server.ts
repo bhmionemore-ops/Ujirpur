@@ -113,8 +113,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth?.currentUser?.uid || null,
-      email: auth?.currentUser?.email || null,
+      userId: clientAuth?.currentUser?.uid || null,
+      email: clientAuth?.currentUser?.email || null,
     },
     operationType,
     path
@@ -1890,11 +1890,11 @@ async function startServer() {
       const auth = new GoogleAuth();
       const projectId = await auth.getProjectId();
       const client = await auth.getClient();
-      const credentials = await client.getCredentials();
+      const credentials = await auth.getCredentials();
       
       res.json({
         projectId,
-        clientEmail: credentials.client_email,
+        clientEmail: (credentials as any)?.client_email,
         firebaseProjectId: firebaseConfig?.projectId,
         firebaseDatabaseId: firebaseConfig?.firestoreDatabaseId,
         adminApps: admin.apps.length,
@@ -2417,7 +2417,7 @@ async function startServer() {
         tls: {
           rejectUnauthorized: false
         }
-      });
+      } as any);
 
       await transporter.sendMail(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });

@@ -296,38 +296,102 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
           {step === 'login' && (
             <motion.div
               key="login"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="max-w-md mx-auto"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="max-w-5xl mx-auto"
             >
-              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-zinc-100 text-center space-y-8">
-                <div className="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center mx-auto text-brand-600 shadow-inner">
-                  <Mail size={32} />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black text-zinc-900 tracking-tight mb-2">Login / Sign Up</h2>
-                  <p className="text-zinc-500 font-medium">Enter your email to access your personal family tree dashboard.</p>
-                </div>
-                <form onSubmit={handleSendOTP} className="space-y-4">
-                  <div className="relative">
-                    <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                    <input 
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      required
-                      className="w-full pl-14 pr-6 py-5 bg-zinc-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-2xl font-bold transition-all outline-none"
-                    />
+              <div className="bg-[#fdfbf7] rounded-[3rem] shadow-2xl border border-[#e5e1d8] overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+                {/* Left Side: Storytelling & Visual */}
+                <div className="flex-1 p-12 bg-[#064e3b] text-white flex flex-col justify-between relative overflow-hidden">
+                  <div className="absolute top-0 right-0 -mr-20 -mt-20 opacity-10 pointer-events-none">
+                    <Users size={400} />
                   </div>
-                  <button 
-                    disabled={isLoading}
-                    className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
-                  >
-                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Next <ArrowRight size={18} /></>}
-                  </button>
-                </form>
+                  
+                  <div className="relative z-10 space-y-8">
+                    <div className="w-16 h-1 bg-brand-400 rounded-full" />
+                    <div className="space-y-4">
+                      <h2 className="text-4xl md:text-5xl font-serif font-bold leading-tight italic">
+                        Preserve Your Roots, <br />
+                        Grow Your Legacy.
+                      </h2>
+                      <p className="text-emerald-100 text-lg leading-relaxed max-w-sm">
+                        A digital Vamshavali is more than a list of names—it is the living heart of your family's history and spiritual identity.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6 pt-8">
+                      {[
+                        { icon: <Landmark size={20}/>, title: "Historical Identity", desc: "Secure your Gotra and Kuldevta records forever." },
+                        { icon: <Users size={20}/>, title: "Lineage Mapping", desc: "Connect generations across time and geography." },
+                        { icon: <CheckCircle2 size={20}/>, title: "Future Legacy", desc: "Leave a clear, verified history for those who come after you." }
+                      ].map((item, i) => (
+                        <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                          <div className="text-brand-400 shrink-0">{item.icon}</div>
+                          <div>
+                            <h4 className="font-bold text-sm tracking-wide">{item.title}</h4>
+                            <p className="text-emerald-200/80 text-xs mt-1 leading-normal font-medium">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 pt-12 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center border border-emerald-700">
+                      <Users size={16} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                      Join thousands of lineages being preserved online
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Side: Login Form */}
+                <div className="hidden md:block w-px bg-[#e5e1d8]" />
+                <div className="flex-1 p-12 flex flex-col justify-center bg-white">
+                  <div className="max-w-sm mx-auto w-full space-y-10">
+                    <div className="text-center md:text-left space-y-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                        <ShieldCheck size={12} /> Secure Access
+                      </div>
+                      <h3 className="text-4xl font-serif font-black text-zinc-900 tracking-tight">Access Dashboard</h3>
+                      <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+                        Sign in with your email to view your personal family tree or start a new lineage profile.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleSendOTP} className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-4">Email Address</label>
+                        <div className="relative group">
+                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                          <input 
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="e.g. name@family.com"
+                            required
+                            className="w-full pl-14 pr-6 py-5 bg-[#fdfbf7] border-2 border-[#e5e1d8] focus:border-brand-500 focus:bg-white rounded-2xl font-bold transition-all outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        disabled={isLoading}
+                        className="w-full py-5 bg-[#064e3b] text-brand-50 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-900 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 disabled:opacity-50"
+                      >
+                        {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Generate Access Code <ArrowRight size={18} /></>}
+                      </button>
+                    </form>
+
+                    <div className="pt-6 border-t border-zinc-100 flex items-center justify-center">
+                      <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest text-center px-8 leading-relaxed">
+                        Privacy First: Your data is only visible to those you share your private link with.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -340,39 +404,44 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
               exit={{ opacity: 0, y: -20 }}
               className="max-w-md mx-auto"
             >
-              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-zinc-100 text-center space-y-8">
-                <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
-                  <ShieldCheck size={32} />
+              <div className="bg-[#fdfbf7] p-12 rounded-[3.5rem] shadow-2xl border border-[#e5e1d8] text-center space-y-10 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600" />
+                
+                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-inner border-2 border-emerald-100">
+                  <ShieldCheck size={40} />
                 </div>
-                <div>
-                  <h2 className="text-3xl font-black text-zinc-900 tracking-tight mb-2">Verify OTP</h2>
-                  <p className="text-zinc-500 font-medium">
-                    We've sent a code to: <br />
-                    <span className="font-bold text-zinc-900">{email}</span>
+                
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-serif font-black text-zinc-900 tracking-tight italic">Confirm Identity</h2>
+                  <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+                    Check your inbox for a 6-digit code sent to <br />
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md mt-1 inline-block">{email}</span>
                   </p>
                 </div>
-                <form onSubmit={handleVerifyOTP} className="space-y-4">
+
+                <form onSubmit={handleVerifyOTP} className="space-y-6">
                   <input 
                     type="text"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder="0 0 0 0 0 0"
                     maxLength={6}
                     required
-                    className="w-full px-6 py-5 bg-zinc-50 border-2 border-transparent focus:border-brand-500 focus:bg-white rounded-2xl font-black text-3xl text-center tracking-[0.5em] transition-all outline-none"
+                    className="w-full px-6 py-6 bg-white border-2 border-[#e5e1d8] focus:border-emerald-500 focus:bg-white rounded-2xl font-black text-4xl text-center tracking-[0.25em] transition-all outline-none text-emerald-900 shadow-inner"
                   />
                   <button 
                     disabled={isLoading}
-                    className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-5 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-800 transition-all shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
-                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify & Login"}
+                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
                   </button>
                 </form>
+
                 <button 
                   onClick={() => setStep('login')}
-                  className="text-zinc-400 text-xs font-bold uppercase tracking-widest hover:text-brand-600 transition-colors"
+                  className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-emerald-700 transition-colors flex items-center justify-center gap-2 mx-auto"
                 >
-                  Change Email
+                  <ArrowRight size={14} className="rotate-180" /> Back to Login
                 </button>
               </div>
             </motion.div>
