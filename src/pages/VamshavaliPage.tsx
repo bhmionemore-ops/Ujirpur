@@ -4,7 +4,7 @@ import {
   Users, Mail, ArrowRight, ShieldCheck, Save, Share2, 
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
   User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut,
-  CheckCircle2, AlertCircle, Loader2
+  CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ interface FamilyMember {
   id: string;
   name: string;
   role: string;
-  photo?: string; // Base64 or URL
+  photo?: string;
   birthYear?: string;
   partner?: {
     name: string;
@@ -25,28 +25,246 @@ interface FamilyMember {
   children: FamilyMember[];
 }
 
-const GoldenFrame = ({ photo, name, pulse = false }: { photo?: string; name: string; pulse?: boolean }) => (
-  <div className={`relative p-1 rounded-[45%] bg-gradient-to-b from-[#e7c062] via-[#b68c2f] to-[#e7c062] shadow-[0_10px_30px_rgba(0,0,0,0.4)] border-2 border-[#8a6821] ${pulse ? 'animate-pulse' : ''} group-hover:scale-105 transition-transform duration-500`}>
-    <div className="absolute inset-0 rounded-[45%] border border-[rgba(255,255,255,0.2)] pointer-events-none" />
-    <div className="relative aspect-[4/5] w-20 md:w-28 rounded-[43%] overflow-hidden bg-[#2a2a2a]">
-      {photo ? (
-        <img src={photo} alt={name} className="w-full h-full object-cover grayscale-[0.2] sepia-[0.1] hover:grayscale-0 transition-all duration-700" />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-[#1a1a1a] text-[#8a6821]">
-          <User size={32} strokeWidth={1} />
+const EditMemberModal = ({ 
+  isOpen, 
+  onClose, 
+  member, 
+  onSave, 
+  handlePhotoUpload 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  member: any; 
+  onSave: (updates: any) => void;
+  handlePhotoUpload: any;
+}) => {
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    birthYear: '', 
+    role: '', 
+    photo: '',
+    partnerName: '',
+    partnerBirthYear: '',
+    partnerPhoto: '',
+    hasPartner: false
+  });
+
+  useEffect(() => {
+    if (member) {
+      setFormData({
+        name: member.name || '',
+        birthYear: member.birthYear || '',
+        role: member.role || '',
+        photo: member.photo || '',
+        partnerName: member.partner?.name || '',
+        partnerBirthYear: member.partner?.birthYear || '',
+        partnerPhoto: member.partner?.photo || '',
+        hasPartner: !!member.partner
+      });
+    }
+  }, [member, isOpen]);
+
+  if (!isOpen || !member) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#064e3b]/40 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.4)] border-4 border-[#d4af37] relative"
+      >
+        {/* Background Texture */}
+        <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] pointer-events-none" />
+
+        <div className="p-10 border-b border-zinc-100 flex justify-between items-center bg-[#fdfbf7] relative">
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-[#064e3b] rounded-2xl text-[#d4af37] shadow-xl">
+               <Edit3 size={32} />
+            </div>
+            <div>
+              <h3 className="text-3xl font-serif font-black text-[#064e3b] tracking-tight italic">Registry Editor</h3>
+              <p className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.4em] mt-1">Preserving Eternal Records</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400">
+            <X size={28} />
+          </button>
         </div>
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.8)] via-transparent to-transparent opacity-60" />
+
+        <div className="p-10 max-h-[70vh] overflow-y-auto space-y-12 relative z-10">
+          {/* Primary Member */}
+          <div className="space-y-8">
+            <div className="flex items-center gap-4 text-[#064e3b]">
+              <div className="w-8 h-px bg-[#064e3b]/20" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Individual Identity</span>
+              <div className="w-8 h-px bg-[#064e3b]/20" />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                <input 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-zinc-900"
+                  placeholder="Enter full name"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Historical Period / Birth</label>
+                <input 
+                  value={formData.birthYear}
+                  onChange={(e) => setFormData({...formData, birthYear: e.target.value})}
+                  className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-zinc-900"
+                  placeholder="e.g. 1920 - 2005"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-8 p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[#d4af37]/10 shadow-inner">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-[45%] bg-gradient-to-tr from-[#d4af37] to-[#f4e4bc] p-1 shadow-lg">
+                  <div className="w-full h-full rounded-[43%] bg-[#064e3b] overflow-hidden flex items-center justify-center">
+                    {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <User className="text-[#d4af37]/30" size={32} />}
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 space-y-3">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Portrait Archives</p>
+                <div className="flex items-center gap-4">
+                  <label className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-emerald-900 transition-colors">
+                    Upload Portrait
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => handlePhotoUpload(e, (base64: string) => setFormData({...formData, photo: base64}))}
+                      className="hidden"
+                    />
+                  </label>
+                  {formData.photo && <button onClick={() => setFormData({...formData, photo: ''})} className="text-red-500 text-[10px] font-black uppercase">Remove</button>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Union Section */}
+          <div className="pt-8 border-t border-zinc-100">
+            <button 
+              onClick={() => setFormData({...formData, hasPartner: !formData.hasPartner})}
+              className={`w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${formData.hasPartner ? 'bg-[#d4af37] text-[#064e3b] shadow-xl' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+            >
+              <Heart size={18} fill={formData.hasPartner ? 'currentColor' : 'none'} />
+              {formData.hasPartner ? 'Formal Union Recorded' : 'Establish Union Partner'}
+            </button>
+          </div>
+
+          {formData.hasPartner && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              className="space-y-8 pt-4 overflow-hidden"
+            >
+               <div className="flex items-center gap-4 text-[#8a6821]">
+                <div className="w-8 h-px bg-[#8a6821]/20" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Partner Archive</span>
+                <div className="w-8 h-px bg-[#8a6821]/20" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Partner Full Name</label>
+                  <input 
+                    value={formData.partnerName}
+                    onChange={(e) => setFormData({...formData, partnerName: e.target.value})}
+                    className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Period Details</label>
+                  <input 
+                    value={formData.partnerBirthYear}
+                    onChange={(e) => setFormData({...formData, partnerBirthYear: e.target.value})}
+                    className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 p-6 bg-[#fdfbf7] rounded-3xl border border-[#d4af37]/20 shadow-sm">
+                <div className="w-16 h-16 rounded-[45%] bg-gradient-to-tr from-[#d4af37]/40 to-[#f4e4bc] p-0.5">
+                  <div className="w-full h-full rounded-[43%] bg-white overflow-hidden flex items-center justify-center">
+                    {formData.partnerPhoto ? <img src={formData.partnerPhoto} className="w-full h-full object-cover" /> : <User className="text-[#d4af37]/20" size={20} />}
+                  </div>
+                </div>
+                <label className="px-6 py-2 bg-white border-2 border-zinc-100 text-zinc-500 rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer hover:border-[#d4af37] transition-all">
+                  Change Photo
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => handlePhotoUpload(e, (base64: string) => setFormData({...formData, partnerPhoto: base64}))}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        <div className="p-10 bg-[#fdfbf7] border-t border-zinc-100 flex gap-6 relative z-10">
+          <button 
+            onClick={() => onSave(formData)}
+            className="flex-1 py-5 bg-[#064e3b] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-emerald-900 transition-all shadow-[0_20px_40px_rgba(6,78,59,0.2)] active:scale-95"
+          >
+            Update Chronicle
+          </button>
+          <button 
+            onClick={onClose}
+            className="px-10 py-5 bg-white text-zinc-400 rounded-[2rem] font-black text-xs uppercase tracking-widest border-2 border-zinc-100 hover:bg-zinc-50 transition-all"
+          >
+            Refuse
+          </button>
+        </div>
+      </motion.div>
     </div>
+  );
+};
+
+const GoldenFrame = ({ photo, name, pulse = false, size = "md" }: { photo?: string; name: string; pulse?: boolean; size?: "sm" | "md" }) => {
+  const sizeClasses = size === "sm" ? "w-20 md:w-24" : "w-24 md:w-36";
+  return (
+    <div className={`relative p-1 rounded-[45%] bg-gradient-to-tr from-[#8a6821] via-[#d4af37] to-[#f4e4bc] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[#8a6821] ${pulse ? 'animate-pulse' : ''} group-hover:scale-110 transition-all duration-700 ease-out z-10`}>
+      <div className="absolute inset-0 rounded-[45%] border-2 border-white/10 pointer-events-none" />
+      {/* Ornate inner border */}
+      <div className="absolute inset-1 rounded-[45%] border border-[#8a6821]/40 pointer-events-none" />
+      
+      <div className={`relative aspect-[4/5] ${sizeClasses} rounded-[43%] overflow-hidden bg-[#0f172a] ring-4 ring-[#0f172a]`}>
+        {photo ? (
+          <img src={photo} alt={name} className="w-full h-full object-cover transition-all duration-[1500ms] group-hover:scale-125" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[#1e293b] text-[#d4af37]/40">
+            <User size={size === "sm" ? 32 : 48} strokeWidth={1} />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/90 via-transparent to-transparent" />
+      </div>
+    </div>
+  );
+};
+
+const RoyalOrnament = () => (
+  <div className="flex items-center gap-4 text-[#d4af37]/40 my-8">
+    <div className="h-px w-24 bg-gradient-to-r from-transparent to-current" />
+    <Landmark size={24} className="animate-pulse" />
+    <div className="h-px w-24 bg-gradient-to-l from-transparent to-current" />
   </div>
 );
 
 const VintageScroll = ({ title }: { title: string }) => (
-  <div className="relative inline-block px-10 py-1 pt-3 mb-6">
-    <div className="absolute inset-0 bg-[#f4e4bc] border-y-2 border-[#b68d40] rounded-sm transform -skew-x-6" />
-    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-8 bg-[#b68d40] rounded-r-full -ml-1.5 shadow-lg" />
-    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-8 bg-[#b68d40] rounded-l-full -mr-1.5 shadow-lg" />
-    <span className="relative z-10 font-serif font-black text-[#58441c] uppercase tracking-[0.2em] text-[8px] md:text-xs italic whitespace-nowrap">
+  <div className="relative inline-block px-16 py-4 pt-8">
+    {/* Grand Parchment */}
+    <div className="absolute inset-0 bg-[#fdfbf7] border-y-4 border-[#b68d40] rounded-sm shadow-xl" />
+    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-20 bg-[#8a6821] rounded-r-lg shadow-2xl" />
+    <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-20 bg-[#8a6821] rounded-l-lg shadow-2xl" />
+    <span className="relative z-10 font-serif font-black text-[#58441c] uppercase tracking-[0.4em] text-xs md:text-lg italic whitespace-nowrap drop-shadow-sm">
       {title}
     </span>
   </div>
@@ -76,6 +294,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<VamshavaliProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [editingNode, setEditingNode] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const treeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -247,6 +467,40 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
 
   // Tree management helpers
+  const updateMemberFromModal = (formData: any) => {
+    if (!editingNode || !profile) return;
+    
+    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
+      return members.map(m => {
+        if (m.id === editingNode.id) {
+          const updated: FamilyMember = {
+            ...m,
+            name: formData.name,
+            birthYear: formData.birthYear,
+            photo: formData.photo,
+          };
+          
+          if (formData.hasPartner) {
+            updated.partner = {
+              name: formData.partnerName,
+              birthYear: formData.partnerBirthYear,
+              photo: formData.partnerPhoto
+            };
+          } else {
+            delete updated.partner;
+          }
+          
+          return updated;
+        }
+        return { ...m, children: updateRecursive(m.children) };
+      });
+    };
+
+    setProfile({ ...profile, members: updateRecursive(profile.members) });
+    setIsEditModalOpen(false);
+    setEditingNode(null);
+  };
+
   const addMember = (parentId: string | null) => {
     if (!profile) return;
     const newMember: FamilyMember = {
@@ -526,282 +780,278 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-8">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-brand-600 to-brand-500 rounded-3xl flex items-center justify-center text-white shadow-xl">
-                      <User size={40} />
-                    </div>
-                    <div>
-                      {isEditing ? (
-                        <input 
-                          value={profile.name}
-                          onChange={(e) => setProfile({...profile, name: e.target.value})}
-                          placeholder="Your Full Name"
-                          className="text-3xl font-black text-zinc-900 bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-200 w-full"
-                        />
-                      ) : (
-                        <h2 className="text-4xl font-black text-zinc-900 tracking-tight">{profile.name || "My Vamshavali"}</h2>
-                      )}
-                      <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs mt-1">Digital Lineage Profile</p>
-                    </div>
-                  </div>
+                <div className="space-y-12">
+                  {/* Grand Header Panel */}
+                  <div className="bg-[#064e3b] rounded-[3.5rem] p-8 md:p-16 text-white shadow-2xl relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
+                    {/* Decorative Background Pattern */}
+                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')]" />
+                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl pointer-events-none" />
 
-                  {!isPublic && (
-                     <div className="bg-zinc-50/50 p-6 rounded-[2rem] border border-zinc-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                           <div className="p-3 bg-white rounded-xl shadow-sm text-brand-600">
-                              <Share2 size={20} />
-                           </div>
-                           <div>
-                              <p className="text-zinc-900 font-black text-sm">Private Share Link</p>
-                              <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Share this with your family members</p>
-                           </div>
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+                      <div className="relative">
+                        <div className="w-32 h-32 md:w-48 md:h-48 rounded-[2.5rem] bg-gradient-to-tr from-[#d4af37] via-[#f4e4bc] to-[#d4af37] p-1 shadow-2xl rotate-3">
+                          <div className="w-full h-full rounded-[2.3rem] bg-[#064e3b] flex items-center justify-center -rotate-3 overflow-hidden">
+                            {profile.members[0]?.photo ? (
+                               <img src={profile.members[0].photo} className="w-full h-full object-cover opacity-80 mix-blend-luminosity" />
+                            ) : (
+                               <Landmark size={64} className="text-[#d4af37]/40" />
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                           <div className="flex-1 px-4 py-3 bg-white border border-zinc-200 rounded-xl text-xs font-mono text-zinc-500 truncate max-w-[200px]">
-                              {window.location.origin}/vamshavali/v/{profile.shareId}
-                           </div>
-                           <button onClick={copyLink} className="p-3.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition-all shadow-md">
-                              <Copy size={18} />
-                           </button>
-                        </div>
-                     </div>
-                  )}
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[
-                      { icon: <Users size={18}/>, label: "Parents", value: profile.parents, key: 'parents' },
-                      { icon: <Landmark size={18}/>, label: "Grandparents", value: profile.grandparents, key: 'grandparents' },
-                      { icon: <Landmark size={18}/>, label: "Gotra", value: profile.gotra, key: 'gotra' },
-                      { icon: <Home size={18}/>, label: "Kuldevi / Kuldevta", value: profile.kuldevi, key: 'kuldevi' },
-                      { icon: <MapPin size={18}/>, label: "Native Place", value: profile.nativePlace, key: 'nativePlace' },
-                      { icon: <BookOpen size={18}/>, label: "Kuldevta", value: profile.kuldevta, key: 'kuldevta' },
-                    ].map((item, i) => (
-                      <div key={i} className="space-y-2">
-                        <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                          {item.icon} {item.label}
-                        </label>
+                      <div className="flex-1 text-center md:text-left space-y-4">
+                        <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-[#d4af37]/10 rounded-full border border-[#d4af37]/30">
+                          <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]">Royal Heritage Registry</span>
+                        </div>
+                        
                         {isEditing ? (
                           <input 
-                            value={item.value}
-                            onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
-                            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl font-bold text-sm tracking-tight"
+                            value={profile.name}
+                            onChange={(e) => setProfile({...profile, name: e.target.value})}
+                            className="text-4xl md:text-6xl font-serif font-black bg-white/5 border-b-2 border-[#d4af37]/30 outline-none w-full py-2 tracking-tight italic"
                           />
                         ) : (
-                          <p className="font-bold text-zinc-900 tracking-tight">{item.value || "—"}</p>
+                          <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight italic leading-tight">
+                            {profile.name || "House of Barnia"}
+                          </h2>
                         )}
+                        
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
+                           {!isPublic && (
+                             <div className="px-5 py-2.5 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3 backdrop-blur-sm">
+                                <Share2 size={16} className="text-[#d4af37]" />
+                                <span className="text-xs font-mono opacity-60">vamshavali.barnia.com/...{profile.shareId?.slice(-6)}</span>
+                                <button onClick={copyLink} className="p-1.5 hover:text-[#d4af37] transition-colors">
+                                   <Copy size={16} />
+                                </button>
+                             </div>
+                           )}
+                           <button onClick={downloadPDF} className="px-6 py-2.5 bg-[#d4af37] text-[#064e3b] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">
+                              Export Scroll
+                           </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                      <Edit3 size={18}/> Additional Notes
-                    </label>
-                    {isEditing ? (
-                      <textarea 
-                        value={profile.additionalNotes}
-                        onChange={(e) => setProfile({...profile, additionalNotes: e.target.value})}
-                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl font-bold text-sm min-h-[100px]"
-                      />
-                    ) : (
-                      <p className="text-zinc-600 font-medium text-sm leading-relaxed whitespace-pre-wrap">{profile.additionalNotes || "No additional notes provided."}</p>
-                    )}
-                  </div>
-
-                  {isEditing && (
-                    <button 
-                      onClick={handleUpdateProfile}
-                      disabled={isLoading}
-                      className="w-full py-5 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3"
-                    >
-                      {isLoading ? <Loader2 className="animate-spin"/> : <><CheckCircle2 size={18}/> Save Lineage Data</>}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Family Tree Section */}
-              <div className="space-y-8">
-                <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-1 bg-brand-600 rounded-full" />
-                      <h2 className="text-2xl font-black text-zinc-900 uppercase tracking-widest">Genealogy Tree</h2>
-                   </div>
-                   {isEditing && (
-                      <button onClick={() => addMember(null)} className="px-6 py-3 bg-white border-2 border-zinc-100 rounded-2xl text-xs font-black uppercase tracking-widest hover:border-brand-500 hover:text-brand-600 transition-all flex items-center gap-2">
-                        <Plus size={16}/> Add Root
-                      </button>
-                   )}
-                </div>
-
-                  <div 
-                    ref={treeRef}
-                    id="genealogy_container"
-                    className="bg-[#fcf8f1] rounded-[3.5rem] border-[8px] border-[#d4af37] shadow-2xl overflow-x-auto min-h-[600px] p-16 relative"
-                    style={{
-                      backgroundImage: `url('https://www.transparenttextures.com/patterns/old-map.png')`,
-                      backgroundBlendMode: 'multiply'
-                    }}
-                  >
-                    {/* Decorative Borders - Using explicit rgba to avoid oklch issues in html2canvas */}
-                    <div className="absolute top-4 left-4 right-4 bottom-4 border-2 border-[rgba(182,141,64,0.2)] pointer-events-none rounded-[2.5rem]" />
-                    <div className="absolute top-2 left-2 right-2 bottom-2 border border-[rgba(182,141,64,0.3)] pointer-events-none rounded-[3rem]" />
-
-                    <div className="inline-block min-w-full text-center relative z-10">
-                       <div className="mb-20">
-                          <VintageScroll title="The Eternal Lineage of Barnia" />
-                          <h3 className="mt-4 font-serif text-[#b68d40] text-3xl italic font-bold">Vamshavali Genealogy</h3>
-                       </div>
-                       <TreeStructure 
-                        members={profile.members} 
-                        isEditing={isEditing} 
-                        onUpdate={updateMember}
-                        onRemove={removeMember}
-                        onAddChild={addMember}
-                        onAddPartner={addPartner}
-                        onUpdatePartner={updatePartner}
-                        handlePhotoUpload={handlePhotoUpload}
-                       />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* Lateral Details */}
+                    <div className="lg:col-span-1 space-y-6">
+                      <div className="p-8 bg-white rounded-[2.5rem] border border-zinc-100 shadow-xl space-y-8 h-full">
+                        <div className="pb-4 border-b border-zinc-100 flex items-center justify-between">
+                           <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">Lineage Details</h4>
+                           <Landmark size={18} className="text-[#d4af37]" />
+                        </div>
+                        
+                        {[
+                          { icon: <Users size={16}/>, label: "Parents", value: profile.parents, key: 'parents' },
+                          { icon: <Landmark size={16}/>, label: "Gotra", value: profile.gotra, key: 'gotra' },
+                          { icon: <Home size={16}/>, label: "Kuldevi", value: profile.kuldevi, key: 'kuldevi' },
+                          { icon: <MapPin size={16}/>, label: "Native Origin", value: profile.nativePlace, key: 'nativePlace' },
+                        ].map((item, i) => (
+                          <div key={i} className="space-y-2">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                              {item.icon} {item.label}
+                            </label>
+                            {isEditing ? (
+                              <input 
+                                value={item.value}
+                                onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
+                                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl font-bold text-xs tracking-tight"
+                              />
+                            ) : (
+                              <p className="font-bold text-zinc-900 tracking-tight text-sm">{item.value || "—"}</p>
+                            )}
+                          </div>
+                        ))}
+
+                        <div className="pt-4 border-t border-zinc-100">
+                          <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">
+                             Chronicles
+                          </label>
+                          {isEditing ? (
+                            <textarea 
+                              value={profile.additionalNotes}
+                              onChange={(e) => setProfile({...profile, additionalNotes: e.target.value})}
+                              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl font-bold text-xs min-h-[120px]"
+                            />
+                          ) : (
+                            <p className="text-zinc-600 font-medium text-xs leading-relaxed italic">"{profile.additionalNotes || "Records empty."}"</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Genealogy Map Container */}
+                    <div className="lg:col-span-3 space-y-8">
+                       <div className="flex items-center justify-between px-4">
+                          <div className="flex items-center gap-4">
+                             <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
+                             <h3 className="text-xl font-serif font-black text-[#064e3b] italic">Generation Mapping</h3>
+                          </div>
+                          {isEditing && (
+                             <div className="flex gap-4">
+                                <button onClick={() => addMember(null)} className="px-6 py-2.5 bg-white border border-zinc-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#d4af37] transition-all flex items-center gap-2 text-zinc-600">
+                                   <Plus size={14}/> Add Root
+                                </button>
+                                <button 
+                                   onClick={handleUpdateProfile}
+                                   className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2"
+                                >
+                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <><Save size={14} /> Preserve</>}
+                                </button>
+                             </div>
+                          )}
+                       </div>
+
+                       <div className="relative group/canvas">
+                          {/* Tree Stage */}
+                          <div 
+                            ref={treeRef}
+                            id="genealogy_container"
+                            className="bg-[#fcf8f1] rounded-[3.5rem] border-[10px] border-[#d4af37] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] overflow-x-auto min-h-[700px] p-20 relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat"
+                          >
+                            <div className="absolute inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[2.8rem]" />
+                            <div className="absolute inset-6 border-2 border-[#d4af37]/10 pointer-events-none rounded-[2.3rem]" />
+                            
+                            {/* Decorative Corner Ornaments */}
+                            <div className="absolute top-10 left-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
+                            <div className="absolute top-10 right-10 p-2 text-[#d4af37]/20 rotate-12"><Landmark size={48} /></div>
+                            <div className="absolute bottom-10 left-10 p-2 text-[#d4af37]/20 rotate-12"><Landmark size={48} /></div>
+                            <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
+
+                            <div className="inline-block min-w-full text-center relative z-10 pt-12">
+                               <div className="mb-24 flex flex-col items-center">
+                                  <VintageScroll title="The Eternal Lineage of Barnia" />
+                                  <RoyalOrnament />
+                               </div>
+                               <TreeStructure 
+                                members={profile.members} 
+                                isEditing={isEditing} 
+                                onEdit={(node: any) => {
+                                  setEditingNode(node);
+                                  setIsEditModalOpen(true);
+                                }}
+                                onRemove={removeMember}
+                                onAddChild={addMember}
+                               />
+                               
+                               <div className="mt-32 opacity-30 italic text-[#8a6821] text-xs font-serif">
+                                  Records maintained by {profile.name} via Barnia Archives
+                               </div>
+                            </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      {/* Modals */}
+      <EditMemberModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        member={editingNode}
+        onSave={updateMemberFromModal}
+        handlePhotoUpload={handlePhotoUpload}
+      />
     </div>
   );
 };
 
-const TreeStructure = ({ members, isEditing, onUpdate, onRemove, onAddChild, onAddPartner, onUpdatePartner, handlePhotoUpload }: any) => {
+const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any) => {
   return (
     <div className="flex flex-col items-center gap-24">
       {members.map((member: FamilyMember) => (
         <div key={member.id} className="relative flex flex-col items-center">
           {/* Node Wrapper */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center group">
             {/* The Couple / Individual */}
             <div className="flex items-center gap-4 relative">
               {/* Member */}
-              <div className="flex flex-col items-center group">
-                <div className="relative">
+              <div className="flex flex-col items-center">
+                <div 
+                  className={`relative transition-transform ${isEditing ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
+                  onClick={() => isEditing && onEdit(member)}
+                >
                   <GoldenFrame photo={member.photo} name={member.name} />
                   {isEditing && (
-                    <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
-                      <Plus size={14} />
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={(e) => handlePhotoUpload(e, (base64) => onUpdate(member.id, { photo: base64 }))} 
-                      />
-                    </label>
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg pointer-events-none border-2 border-white">
+                      <Edit2 size={12} />
+                    </div>
                   )}
                 </div>
                 
                 <div className="mt-4 flex flex-col items-center">
-                  {isEditing ? (
-                    <div className="flex flex-col items-center gap-1">
-                      <input 
-                        value={member.name}
-                        onChange={(e) => onUpdate(member.id, { name: e.target.value })}
-                        className="bg-transparent font-serif font-black text-[#58441c] text-center text-sm md:text-lg border-b border-[#b68d40]/30 outline-none w-28 md:w-40"
-                      />
-                      <input 
-                        value={member.birthYear}
-                        onChange={(e) => onUpdate(member.id, { birthYear: e.target.value })}
-                        placeholder="Birth date"
-                        className="bg-transparent text-[10px] text-zinc-500 text-center italic border-none outline-none"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight">{member.name}</h4>
-                      <p className="text-[10px] text-zinc-500 font-bold italic">{member.birthYear}</p>
-                    </>
-                  )}
+                  <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight leading-none whitespace-nowrap">
+                    {member.name}
+                  </h4>
+                  <p className="text-[10px] text-zinc-500 font-bold italic mt-1">{member.birthYear}</p>
                   <p className="text-[#b68d40] text-[9px] font-black uppercase tracking-[0.2em] mt-1">{member.role}</p>
                 </div>
               </div>
 
               {/* Partner Section */}
-              {member.partner ? (
+              {member.partner && (
                 <>
                   {/* Connector Rings */}
-                  <div className="w-8 flex items-center justify-center relative">
-                    <div className="absolute top-1/2 -translate-y-1/2 w-8 h-20 border-t-2 border-b-2 border-dashed border-[rgba(182,141,64,0.3)] rounded-full" />
-                    <div className="text-[#b68d40] bg-[#fcf8f1] p-1 rounded-full border border-[rgba(182,141,64,0.2)]">
-                      <Users size={12} />
+                  <div className="w-12 flex items-center justify-center relative">
+                    <div className="absolute top-1/2 -translate-y-1/2 w-12 h-16 border-t-2 border-b-2 border-dashed border-[rgba(182,141,64,0.2)] rounded-full" />
+                    <div className="text-rose-400 bg-white p-1 rounded-full border border-rose-100 z-10 shadow-sm">
+                      <Heart size={10} fill="currentColor" />
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center group">
-                    <div className="relative">
-                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} />
-                      {isEditing && (
-                        <label className="absolute -bottom-2 -left-2 w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
-                          <Plus size={14} />
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*" 
-                            onChange={(e) => handlePhotoUpload(e, (base64) => onUpdatePartner(member.id, { photo: base64 }))} 
-                          />
-                        </label>
-                      )}
+                  <div className="flex flex-col items-center">
+                    <div 
+                      className={`relative transition-transform ${isEditing ? 'cursor-pointer hover:scale-105 active:scale-95' : ''}`}
+                      onClick={() => isEditing && onEdit(member)}
+                    >
+                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" />
                     </div>
                     
                     <div className="mt-4 flex flex-col items-center">
-                      {isEditing ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <input 
-                            value={member.partner.name}
-                            onChange={(e) => onUpdatePartner(member.id, { name: e.target.value })}
-                            className="bg-transparent font-serif font-black text-[#58441c] text-center text-sm md:text-lg border-b border-[#b68d40]/30 outline-none w-28 md:w-40"
-                          />
-                          <input 
-                            value={member.partner.birthYear}
-                            onChange={(e) => onUpdatePartner(member.id, { birthYear: e.target.value })}
-                            placeholder="Birth date"
-                            className="bg-transparent text-[10px] text-zinc-500 text-center italic border-none outline-none"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight">{member.partner.name}</h4>
-                          <p className="text-[10px] text-zinc-500 font-bold italic">{member.partner.birthYear}</p>
-                        </>
-                      )}
-                      <p className="text-[#b68d40] text-[9px] font-black uppercase tracking-[0.2em] mt-1">Partner</p>
+                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-none whitespace-nowrap">
+                        {member.partner.name}
+                      </h4>
+                      <p className="text-[9px] text-zinc-500 font-bold italic mt-1">{member.partner.birthYear}</p>
+                      <p className="text-[#b68d40]/60 text-[8px] font-black uppercase tracking-widest mt-1">Partner</p>
                     </div>
                   </div>
                 </>
-              ) : isEditing && (
-                <button 
-                  onClick={() => onAddPartner(member.id)}
-                  className="w-20 md:w-28 aspect-[4/5] rounded-[43%] border-2 border-dashed border-[rgba(182,141,64,0.4)] flex flex-col items-center justify-center text-[#b68d40] hover:bg-[rgba(255,255,255,0.5)] transition-all gap-2"
-                >
-                  <Plus size={24} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Partner</span>
-                </button>
               )}
             </div>
 
             {/* Action Buttons for Editing */}
             {isEditing && (
-              <div className="flex gap-4 mt-6">
+              <div className="flex gap-2 mt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <button 
-                  onClick={() => onAddChild(member.id)}
-                  className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                  onClick={(e) => { e.stopPropagation(); onAddChild(member.id); }}
+                  className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  title="Add Child"
                 >
-                  <Plus size={14}/> Add Child
+                  <Plus size={18}/>
                 </button>
                 <button 
-                  onClick={() => onRemove(member.id)}
-                  className="px-4 py-2 bg-red-50 text-red-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-2"
+                  onClick={(e) => { e.stopPropagation(); onRemove(member.id); }}
+                  className="w-10 h-10 bg-red-50 text-red-700 rounded-full border border-red-200 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  title="Remove Generation"
                 >
-                  <Trash2 size={14}/> Node
+                  <Trash2 size={18}/>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onEdit(member); }}
+                  className="w-10 h-10 bg-blue-50 text-blue-700 rounded-full border border-blue-200 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  title="Edit Details"
+                >
+                  <Settings size={18}/>
                 </button>
               </div>
             )}
@@ -811,23 +1061,20 @@ const TreeStructure = ({ members, isEditing, onUpdate, onRemove, onAddChild, onA
           {member.children.length > 0 && (
             <div className="pt-24 relative w-full flex justify-center">
               {/* Vertical Line from parent */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-24 bg-gradient-to-b from-[#b68d40] to-[rgba(182,141,64,0.1)]" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 bg-gradient-to-b from-[#b68d40]/40 to-[#b68d40]/10" />
               
               {/* Horizontal line for multiple children */}
               {member.children.length > 1 && (
-                <div className="absolute top-24 left-0 right-0 h-0.5 bg-[rgba(182,141,64,0.2)]" />
+                <div className="absolute top-24 left-0 right-0 h-px bg-[rgba(182,141,64,0.15)]" />
               )}
 
-              <div className="flex gap-16 relative">
+              <div className="flex gap-24 relative">
                 <TreeStructure 
                   members={member.children} 
                   isEditing={isEditing} 
-                  onUpdate={onUpdate}
+                  onEdit={onEdit}
                   onRemove={onRemove}
                   onAddChild={onAddChild}
-                  onAddPartner={onAddPartner}
-                  onUpdatePartner={onUpdatePartner}
-                  handlePhotoUpload={handlePhotoUpload}
                 />
               </div>
             </div>
@@ -837,3 +1084,5 @@ const TreeStructure = ({ members, isEditing, onUpdate, onRemove, onAddChild, onA
     </div>
   );
 };
+
+export default VamshavaliPage;
