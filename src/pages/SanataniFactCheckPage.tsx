@@ -195,7 +195,7 @@ export const SanataniFactCheckPage = () => {
         {/* Blurred background effect to fill space gracefully */}
         <div className="absolute inset-0 opacity-30 blur-3xl scale-110">
           <img 
-            src="https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png" 
+            src="https://i.postimg.cc/WbH661Vy/Gemini-Generated-Image-g58ya7g58ya7g58y.png" 
             alt="" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -208,7 +208,7 @@ export const SanataniFactCheckPage = () => {
            className="relative z-20 max-w-4xl w-full"
         >
           <img 
-            src="https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png" 
+            src="https://i.postimg.cc/WbH661Vy/Gemini-Generated-Image-g58ya7g58ya7g58y.png" 
             alt="Sanatani Fact Check Banner" 
             className="w-full h-auto rounded-[2rem] shadow-2xl border-4 border-white/10"
             referrerPolicy="no-referrer"

@@ -3793,7 +3793,7 @@ async function startServer() {
         if (req.path === '/fact-check') {
           metadata.title = "Sanatani Fact Check | Barnia Digital Hub";
           metadata.description = "Research, Verification, and Truth. The official fact-checking platform for Sanatana Dharma claims, guided by authentic traditions.";
-          metadata.image = "https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png";
+          metadata.image = "https://i.postimg.cc/WbH661Vy/Gemini-Generated-Image-g58ya7g58ya7g58y.png";
         }
         
         html = await injectMetaTags(html, metadata);
@@ -3837,7 +3837,7 @@ async function startServer() {
         if (req.path === '/fact-check') {
           metadata.title = "Sanatani Fact Check | Barnia Digital Hub";
           metadata.description = "Research, Verification, and Truth. The official fact-checking platform for Sanatana Dharma claims, guided by authentic traditions.";
-          metadata.image = "https://i.postimg.cc/y8q4KSB0/1776652299529-afaixtx-A-0-(1).png";
+          metadata.image = "https://i.postimg.cc/WbH661Vy/Gemini-Generated-Image-g58ya7g58ya7g58y.png";
         }
         
         html = await injectMetaTags(html, metadata);
