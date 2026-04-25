@@ -1711,8 +1711,22 @@ async function startServer() {
           }
         }
       }
-      
+
       if (admin.apps.length) {
+        adminDb = getAdminFirestore();
+        
+        // Authenticate Client SDK as server-admin to allow background tasks to bypass rules
+        if (clientAuth) {
+          try {
+            const { signInWithCustomToken } = await import("firebase/auth");
+            const customToken = await admin.auth().createCustomToken("server-admin", { admin: true });
+            await signInWithCustomToken(clientAuth, customToken);
+            console.log("[Firebase] Client SDK authenticated as server-admin.");
+          } catch (authErr: any) {
+            console.warn("[Firebase] Client SDK authentication failed:", authErr.message);
+          }
+        }
+
         try {
           const dbId = firebaseConfig.firestoreDatabaseId;
           console.log(`[Firebase] Connecting Admin Firestore to database: ${dbId || '(default)'}`);
@@ -2392,12 +2406,12 @@ async function startServer() {
 
       // Send email
       const mailOptions = {
-        from: `"Barnia Vamshavali" <${process.env.EMAIL_USER || 'no-reply@barnia.in'}>`,
+        from: `"Family Vamshavali" <${process.env.EMAIL_USER || 'no-reply@family.com'}>`,
         to: email,
-        subject: "Your OTP for Barnia Vamshavali Login",
+        subject: "Your OTP for Family Vamshavali Login",
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
-            <h2 style="color: #f58e27;">Barnia Vamshavali Login</h2>
+            <h2 style="color: #f58e27;">Family Vamshavali Login</h2>
             <p>Your One-Time Password (OTP) for logging into your digital family tree is:</p>
             <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; padding: 10px; background: #f9f9f9; text-align: center; border-radius: 5px;">${otp}</div>
             <p style="color: #666; font-size: 14px; margin-top: 20px;">This OTP will expire in 10 minutes. If you didn't request this, please ignore this email.</p>

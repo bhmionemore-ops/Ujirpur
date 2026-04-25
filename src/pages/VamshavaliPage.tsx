@@ -86,7 +86,7 @@ const EditMemberModal = ({
               <p className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.4em] mt-1">Preserving Eternal Records</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400">
+          <button onClick={onClose} className="p-3 hover:bg-[#f4f4f5] rounded-full transition-colors text-[#a1a1aa]">
             <X size={28} />
           </button>
         </div>
@@ -95,44 +95,44 @@ const EditMemberModal = ({
           {/* Primary Member */}
           <div className="space-y-8">
             <div className="flex items-center gap-4 text-[#064e3b]">
-              <div className="w-8 h-px bg-[#064e3b]/20" />
+              <div className="w-8 h-px bg-[rgba(6,78,59,0.2)]" />
               <span className="text-[10px] font-black uppercase tracking-[0.3em]">Individual Identity</span>
-              <div className="w-8 h-px bg-[#064e3b]/20" />
+              <div className="w-8 h-px bg-[rgba(6,78,59,0.2)]" />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Full Legal Name</label>
                 <input 
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-zinc-900"
+                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
                   placeholder="Enter full name"
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Historical Period / Birth</label>
+                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Historical Period / Birth</label>
                 <input 
                   value={formData.birthYear}
                   onChange={(e) => setFormData({...formData, birthYear: e.target.value})}
-                  className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-zinc-900"
+                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
                   placeholder="e.g. 1920 - 2005"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-8 p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[#d4af37]/10 shadow-inner">
+            <div className="flex items-center gap-8 p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[rgba(212,175,55,0.1)] shadow-inner">
               <div className="relative group">
                 <div className="w-24 h-24 rounded-[45%] bg-gradient-to-tr from-[#d4af37] to-[#f4e4bc] p-1 shadow-lg">
                   <div className="w-full h-full rounded-[43%] bg-[#064e3b] overflow-hidden flex items-center justify-center">
-                    {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <User className="text-[#d4af37]/30" size={32} />}
+                    {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <User className="text-[rgba(212,175,55,0.3)]" size={32} />}
                   </div>
                 </div>
               </div>
               <div className="flex-1 space-y-3">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Portrait Archives</p>
+                <p className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">Portrait Archives</p>
                 <div className="flex items-center gap-4">
-                  <label className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-emerald-900 transition-colors">
+                  <label className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#065f46] transition-colors">
                     Upload Portrait
                     <input 
                       type="file" 
@@ -141,17 +141,17 @@ const EditMemberModal = ({
                       className="hidden"
                     />
                   </label>
-                  {formData.photo && <button onClick={() => setFormData({...formData, photo: ''})} className="text-red-500 text-[10px] font-black uppercase">Remove</button>}
+                  {formData.photo && <button onClick={() => setFormData({...formData, photo: ''})} className="text-[#ef4444] text-[10px] font-black uppercase">Remove</button>}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Union Section */}
-          <div className="pt-8 border-t border-zinc-100">
+          <div className="pt-8 border-t border-[#f4f4f5]">
             <button 
               onClick={() => setFormData({...formData, hasPartner: !formData.hasPartner})}
-              className={`w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${formData.hasPartner ? 'bg-[#d4af37] text-[#064e3b] shadow-xl' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}
+              className={`w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${formData.hasPartner ? 'bg-[#d4af37] text-[#064e3b] shadow-xl' : 'bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]'}`}
             >
               <Heart size={18} fill={formData.hasPartner ? 'currentColor' : 'none'} />
               {formData.hasPartner ? 'Formal Union Recorded' : 'Establish Union Partner'}
@@ -165,37 +165,37 @@ const EditMemberModal = ({
               className="space-y-8 pt-4 overflow-hidden"
             >
                <div className="flex items-center gap-4 text-[#8a6821]">
-                <div className="w-8 h-px bg-[#8a6821]/20" />
+                <div className="w-8 h-px bg-[rgba(138,104,33,0.2)]" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em]">Partner Archive</span>
-                <div className="w-8 h-px bg-[#8a6821]/20" />
+                <div className="w-8 h-px bg-[rgba(138,104,33,0.2)]" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Partner Full Name</label>
+                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Full Name</label>
                   <input 
                     value={formData.partnerName}
                     onChange={(e) => setFormData({...formData, partnerName: e.target.value})}
-                    className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Period Details</label>
+                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Period Details</label>
                   <input 
                     value={formData.partnerBirthYear}
                     onChange={(e) => setFormData({...formData, partnerBirthYear: e.target.value})}
-                    className="w-full px-6 py-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 p-6 bg-[#fdfbf7] rounded-3xl border border-[#d4af37]/20 shadow-sm">
-                <div className="w-16 h-16 rounded-[45%] bg-gradient-to-tr from-[#d4af37]/40 to-[#f4e4bc] p-0.5">
+              <div className="flex items-center gap-6 p-6 bg-[#fdfbf7] rounded-3xl border border-[rgba(212,175,55,0.2)] shadow-sm">
+                <div className="w-16 h-16 rounded-[45%] bg-gradient-to-tr from-[rgba(212,175,55,0.4)] to-[#f4e4bc] p-0.5">
                   <div className="w-full h-full rounded-[43%] bg-white overflow-hidden flex items-center justify-center">
-                    {formData.partnerPhoto ? <img src={formData.partnerPhoto} className="w-full h-full object-cover" /> : <User className="text-[#d4af37]/20" size={20} />}
+                    {formData.partnerPhoto ? <img src={formData.partnerPhoto} className="w-full h-full object-cover" /> : <User className="text-[rgba(212,175,55,0.2)]" size={20} />}
                   </div>
                 </div>
-                <label className="px-6 py-2 bg-white border-2 border-zinc-100 text-zinc-500 rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer hover:border-[#d4af37] transition-all">
+                <label className="px-6 py-2 bg-white border-2 border-[#f4f4f5] text-[#71717a] rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer hover:border-[#d4af37] transition-all">
                   Change Photo
                   <input 
                     type="file" 
@@ -216,10 +216,7 @@ const EditMemberModal = ({
           >
             Update Chronicle
           </button>
-          <button 
-            onClick={onClose}
-            className="px-10 py-5 bg-white text-zinc-400 rounded-[2rem] font-black text-xs uppercase tracking-widest border-2 border-zinc-100 hover:bg-zinc-50 transition-all"
-          >
+          <button onClick={onClose} className="px-10 py-5 bg-white text-[#a1a1aa] rounded-[2rem] font-black text-xs uppercase tracking-widest border-2 border-[#f4f4f5] hover:bg-[#fafafa] transition-all">
             Refuse
           </button>
         </div>
@@ -410,6 +407,32 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         useCORS: true,
         backgroundColor: '#fcf8f1',
         logging: false,
+        onclone: (clonedDoc) => {
+          // Fix for html2canvas oklch error
+          // html2canvas doesn't support oklch() color function yet
+          const elements = clonedDoc.querySelectorAll('*');
+          elements.forEach((el) => {
+            const style = window.getComputedStyle(el);
+            const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor'];
+            
+            props.forEach(prop => {
+              const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
+              if (value && value.includes('oklch')) {
+                // Approximate conversion or just force to a safe color
+                // For now, let's try to remove the function to let it fallback or use a safe default
+                // In most cases, these are semi-transparent or specific hues
+                // A better approach is to use a helper to convert oklch to rgb
+                try {
+                  // If we can't parse it, we'll just set it to a compatible color based on the property
+                  if (prop === 'backgroundColor') {
+                    if (value.includes('0.96')) (el as HTMLElement).style.backgroundColor = '#f4f4f5';
+                    else if (value.includes('0.06')) (el as HTMLElement).style.backgroundColor = '#064e3b';
+                  }
+                } catch (e) {}
+              }
+            });
+          });
+        }
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -423,7 +446,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`Barnia_Vamshavali_Grand_History.pdf`);
+      pdf.save(`family_Vamshavali_Grand_History.pdf`);
       
       toast.dismiss(toastId);
       toast.success("Family History Saved");
@@ -583,8 +606,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       <header className="bg-white border-b border-zinc-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg border border-zinc-100">
-                <img src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" alt="" className="w-full h-full object-cover" />
+             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg border border-[#f4f4f5] bg-[#064e3b] flex items-center justify-center">
+                <Users className="text-[#d4af37]" size={24} />
              </div>
              <div className="flex flex-col">
                 <h1 className="font-black text-lg tracking-tight leading-none text-zinc-900">Vamshavali</h1>
@@ -601,6 +624,38 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
       <main className="max-w-4xl mx-auto px-6 pt-12">
         <AnimatePresence mode="wait">
+          {step === 'dashboard' && !isPublic && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-white rounded-3xl shadow-xl border-2 border-[#d4af37]/20"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl ${isEditing ? 'bg-[#064e3b] text-white' : 'bg-[#fff7ed] text-[#ea580c]'} shadow-lg transition-all`}>
+                  <Settings size={24} className={isEditing ? 'animate-spin-slow' : ''} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-black text-[#064e3b] text-xl">Chronicle Controls</h3>
+                  <p className="text-[#a1a1aa] text-[10px] font-bold uppercase tracking-widest">Manage your family heritage</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <button 
+                  onClick={() => setIsEditing(!isEditing)}
+                  className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 ${isEditing ? 'bg-[#18181b] text-white hover:bg-black' : 'bg-[#ea580c] text-white hover:bg-[#c2410c]'}`}
+                >
+                  {isEditing ? <><Save size={18} /> Finish Editing</> : <><Edit3 size={18} /> Modify Lineage</>}
+                </button>
+                <button 
+                  onClick={downloadPDF}
+                  className="flex-1 md:flex-none px-8 py-3 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-md hover:bg-[#065f46] transition-all flex items-center justify-center gap-2"
+                >
+                  <Download size={18} /> Save Scroll
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {step === 'login' && (
             <motion.div
               key="login"
@@ -634,11 +689,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                         { icon: <Users size={20}/>, title: "Lineage Mapping", desc: "Connect generations across time and geography." },
                         { icon: <CheckCircle2 size={20}/>, title: "Future Legacy", desc: "Leave a clear, verified history for those who come after you." }
                       ].map((item, i) => (
-                        <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                          <div className="text-brand-400 shrink-0">{item.icon}</div>
+                        <div key={i} className="flex gap-4 p-4 rounded-2xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors">
+                          <div className="text-[#fb923c] shrink-0">{item.icon}</div>
                           <div>
                             <h4 className="font-bold text-sm tracking-wide">{item.title}</h4>
-                            <p className="text-emerald-200/80 text-xs mt-1 leading-normal font-medium">{item.desc}</p>
+                            <p className="text-[rgba(167,243,208,0.8)] text-xs mt-1 leading-normal font-medium">{item.desc}</p>
                           </div>
                         </div>
                       ))}
@@ -646,10 +701,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                   </div>
 
                   <div className="relative z-10 pt-12 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-800 flex items-center justify-center border border-emerald-700">
+                    <div className="w-10 h-10 rounded-full bg-[#065f46] flex items-center justify-center border border-[#064e3b]">
                       <Users size={16} />
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6ee7b7]">
                       Join thousands of lineages being preserved online
                     </p>
                   </div>
@@ -660,7 +715,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                 <div className="flex-1 p-12 flex flex-col justify-center bg-white">
                   <div className="max-w-sm mx-auto w-full space-y-10">
                     <div className="text-center md:text-left space-y-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ecfdf5] text-[#047857] rounded-full text-[10px] font-black uppercase tracking-widest border border-[#d1fae5]">
                         <ShieldCheck size={12} /> Secure Access
                       </div>
                       <h3 className="text-4xl font-serif font-black text-zinc-900 tracking-tight">Access Dashboard</h3>
@@ -671,23 +726,23 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                     <form onSubmit={handleSendOTP} className="space-y-6">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-4">Email Address</label>
+                        <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-4">Email Address</label>
                         <div className="relative group">
-                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-[#a1a1aa] group-focus-within:text-[#059669] transition-colors" size={18} />
                           <input 
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="e.g. name@family.com"
                             required
-                            className="w-full pl-14 pr-6 py-5 bg-[#fdfbf7] border-2 border-[#e5e1d8] focus:border-brand-500 focus:bg-white rounded-2xl font-bold transition-all outline-none"
+                            className="w-full pl-14 pr-6 py-5 bg-[#fdfbf7] border-2 border-[#e5e1d8] focus:border-[#F58E27] focus:bg-white rounded-2xl font-bold transition-all outline-none"
                           />
                         </div>
                       </div>
 
                       <button 
                         disabled={isLoading}
-                        className="w-full py-5 bg-[#064e3b] text-brand-50 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-zinc-900 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full py-5 bg-[#064e3b] text-[#fff7ed] rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-[#18181b] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#064e3b]/10 flex items-center justify-center gap-3 disabled:opacity-50"
                       >
                         {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Generate Access Code <ArrowRight size={18} /></>}
                       </button>
@@ -713,17 +768,17 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
               className="max-w-md mx-auto"
             >
               <div className="bg-[#fdfbf7] p-12 rounded-[3.5rem] shadow-2xl border border-[#e5e1d8] text-center space-y-10 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600" />
+                <div className="absolute top-0 left-0 w-full h-2 bg-[#059669]" />
                 
-                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-inner border-2 border-emerald-100">
+                <div className="w-24 h-24 bg-[#ecfdf5] rounded-full flex items-center justify-center mx-auto text-[#059669] shadow-inner border-2 border-[#d1fae5]">
                   <ShieldCheck size={40} />
                 </div>
                 
                 <div className="space-y-3">
-                  <h2 className="text-3xl font-serif font-black text-zinc-900 tracking-tight italic">Confirm Identity</h2>
-                  <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+                  <h2 className="text-3xl font-serif font-black text-[#18181b] tracking-tight italic">Confirm Identity</h2>
+                  <p className="text-[#71717a] text-sm font-medium leading-relaxed">
                     Check your inbox for a 6-digit code sent to <br />
-                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md mt-1 inline-block">{email}</span>
+                    <span className="font-bold text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md mt-1 inline-block">{email}</span>
                   </p>
                 </div>
 
@@ -735,11 +790,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                     placeholder="0 0 0 0 0 0"
                     maxLength={6}
                     required
-                    className="w-full px-6 py-6 bg-white border-2 border-[#e5e1d8] focus:border-emerald-500 focus:bg-white rounded-2xl font-black text-4xl text-center tracking-[0.25em] transition-all outline-none text-emerald-900 shadow-inner"
+                    className="w-full px-6 py-6 bg-white border-2 border-[#e5e1d8] focus:border-[#059669] focus:bg-white rounded-2xl font-black text-4xl text-center tracking-[0.25em] transition-all outline-none text-[#064e3b] shadow-inner"
                   />
                   <button 
                     disabled={isLoading}
-                    className="w-full py-5 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-800 transition-all shadow-xl shadow-emerald-900/10 flex items-center justify-center gap-3 disabled:opacity-50"
+                    className="w-full py-5 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all shadow-xl shadow-[#064e3b]/10 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
                   </button>
@@ -747,7 +802,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                 <button 
                   onClick={() => setStep('login')}
-                  className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-emerald-700 transition-colors flex items-center justify-center gap-2 mx-auto"
+                  className="text-[#a1a1aa] text-[10px] font-black uppercase tracking-[0.2em] hover:text-[#047857] transition-colors flex items-center justify-center gap-2 mx-auto"
                 >
                   <ArrowRight size={14} className="rotate-180" /> Back to Login
                 </button>
@@ -764,29 +819,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
             >
               {/* Profile Card */}
               <div className="bg-white p-10 rounded-[3rem] border-4 border-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 flex gap-3">
-                  {!isPublic && (
-                    <>
-                      <button 
-                        onClick={() => setIsEditing(!isEditing)}
-                        className={`p-4 rounded-2xl transition-all ${isEditing ? 'bg-zinc-900 text-white' : 'bg-brand-50 text-brand-600 hover:bg-brand-600 hover:text-white'}`}
-                      >
-                        {isEditing ? <Save size={20} /> : <Edit3 size={20} />}
-                      </button>
-                    </>
-                  )}
-                  <button onClick={downloadPDF} className="p-4 rounded-2xl bg-zinc-50 text-zinc-600 hover:bg-zinc-900 hover:text-white transition-all">
-                    <Download size={20} />
-                  </button>
-                </div>
-
                 <div className="space-y-12">
                   {/* Grand Header Panel */}
                   <div className="bg-[#064e3b] rounded-[3.5rem] p-8 md:p-16 text-white shadow-2xl relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
                     {/* Decorative Background Pattern */}
                     <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')]" />
-                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[rgba(212,175,55,0.1)] rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[rgba(52,211,153,0.05)] rounded-full blur-3xl pointer-events-none" />
 
                     <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
                       <div className="relative">
@@ -802,7 +841,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                       </div>
 
                       <div className="flex-1 text-center md:text-left space-y-4">
-                        <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-[#d4af37]/10 rounded-full border border-[#d4af37]/30">
+                        <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-[rgba(212,175,55,0.1)] rounded-full border border-[rgba(212,175,55,0.3)]">
                           <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
                           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]">Royal Heritage Registry</span>
                         </div>
@@ -815,15 +854,15 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           />
                         ) : (
                           <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight italic leading-tight">
-                            {profile.name || "House of Barnia"}
+                            {profile.name || "House of family"}
                           </h2>
                         )}
                         
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
                            {!isPublic && (
-                             <div className="px-5 py-2.5 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3 backdrop-blur-sm">
+                             <div className="px-5 py-2.5 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)] flex items-center gap-3 backdrop-blur-sm">
                                 <Share2 size={16} className="text-[#d4af37]" />
-                                <span className="text-xs font-mono opacity-60">vamshavali.barnia.com/...{profile.shareId?.slice(-6)}</span>
+                                <span className="text-xs font-mono opacity-60">family.vamshavali.com/...{profile.shareId?.slice(-6)}</span>
                                 <button onClick={copyLink} className="p-1.5 hover:text-[#d4af37] transition-colors">
                                    <Copy size={16} />
                                 </button>
@@ -840,8 +879,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Lateral Details */}
                     <div className="lg:col-span-1 space-y-6">
-                      <div className="p-8 bg-white rounded-[2.5rem] border border-zinc-100 shadow-xl space-y-8 h-full">
-                        <div className="pb-4 border-b border-zinc-100 flex items-center justify-between">
+                      <div className="p-8 bg-white rounded-[2.5rem] border border-[#f4f4f5] shadow-xl space-y-8 h-full">
+                        <div className="pb-4 border-b border-[#f4f4f5] flex items-center justify-between">
                            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">Lineage Details</h4>
                            <Landmark size={18} className="text-[#d4af37]" />
                         </div>
@@ -853,33 +892,33 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           { icon: <MapPin size={16}/>, label: "Native Origin", value: profile.nativePlace, key: 'nativePlace' },
                         ].map((item, i) => (
                           <div key={i} className="space-y-2">
-                            <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">
                               {item.icon} {item.label}
                             </label>
                             {isEditing ? (
                               <input 
                                 value={item.value}
                                 onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
-                                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl font-bold text-xs tracking-tight"
+                                className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
                               />
                             ) : (
-                              <p className="font-bold text-zinc-900 tracking-tight text-sm">{item.value || "—"}</p>
+                              <p className="font-bold text-[#18181b] tracking-tight text-sm">{item.value || "—"}</p>
                             )}
                           </div>
                         ))}
 
-                        <div className="pt-4 border-t border-zinc-100">
-                          <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">
+                        <div className="pt-4 border-t border-[#f4f4f5]">
+                          <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest mb-2">
                              Chronicles
                           </label>
                           {isEditing ? (
                             <textarea 
                               value={profile.additionalNotes}
                               onChange={(e) => setProfile({...profile, additionalNotes: e.target.value})}
-                              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl font-bold text-xs min-h-[120px]"
+                              className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs min-h-[120px]"
                             />
                           ) : (
-                            <p className="text-zinc-600 font-medium text-xs leading-relaxed italic">"{profile.additionalNotes || "Records empty."}"</p>
+                            <p className="text-[#52525b] font-medium text-xs leading-relaxed italic">"{profile.additionalNotes || "Records empty."}"</p>
                           )}
                         </div>
                       </div>
@@ -925,7 +964,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                             <div className="inline-block min-w-full text-center relative z-10 pt-12">
                                <div className="mb-24 flex flex-col items-center">
-                                  <VintageScroll title="The Eternal Lineage of Barnia" />
+                                  <VintageScroll title="The Eternal Lineage of family" />
                                   <RoyalOrnament />
                                </div>
                                <TreeStructure 
@@ -940,7 +979,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                />
                                
                                <div className="mt-32 opacity-30 italic text-[#8a6821] text-xs font-serif">
-                                  Records maintained by {profile.name} via Barnia Archives
+                                  Records maintained by {profile.name} via family Archives
                                </div>
                             </div>
                           </div>
@@ -983,7 +1022,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                 >
                   <GoldenFrame photo={member.photo} name={member.name} />
                   {isEditing && (
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg pointer-events-none border-2 border-white">
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-[#059669] text-white rounded-full flex items-center justify-center shadow-lg pointer-events-none border-2 border-white">
                       <Edit2 size={12} />
                     </div>
                   )}
@@ -993,7 +1032,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                   <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight leading-none whitespace-nowrap">
                     {member.name}
                   </h4>
-                  <p className="text-[10px] text-zinc-500 font-bold italic mt-1">{member.birthYear}</p>
+                  <p className="text-[10px] text-[#71717a] font-bold italic mt-1">{member.birthYear}</p>
                   <p className="text-[#b68d40] text-[9px] font-black uppercase tracking-[0.2em] mt-1">{member.role}</p>
                 </div>
               </div>
@@ -1004,7 +1043,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                   {/* Connector Rings */}
                   <div className="w-12 flex items-center justify-center relative">
                     <div className="absolute top-1/2 -translate-y-1/2 w-12 h-16 border-t-2 border-b-2 border-dashed border-[rgba(182,141,64,0.2)] rounded-full" />
-                    <div className="text-rose-400 bg-white p-1 rounded-full border border-rose-100 z-10 shadow-sm">
+                    <div className="text-[#fb7185] bg-white p-1 rounded-full border border-[#ffe4e6] z-10 shadow-sm">
                       <Heart size={10} fill="currentColor" />
                     </div>
                   </div>
@@ -1021,7 +1060,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                       <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-none whitespace-nowrap">
                         {member.partner.name}
                       </h4>
-                      <p className="text-[9px] text-zinc-500 font-bold italic mt-1">{member.partner.birthYear}</p>
+                      <p className="text-[9px] text-[#71717a] font-bold italic mt-1">{member.partner.birthYear}</p>
                       <p className="text-[#b68d40]/60 text-[8px] font-black uppercase tracking-widest mt-1">Partner</p>
                     </div>
                   </div>
@@ -1034,21 +1073,21 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
               <div className="flex gap-2 mt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onAddChild(member.id); }}
-                  className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  className="w-10 h-10 bg-[#ecfdf5] text-[#047857] rounded-full border border-[#d1fae5] hover:bg-[#059669] hover:text-white transition-all flex items-center justify-center shadow-sm"
                   title="Add Child"
                 >
                   <Plus size={18}/>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onRemove(member.id); }}
-                  className="w-10 h-10 bg-red-50 text-red-700 rounded-full border border-red-200 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  className="w-10 h-10 bg-[#fef2f2] text-[#b91c1c] rounded-full border border-[#fee2e2] hover:bg-[#dc2626] hover:text-white transition-all flex items-center justify-center shadow-sm"
                   title="Remove Generation"
                 >
                   <Trash2 size={18}/>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onEdit(member); }}
-                  className="w-10 h-10 bg-blue-50 text-blue-700 rounded-full border border-blue-200 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  className="w-10 h-10 bg-[#eff6ff] text-[#1d4ed8] rounded-full border border-[#dbeafe] hover:bg-[#2563eb] hover:text-white transition-all flex items-center justify-center shadow-sm"
                   title="Edit Details"
                 >
                   <Settings size={18}/>
