@@ -453,7 +453,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast.dismiss(toastId);
-      toast.error("Failed to generate PDF. Please try again or use a desktop browser.");
+      toast.error("Generation failed. If you're in preview, try 'Open in new tab'.");
     } finally {
       setIsLoading(false);
     }
