@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Mail, ArrowRight, ShieldCheck, Save, Share2, 
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
-  User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut,
+  User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
   CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { useLanguage } from '../LanguageContext';
+import { Language } from '../i18n';
 
 interface FamilyMember {
   id: string;
@@ -294,6 +296,71 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [editingNode, setEditingNode] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const treeRef = useRef<HTMLDivElement>(null);
+  const { language, setLanguage, t: globalT } = useLanguage();
+  const vt = globalT.vamshavali;
+
+  const downloadManual = () => {
+    const toastId = toast.loading(vt.downloadManual + "...");
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const margin = 20;
+      let y = 20;
+
+      const addTitle = (text: string) => {
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(6, 78, 59);
+        doc.text(text, margin, y);
+        y += 15;
+      };
+
+      const addSection = (title: string, content: string | string[]) => {
+        if (y > 240) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(212, 175, 55);
+        doc.text(title, margin, y);
+        y += 10;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(63, 63, 70);
+        
+        const contentLines = Array.isArray(content) ? content : [content];
+        
+        contentLines.forEach(line => {
+          const lines = doc.splitTextToSize(line, 170);
+          if (y + (lines.length * 7) > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(lines, margin, y);
+          y += (lines.length * 7);
+        });
+        y += 5;
+      };
+
+      addTitle(vt.manualPdfTitle);
+      addSection(vt.manualIntro, [vt.manualIntroDesc, vt.manualIntroDesch2]);
+      addSection(vt.manualTree, vt.manualTreeList);
+      addSection(vt.manualEdit, vt.manualEditList);
+      addSection(vt.manualExport, vt.manualExportList);
+      addSection(vt.manualSecurity, vt.manualSecurityList);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(161, 161, 170);
+      doc.text(vt.manualFooter, margin, 285);
+      doc.save(`Vamshavali_Manual_${language.toUpperCase()}.pdf`);
+      toast.dismiss(toastId);
+      toast.success(vt.manual + " downloaded!");
+    } catch (error) {
+      console.error("Manual Download Error:", error);
+      toast.dismiss(toastId);
+      toast.error("Failed to generate manual.");
+    }
+  };
 
   useEffect(() => {
     if (isPublic && shareId) {
@@ -610,15 +677,41 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                 <Users className="text-[#d4af37]" size={24} />
              </div>
              <div className="flex flex-col">
-                <h1 className="font-black text-lg tracking-tight leading-none text-zinc-900">Vamshavali</h1>
-                <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest mt-1">Digital Family Tree</span>
+                <h1 className="font-black text-lg tracking-tight leading-none text-zinc-900">{vt.title}</h1>
+                <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest mt-1">{vt.subtitle}</span>
              </div>
           </div>
-          {step === 'dashboard' && !isPublic && (
-            <button onClick={logout} className="p-3 rounded-xl bg-zinc-50 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all">
-              <LogOut size={20} />
+          
+          <div className="flex items-center gap-4">
+            {/* Language Selector */}
+            <div className="hidden md:flex items-center bg-zinc-100 p-1 rounded-xl border border-zinc-200">
+              {(['en', 'hi', 'bn'] as Language[]).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    language === lang ? 'bg-white text-[#064e3b] shadow-sm' : 'text-zinc-400 hover:text-zinc-600'
+                  }`}
+                >
+                  {lang === 'en' ? 'ENG' : lang === 'hi' ? 'HIN' : 'BEN'}
+                </button>
+              ))}
+            </div>
+
+            <button 
+              onClick={downloadManual}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-[#d4af37] text-[#064e3b] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-50 transition-all shadow-sm"
+            >
+              <FileText size={16} /> 
+              <span className="hidden sm:inline">{vt.manual}</span>
             </button>
-          )}
+
+            {step === 'dashboard' && !isPublic && (
+              <button onClick={logout} className="p-3 rounded-xl bg-zinc-50 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                <LogOut size={20} />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -644,13 +737,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                   onClick={() => setIsEditing(!isEditing)}
                   className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 ${isEditing ? 'bg-[#18181b] text-white hover:bg-black' : 'bg-[#ea580c] text-white hover:bg-[#c2410c]'}`}
                 >
-                  {isEditing ? <><Save size={18} /> Finish Editing</> : <><Edit3 size={18} /> Modify Lineage</>}
+                  {isEditing ? <><Save size={18} /> {vt.finishEditing}</> : <><Edit3 size={18} /> {vt.modifyLineage}</>}
                 </button>
                 <button 
                   onClick={downloadPDF}
                   className="flex-1 md:flex-none px-8 py-3 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-md hover:bg-[#065f46] transition-all flex items-center justify-center gap-2"
                 >
-                  <Download size={18} /> Save Scroll
+                  <Download size={18} /> {vt.saveScroll}
                 </button>
               </div>
             </motion.div>
@@ -675,12 +768,35 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                     <div className="w-16 h-1 bg-brand-400 rounded-full" />
                     <div className="space-y-4">
                       <h2 className="text-4xl md:text-5xl font-serif font-bold leading-tight italic">
-                        Preserve Your Roots, <br />
-                        Grow Your Legacy.
+                        {vt.loginTitle}
                       </h2>
                       <p className="text-emerald-100 text-lg leading-relaxed max-w-sm">
-                        A digital Vamshavali is more than a list of names—it is the living heart of your family's history and spiritual identity.
+                        {vt.loginSubtitle}
                       </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 pt-4">
+                      <button 
+                        onClick={downloadManual}
+                        className="flex items-center gap-2 px-6 py-3 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-all"
+                      >
+                        <FileText size={18} /> {vt.manual}
+                      </button>
+                      
+                      {/* Mobile Language Selector */}
+                      <div className="flex md:hidden items-center bg-[rgba(255,255,255,0.1)] p-1 rounded-2xl border border-[rgba(255,255,255,0.2)]">
+                        {(['en', 'hi', 'bn'] as Language[]).map((lang) => (
+                          <button
+                            key={lang}
+                            onClick={() => setLanguage(lang)}
+                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                              language === lang ? 'bg-[#d4af37] text-[#064e3b]' : 'text-emerald-100'
+                            }`}
+                          >
+                            {lang === 'en' ? 'EN' : lang === 'hi' ? 'HI' : 'BN'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 pt-8">
@@ -854,11 +970,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           />
                         ) : (
                           <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight italic leading-tight">
-                            {profile.name || "House of family"}
+                            {profile.name || vt.houseOf + " family"}
                           </h2>
                         )}
                         
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
                            {!isPublic && (
                              <div className="px-5 py-2.5 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)] flex items-center gap-3 backdrop-blur-sm">
                                 <Share2 size={16} className="text-[#d4af37]" />
@@ -869,7 +985,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                              </div>
                            )}
                            <button onClick={downloadPDF} className="px-6 py-2.5 bg-[#d4af37] text-[#064e3b] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">
-                              Export Scroll
+                               {vt.exportScroll}
+                           </button>
+                           <button onClick={downloadManual} className="px-6 py-2.5 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-colors flex items-center gap-2">
+                               <FileText size={16} /> {vt.manual}
                            </button>
                         </div>
                       </div>
@@ -881,7 +1000,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                     <div className="lg:col-span-1 space-y-6">
                       <div className="p-8 bg-white rounded-[2.5rem] border border-[#f4f4f5] shadow-xl space-y-8 h-full">
                         <div className="pb-4 border-b border-[#f4f4f5] flex items-center justify-between">
-                           <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">Lineage Details</h4>
+                           <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">{vt.lineageDetails}</h4>
                            <Landmark size={18} className="text-[#d4af37]" />
                         </div>
                         
@@ -929,7 +1048,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                        <div className="flex items-center justify-between px-4">
                           <div className="flex items-center gap-4">
                              <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
-                             <h3 className="text-xl font-serif font-black text-[#064e3b] italic">Generation Mapping</h3>
+                                 <h3 className="text-xl font-serif font-black text-[#064e3b] italic">{vt.generationMapping}</h3>
                           </div>
                           {isEditing && (
                              <div className="flex gap-4">
@@ -940,7 +1059,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                    onClick={handleUpdateProfile}
                                    className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2"
                                 >
-                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <><Save size={14} /> Preserve</>}
+                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <><Save size={14} /> {vt.preserve}</>}
                                 </button>
                              </div>
                           )}
@@ -964,7 +1083,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                             <div className="inline-block min-w-full text-center relative z-10 pt-12">
                                <div className="mb-24 flex flex-col items-center">
-                                  <VintageScroll title="The Eternal Lineage of family" />
+                                  <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
                                   <RoyalOrnament />
                                </div>
                                <TreeStructure 
@@ -979,7 +1098,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                />
                                
                                <div className="mt-32 opacity-30 italic text-[#8a6821] text-xs font-serif">
-                                  Records maintained by {profile.name} via family Archives
+                                  Records maintained by {profile.name} via {vt.archives}
                                </div>
                             </div>
                           </div>
@@ -1012,8 +1131,8 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
         <div key={member.id} className="relative flex flex-col items-center">
           {/* Node Wrapper */}
           <div className="flex flex-col items-center group">
-            {/* The Couple / Individual */}
-            <div className="flex items-center gap-4 relative">
+            {/* Couple/Individual Container */}
+            <div className={`relative flex items-center gap-6 p-4 rounded-[3rem] transition-all duration-500 ${member.partner ? 'bg-[rgba(182,141,64,0.03)] border border-[rgba(182,141,64,0.1)] shadow-inner' : ''}`}>
               {/* Member */}
               <div className="flex flex-col items-center">
                 <div 
@@ -1040,11 +1159,15 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
               {/* Partner Section */}
               {member.partner && (
                 <>
-                  {/* Connector Rings */}
-                  <div className="w-12 flex items-center justify-center relative">
-                    <div className="absolute top-1/2 -translate-y-1/2 w-12 h-16 border-t-2 border-b-2 border-dashed border-[rgba(182,141,64,0.2)] rounded-full" />
-                    <div className="text-[#fb7185] bg-white p-1 rounded-full border border-[#ffe4e6] z-10 shadow-sm">
-                      <Heart size={10} fill="currentColor" />
+                  {/* Union Heart & Ring */}
+                  <div className="flex flex-col items-center relative px-2">
+                    <div className="h-24 flex flex-col items-center justify-center">
+                      <div className="h-px w-10 bg-gradient-to-r from-[#b68d40]/40 via-[#b68d40] to-[#b68d40]/40 relative">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#fb7185] bg-[#fdfbf7] p-1.5 rounded-full border border-[#ffe4e6] shadow-sm z-20">
+                          <Heart size={12} fill="currentColor" />
+                        </div>
+                      </div>
+                      <div className="mt-4 text-[8px] font-black text-[#b68d40]/60 uppercase tracking-widest whitespace-nowrap">UNION</div>
                     </div>
                   </div>
 
@@ -1099,12 +1222,17 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
           {/* Children / Recursive Section */}
           {member.children.length > 0 && (
             <div className="pt-24 relative w-full flex justify-center">
-              {/* Vertical Line from parent */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 bg-gradient-to-b from-[#b68d40]/40 to-[#b68d40]/10" />
+              {/* Parent Connection Line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                {/* Thick Primary Flow Line */}
+                <div className="w-0.5 h-24 bg-gradient-to-b from-[#b68d40] to-[#b68d40]/20" />
+                {/* Visual Branch Anchor */}
+                <div className="w-3 h-3 rounded-full bg-[#b68d40] border-2 border-white -mt-0.5 shadow-sm" />
+              </div>
               
-              {/* Horizontal line for multiple children */}
+              {/* Horizontal Sibling Line for multiple children */}
               {member.children.length > 1 && (
-                <div className="absolute top-24 left-0 right-0 h-px bg-[rgba(182,141,64,0.15)]" />
+                <div className="absolute top-24 left-[15%] right-[15%] h-0.5 bg-[#b68d40]/20 rounded-full" />
               )}
 
               <div className="flex gap-24 relative">
