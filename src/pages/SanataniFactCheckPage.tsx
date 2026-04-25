@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Info, Share2, Filter, MessageSquare, ArrowRight, Loader2 } from 'lucide-react';
+import { Search, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Info, Share2, Filter, MessageSquare, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { SanataniBot } from '../components/SanataniBot';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { Helmet } from 'react-helmet-async';
+import { toast } from 'sonner';
 
 interface FactCheck {
   id: string;
@@ -59,8 +61,16 @@ export const SanataniFactCheckPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [itemsLimit, setItemsLimit] = useState(12);
 
-  React.useEffect(() => {
-    const q = query(collection(db, 'fact_checks'), orderBy('date', 'desc'), limit(itemsLimit));
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFetchError(null);
+    const q = query(
+      collection(db, 'fact_checks'), 
+      orderBy('date', 'desc'), 
+      limit(itemsLimit)
+    );
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetched = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -71,12 +81,16 @@ export const SanataniFactCheckPage = () => {
         setFacts(fetched);
       }
       setIsLoading(false);
+      setFetchError(null);
     }, (error) => {
       console.error("Error fetching facts:", error);
+      setFetchError(error.message);
       setIsLoading(false);
+      toast.error("Failed to fetch latest facts. Please check your connection.");
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [itemsLimit]);
 
   const handleShare = (fact: FactCheck) => {
     const text = `Fact Check: "${fact.claim}"\nVerdict: ${fact.status.toUpperCase()}\nVerified by Sanatani Fact Check.`;
@@ -171,6 +185,11 @@ export const SanataniFactCheckPage = () => {
 
   return (
     <div className="min-h-screen bg-culture-bg pt-20 pb-24 relative">
+      <Helmet>
+        <title>{language === 'bn' ? 'সনাতনী ফ্যাক্ট-চেক - সত্যের অনুসন্ধান' : 'Sanatani Fact Check - Truth Verification'}</title>
+        <meta name="description" content="Verify myths, viral social media claims, and historical facts about Sanatana Dharma with authentic sources and AI-powered research." />
+      </Helmet>
+
       {/* Full Visibility Header Image */}
       <div className="w-full bg-zinc-950 flex flex-col items-center justify-center pt-24 pb-32 px-6 relative overflow-hidden">
         {/* Blurred background effect to fill space gracefully */}
@@ -267,6 +286,19 @@ export const SanataniFactCheckPage = () => {
 
         {/* Facts List */}
         <div className="grid grid-cols-1 gap-8 mb-20">
+          {fetchError && (
+            <div className="p-8 bg-red-50 border-2 border-red-100 rounded-[2rem] text-center text-red-600 font-bold">
+              <AlertCircle className="mx-auto mb-2" />
+              Unable to load real-time updates. Showing local data.
+              <button 
+                onClick={() => window.location.reload()}
+                className="block mx-auto mt-4 px-6 py-2 bg-red-600 text-white rounded-xl text-xs"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           <AnimatePresence mode="popLayout">
             {filteredFacts.map((fact, index) => (
               <motion.div

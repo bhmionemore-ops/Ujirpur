@@ -136,15 +136,16 @@ export const SanataniBot = () => {
         return;
       }
 
-      // Fallback to any recent facts if today's aren't ready
+      // Fallback 1: Any recent facts
       const fallbackQ = query(
         collection(db, "fact_checks"),
-        orderBy("createdAt", "desc"),
-        limit(5)
+        orderBy("date", "desc"),
+        limit(10)
       );
       const fallbackSnap = await getDocs(fallbackQ);
+      let data = [];
       if (!fallbackSnap.empty) {
-        const data = fallbackSnap.docs.map(doc => {
+        data = fallbackSnap.docs.map(doc => {
           const d = doc.data();
           return {
             claim: d.claim,
@@ -155,6 +156,29 @@ export const SanataniBot = () => {
           } as BotFactCheck;
         });
         setDailyTopics(data);
+      }
+
+      if (data.length === 0) {
+        // Fallback 2: Try by createdAt if date field failed some how
+        const fallbackQ2 = query(
+          collection(db, "fact_checks"),
+          orderBy("createdAt", "desc"),
+          limit(5)
+        );
+        const fallbackSnap2 = await getDocs(fallbackQ2);
+        if (!fallbackSnap2.empty) {
+          const data2 = fallbackSnap2.docs.map(doc => {
+            const d = doc.data();
+            return {
+              claim: d.claim,
+              verdict: d.status || d.verdict || 'verified',
+              explanation: d.explanation,
+              source: d.source,
+              guidance: d.guidance || "Follow the path of Dharma."
+            } as BotFactCheck;
+          });
+          setDailyTopics(data2);
+        }
       }
     } catch (error) {
       console.error("Daily Bot Error:", error);
@@ -181,18 +205,30 @@ export const SanataniBot = () => {
       });
 
       const rawText = response.text || "{}";
-      // Robustly clean JSON: remove markdown and escape literal control characters in strings
+      // Robustly clean JSON
       let cleaned = rawText.trim();
       if (cleaned.startsWith('```')) {
         cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
       }
-      const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
-        m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
-      );
-
-      const data = JSON.parse(sanitized);
-      setResult(data);
-    } catch (error) {
+      
+      // Additional sanitization: remove common non-JSON artifacts
+      try {
+        const data = JSON.parse(cleaned);
+        setResult(data);
+      } catch (parseError) {
+        console.warn("Primary JSON parse failed, trying sanitization:", parseError);
+        const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
+          m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+        );
+        try {
+          const data = JSON.parse(sanitized);
+          setResult(data);
+        } catch (finalError) {
+          console.error("Bot JSON Parse Failure:", finalError);
+          toast.error("I had trouble formulating the response correctly. Please try a different question.");
+        }
+      }
+    } catch (error: any) {
       console.error("Bot Error:", error);
     } finally {
       setIsLoading(false);
