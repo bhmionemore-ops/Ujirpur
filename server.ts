@@ -952,10 +952,15 @@ async function cleanupOldNews() {
           oldNews.docs.forEach((doc: any) => batch.delete(doc.ref));
           await batch.commit();
           console.log(`[NewsAPI] [Admin] Cleaned up ${oldNews.size} old news documents.`);
+          return; // Success!
         }
       } catch (adminError: any) {
         console.warn(`[NewsAPI] Admin cleanup failed, falling back to client SDK: ${adminError.message}`);
-        // Fallback to client SDK logic below
+      }
+    }
+
+    if (db) {
+      try {
         const q = query(collection(db, "news"), where("date", "<", dateStr));
         const oldNews = await getDocs(q);
         if (!oldNews.empty) {
@@ -964,15 +969,8 @@ async function cleanupOldNews() {
           await batch.commit();
           console.log(`[NewsAPI] [Client] Cleaned up ${oldNews.size} old news documents.`);
         }
-      }
-    } else if (db) {
-      const q = query(collection(db, "news"), where("date", "<", dateStr));
-      const oldNews = await getDocs(q);
-      if (!oldNews.empty) {
-        const batch = writeBatch(db);
-        oldNews.docs.forEach((docSnap) => batch.delete(docSnap.ref));
-        await batch.commit();
-        console.log(`[NewsAPI] [Client] Cleaned up ${oldNews.size} old news documents.`);
+      } catch (clientError: any) {
+        console.error(`[NewsAPI] Client SDK cleanup failed:`, clientError instanceof Error ? clientError.message : String(clientError));
       }
     }
   } catch (error) {
@@ -1713,8 +1711,6 @@ async function startServer() {
       }
 
       if (admin.apps.length) {
-        adminDb = getAdminFirestore();
-        
         // Authenticate Client SDK as server-admin to allow background tasks to bypass rules
         if (clientAuth) {
           try {
@@ -1732,21 +1728,27 @@ async function startServer() {
           console.log(`[Firebase] Connecting Admin Firestore to database: ${dbId || '(default)'}`);
           
           // Use getAdminFirestore to ensure proper database mapping
-          adminDb = getAdminFirestore(admin.app(), dbId || undefined);
+          const currentAdminDb = getAdminFirestore(admin.app(), dbId || undefined);
           
-      // Reachability check
-      try {
-        const testRef = adminDb!.collection("_health_check").doc("reachability_test");
-        await testRef.set({ 
-          time: admin.firestore.FieldValue.serverTimestamp(),
-          node: process.env.K_REVISION || 'local'
-        });
-        await testRef.delete();
-        console.log("[Firebase] Admin SDK reachability verified successfully.");
-      } catch (err: any) {
-        console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. Disabling Admin SDK for this process session.`);
-        adminDb = null;
-      }
+          // Reachability check
+          try {
+            const testRef = currentAdminDb.collection("_health_check").doc("reachability_test");
+            await testRef.set({ 
+              time: admin.firestore.FieldValue.serverTimestamp(),
+              node: process.env.K_REVISION || 'local'
+            });
+            await testRef.delete();
+            console.log("[Firebase] Admin SDK reachability verified successfully.");
+            adminDb = currentAdminDb;
+          } catch (err: any) {
+            if (err.message.includes("PERMISSION_DENIED")) {
+              console.warn(`[Firebase] Admin SDK has NO PERMISSIONS on database ${dbId}. Using Client SDK fallback exclusively.`);
+              adminDb = null;
+            } else {
+              console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. Keeping handle as fallback.`);
+              adminDb = currentAdminDb;
+            }
+          }
         } catch (dbError: any) {
           console.error("[Firebase] Error getting Firestore Admin instance:", dbError.message);
         }
@@ -1769,6 +1771,49 @@ async function startServer() {
   // Keep-alive endpoint for cron jobs
   app.get("/api/ping", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Vedic Numerology Endpoint
+  app.post("/api/ai/numerology", async (req, res) => {
+    try {
+      const { name, birthYear, relationship, profileContext } = req.body;
+      const apiKey = await getGeminiApiKey();
+      
+      if (!apiKey) {
+        return res.status(500).json({ error: "Gemini API key is missing on server." });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `
+        You are a master of Vedic Numerology (Sankhya Shastra) and an expert in the spiritual science of numbers. 
+        Analyze the following person from a family tree and provide a profound, beautiful, and spiritually resonant numerological reading.
+        
+        Person Name: ${name}
+        Birth Year: ${birthYear}
+        Relationship context: ${relationship}
+        Family Context: ${profileContext}
+
+        Provide a "Vedic Numerology" reading that includes:
+        1. **Psychic Number & Characteristics**: Based on Vedic principles (Sankhya Shastra), interpret their core personality. Even if only birth year is available, speak to the generational spiritual energy.
+        2. **Destiny (Karma) Path**: Insights into their life's purpose and spiritual mission.
+        3. **Auspicious Deity/Energy**: A "Spiritual Totem" or deity connection that resonates with their numbers.
+        4. **Legacy of the Soul**: How they strengthen the roots of ${profileContext || 'their family'} and what energy they pass to future generations.
+        
+        Tone: Respectful, poetic, and deeply spiritual. Use Sanskrit terms like 'Samskara', 'Atman', 'Dharma'.
+        Formatting: Use markdown for structure. Keep it concise but powerful.
+      `;
+
+      const response = await callGeminiWithRetry(ai, {
+        model: "gemini-3-flash-preview",
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      });
+
+      res.json({ reading: response.text });
+    } catch (error: any) {
+      console.error("[NumerologyAPI] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate reading" });
+    }
   });
 
   // Inbound Email Webhook (for App Inbox)
@@ -2524,20 +2569,102 @@ async function startServer() {
           const profileSnap = await adminDb.collection("vamshavali_profiles").where("email", "==", email).limit(1).get();
           if (!profileSnap.empty) {
             profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
+            
+            // If it's admin and empty, bootstrap it
+            if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0)) {
+               const demoMembers = [
+                {
+                  id: "root-1",
+                  name: "Savitri Devi",
+                  role: "Matriarch",
+                  birthYear: "1945",
+                  photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                  children: [
+                    {
+                      id: "child-1",
+                      name: "Meera Sharma",
+                      role: "Daughter",
+                      birthYear: "1972",
+                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-1",
+                          name: "Ananya Sharma",
+                          role: "Granddaughter",
+                          birthYear: "1998",
+                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ];
+              
+              const updates = {
+                name: "The Royal Lineage of Savitri Devi",
+                parents: "Traditional Ancestors",
+                grandparents: "Ancestral Roots",
+                gotra: "Kashyap",
+                kuldevi: "Mata Rani",
+                kuldevta: "Lord Shiva",
+                kuldeviPhoto: "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop",
+                nativePlace: "Varanasi, Uttar Pradesh",
+                additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
+                members: demoMembers,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+              };
+              
+              await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
+              Object.assign(profile, updates);
+            }
           } else {
             const shareId = Math.random().toString(36).substring(2, 10);
+            
+            // Demo data for admin
+            const isAdminEmail = email === "okbgmi611@gmail.com";
+            const demoMembers = isAdminEmail ? [
+              {
+                id: "root-1",
+                name: "Savitri Devi",
+                role: "Matriarch",
+                birthYear: "1945",
+                photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                children: [
+                  {
+                    id: "child-1",
+                    name: "Meera Sharma",
+                    role: "Daughter",
+                    birthYear: "1972",
+                    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                    children: [
+                      {
+                        id: "grand-1",
+                        name: "Ananya Sharma",
+                        role: "Granddaughter",
+                        birthYear: "1998",
+                        photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                        children: []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ] : [];
+
             const newProfile = {
               email,
               shareId,
-              name: "",
-              parents: "",
-              grandparents: "",
-              gotra: "",
-              kuldevi: "",
-              kuldevta: "",
-              nativePlace: "",
-              additionalNotes: "",
-              members: [],
+              name: isAdminEmail ? "The Royal Lineage of Savitri Devi" : "",
+              parents: isAdminEmail ? "Traditional Ancestors" : "",
+              grandparents: isAdminEmail ? "Ancestral Roots" : "",
+              gotra: isAdminEmail ? "Kashyap" : "",
+              kuldevi: isAdminEmail ? "Mata Rani" : "",
+              kuldevta: isAdminEmail ? "Lord Shiva" : "",
+              kuldeviPhoto: isAdminEmail ? "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop" : "",
+              nativePlace: isAdminEmail ? "Varanasi, Uttar Pradesh" : "",
+              additionalNotes: isAdminEmail ? "A legacy of strength, wisdom, and divine feminine energy spanning three generations." : "",
+              members: demoMembers,
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp()
             };
@@ -2556,20 +2683,102 @@ async function startServer() {
           const profileSnap = await getDocs(q);
           if (!profileSnap.empty) {
             profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
+
+            // If it's admin and empty, bootstrap it
+            if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0)) {
+               const demoMembers = [
+                {
+                  id: "root-1",
+                  name: "Savitri Devi",
+                  role: "Matriarch",
+                  birthYear: "1945",
+                  photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                  children: [
+                    {
+                      id: "child-1",
+                      name: "Meera Sharma",
+                      role: "Daughter",
+                      birthYear: "1972",
+                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-1",
+                          name: "Ananya Sharma",
+                          role: "Granddaughter",
+                          birthYear: "1998",
+                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ];
+              
+              const updates = {
+                name: "The Royal Lineage of Savitri Devi",
+                parents: "Traditional Ancestors",
+                grandparents: "Ancestral Roots",
+                gotra: "Kashyap",
+                kuldevi: "Mata Rani",
+                kuldevta: "Lord Shiva",
+                kuldeviPhoto: "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop",
+                nativePlace: "Varanasi, Uttar Pradesh",
+                additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
+                members: demoMembers,
+                updatedAt: serverTimestamp()
+              };
+              
+              await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);
+              Object.assign(profile, updates);
+            }
           } else {
             const shareId = Math.random().toString(36).substring(2, 10);
+            
+            // Demo data for admin
+            const isAdminEmail = email === "okbgmi611@gmail.com";
+            const demoMembers = isAdminEmail ? [
+              {
+                id: "root-1",
+                name: "Savitri Devi",
+                role: "Matriarch",
+                birthYear: "1945",
+                photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                children: [
+                  {
+                    id: "child-1",
+                    name: "Meera Sharma",
+                    role: "Daughter",
+                    birthYear: "1972",
+                    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                    children: [
+                      {
+                        id: "grand-1",
+                        name: "Ananya Sharma",
+                        role: "Granddaughter",
+                        birthYear: "1998",
+                        photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                        children: []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ] : [];
+
             const newProfile = {
               email,
               shareId,
-              name: "",
-              parents: "",
-              grandparents: "",
-              gotra: "",
-              kuldevi: "",
-              kuldevta: "",
-              nativePlace: "",
-              additionalNotes: "",
-              members: [],
+              name: isAdminEmail ? "The Royal Lineage of Savitri Devi" : "",
+              parents: isAdminEmail ? "Traditional Ancestors" : "",
+              grandparents: isAdminEmail ? "Ancestral Roots" : "",
+              gotra: isAdminEmail ? "Kashyap" : "",
+              kuldevi: isAdminEmail ? "Mata Rani" : "",
+              kuldevta: isAdminEmail ? "Lord Shiva" : "",
+              kuldeviPhoto: isAdminEmail ? "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop" : "",
+              nativePlace: isAdminEmail ? "Varanasi, Uttar Pradesh" : "",
+              additionalNotes: isAdminEmail ? "A legacy of strength, wisdom, and divine feminine energy spanning three generations." : "",
+              members: demoMembers,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
               serverKey: FIRESTORE_SERVER_KEY

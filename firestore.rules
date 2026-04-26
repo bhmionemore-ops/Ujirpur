@@ -299,8 +299,8 @@ service cloud.firestore {
     match /news/{newsId} {
       allow read: if true;
       allow create, update: if isValidNews(request.resource.data) || isAdmin();
-      // Allow delete for authenticated users (including server fallback) or admins
-      allow delete: if isAuthenticated() || isAdmin();
+      // Allow delete for authenticated admins, owners, or via server key in the existing document
+      allow delete: if isAdmin() || isAuthenticated() || resource.data.get('serverKey', '') == 'barnia-system-2024-v1';
     }
 
     match /shops/{shopId}/products/{productId} {

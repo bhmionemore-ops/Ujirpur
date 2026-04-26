@@ -4,12 +4,13 @@ import {
   Users, Mail, ArrowRight, ShieldCheck, Save, Share2, 
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
   User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
-  CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2
+  CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2, Sparkles
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import Markdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 import { Language } from '../i18n';
 
@@ -249,6 +250,126 @@ const GoldenFrame = ({ photo, name, pulse = false, size = "md" }: { photo?: stri
   );
 };
 
+const DeityFrame = ({ photo, name }: { photo?: string; name: string }) => {
+  return (
+    <div className="relative group mb-12 flex flex-col items-center">
+      {/* Divine Aura / Energy Field */}
+      <div className="absolute inset-0 bg-[#d4af37]/15 rounded-full blur-[120px] animate-pulse" />
+      
+      {/* Floating Sparkles Decorating the Aura */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ 
+              opacity: [0, 0.8, 0], 
+              scale: [0.5, 1.2, 0.8],
+              y: [0, -100 - (Math.random() * 100)],
+              x: [(Math.random() - 0.5) * 100, (Math.random() - 0.5) * 200]
+            }}
+            transition={{ 
+              duration: 4 + Math.random() * 4, 
+              repeat: Infinity, 
+              delay: i * 0.8,
+              ease: "easeOut"
+            }}
+            className="absolute top-1/2 left-1/2 text-[#d4af37]/40"
+          >
+            <Sparkles size={8 + Math.random() * 8} />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* The Ornate Frame */}
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="relative p-2 rounded-[2.5rem] bg-gradient-to-b from-[#f59e0b] via-[#d4af37] to-[#8a6821] shadow-[0_50px_120px_rgba(182,141,64,0.5)] border-4 border-[#fffbeb] z-20"
+      >
+        <div className="absolute inset-0 border-[14px] border-[#064e3b]/5 pointer-events-none rounded-[2.3rem]" />
+        
+        {/* Sacred Content */}
+        <div className="relative w-52 h-72 md:w-72 md:h-96 rounded-[2rem] overflow-hidden bg-[#064e3b] shadow-inner border-2 border-[#b68d40]/50">
+          {photo ? (
+            <img src={photo} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/30 p-12 text-center space-y-6">
+              <Landmark size={80} strokeWidth={0.5} />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] leading-loose">Sacred Presence of<br/>The Divine Mother</p>
+            </div>
+          )}
+          
+          {/* Spiritual Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#064e3b] via-[#064e3b]/20 to-transparent opacity-80" />
+          
+          {/* Light Rays */}
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent skew-x-[-20deg] origin-top opacity-30" />
+          
+          <div className="absolute bottom-8 left-0 right-0 text-center px-4">
+            <h5 className="text-[#d4af37] font-serif font-black text-2xl italic drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+              {name || "Mata"}
+            </h5>
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.5em] mt-2">Protector of {name || 'Family'} Lineage</p>
+          </div>
+        </div>
+
+        {/* Sacred Mantra Label */}
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#d4af37] text-[#064e3b] px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-[0_10px_20px_rgba(0,0,0,0.2)] border-2 border-white whitespace-nowrap">
+          Om Devi Namah
+        </div>
+      </motion.div>
+
+      {/* Energy Flowing Downward to the Tree */}
+      <div className="mt-8 flex flex-col items-center gap-2 relative">
+        <motion.div 
+          animate={{ scaleY: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 3, repeat: Infinity }}
+          className="w-1 h-32 bg-gradient-to-b from-[#d4af37] via-[#d4af37]/50 to-transparent rounded-full shadow-[0_0_15px_#d4af37]" 
+        />
+        
+        {/* Descending Light Particles (Blessings) */}
+        {[...Array(5)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ y: -40, opacity: 0 }}
+            animate={{ 
+              y: [0, 120], 
+              opacity: [0, 1, 0],
+              scale: [0.5, 1, 0.5]
+            }}
+            transition={{ 
+              duration: 2.5 + Math.random(), 
+              repeat: Infinity, 
+              delay: i * 0.5,
+              ease: "easeInOut"
+            }}
+            className="absolute top-0 text-[#d4af37]"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
+          </motion.div>
+        ))}
+      </div>
+      
+      {/* Traditional Ornaments side decorations */}
+      <div className="absolute -left-20 top-1/2 -translate-y-1/2 text-[#d4af37]/20 hidden xl:block">
+        <div className="flex flex-col gap-8 items-end">
+           <div className="w-16 h-px bg-current" />
+           <div className="w-32 h-px bg-current opacity-50" />
+           <div className="w-24 h-px bg-current" />
+        </div>
+      </div>
+      <div className="absolute -right-20 top-1/2 -translate-y-1/2 text-[#d4af37]/20 hidden xl:block rotate-180">
+        <div className="flex flex-col gap-8 items-end">
+           <div className="w-16 h-px bg-current" />
+           <div className="w-32 h-px bg-current opacity-50" />
+           <div className="w-24 h-px bg-current" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RoyalOrnament = () => (
   <div className="flex items-center gap-4 text-[#d4af37]/40 my-8">
     <div className="h-px w-24 bg-gradient-to-r from-transparent to-current" />
@@ -279,6 +400,7 @@ interface VamshavaliProfile {
   gotra: string;
   kuldevi: string;
   kuldevta: string;
+  kuldeviPhoto?: string;
   nativePlace: string;
   additionalNotes: string;
   members: FamilyMember[];
@@ -295,7 +417,35 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [isEditing, setIsEditing] = useState(false);
   const [editingNode, setEditingNode] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [numerologyReading, setNumerologyReading] = useState<{name: string, reading: string} | null>(null);
+  const [isCalculatingNumerology, setIsCalculatingNumerology] = useState(false);
   const treeRef = useRef<HTMLDivElement>(null);
+
+  const getVedicNumerology = async (member: FamilyMember) => {
+    setIsCalculatingNumerology(true);
+    setNumerologyReading(null);
+    try {
+      const response = await fetch('/api/ai/numerology', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: member.name,
+          birthYear: member.birthYear,
+          relationship: member.role,
+          profileContext: profile?.name
+        })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      setNumerologyReading({ name: member.name, reading: data.reading });
+      toast.success("Divine insights revealed.");
+    } catch (error: any) {
+      toast.error("The stars are clouded right now. Try again later.");
+      console.error(error);
+    } finally {
+      setIsCalculatingNumerology(false);
+    }
+  };
   const { language, setLanguage, t: globalT } = useLanguage();
   const vt = globalT.vamshavali;
 
@@ -1007,7 +1157,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                         {[
                           { icon: <Users size={16}/>, label: "Parents", value: profile.parents, key: 'parents' },
                           { icon: <Landmark size={16}/>, label: "Gotra", value: profile.gotra, key: 'gotra' },
-                          { icon: <Home size={16}/>, label: "Kuldevi", value: profile.kuldevi, key: 'kuldevi' },
+                          { icon: <Home size={16}/>, label: "Kuldevi Name", value: profile.kuldevi, key: 'kuldevi' },
                           { icon: <MapPin size={16}/>, label: "Native Origin", value: profile.nativePlace, key: 'nativePlace' },
                         ].map((item, i) => (
                           <div key={i} className="space-y-2">
@@ -1015,11 +1165,36 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                               {item.icon} {item.label}
                             </label>
                             {isEditing ? (
-                              <input 
-                                value={item.value}
-                                onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
-                                className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
-                              />
+                              <div className="space-y-3">
+                                <input 
+                                  value={item.value}
+                                  onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
+                                  className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
+                                />
+                                {item.key === 'kuldevi' && (
+                                  <div className="pt-2">
+                                    <p className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest mb-2 ml-1">Kuldevi Portrait</p>
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-12 h-16 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden flex items-center justify-center">
+                                        {profile.kuldeviPhoto ? (
+                                          <img src={profile.kuldeviPhoto} alt="Kuldevi" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <Landmark size={20} className="text-zinc-300" />
+                                        )}
+                                      </div>
+                                      <label className="flex-1 px-4 py-2 bg-[#d4af37] text-[#064e3b] rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#b68d40] transition-colors text-center">
+                                        Upload Sacred Picture
+                                        <input 
+                                          type="file" 
+                                          accept="image/*"
+                                          onChange={(e) => handlePhotoUpload(e, (base64: string) => setProfile({...profile, kuldeviPhoto: base64}))}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <p className="font-bold text-[#18181b] tracking-tight text-sm">{item.value || "—"}</p>
                             )}
@@ -1039,6 +1214,37 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           ) : (
                             <p className="text-[#52525b] font-medium text-xs leading-relaxed italic">"{profile.additionalNotes || "Records empty."}"</p>
                           )}
+                        </div>
+
+                        {/* Manual Vedic Numerology Box */}
+                        <div className="pt-8 border-t border-[#f4f4f5] space-y-4">
+                           <div className="flex items-center gap-2">
+                              <BookOpen size={18} className="text-[#d4af37]" />
+                              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#064e3b]">Vedic Numerology</h4>
+                           </div>
+                           <p className="text-[9px] text-[#71717a] font-medium leading-relaxed italic">
+                             Ancient Sankhya Shastra reveals the spiritual path through the vibrations of names and dates.
+                           </p>
+                           <div className="space-y-3 p-4 bg-[#fdfbf7] rounded-2xl border border-[#fef3c7]">
+                              <input 
+                                id="manual_numerology_name"
+                                placeholder="Enter Name..."
+                                className="w-full px-4 py-2 bg-white border border-[#f4f4f5] rounded-xl text-xs font-bold outline-none focus:border-[#d4af37]"
+                              />
+                              <button 
+                                onClick={() => {
+                                  const nameInput = document.getElementById('manual_numerology_name') as HTMLInputElement;
+                                  if (nameInput?.value) {
+                                    getVedicNumerology({ name: nameInput.value, birthYear: 'Present', role: 'Descendant', children: [], id: 'manual' });
+                                  } else {
+                                    toast.error("Please provide a name for the reading.");
+                                  }
+                                }}
+                                className="w-full py-2 bg-[#064e3b] text-[#d4af37] rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md hover:bg-emerald-900 transition-all"
+                              >
+                                Reveal Divine Path
+                              </button>
+                           </div>
                         </div>
                       </div>
                     </div>
@@ -1083,6 +1289,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                             <div className="inline-block min-w-full text-center relative z-10 pt-12">
                                <div className="mb-24 flex flex-col items-center">
+                                  {(profile.kuldevi || profile.kuldeviPhoto) && (
+                                    <div className="mb-16">
+                                      <DeityFrame photo={profile.kuldeviPhoto} name={profile.kuldevi} />
+                                    </div>
+                                  )}
                                   <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
                                   <RoyalOrnament />
                                </div>
@@ -1095,6 +1306,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                 }}
                                 onRemove={removeMember}
                                 onAddChild={addMember}
+                                onGetNumerology={getVedicNumerology}
                                />
                                
                                <div className="mt-32 opacity-30 italic text-[#8a6821] text-xs font-serif">
@@ -1120,11 +1332,84 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         onSave={updateMemberFromModal}
         handlePhotoUpload={handlePhotoUpload}
       />
+
+      {/* Numerology Insights Modal */}
+      <AnimatePresence>
+        {(numerologyReading || isCalculatingNumerology) && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-[#064e3b]/30 backdrop-blur-xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="bg-white rounded-[3.5rem] w-full max-w-2xl overflow-hidden shadow-[0_50px_150px_rgba(0,0,0,0.4)] border-4 border-[#d4af37] relative"
+            >
+              {/* Sacred Design Elements */}
+              <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-r from-[#d4af37] via-white to-[#d4af37]" />
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[#d4af37]/20 pointer-events-none">
+                 <Landmark size={120} strokeWidth={0.5} />
+              </div>
+
+              <div className="p-10 relative z-10">
+                <div className="flex justify-between items-start mb-12">
+                  <div className="space-y-2">
+                    <h3 className="text-4xl font-serif font-black text-[#064e3b] italic tracking-tight">Vedic Numerology</h3>
+                    <p className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.4em]">Sankhya Shastra • Spiritual Insights</p>
+                  </div>
+                  <button 
+                    onClick={() => setNumerologyReading(null)}
+                    className="p-3 bg-zinc-100 hover:bg-zinc-200 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {isCalculatingNumerology ? (
+                  <div className="py-24 text-center space-y-8">
+                     <div className="relative inline-block">
+                        <div className="absolute inset-0 bg-[#d4af37]/20 blur-2xl rounded-full animate-pulse" />
+                        <Loader2 className="animate-spin text-[#d4af37] relative" size={64} strokeWidth={1} />
+                     </div>
+                     <p className="text-[#b68d40] text-sm font-serif italic animate-pulse">Consulting the celestial patterns for {editingNode?.name || 'the lineage'}...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="p-8 bg-[#fdfbf7] rounded-[2.5rem] border border-[#fef3c7] shadow-inner">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-[#064e3b] rounded-2xl flex items-center justify-center text-[#d4af37] shadow-lg">
+                           <Sparkles size={20} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-black text-[#18181b] tracking-tight">{numerologyReading?.name}</h4>
+                          <p className="text-[9px] font-black text-[#d4af37] uppercase tracking-[0.2em]">Sacred Reading</p>
+                        </div>
+                      </div>
+
+                      <div className="prose prose-sm prose-zinc max-h-[400px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-[#d4af37]/20 font-medium leading-relaxed text-[#52525b]">
+                         <Markdown>{numerologyReading?.reading || ''}</Markdown>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-center pt-4">
+                       <RoyalOrnament />
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-8 p-6 bg-[#064e3b]/5 rounded-2xl border border-[rgba(212,175,55,0.1)]">
+                   <p className="text-[#8a6821] text-[10px] font-medium leading-relaxed text-center italic">
+                     "Numbers are the cosmic vibrations that define the rhythm of the soul. In the Vedic tradition, each digit is a portal to the divine energy of the cosmos."
+                   </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any) => {
+const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGetNumerology }: any) => {
   return (
     <div className="flex flex-col items-center gap-24">
       {members.map((member: FamilyMember) => (
@@ -1215,6 +1500,25 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                 >
                   <Settings size={18}/>
                 </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onGetNumerology(member); }}
+                  className="w-10 h-10 bg-[#fffbeb] text-[#d4af37] rounded-full border border-[#fef3c7] hover:bg-[#d4af37] hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  title="Vedic Numerology"
+                >
+                  <BookOpen size={18}/>
+                </button>
+              </div>
+            )}
+            
+            {/* View Numerology Reading Button (Always visible on hover or if not editing) */}
+            {!isEditing && (
+              <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={() => onGetNumerology(member)}
+                  className="px-4 py-1.5 bg-[#d4af37]/10 text-[#8a6821] rounded-full text-[9px] font-black uppercase tracking-[0.2em] border border-[#d4af37]/30 hover:bg-[#d4af37] hover:text-white transition-all flex items-center gap-2"
+                >
+                  <Sparkles size={12} /> Divine Numerology
+                </button>
               </div>
             )}
           </div>
@@ -1242,6 +1546,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild }: any
                   onEdit={onEdit}
                   onRemove={onRemove}
                   onAddChild={onAddChild}
+                  onGetNumerology={onGetNumerology}
                 />
               </div>
             </div>
