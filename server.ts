@@ -2570,8 +2570,8 @@ async function startServer() {
           if (!profileSnap.empty) {
             profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
             
-            // If it's admin and empty, bootstrap it
-            if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0)) {
+            // If it's admin and outdated/empty, bootstrap it to the new expanded 3-gen tree
+            if (email === "okbgmi611@gmail.com" && (!profile.members || !profile.members[0]?.children || (profile.members[0].children as any[]).length < 2)) {
                const demoMembers = [
                 {
                   id: "root-1",
@@ -2583,16 +2583,50 @@ async function startServer() {
                     {
                       id: "child-1",
                       name: "Meera Sharma",
-                      role: "Daughter",
+                      role: "Daughter (Gen 1)",
                       birthYear: "1972",
                       photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
                       children: [
                         {
                           id: "grand-1",
                           name: "Ananya Sharma",
-                          role: "Granddaughter",
+                          role: "Granddaughter (Gen 2)",
                           birthYear: "1998",
                           photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: [
+                            {
+                              id: "great-1",
+                              name: "Ishani Sharma",
+                              role: "Great-Granddaughter (Gen 3)",
+                              birthYear: "2024",
+                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+                              children: []
+                            }
+                          ]
+                        },
+                        {
+                          id: "grand-2",
+                          name: "Rohan Sharma",
+                          role: "Grandson (Gen 2)",
+                          birthYear: "2002",
+                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    },
+                    {
+                      id: "child-2",
+                      name: "Rajesh Sharma",
+                      role: "Son (Gen 1)",
+                      birthYear: "1975",
+                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-3",
+                          name: "Kavita Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "2005",
+                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
                           children: []
                         }
                       ]
@@ -2634,16 +2668,50 @@ async function startServer() {
                   {
                     id: "child-1",
                     name: "Meera Sharma",
-                    role: "Daughter",
+                    role: "Daughter (Gen 1)",
                     birthYear: "1972",
                     photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
                     children: [
                       {
                         id: "grand-1",
                         name: "Ananya Sharma",
-                        role: "Granddaughter",
+                        role: "Granddaughter (Gen 2)",
                         birthYear: "1998",
                         photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                        children: [
+                          {
+                            id: "great-1",
+                            name: "Ishani Sharma",
+                            role: "Great-Granddaughter (Gen 3)",
+                            birthYear: "2024",
+                            photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+                            children: []
+                          }
+                        ]
+                      },
+                      {
+                        id: "grand-2",
+                        name: "Rohan Sharma",
+                        role: "Grandson (Gen 2)",
+                        birthYear: "2002",
+                        photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
+                        children: []
+                      }
+                    ]
+                  },
+                  {
+                    id: "child-2",
+                    name: "Rajesh Sharma",
+                    role: "Son (Gen 1)",
+                    birthYear: "1975",
+                    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                    children: [
+                      {
+                        id: "grand-3",
+                        name: "Kavita Sharma",
+                        role: "Granddaughter (Gen 2)",
+                        birthYear: "2005",
+                        photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
                         children: []
                       }
                     ]
@@ -2684,8 +2752,8 @@ async function startServer() {
           if (!profileSnap.empty) {
             profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
 
-            // If it's admin and empty, bootstrap it
-            if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0)) {
+            // If it's admin and outdated/empty, bootstrap it
+            if (email === "okbgmi611@gmail.com" && (!profile.members || !profile.members[0]?.children || (profile.members[0].children as any[]).length < 2)) {
                const demoMembers = [
                 {
                   id: "root-1",
@@ -2697,16 +2765,50 @@ async function startServer() {
                     {
                       id: "child-1",
                       name: "Meera Sharma",
-                      role: "Daughter",
+                      role: "Daughter (Gen 1)",
                       birthYear: "1972",
                       photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
                       children: [
                         {
                           id: "grand-1",
                           name: "Ananya Sharma",
-                          role: "Granddaughter",
+                          role: "Granddaughter (Gen 2)",
                           birthYear: "1998",
                           photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: [
+                            {
+                              id: "great-1",
+                              name: "Ishani Sharma",
+                              role: "Great-Granddaughter (Gen 3)",
+                              birthYear: "2024",
+                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+                              children: []
+                            }
+                          ]
+                        },
+                        {
+                          id: "grand-2",
+                          name: "Rohan Sharma",
+                          role: "Grandson (Gen 2)",
+                          birthYear: "2002",
+                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    },
+                    {
+                      id: "child-2",
+                      name: "Rajesh Sharma",
+                      role: "Son (Gen 1)",
+                      birthYear: "1975",
+                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-3",
+                          name: "Kavita Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "2005",
+                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
                           children: []
                         }
                       ]

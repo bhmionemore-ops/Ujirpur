@@ -449,60 +449,63 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const { language, setLanguage, t: globalT } = useLanguage();
   const vt = globalT.vamshavali;
 
-  const downloadManual = () => {
+  const downloadManual = async () => {
     const toastId = toast.loading(vt.downloadManual + "...");
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const margin = 20;
-      let y = 20;
-
-      const addTitle = (text: string) => {
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(6, 78, 59);
-        doc.text(text, margin, y);
-        y += 15;
-      };
-
-      const addSection = (title: string, content: string | string[]) => {
-        if (y > 240) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(212, 175, 55);
-        doc.text(title, margin, y);
-        y += 10;
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(63, 63, 70);
-        
-        const contentLines = Array.isArray(content) ? content : [content];
-        
-        contentLines.forEach(line => {
-          const lines = doc.splitTextToSize(line, 170);
-          if (y + (lines.length * 7) > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(lines, margin, y);
-          y += (lines.length * 7);
-        });
-        y += 5;
-      };
-
-      addTitle(vt.manualPdfTitle);
-      addSection(vt.manualIntro, [vt.manualIntroDesc, vt.manualIntroDesch2]);
-      addSection(vt.manualTree, vt.manualTreeList);
-      addSection(vt.manualEdit, vt.manualEditList);
-      addSection(vt.manualExport, vt.manualExportList);
-      addSection(vt.manualSecurity, vt.manualSecurityList);
+      // For Hindi/Bangla, we use a hidden HTML element and html2canvas to ensure font rendering
+      const manualElement = document.createElement('div');
+      manualElement.style.padding = '80px';
+      manualElement.style.width = '800px';
+      manualElement.style.backgroundColor = 'white';
+      manualElement.style.position = 'fixed';
+      manualElement.style.left = '-9999px';
+      manualElement.style.top = '-9999px';
+      manualElement.className = 'font-sans';
       
-      doc.setFontSize(10);
-      doc.setTextColor(161, 161, 170);
-      doc.text(vt.manualFooter, margin, 285);
-      doc.save(`Vamshavali_Manual_${language.toUpperCase()}.pdf`);
+      manualElement.innerHTML = `
+        <div style="color: #064e3b; font-size: 32px; font-weight: 900; margin-bottom: 30px; font-family: serif; border-bottom: 2px solid #d4af37; padding-bottom: 15px;">${vt.manualPdfTitle}</div>
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualIntro}</h3>
+          <p style="color: #52525b; line-height: 1.6; margin-top: 10px;">${vt.manualIntroDesc}</p>
+          <p style="color: #52525b; line-height: 1.6;">${vt.manualIntroDesch2}</p>
+        </div>
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualTree}</h3>
+          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualTreeList}</div>
+        </div>
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualEdit}</h3>
+          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualEditList}</div>
+        </div>
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualExport}</h3>
+          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualExportList}</div>
+        </div>
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualSecurity}</h3>
+          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualSecurityList}</div>
+        </div>
+        <div style="color: #a1a1aa; font-size: 12px; margin-top: 50px; text-align: center; border-top: 1px solid #f4f4f5; padding-top: 20px;">
+          ${vt.manualFooter}
+        </div>
+      `;
+      document.body.appendChild(manualElement);
+
+      const canvas = await html2canvas(manualElement, {
+        scale: 1.5,
+        useCORS: true,
+        backgroundColor: 'white'
+      });
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Vamshavali_Manual_${language.toUpperCase()}.pdf`);
+      
+      document.body.removeChild(manualElement);
       toast.dismiss(toastId);
       toast.success(vt.manual + " downloaded!");
     } catch (error) {
@@ -611,7 +614,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
 
   const downloadPDF = async () => {
-    if (!treeRef.current || !profile) return;
+    if (!profile) return;
     setIsLoading(true);
     const toastId = toast.loading("Generating high-quality PDF...");
     
@@ -625,8 +628,6 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         backgroundColor: '#fcf8f1',
         logging: false,
         onclone: (clonedDoc) => {
-          // Fix for html2canvas oklch error
-          // html2canvas doesn't support oklch() color function yet
           const elements = clonedDoc.querySelectorAll('*');
           elements.forEach((el) => {
             const style = window.getComputedStyle(el);
@@ -634,18 +635,15 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
             
             props.forEach(prop => {
               const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
-              if (value && value.includes('oklch')) {
-                // Approximate conversion or just force to a safe color
-                // For now, let's try to remove the function to let it fallback or use a safe default
-                // In most cases, these are semi-transparent or specific hues
-                // A better approach is to use a helper to convert oklch to rgb
-                try {
-                  // If we can't parse it, we'll just set it to a compatible color based on the property
-                  if (prop === 'backgroundColor') {
-                    if (value.includes('0.96')) (el as HTMLElement).style.backgroundColor = '#f4f4f5';
-                    else if (value.includes('0.06')) (el as HTMLElement).style.backgroundColor = '#064e3b';
-                  }
-                } catch (e) {}
+              if (value && (value.includes('oklch') || value.includes('var('))) {
+                // Approximate conversion for core identity colors
+                if (prop === 'backgroundColor') {
+                  if (value.includes('0.06')) (el as HTMLElement).style.backgroundColor = '#064e3b';
+                  else if (value.includes('0.96')) (el as HTMLElement).style.backgroundColor = '#f4f4f5';
+                }
+                if (prop === 'color' && value.includes('d4af37')) {
+                   (el as HTMLElement).style.color = '#d4af37';
+                }
               }
             });
           });
@@ -653,24 +651,19 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
-      const imgProps = canvas;
-      
-      // Landscape for wide trees
-      const orientation = imgProps.width > imgProps.height ? 'l' : 'p';
-      const pdf = new jsPDF(orientation, 'mm', 'a4');
-      
+      const pdf = new jsPDF(canvas.width > canvas.height ? 'l' : 'p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`family_Vamshavali_Grand_History.pdf`);
+      pdf.save(`family_Vamshavali_History.pdf`);
       
       toast.dismiss(toastId);
       toast.success("Family History Saved");
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast.dismiss(toastId);
-      toast.error("Generation failed. If you're in preview, try 'Open in new tab'.");
+      toast.error("Generation failed. Please try on desktop browser.");
     } finally {
       setIsLoading(false);
     }
@@ -1124,11 +1117,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           </h2>
                         )}
                         
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
                            {!isPublic && (
                              <div className="px-5 py-2.5 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)] flex items-center gap-3 backdrop-blur-sm">
                                 <Share2 size={16} className="text-[#d4af37]" />
-                                <span className="text-xs font-mono opacity-60">family.vamshavali.com/...{profile.shareId?.slice(-6)}</span>
+                                <span className="text-[10px] font-mono opacity-60">
+                                  {window.location.host}/...{profile.shareId?.slice(-6)}
+                                </span>
                                 <button onClick={copyLink} className="p-1.5 hover:text-[#d4af37] transition-colors">
                                    <Copy size={16} />
                                 </button>
@@ -1287,7 +1282,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             <div className="absolute bottom-10 left-10 p-2 text-[#d4af37]/20 rotate-12"><Landmark size={48} /></div>
                             <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
 
-                            <div className="inline-block min-w-full text-center relative z-10 pt-12">
+                            <div className="inline-block min-w-max text-center relative z-10 pt-12">
                                <div className="mb-24 flex flex-col items-center">
                                   {(profile.kuldevi || profile.kuldeviPhoto) && (
                                     <div className="mb-16">
