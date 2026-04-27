@@ -1494,29 +1494,37 @@ async function startServer() {
 
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
-    console.log("[Telegram] Setup requested. Host:", req.headers.host);
-    const allKeys = Object.keys(process.env);
-    const telegramKeys = allKeys.filter(k => k.includes('TELEGRAM'));
+    const allEnvKeys = Object.keys(process.env);
+    const telegramKeys = allEnvKeys.filter(k => k.toUpperCase().includes('TELEGRAM'));
     
-    const botToken = process.env.TELEGRAM_BOT_TOKEN || 
-                     process.env.VITE_TELEGRAM_BOT_TOKEN || 
-                     process.env.TELEGRAM_BOT_ ||
-                     process.env[allKeys.find(k => k.toUpperCase().includes('TELEGRAM') && k.toUpperCase().includes('TOKEN')) || ''];
+    // Find any key that looks like a telegram token
+    const botTokenKey = allEnvKeys.find(k => {
+      const uk = k.toUpperCase();
+      return uk.includes('TELEGRAM') && (uk.includes('TOKEN') || uk.includes('BOT'));
+    });
+    const botToken = botTokenKey ? process.env[botTokenKey] : null;
     
     if (!botToken) {
        return res.status(400).send(`
-         <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 600px; margin: 40px auto; background: #fef2f2; text-align: center;">
-           <h2 style="color: #b91c1c; margin-top: 0;">❌ Missing Telegram Token</h2>
-           <p>The server cannot find <b>TELEGRAM_BOT_TOKEN</b> in your Secrets.</p>
-           <div style="background: #fff; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; text-align: left; border: 1px solid #fee2e2;">
-             <b>Detected Secrets related to Telegram:</b><br>
-             ${telegramKeys.length > 0 ? telegramKeys.map(k => `<code>${k}</code>`).join(', ') : '<i>None found</i>'}
-             <br><br>
-             <b>How to fix:</b><br>
-             1. Go to <b>Settings > Secrets</b><br>
-             2. Add a secret named: <code>TELEGRAM_BOT_TOKEN</code><br>
-             3. Paste your token from BotFather<br>
-             4. <b>Crucial:</b> Click "Save" and then <b>Refresh</b> the app preview.
+         <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
+           <h2 style="color: #b91c1c; margin-top: 0; text-align:center;">❌ No Telegram Token Found</h2>
+           
+           <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #fee2e2;">
+             <p>The server is looking for a secret named <b>TELEGRAM_BOT_TOKEN</b> but it is missing.</p>
+             
+             <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+               <b>Current Environment Variables (Names only):</b><br>
+               ${allEnvKeys.length > 0 ? allEnvKeys.sort().join(', ') : '<i>No environment variables visible</i>'}
+             </div>
+
+             <h4 style="margin-bottom: 8px;">How to fix:</h4>
+             <ol style="line-height:1.6;">
+               <li>Open <b>Settings > Secrets</b></li>
+               <li>Add a secret named <code>TELEGRAM_BOT_TOKEN</code></li>
+               <li>Paste your token (e.g., <code>7234...:AAH...</code>)</li>
+               <li><b>IMPORTANT:</b> Click <b>Save</b></li>
+               <li><b>CRITICAL:</b> Click the <b>Refresh Preview</b> button at the top of the app window to restart the server.</li>
+             </ol>
            </div>
          </div>
        `);
@@ -1525,9 +1533,10 @@ async function startServer() {
     let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
     if (Array.isArray(host)) host = host[0];
 
-    let baseUrl = host?.startsWith('http') ? host : `https://${host}`;
-    if (baseUrl.startsWith('http:')) baseUrl = baseUrl.replace('http:', 'https:');
-    
+    // Clean up host (remove http/https prefix if accidentally included in secret)
+    host = host?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    let baseUrl = `https://${host}`;
     const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
     
     try {
@@ -1539,12 +1548,15 @@ async function startServer() {
           <div style="font-family:sans-serif; text-align:center; padding: 50px;">
             <h1 style="color: #059669;">✅ Webhook Connected!</h1>
             <p>Your Family Tree is now listening to Telegram.</p>
-            <p><b>Webhook URL:</b> ${webhookUrl}</p>
-            <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#0088cc; color:white; text-decoration:none; border-radius:10px;">Open Telegram Bot</a>
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; display:inline-block; margin: 20px 0;">
+              <b>Target:</b> <code style="color: #2563eb;">${webhookUrl}</code>
+            </div>
+            <br>
+            <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}" style="display:inline-block; margin-top:20px; padding:12px 24px; background:#0088cc; color:white; text-decoration:none; border-radius:10px; font-weight:bold;">Open Telegram Bot</a>
           </div>
         `);
       } else {
-        res.json({ success: false, result, webhookUrl });
+        res.status(400).json({ success: false, message: "Telegram rejected the webhook", result, webhookUrl });
       }
     } catch (err) {
       res.status(500).json({ success: false, error: String(err) });
