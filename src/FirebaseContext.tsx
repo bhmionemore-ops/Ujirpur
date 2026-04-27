@@ -210,9 +210,17 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
-    const { createUserWithEmailAndPassword, updateProfile } = await import('./firebase');
+    const { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } = await import('./firebase');
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(userCredential.user, { displayName: name });
+    
+    // Send email verification
+    try {
+      await sendEmailVerification(userCredential.user);
+      console.log(`[FirebaseContext] Verification email sent to: ${email}`);
+    } catch (verifErr) {
+      console.error("[FirebaseContext] Failed to send verification email:", verifErr);
+    }
     
     console.log(`[FirebaseContext] New user signed up: ${email}. Syncing to Firestore...`);
     

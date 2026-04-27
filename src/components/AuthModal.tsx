@@ -35,10 +35,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           throw new Error(language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters');
         }
         await signUpWithEmail(email, password, name);
-        onClose();
+        setSuccess(language === 'bn' 
+          ? 'অ্যাকাউন্ট তৈরি হয়েছে! আপনার ইমেইল যাচাই করতে একটি লিঙ্ক পাঠানো হয়েছে।' 
+          : 'Account created! A verification link has been sent to your email.');
+        // Don't close immediately so they can see the success message
+        setTimeout(() => onClose(), 3000);
       } else if (mode === 'forgot') {
         await sendPasswordReset(email);
         setSuccess(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিঙ্ক আপনার ইমেইলে পাঠানো হয়েছে' : 'Password reset link sent to your email');
+        setTimeout(() => setMode('login'), 3000);
       }
     } catch (err: any) {
       console.error("Auth error:", err);

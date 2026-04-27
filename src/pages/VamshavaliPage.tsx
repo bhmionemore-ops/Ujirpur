@@ -5,13 +5,14 @@ import {
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
   User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
   CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2, Sparkles,
-  Maximize, Minimize2, ScreenShare
+  Maximize, Minimize2, ScreenShare, Facebook
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import Markdown from 'react-markdown';
+import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
 import { Language } from '../i18n';
 
@@ -482,6 +483,50 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
   };
   const { language, setLanguage, t: globalT } = useLanguage();
+  const { user, signIn, signInWithFacebook, setAuthModalOpen } = useFirebase();
+
+  useEffect(() => {
+    // If the authenticated user changes, and we are in login step, we can try to fetch their profile
+    const syncProfile = async () => {
+      if (user && step === 'login' && user.email) {
+        setIsLoading(true);
+        try {
+          const res = await fetch(`/api/vamshavali/profile/${encodeURIComponent(user.email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setProfile(data);
+            setStep('dashboard');
+            toast.success("Welcome to your Vamshavali Dashboard");
+          } else {
+            // Profile doesn't exist yet, we can stay on login or auto-create in server
+            // For now, let's just use the email and move to dashboard
+            setEmail(user.email);
+            // The verify-otp endpoint normally creates it, but socially we might need a direct create/fetch
+            setStep('dashboard');
+          }
+        } catch (error) {
+          console.error("Error fetching social profile:", error);
+          setEmail(user.email);
+          setStep('dashboard');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    syncProfile();
+  }, [user]);
+
+  const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
+    try {
+      if (provider === 'google') {
+        await signIn();
+      } else {
+        await signInWithFacebook();
+      }
+    } catch (error) {
+      console.error("Social sign-in error:", error);
+    }
+  };
 
   useEffect(() => {
     // Force English as default for this page specifically as per user request
@@ -1057,6 +1102,42 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                         {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Generate Access Code <ArrowRight size={18} /></>}
                       </button>
                     </form>
+
+                    <div className="relative my-8">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-zinc-100"></div>
+                      </div>
+                      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
+                        <span className="bg-white px-4 text-zinc-400">Or continue with social</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => handleSocialSignIn('google')}
+                        className="flex items-center justify-center gap-3 py-4 bg-white border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 hover:border-brand-500/30 transition-all text-xs font-bold text-zinc-700 active:scale-[0.98] shadow-sm"
+                      >
+                        <Globe size={18} className="text-brand-600" />
+                        Google
+                      </button>
+                      <button 
+                        onClick={() => handleSocialSignIn('facebook')}
+                        className="flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-2xl transition-all text-xs font-bold text-white active:scale-[0.98] shadow-lg shadow-[#1877F2]/20"
+                      >
+                        <Facebook size={18} fill="currentColor" />
+                        Facebook
+                      </button>
+                    </div>
+
+                    <div className="pt-8 border-t border-zinc-100 flex flex-col items-center gap-4">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">New to Digital Lineage?</p>
+                      <button 
+                        onClick={() => setAuthModalOpen(true)}
+                        className="w-full py-4 bg-white border-2 border-brand-200 text-brand-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-brand-50 hover:border-brand-300 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <Plus size={16} /> Create your own Account
+                      </button>
+                    </div>
 
                     <div className="pt-6 border-t border-zinc-100 flex items-center justify-center">
                       <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest text-center px-8 leading-relaxed">

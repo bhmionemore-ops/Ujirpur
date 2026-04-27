@@ -2387,6 +2387,29 @@ async function startServer() {
     }
   });
 
+  // Get profile by email (used for social login)
+  app.get("/api/vamshavali/profile/:email", async (req, res) => {
+    const { email } = req.params;
+    try {
+      let profile: any = null;
+      if (adminDb) {
+        const snap = await adminDb.collection("vamshavali_profiles").where("email", "==", email).limit(1).get();
+        if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      }
+      if (!profile && db) {
+        const q = query(collection(db, "vamshavali_profiles"), where("email", "==", email), limit(1));
+        const snap = await getDocs(q);
+        if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      }
+
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+      res.json(profile);
+    } catch (error) {
+       console.error("[Vamshavali] Profile fetch error:", error);
+       res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
