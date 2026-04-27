@@ -1495,8 +1495,8 @@ async function startServer() {
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
     console.log("[Telegram] Setup requested from:", req.headers.host);
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN is missing in Secrets.");
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
+    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN or VITE_TELEGRAM_BOT_TOKEN is missing in Secrets.");
     
     let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
     if (Array.isArray(host)) host = host[0];
@@ -3912,9 +3912,24 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
   
   const data = doc.data();
   let members = data?.members || [];
+
+  function findMemberRecursive(list: any[], name: string): any {
+    for (const member of list) {
+      if (member.name?.toLowerCase() === name.toLowerCase()) return member;
+      if (member.children && member.children.length > 0) {
+        const found = findMemberRecursive(member.children, name);
+        if (found) return found;
+      }
+      if (member.partners && member.partners.length > 0) {
+        const found = findMemberRecursive(member.partners, name);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
   
   if (action === "ADD") {
-    const parent = members.find((m: any) => m.name?.toLowerCase() === targetMemberName.toLowerCase());
+    const parent = findMemberRecursive(members, targetMemberName);
     const newMember = {
       id: Math.random().toString(36).substr(2, 9),
       name: details.name,
@@ -3935,7 +3950,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       return { success: true };
     }
   } else if (action === "UPDATE") {
-    const member = members.find((m: any) => m.name?.toLowerCase() === targetMemberName.toLowerCase());
+    const member = findMemberRecursive(members, targetMemberName);
     if (member) {
       if (details.photo) member.photo = details.photo;
       if (details.birthYear) member.birthYear = details.birthYear;
@@ -3949,24 +3964,37 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
   // Telegram Bot Webhook Handler
   app.post("/api/webhooks/telegram", async (req, res) => {
+    console.log("[Telegram] Webhook received:", JSON.stringify(req.body));
     const { message } = req.body;
-    if (!message || !message.text) return res.sendStatus(200);
+    if (!message || !message.text) {
+      console.log("[Telegram] No message text found, skipping...");
+      return res.sendStatus(200);
+    }
 
     const chatId = message.chat.id;
     const text = message.text;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
 
     if (!botToken) {
-      console.error("[Telegram] BOT_TOKEN missing in environment");
+      console.error("[Telegram] BOT_TOKEN missing in environment (checked TELEGRAM_BOT_TOKEN and VITE_TELEGRAM_BOT_TOKEN)");
       return res.sendStatus(200);
     }
 
     const sendMsg = async (msg: string) => {
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' })
-      });
+      console.log(`[Telegram] Sending message to ${chatId}: ${msg}`);
+      try {
+        const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' })
+        });
+        const result = await response.json();
+        if (!result.ok) {
+          console.error("[Telegram] Send message failed:", JSON.stringify(result));
+        }
+      } catch (err) {
+        console.error("[Telegram] Send message error:", err);
+      }
     };
 
     // Use a simple memory store to link ChatID to ProfileID for this turn/session
@@ -3993,13 +4021,14 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       
       If the message is about a project/profile ID (looks like a random string or email), set action to "LINK" and details.id to the ID.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+      const response = await callGeminiWithRetry(ai, {
+        model: "gemini-1.5-flash",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json" }
       });
 
       const responseText = response.text || "{}";
+      console.log("[Telegram] Gemini response:", responseText);
       const command = JSON.parse(responseText);
 
       if (command.action === "LINK") {
