@@ -1059,6 +1059,7 @@ async function generateDailySanataniFacts() {
           batch.set(docRef, {
             ...fact,
             date: today,
+            serverKey: FIRESTORE_SERVER_KEY,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
           });
         });
@@ -2340,6 +2341,7 @@ async function startServer() {
         date,
         lang,
         updatedAt: new Date().toISOString(),
+        serverKey: FIRESTORE_SERVER_KEY,
         createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
       };
 
@@ -3983,8 +3985,10 @@ async function startServer() {
     const host = req.get('host');
     // Force https for production domains to avoid protocol mismatch errors
     const protocol = (host?.includes('localhost') || host?.includes('127.0.0.1')) ? 'http' : 'https';
-    const currentUrl = `${protocol}://${host}`;
-    const redirectUri = `${currentUrl}/auth/facebook/callback`;
+    
+    // Allow override via environment variable for stable redirect URIs
+    const baseDomain = process.env.FACEBOOK_REDIRECT_BASE_URL || `${protocol}://${host}`;
+    const redirectUri = `${baseDomain}/auth/facebook/callback`;
 
     const params = new URLSearchParams({
       client_id: appId,
@@ -4008,8 +4012,9 @@ async function startServer() {
     const host = req.get('host');
     // Force https for production domains to avoid protocol mismatch errors
     const protocol = (host?.includes('localhost') || host?.includes('127.0.0.1')) ? 'http' : 'https';
-    const currentUrl = `${protocol}://${host}`;
-    const redirectUri = `${currentUrl}/auth/facebook/callback`;
+    
+    const baseDomain = process.env.FACEBOOK_REDIRECT_BASE_URL || `${protocol}://${host}`;
+    const redirectUri = `${baseDomain}/auth/facebook/callback`;
     
     if (error) {
       console.error(`[FacebookAuth] Error from Facebook: ${error}`);

@@ -492,18 +492,35 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         setIsLoading(true);
         try {
           const res = await fetch(`/api/vamshavali/profile/${encodeURIComponent(user.email)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProfile(data);
-            setStep('dashboard');
-            toast.success("Welcome to your Vamshavali Dashboard");
-          } else {
-            // Profile doesn't exist yet, we can stay on login or auto-create in server
-            // For now, let's just use the email and move to dashboard
-            setEmail(user.email);
-            // The verify-otp endpoint normally creates it, but socially we might need a direct create/fetch
-            setStep('dashboard');
-          }
+            if (res.ok) {
+              const data = await res.json();
+              setProfile(data);
+              setStep('dashboard');
+              toast.success("Welcome to your Vamshavali Dashboard");
+            } else {
+              // Profile doesn't exist yet, auto-create a basic one for social users
+              setEmail(user.email);
+              const basicProfile = {
+                id: `v_${user.uid}`,
+                email: user.email,
+                name: user.displayName || user.email.split('@')[0],
+                ownerName: user.displayName || user.email.split('@')[0],
+                members: [],
+                metadata: {
+                  history: "",
+                  description: "Family heritage chronicle created via Social Login",
+                  traditions: []
+                },
+                updatedAt: new Date().toISOString()
+              };
+              
+              // We'll save it to state so they can use it immediately
+              setProfile(basicProfile as any);
+              setStep('dashboard');
+              toast.success("Created a new chronicle for you!");
+              
+              // Also try to persist it if they save later
+            }
         } catch (error) {
           console.error("Error fetching social profile:", error);
           setEmail(user.email);
@@ -1073,9 +1090,9 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                       <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ecfdf5] text-[#047857] rounded-full text-[10px] font-black uppercase tracking-widest border border-[#d1fae5]">
                         <ShieldCheck size={12} /> Secure Access
                       </div>
-                      <h3 className="text-4xl font-serif font-black text-zinc-900 tracking-tight">Access Dashboard</h3>
+                      <h3 className="text-4xl font-serif font-black text-zinc-900 tracking-tight">Digital Vamshavali</h3>
                       <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-                        Sign in with your email to view your personal family tree or start a new lineage profile.
+                        Preserve your family's heritage, traditions, and lineage in a secure digital chronicle. Sign in with your email or social account.
                       </p>
                     </div>
 
