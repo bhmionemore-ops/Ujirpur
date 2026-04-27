@@ -1373,7 +1373,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                            <div className="flex flex-col gap-2">
                              <a 
-                               href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}`} 
+                               href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}`} 
                                target="_blank" 
                                rel="noopener noreferrer"
                                className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"

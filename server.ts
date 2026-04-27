@@ -1492,25 +1492,6 @@ async function startServer() {
     next();
   });
 
-  // Simplified Setup Route for testing
-  app.get("/telegram-setup", async (req, res) => {
-    console.log("[Telegram] Simple setup requested");
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return res.send("TELEGRAM_BOT_TOKEN missing in Secrets.");
-    
-    // We'll use the current host if APP_URL is missing
-    const host = process.env.APP_URL || req.headers.host;
-    const webhookUrl = `https://${host}/api/webhooks/telegram`;
-    
-    try {
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
-      const result = await response.json();
-      res.send(`Webhook Attempt: ${JSON.stringify(result)} <br> URL: ${webhookUrl}`);
-    } catch (err) {
-      res.send("Error: " + String(err));
-    }
-  });
-
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
     console.log("[Telegram] Setup requested from:", req.headers.host);
@@ -1545,7 +1526,7 @@ async function startServer() {
             <h1 style="color: #059669;">✅ Webhook Connected!</h1>
             <p>Your Family Tree is now listening to Telegram.</p>
             <p><b>Webhook URL:</b> ${webhookUrl}</p>
-            <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#0088cc; color:white; text-decoration:none; border-radius:10px;">Open Telegram Bot</a>
+            <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#0088cc; color:white; text-decoration:none; border-radius:10px;">Open Telegram Bot</a>
           </div>
         `);
       } else {
