@@ -1473,7 +1473,7 @@ async function startServer() {
   app.use((req, res, next) => {
     const host = req.get('host');
     
-    // 1. Domain Redirect (onrender.com -> barnia.in OR www -> non-www)
+    // 1. Domain Redirect
     if (host) {
       if (host.includes('barnia.onrender.com') || host.startsWith('www.')) {
         const cleanHost = host.replace('www.', '').replace('barnia.onrender.com', 'barnia.in');
@@ -1481,8 +1481,7 @@ async function startServer() {
       }
     }
 
-    // 2. Trailing Slash Redirect (except root and API)
-    // Redirect /path/ to /path
+    // 2. Trailing Slash Redirect
     if (req.path !== '/' && req.path.endsWith('/') && !req.path.startsWith('/api/')) {
       const query = req.url.slice(req.path.length);
       const safepath = req.path.slice(0, -1).replace(/\/+/g, '/');
@@ -1492,6 +1491,72 @@ async function startServer() {
 
     next();
   });
+
+  // Simplified Setup Route for testing
+  app.get("/telegram-setup", async (req, res) => {
+    console.log("[Telegram] Simple setup requested");
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return res.send("TELEGRAM_BOT_TOKEN missing in Secrets.");
+    
+    // We'll use the current host if APP_URL is missing
+    const host = process.env.APP_URL || req.headers.host;
+    const webhookUrl = `https://${host}/api/webhooks/telegram`;
+    
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
+      const result = await response.json();
+      res.send(`Webhook Attempt: ${JSON.stringify(result)} <br> URL: ${webhookUrl}`);
+    } catch (err) {
+      res.send("Error: " + String(err));
+    }
+  });
+
+  // Telegram Setup Route (Moved to top of API section)
+  app.get("/api/webhooks/telegram/setup", async (req, res) => {
+    console.log("[Telegram] Setup requested from:", req.headers.host);
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN is missing in Secrets.");
+    
+    let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
+    if (Array.isArray(host)) host = host[0];
+
+    if (!process.env.APP_URL && (host?.includes('localhost') || host?.includes('127.0.0.1'))) {
+      return res.send(`
+        <div style="font-family:sans-serif; padding: 20px;">
+          <h2 style="color: #e11d48;">⚠️ Localhost Detected</h2>
+          <p>Telegram requires a public HTTPS URL. Please add a secret named <b>APP_URL</b> with your shared app URL (e.g. <code>https://ais-pre-...run.app</code>).</p>
+          <p>Current Host: <code>${host}</code></p>
+        </div>
+      `);
+    }
+
+    let baseUrl = host?.startsWith('http') ? host : `https://${host}`;
+    if (baseUrl.startsWith('http:')) baseUrl = baseUrl.replace('http:', 'https:');
+    
+    const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
+    
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
+      const result = await response.json();
+      
+      if (result.ok) {
+        res.send(`
+          <div style="font-family:sans-serif; text-align:center; padding: 50px;">
+            <h1 style="color: #059669;">✅ Webhook Connected!</h1>
+            <p>Your Family Tree is now listening to Telegram.</p>
+            <p><b>Webhook URL:</b> ${webhookUrl}</p>
+            <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#0088cc; color:white; text-decoration:none; border-radius:10px;">Open Telegram Bot</a>
+          </div>
+        `);
+      } else {
+        res.json({ success: false, result, webhookUrl });
+      }
+    } catch (err) {
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  });
+
+  app.get("/api/ping", (req, res) => res.send("pong"));
 
   // SEO Files - MUST be at the very top to avoid being caught by catch-all routes
   app.get("/robots.txt", (req, res) => {
@@ -3855,6 +3920,10 @@ async function startServer() {
   });
 
 async function updateVamshavaliLineage(profileId: string, action: string, targetMemberName: string, details: any) {
+  if (!adminDb) {
+    console.error("[Telegram] Firestore Admin DB not initialized");
+    return { success: false, error: "Database not ready. Please try again in 30 seconds." };
+  }
   const profileRef = adminDb.collection('vamshavali_profiles').doc(profileId);
   const doc = await profileRef.get();
   
@@ -3983,34 +4052,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     res.sendStatus(200);
   });
   
-  app.get("/api/webhooks/telegram/setup", async (req, res) => {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN not set in environment.");
-    
-    // Preference: 1. ENV, 2. Forwarded Host, 3. Request Host
-    const rawHost = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
-    const host = Array.isArray(rawHost) ? rawHost[0] : rawHost;
-    
-    // Clean up host if it includes localhost or port 3000 (unless explicitly set in env)
-    if (!process.env.APP_URL && (host?.includes('localhost') || host?.includes('127.0.0.1'))) {
-       return res.send("Error: Detected localhost. Please set APP_URL in your Settings (e.g. https://your-app-id.run.app)");
-    }
-
-    // Ensure it starts with https (Telegram requirement)
-    let baseUrl = host?.startsWith('http') ? host : `https://${host}`;
-    if (baseUrl?.startsWith('http:')) baseUrl = baseUrl.replace('http:', 'https:');
-    
-    const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
-    
-    try {
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
-      const result = await response.json();
-      res.json({ success: true, message: "Webhook setup attempt complete", result, webhookUrl });
-    } catch (err) {
-      res.status(500).json({ success: false, error: String(err) });
-    }
-  });
-
   app.post("/api/influencers", async (req, res) => {
     const influencer = {
       ...req.body,

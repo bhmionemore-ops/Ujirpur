@@ -1371,20 +1371,29 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                <FileText size={16} /> {vt.manual}
                            </button>
 
-                           <a 
-                             href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}`} 
-                             target="_blank" 
-                             rel="noopener noreferrer"
-                             className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
-                             onClick={() => {
-                               if (profile.shareId) {
-                                 navigator.clipboard.writeText(profile.shareId);
-                                 toast.success("Profile ID copied! Paste it in Telegram to link.");
-                               }
-                             }}
-                           >
-                              <MessageCircle size={16} /> Telegram Update
-                           </a>
+                           <div className="flex flex-col gap-2">
+                             <a 
+                               href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}`} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+                               onClick={() => {
+                                 if (profile.shareId) {
+                                   navigator.clipboard.writeText(profile.shareId);
+                                   toast.success("Profile ID copied! Paste it in Telegram to link.");
+                                 }
+                               }}
+                             >
+                                <MessageCircle size={16} /> Telegram Update
+                             </a>
+                             <a 
+                               href="/api/webhooks/telegram/setup" 
+                               target="_blank"
+                               className="text-[9px] text-[#0088cc] hover:underline text-center font-bold opacity-70"
+                             >
+                               First time? Click to Setup Webhook
+                             </a>
+                           </div>
                         </div>
                       </div>
                     </div>
