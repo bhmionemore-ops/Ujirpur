@@ -5,6 +5,7 @@ import { Users, Shield, CheckCircle, XCircle, Search, ArrowLeft, User, Mail, Fac
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
+import { useLanguage } from '../LanguageContext';
 import { toast } from 'sonner';
 
 interface UserData {
@@ -19,7 +20,8 @@ interface UserData {
 }
 
 export const AdminUserManagement = () => {
-  const { isAdmin, user: currentUser, language } = useFirebase();
+  const { isAdmin, user: currentUser } = useFirebase();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);

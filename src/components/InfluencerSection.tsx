@@ -6,11 +6,11 @@ import {
   Trash2, XCircle, Play, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
 import { shareContent, slugify, getGoogleDriveImageUrl } from '../utils';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, where, deleteDoc, doc, getDocs, getDoc } from 'firebase/firestore';
-import { useFirebase } from '../FirebaseContext';
 import { useTracking } from '../TrackingContext';
 import { seedDatabase } from '../utils/seedData';
 import { toast } from 'sonner';
@@ -54,9 +54,9 @@ interface CollabRequest {
 }
 
 export const InfluencerSection = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const { user, signIn, signInWithFacebook, isAdmin, language, setAuthModalOpen } = useFirebase();
+  const { user, signIn, signInWithFacebook, isAdmin, setAuthModalOpen } = useFirebase();
   const { logEvent } = useTracking();
   const [userInfluencers, setUserInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,7 +192,16 @@ export const InfluencerSection = () => {
         setEditingId(null);
         setIsVerified(false);
         setFacebookId('');
-        setNewInfluencer({ name: '', bio: '', avatarUrl: '', social1: '', social2: '', social3: '', videos: [] });
+        setNewInfluencer({ 
+          name: '', 
+          bio: '', 
+          avatarUrl: '', 
+          coverUrl: '',
+          social1: '', 
+          social2: '', 
+          social3: '', 
+          videos: [] 
+        });
       }
     };
     

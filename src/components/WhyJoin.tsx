@@ -78,7 +78,7 @@ export const WhyJoin = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-500/5 to-transparent rounded-bl-[5rem] transition-all group-hover:scale-110"></div>
               
               <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center mb-8 shadow-xl shadow-zinc-200/50 group-hover:bg-brand-600 group-hover:text-white transition-all duration-500">
-                {React.cloneElement(feature.icon as React.ReactElement, { 
+                {React.cloneElement(feature.icon as any, { 
                   className: "group-hover:text-white transition-colors duration-500",
                   size: 40
                 })}

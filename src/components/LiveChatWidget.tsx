@@ -80,7 +80,7 @@ export const LiveChatWidget = () => {
       
       // Get reply from Gemini
       const history = messages.map(m => ({ text: m.text, isBot: m.isBot }));
-      const reply = await generateChatReply(userMessage, history, language);
+      const reply = await generateChatReply(userMessage, history, (language === 'bn' || language === 'en') ? language : 'en');
 
       await addDoc(collection(db, 'support_messages'), {
         text: reply,

@@ -329,6 +329,7 @@ export const BarniaBazar = () => {
           location: '',
           phone: '',
           imageUrl: '',
+          todayOffer: '',
           products: [{ name: '', price: '' }]
         });
       }, 3000);

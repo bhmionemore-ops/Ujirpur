@@ -330,7 +330,8 @@
       "type": "object",
       "properties": {
         "otp": { "type": "string" },
-        "expiresAt": { "type": "string", "format": "date-time" }
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "serverKey": { "type": "string", "description": "Key for server-authoritative writes" }
       },
       "required": ["otp", "expiresAt"]
     },
@@ -350,7 +351,8 @@
         "nativePlace": { "type": "string" },
         "additionalNotes": { "type": "string" },
         "members": { "type": "array", "items": { "type": "object" } },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "serverKey": { "type": "string", "description": "Key for server-authoritative writes" }
       },
       "required": ["email", "shareId"]
     }

@@ -33,7 +33,13 @@ export const CollaborationTools = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
           }
         }, 100);
-      }, (error) => setError(handleFirestoreError(error, OperationType.LIST, 'messages')));
+      }, (error) => {
+        try {
+          handleFirestoreError(error, OperationType.LIST, 'messages');
+        } catch (e) {
+          setError(e as Error);
+        }
+      });
       return () => unsub();
     } else if (activeTab === 'messages' && !user) {
       setMessages([]);
@@ -75,7 +81,11 @@ export const CollaborationTools = () => {
         }, 1500);
       }
     } catch (err) {
-      setError(handleFirestoreError(err, OperationType.CREATE, 'messages'));
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'messages');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 

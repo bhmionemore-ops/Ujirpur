@@ -2579,6 +2579,11 @@ async function startServer() {
                   role: "Matriarch",
                   birthYear: "1945",
                   photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                  partner: {
+                    name: "Late Shri Ram Sharma",
+                    birthYear: "1940 - 2015",
+                    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop"
+                  },
                   children: [
                     {
                       id: "child-1",
@@ -2586,6 +2591,11 @@ async function startServer() {
                       role: "Daughter (Gen 1)",
                       birthYear: "1972",
                       photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                      partner: {
+                        name: "Vikram Sharma",
+                        birthYear: "1970",
+                        photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&auto=format&fit=crop"
+                      },
                       children: [
                         {
                           id: "grand-1",
@@ -2620,6 +2630,11 @@ async function startServer() {
                       role: "Son (Gen 1)",
                       birthYear: "1975",
                       photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                      partner: {
+                        name: "Sunita Sharma",
+                        birthYear: "1978",
+                        photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&auto=format&fit=crop"
+                      },
                       children: [
                         {
                           id: "grand-3",
@@ -2828,7 +2843,8 @@ async function startServer() {
                 nativePlace: "Varanasi, Uttar Pradesh",
                 additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
                 members: demoMembers,
-                updatedAt: serverTimestamp()
+                updatedAt: serverTimestamp(),
+                serverKey: FIRESTORE_SERVER_KEY
               };
               
               await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);

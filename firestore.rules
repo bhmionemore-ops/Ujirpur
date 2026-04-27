@@ -208,19 +208,6 @@ service cloud.firestore {
              (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin());
     }
 
-    function isValidVamshavaliOtp(data) {
-      return hasRequiredFields(['otp', 'expiresAt']) &&
-             data.otp is string && data.otp.size() == 6 &&
-             (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin());
-    }
-
-    function isValidVamshavaliProfile(data) {
-      // Allow if server key is present (server-side) OR if user is regular owner
-      return (data.get('serverKey', '') == 'barnia-system-2024-v1' || isAdmin() || isAuthenticated()) &&
-             (!('email' in data) || data.email is string) &&
-             (!('shareId' in data) || data.shareId is string);
-    }
-
     // ===============================================================
     // Rules
     // ===============================================================
@@ -400,19 +387,26 @@ service cloud.firestore {
     }
 
     match /vamshavali_otps/{email} {
-      // Allow reading and writing for verify/login flow
       allow get: if true; 
       allow list: if isAdmin();
-      allow write: if isAdmin() || isValidVamshavaliOtp(request.resource.data);
+      // Allow creation/update if it has the correct server key OR is admin
+      allow create, update: if isAdmin() || (
+        request.resource != null && 
+        request.resource.data.serverKey == "barnia-system-2024-v1" &&
+        request.resource.data.otp is string &&
+        request.resource.data.otp.size() == 6
+      );
+      // Allow deletion for cleanup
+      allow delete: if true;
     }
 
     match /vamshavali_profiles/{profileId} {
-      allow read: if true; // Shareable profiles
-      // Allow users to update their own profiles if authenticated and email matches
-      // OR allow if server key is present
-      allow create, update: if isAdmin() || isValidVamshavaliProfile(request.resource.data) || (
-        isAuthenticated() && 
-        (resource == null || resource.data.email == request.auth.token.email)
+      allow read: if true;
+      allow create, update: if isAdmin() || (
+        request.resource != null && (
+          request.resource.data.serverKey == "barnia-system-2024-v1" ||
+          (isAuthenticated() && (resource == null || resource.data.email == request.auth.token.email))
+        )
       );
       allow delete: if isAdmin();
     }

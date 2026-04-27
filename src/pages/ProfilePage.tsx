@@ -22,6 +22,7 @@ interface Influencer {
   avatar: string;
   cover?: string;
   uid?: string;
+  isVerified?: boolean;
   videos?: { title: string; url: string }[];
 }
 
@@ -206,7 +207,11 @@ export const ProfilePage = () => {
           }
         }
       } catch (err) {
-        setError(handleFirestoreError(err, OperationType.GET, `influencers/${slug}`));
+        try {
+          handleFirestoreError(err, OperationType.GET, `influencers/${slug}`);
+        } catch (e) {
+          setError(e as Error);
+        }
       } finally {
         setLoading(false);
       }
@@ -274,7 +279,11 @@ export const ProfilePage = () => {
       setIsRequesting(false);
       setTimeout(() => setRequestSent(false), 5000);
     } catch (err) {
-      setError(handleFirestoreError(err, OperationType.CREATE, 'collab_requests'));
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'collab_requests');
+      } catch (e) {
+        setError(e as Error);
+      }
     }
   };
 

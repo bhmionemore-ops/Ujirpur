@@ -112,7 +112,11 @@ export const ShopProfilePage = () => {
           setError(new Error('Shop not found'));
         }
       } catch (err) {
-        setError(handleFirestoreError(err, OperationType.GET, `shops/${slug}`));
+        try {
+          handleFirestoreError(err, OperationType.GET, `shops/${slug}`);
+        } catch (e) {
+          setError(e as Error);
+        }
       } finally {
         setLoading(false);
       }
