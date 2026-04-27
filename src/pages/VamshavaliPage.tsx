@@ -720,57 +720,93 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const downloadPDF = async () => {
     if (!profile) return;
     setIsLoading(true);
-    const toastId = toast.loading("Generating high-quality PDF...");
+    const toastId = toast.loading("Generating high-quality PDF chronicle...");
     
     try {
       const element = document.getElementById('genealogy_container');
-      if (!element) return;
+      if (!element) throw new Error("Genealogy container not found");
       
+      // Determine device characteristics for better performance
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
+      // Base scale - lower on iOS/Mobile to prevent memory crashes
+      const captureScale = isIOS ? 1.2 : (isMobile ? 1.5 : 2);
+      
+      // Force scroll to top/left to ensure correct capture starting point
+      const originalScrollLeft = element.scrollLeft;
+      const originalScrollTop = element.scrollTop;
+      element.scrollLeft = 0;
+      element.scrollTop = 0;
+
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: captureScale,
         useCORS: true,
         backgroundColor: '#fcf8f1',
         logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
         onclone: (clonedDoc) => {
-          const treeWrapper = clonedDoc.querySelector('.transition-transform.origin-top');
-          if (treeWrapper) (treeWrapper as HTMLElement).style.transform = 'scale(1)';
+          // Hide controls in the PDF
+          const controls = clonedDoc.getElementById('tree-controls');
+          if (controls) controls.style.display = 'none';
+
+          const container = clonedDoc.getElementById('genealogy_container');
+          if (container) {
+            container.style.overflow = 'visible';
+            container.style.height = 'auto';
+            container.style.width = 'auto';
+            container.style.scrollPadding = '0';
+            container.style.padding = '100px'; // Ensure nice padding in PDF
+            container.style.maxHeight = 'none';
+            container.style.maxWidth = 'none';
+            container.style.borderRadius = '0';
+            container.style.border = 'none';
+          }
           
-          const elements = clonedDoc.querySelectorAll('*');
-          elements.forEach((el) => {
+          const treeWrapper = clonedDoc.querySelector('.transition-transform.origin-top');
+          if (treeWrapper) {
+            (treeWrapper as HTMLElement).style.transform = 'scale(1)';
+            (treeWrapper as HTMLElement).style.margin = '0 auto';
+          }
+
+          // Force fix for broken oklch colors in html2canvas if any remain
+          const colorElements = clonedDoc.querySelectorAll('*');
+          colorElements.forEach((el) => {
             const style = window.getComputedStyle(el);
-            const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor'];
-            
-            props.forEach(prop => {
-              const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
-              if (value && (value.includes('oklch') || value.includes('var('))) {
-                // Approximate conversion for core identity colors
-                if (prop === 'backgroundColor') {
-                  if (value.includes('0.06')) (el as HTMLElement).style.backgroundColor = '#064e3b';
-                  else if (value.includes('0.96')) (el as HTMLElement).style.backgroundColor = '#f4f4f5';
-                }
-                if (prop === 'color' && value.includes('d4af37')) {
-                   (el as HTMLElement).style.color = '#d4af37';
-                }
-              }
-            });
+            // Some versions of html2canvas struggle with OKLCH/Native CSS colors
+            const bgColor = style.backgroundColor;
+            if (bgColor.includes('oklch')) (el as HTMLElement).style.backgroundColor = '#064e3b';
+            const color = style.color;
+            if (color.includes('oklch')) (el as HTMLElement).style.color = '#064e3b';
           });
         }
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      // Restore original scroll
+      element.scrollLeft = originalScrollLeft;
+      element.scrollTop = originalScrollTop;
+
+      const imgData = canvas.toDataURL('image/png', 0.9);
       const pdf = new jsPDF(canvas.width > canvas.height ? 'l' : 'p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`family_Vamshavali_History.pdf`);
+      pdf.save(`Vamshavali_${profile.name.replace(/\s+/g, '_')}.pdf`);
       
       toast.dismiss(toastId);
-      toast.success("Family History Saved");
-    } catch (error) {
+      toast.success("Family Chronicle Exported Successfully");
+    } catch (error: any) {
       console.error("PDF Generation Error:", error);
       toast.dismiss(toastId);
-      toast.error("Generation failed. Please try on desktop browser.");
+      const errorMsg = error?.message?.includes('Canvas area exceeds') 
+        ? "Tree is too large for mobile memory. Please use a desktop browser for full export."
+        : "Export failed. Please try zooming out or using a desktop browser.";
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
