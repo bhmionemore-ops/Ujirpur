@@ -146,3 +146,61 @@
 .rotate-y-12 {
   transform: rotateY(12deg);
 }
+
+@media print {
+  /* Hide all UI elements */
+  nav, footer, button, .no-print, #tree-controls, .toast-container, [role="status"], .bg-amber-100 {
+    display: none !important;
+  }
+
+  /* Reset layout for printing */
+  html, body {
+    background-color: white !important;
+    background-image: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the genealogy container fills the page and looks nice */
+  #genealogy_container {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    display: block !important;
+    background-color: #fcf8f1 !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+    overflow: visible !important;
+    left: 0 !important;
+    top: 0 !important;
+  }
+
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Ensure high quality text and borders */
+  .border, .border-2, .border-4, .border-\[12px\] {
+    border-color: #d4af37 !important; /* Brand gold */
+  }
+
+  /* Hide ornaments if they clutter print */
+  .deity-frame {
+    break-inside: avoid;
+  }
+
+  /* Font adjustments for print clarity */
+  h1, h2, h3, .text-\[\#064e3b\] {
+    color: #064e3b !important;
+  }
+}

@@ -5,12 +5,12 @@ import {
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
   User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
   CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2, Sparkles,
-  Maximize, Minimize2, ScreenShare, Facebook
+  Maximize, Minimize2, ScreenShare, Facebook, MessageCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import * as htmlToImage from 'html-to-image';
 import Markdown from 'react-markdown';
 import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
@@ -426,6 +426,25 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const treeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (step === 'dashboard' && profile && treeRef.current) {
+      // Small delay to ensure layout is measured correctly
+      setTimeout(() => {
+        const container = treeRef.current;
+        if (container) {
+          const content = container.querySelector('.inline-block');
+          if (content) {
+             const treeWidth = (content as HTMLElement).offsetWidth * treeScale;
+             const containerWidth = container.offsetWidth;
+             if (treeWidth > containerWidth) {
+                container.scrollLeft = (treeWidth - containerWidth) / 2;
+             }
+          }
+        }
+      }, 800);
+    }
+  }, [step, profile?.id]);
+
+  useEffect(() => {
     if (isFullScreen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -595,18 +614,23 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       `;
       document.body.appendChild(manualElement);
 
-      const canvas = await html2canvas(manualElement, {
-        scale: 1.5,
-        useCORS: true,
-        backgroundColor: 'white'
+      const dataUrl = await htmlToImage.toPng(manualElement, {
+        backgroundColor: 'white',
+        pixelRatio: 1.5,
+        cacheBust: true
       });
       
-      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
+      const img = new Image();
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.src = dataUrl;
+      });
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = (img.height * pdfWidth) / img.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Vamshavali_Manual_${language.toUpperCase()}.pdf`);
       
       document.body.removeChild(manualElement);
@@ -720,148 +744,106 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const exportImage = async () => {
     if (!profile) return;
     setIsLoading(true);
-    const toastId = toast.loading("Capturing high-resolution image...");
+    const toastId = toast.loading("Forging Royal Portrait...");
     
     try {
       const element = document.getElementById('genealogy_container');
       if (!element) throw new Error("Genealogy container not found");
       
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const canvas = await html2canvas(element, {
-        scale: isMobile ? 1.2 : 2,
-        useCORS: true,
-        backgroundColor: '#fcf8f1',
-        logging: false,
-        onclone: (clonedDoc) => {
-          const controls = clonedDoc.getElementById('tree-controls');
-          if (controls) controls.style.display = 'none';
+      
+      // DEEP SANITIZATION: We clone the element and force-reset every style that could break the capture
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.position = 'fixed';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      clone.style.width = (element.scrollWidth) + 'px'; // Use scrollWidth to capture everything
+      clone.style.height = 'auto';
+      clone.style.overflow = 'visible';
+      clone.style.backgroundColor = '#fcf8f1';
+      clone.style.transform = 'none'; // Force 1:1 for capture
+      document.body.appendChild(clone);
 
-          // Robust oklch fix: traverse all elements and replace native oklch styles
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach((el) => {
-            const style = window.getComputedStyle(el);
-            const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke'];
+      try {
+        // Hide UI elements in clone
+        const controls = clone.querySelector('#tree-controls');
+        if (controls) (controls as HTMLElement).style.display = 'none';
+        
+        const noPrints = clone.querySelectorAll('.no-print');
+        noPrints.forEach((el: any) => el.style.display = 'none');
+
+        // Color Conversion & Shadow Removal Layer
+        const allNodes = clone.querySelectorAll('*');
+        allNodes.forEach((node: any) => {
+          try {
+            const style = window.getComputedStyle(node);
             
-            props.forEach(prop => {
-              const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
-              if (value && value.includes('oklch')) {
-                // Hard-coded mapping for common app colors or fallback to a safe neutral
-                let fallback = '#064e3b'; // Default brand green
-                if (value.includes('d4af37')) fallback = '#d4af37'; // Brand gold
-                if (value.includes('fcf8f1')) fallback = '#fcf8f1'; // Background
-                if (value.includes('white') || value.includes('0.9')) fallback = '#ffffff';
-                if (value.includes('black') || value.includes('0.1')) fallback = '#000000';
+            // 1. Force convert colors to absolute HEX/RGB to prevent oklab failures
+            // Most capture libraries fail on modern CSS color functions like oklab(), display-p3, etc.
+            const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke', 'background'];
+            colorProps.forEach(p => {
+              const val = style[p as any];
+              if (val && (val.includes('okl') || val.includes('var(') || val.includes('color('))) {
+                let hex = '#064e3b'; // Default Forest Green
+                if (val.includes('255, 255, 255') || val.includes('white')) hex = '#ffffff';
+                if (val.includes('d4af37') || val.includes('gold')) hex = '#d4af37'; // Heritage Gold
+                if (val.includes('fcf8f1') || val.includes('parchment')) hex = '#fcf8f1';
                 
-                (el as HTMLElement).style.setProperty(prop, fallback, 'important');
+                node.style.setProperty(p === 'backgroundColor' ? 'background-color' : (p === 'borderColor' ? 'border-color' : p), hex, 'important');
+                if (p === 'background') node.style.backgroundImage = 'none';
               }
             });
-          });
-        }
-      });
 
-      const link = document.createElement('a');
-      link.download = `Vamshavali_${profile.name.replace(/\s+/g, '_')}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.9);
-      link.click();
-      
+            // 2. Clear problematic filters and shadows
+            node.style.boxShadow = 'none';
+            node.style.textShadow = 'none';
+            node.style.backdropFilter = 'none';
+            node.style.filter = 'none';
+            node.style.transition = 'none';
+            node.style.animation = 'none';
+            
+            // 3. Ensure visibility
+            node.style.opacity = '1';
+            node.style.visibility = 'visible';
+          } catch (e) {}
+        });
+
+        // Use toPng for maximum fidelity if Jpeg fails
+        const dataUrl = await htmlToImage.toJpeg(clone, {
+          backgroundColor: '#fcf8f1',
+          quality: 0.9,
+          pixelRatio: isMobile ? 1.0 : 1.5, // High resolution
+          skipFonts: false
+        });
+        
+        if (!dataUrl) throw new Error("Processing timed out");
+
+        const link = document.createElement('a');
+        link.download = `Heritage_Scroll_${profile.name.replace(/\s+/g, '_')}.jpg`;
+        link.href = dataUrl;
+        link.click();
+        
+        toast.dismiss(toastId);
+        toast.success("Golden Portrait Saved");
+      } finally {
+        document.body.removeChild(clone);
+      }
+    } catch (error: any) {
+      console.error("Export Error Detail:", error);
       toast.dismiss(toastId);
-      toast.success("Image exported successfully");
-    } catch (error) {
-      console.error("Image Export Error:", error);
-      toast.dismiss(toastId);
-      toast.error("Image capture failed. Try zooming out.");
+      toast.error("Export failed. The tree might be too vast for this device. Please use 'Export Scroll' (PDF).");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const downloadPDF = async () => {
-    if (!profile) return;
-    setIsLoading(true);
-    const toastId = toast.loading("Preparing lineage panorama...");
-    
-    try {
-      const element = document.getElementById('genealogy_container');
-      if (!element) throw new Error("Genealogy container not found");
-      
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      
-      // Auto-detect best capture strategy
-      const attemptCapture = async (scale: number) => {
-        return await html2canvas(element!, {
-          scale: scale,
-          useCORS: true,
-          backgroundColor: '#fcf8f1',
-          logging: false,
-          allowTaint: true,
-          onclone: (clonedDoc) => {
-            const controls = clonedDoc.getElementById('tree-controls');
-            if (controls) controls.style.display = 'none';
-            const container = clonedDoc.getElementById('genealogy_container');
-            if (container) {
-              container.style.overflow = 'visible';
-              container.style.height = 'auto';
-              container.style.width = 'auto';
-              container.style.backgroundImage = 'none';
-              container.style.padding = '80px';
-            }
-
-            // Robust oklch fix
-            const allElements = clonedDoc.querySelectorAll('*');
-            allElements.forEach((el) => {
-              const style = window.getComputedStyle(el);
-              const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke'];
-              
-              props.forEach(prop => {
-                const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
-                if (value && value.includes('oklch')) {
-                  let fallback = '#064e3b';
-                  if (value.includes('d4af37')) fallback = '#d4af37';
-                  if (value.includes('fcf8f1')) fallback = '#fcf8f1';
-                  if (value.includes('white') || value.includes('0.9')) fallback = '#ffffff';
-                  if (value.includes('black') || value.includes('0.1')) fallback = '#000000';
-                  (el as HTMLElement).style.setProperty(prop, fallback, 'important');
-                }
-              });
-            });
-          }
-        });
-      };
-
-      let canvas;
-      try {
-        canvas = await attemptCapture((isIOS || isMobile) ? 1.0 : 1.5);
-      } catch (e) {
-        console.warn("First capture attempt failed, retrying with low-memory mode...");
-        canvas = await attemptCapture(0.7); // Emergency low-res fallback
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.6);
-      const pdf = new jsPDF(canvas.width > canvas.height ? 'l' : 'p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      const pdfInstance = (pdfHeight > pdf.internal.pageSize.getHeight()) 
-        ? new jsPDF({
-            orientation: canvas.width > canvas.height ? 'l' : 'p',
-            unit: 'mm',
-            format: [pdfWidth, pdfHeight + 20]
-          })
-        : pdf;
-
-      pdfInstance.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdfInstance.save(`Vamshavali_${profile.name.replace(/\s+/g, '_')}.pdf`);
-      
+  const downloadPDF = () => {
+    // Native print is now styled specifically in index.css to produce a high-quality PDF scroll
+    const toastId = toast.loading("Engraving digital scroll...");
+    setTimeout(() => {
+      window.print();
       toast.dismiss(toastId);
-      toast.success("Ancestral Scroll Exported Successfully");
-    } catch (error: any) {
-      console.error("Capture Error:", error);
-      toast.dismiss(toastId);
-      toast.error("Export stalled. Try zooming out or use 'Export Image' as fallback.");
-    } finally {
-      setIsLoading(false);
-    }
+    }, 400);
   };
 
   const copyLink = () => {
@@ -1388,6 +1370,21 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                            >
                                <FileText size={16} /> {vt.manual}
                            </button>
+
+                           <a 
+                             href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'VamshavaliBot'}`} 
+                             target="_blank" 
+                             rel="noopener noreferrer"
+                             className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+                             onClick={() => {
+                               if (profile.shareId) {
+                                 navigator.clipboard.writeText(profile.shareId);
+                                 toast.success("Profile ID copied! Paste it in Telegram to link.");
+                               }
+                             }}
+                           >
+                              <MessageCircle size={16} /> Telegram Update
+                           </a>
                         </div>
                       </div>
                     </div>
@@ -1560,10 +1557,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           <div 
                             ref={treeRef}
                             id="genealogy_container"
-                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] overflow-x-auto overflow-y-auto relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat transition-all duration-500 ease-in-out ${
+                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat transition-all duration-700 ease-in-out ${
                               isFullScreen 
-                                ? 'h-screen w-screen rounded-none border-0 p-32 pt-48' 
-                                : 'rounded-[3.5rem] border-[10px] border-[#d4af37] min-h-[800px] p-24 md:p-32'
+                                ? 'h-screen w-screen rounded-none border-0 p-16 md:p-32 pt-48' 
+                                : 'rounded-[1.5rem] md:rounded-[4rem] border-[3px] md:border-[12px] border-[#d4af37] min-h-[400px] h-fit p-4 md:p-40'
                             }`}
                           >
                             <div className="absolute inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[2.8rem]" />
@@ -1704,13 +1701,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
 const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGetNumerology }: any) => {
   return (
-    <div className="flex justify-center gap-16 md:gap-32 px-10">
+    <div className="flex justify-center gap-8 md:gap-32 px-4 md:px-10">
       {members.map((member: FamilyMember, index: number) => (
         <div key={member.id} className="relative flex flex-col items-center">
           {/* Node Wrapper */}
           <div className="flex flex-col items-center group relative z-20">
             {/* Couple/Individual Container */}
-            <div className={`relative flex items-center gap-4 md:gap-8 p-3 md:p-6 rounded-[2rem] md:rounded-[4rem] transition-all duration-700 ${member.partner ? 'bg-white/40 backdrop-blur-sm border-2 border-[#d4af37]/30 shadow-[0_30px_60px_-15px_rgba(182,141,64,0.2)]' : 'bg-transparent'}`}>
+            <div className={`relative flex items-center gap-3 md:gap-8 p-3 md:p-6 rounded-[2rem] md:rounded-[4rem] transition-all duration-700 ${member.partner ? 'bg-white/40 backdrop-blur-sm border-2 border-[#d4af37]/30 shadow-[0_30px_60px_-15px_rgba(182,141,64,0.2)]' : 'bg-transparent'}`}>
               
               {/* Member */}
               <div className="flex flex-col items-center text-center">

@@ -3854,6 +3854,163 @@ async function startServer() {
     }
   });
 
+async function updateVamshavaliLineage(profileId: string, action: string, targetMemberName: string, details: any) {
+  const profileRef = adminDb.collection('vamshavali_profiles').doc(profileId);
+  const doc = await profileRef.get();
+  
+  if (!doc.exists) return { success: false, error: "Profile not found" };
+  
+  const data = doc.data();
+  let members = data?.members || [];
+  
+  if (action === "ADD") {
+    const parent = members.find((m: any) => m.name?.toLowerCase() === targetMemberName.toLowerCase());
+    const newMember = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: details.name,
+      role: details.role || "Member",
+      birthYear: details.birthYear || "",
+      photo: details.photo || "",
+      children: [],
+      partners: []
+    };
+    
+    if (parent) {
+      if (details.relationship === "partner") {
+        parent.partners = [...(parent.partners || []), newMember];
+      } else {
+        parent.children = [...(parent.children || []), newMember];
+      }
+      await profileRef.update({ members, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return { success: true };
+    }
+  } else if (action === "UPDATE") {
+    const member = members.find((m: any) => m.name?.toLowerCase() === targetMemberName.toLowerCase());
+    if (member) {
+      if (details.photo) member.photo = details.photo;
+      if (details.birthYear) member.birthYear = details.birthYear;
+      if (details.role) member.role = details.role;
+      await profileRef.update({ members, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return { success: true };
+    }
+  }
+  return { success: false, error: "Target member not found" };
+}
+
+  // Telegram Bot Webhook Handler
+  app.post("/api/webhooks/telegram", async (req, res) => {
+    const { message } = req.body;
+    if (!message || !message.text) return res.sendStatus(200);
+
+    const chatId = message.chat.id;
+    const text = message.text;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!botToken) {
+      console.error("[Telegram] BOT_TOKEN missing in environment");
+      return res.sendStatus(200);
+    }
+
+    const sendMsg = async (msg: string) => {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' })
+      });
+    };
+
+    // Use a simple memory store to link ChatID to ProfileID for this turn/session
+    // In production, we'd store this link in Firestore.
+    const getLinkedProfileId = async (chatId: number) => {
+      const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
+      return snap.exists ? snap.data()?.profileId : null;
+    };
+
+    if (text.startsWith('/start')) {
+      return await sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. Send me messages like:\n\n• `Add my son Arjun to Suresh` \n• `Update photo for Savitri Devi` \n• `My grandfather was Ramesh, son of Kedar` \n\n*Please send your Family Profile ID first to link your records.*");
+    }
+
+    try {
+      const geminiKey = await getGeminiApiKey();
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      
+      const prompt = `You are a genealogy data extractor. Extract family tree updates from the following message: "${text}".
+      
+      Return ONLY a JSON object with:
+      - action: "ADD", "UPDATE", "DELETE", or "UNKNOWN"
+      - targetMember: name of the person to attach to or modify
+      - details: name, role, birthYear, relationship, linkDirection ("child", "partner")
+      
+      If the message is about a project/profile ID (looks like a random string or email), set action to "LINK" and details.id to the ID.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: "application/json" }
+      });
+
+      const responseText = response.text || "{}";
+      const command = JSON.parse(responseText);
+
+      if (command.action === "LINK") {
+        await adminDb.collection('telegram_links').doc(chatId.toString()).set({ profileId: command.details.id });
+        return await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
+      }
+
+      if (command.action === "ADD" || command.action === "UPDATE") {
+        const profileId = await getLinkedProfileId(chatId);
+        if (!profileId) {
+          return await sendMsg("⚠️ *No profile linked.* Please send your Family Profile ID first (e.g., your email or share ID).");
+        }
+
+        await sendMsg(`📋 *Instruction Received:* Processing ${command.details.name || 'update'} for ${command.targetMember}...\n\n_Updating the Eternal Archives..._`);
+        
+        const updateResult = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
+        
+        if (updateResult.success) {
+          return await sendMsg(`✨ *Lineage Updated!* ${command.details.name || 'Information'} has been etched into the Vamshavali. Refresh your app to see the change.`);
+        } else {
+          return await sendMsg(`❌ *Update Failed:* ${updateResult.error}. Ensure the name matches exactly as shown in the tree.`);
+        }
+      }
+
+      await sendMsg("I heard you, but I need clearer instructions to update the registry. Try: `Add my son Arjun to Suresh`.");
+    } catch (err) {
+      console.error("[Telegram] Error processing message:", err);
+      await sendMsg("⚠️ The archives are currently busy. Please try again in a moment.");
+    }
+
+    res.sendStatus(200);
+  });
+  
+  app.get("/api/webhooks/telegram/setup", async (req, res) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN not set in environment.");
+    
+    // Preference: 1. ENV, 2. Forwarded Host, 3. Request Host
+    const rawHost = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
+    const host = Array.isArray(rawHost) ? rawHost[0] : rawHost;
+    
+    // Clean up host if it includes localhost or port 3000 (unless explicitly set in env)
+    if (!process.env.APP_URL && (host?.includes('localhost') || host?.includes('127.0.0.1'))) {
+       return res.send("Error: Detected localhost. Please set APP_URL in your Settings (e.g. https://your-app-id.run.app)");
+    }
+
+    // Ensure it starts with https (Telegram requirement)
+    let baseUrl = host?.startsWith('http') ? host : `https://${host}`;
+    if (baseUrl?.startsWith('http:')) baseUrl = baseUrl.replace('http:', 'https:');
+    
+    const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
+    
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
+      const result = await response.json();
+      res.json({ success: true, message: "Webhook setup attempt complete", result, webhookUrl });
+    } catch (err) {
+      res.status(500).json({ success: false, error: String(err) });
+    }
+  });
+
   app.post("/api/influencers", async (req, res) => {
     const influencer = {
       ...req.body,
