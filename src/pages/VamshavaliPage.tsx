@@ -717,96 +717,148 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
   };
 
-  const downloadPDF = async () => {
+  const exportImage = async () => {
     if (!profile) return;
     setIsLoading(true);
-    const toastId = toast.loading("Generating high-quality PDF chronicle...");
+    const toastId = toast.loading("Capturing high-resolution image...");
     
     try {
       const element = document.getElementById('genealogy_container');
       if (!element) throw new Error("Genealogy container not found");
       
-      // Determine device characteristics for better performance
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      
-      // Base scale - lower on iOS/Mobile to prevent memory crashes
-      const captureScale = isIOS ? 1.2 : (isMobile ? 1.5 : 2);
-      
-      // Force scroll to top/left to ensure correct capture starting point
-      const originalScrollLeft = element.scrollLeft;
-      const originalScrollTop = element.scrollTop;
-      element.scrollLeft = 0;
-      element.scrollTop = 0;
-
       const canvas = await html2canvas(element, {
-        scale: captureScale,
+        scale: isMobile ? 1.2 : 2,
         useCORS: true,
         backgroundColor: '#fcf8f1',
         logging: false,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: 0,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
         onclone: (clonedDoc) => {
-          // Hide controls in the PDF
           const controls = clonedDoc.getElementById('tree-controls');
           if (controls) controls.style.display = 'none';
 
-          const container = clonedDoc.getElementById('genealogy_container');
-          if (container) {
-            container.style.overflow = 'visible';
-            container.style.height = 'auto';
-            container.style.width = 'auto';
-            container.style.scrollPadding = '0';
-            container.style.padding = '100px'; // Ensure nice padding in PDF
-            container.style.maxHeight = 'none';
-            container.style.maxWidth = 'none';
-            container.style.borderRadius = '0';
-            container.style.border = 'none';
-          }
-          
-          const treeWrapper = clonedDoc.querySelector('.transition-transform.origin-top');
-          if (treeWrapper) {
-            (treeWrapper as HTMLElement).style.transform = 'scale(1)';
-            (treeWrapper as HTMLElement).style.margin = '0 auto';
-          }
-
-          // Force fix for broken oklch colors in html2canvas if any remain
-          const colorElements = clonedDoc.querySelectorAll('*');
-          colorElements.forEach((el) => {
+          // Robust oklch fix: traverse all elements and replace native oklch styles
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((el) => {
             const style = window.getComputedStyle(el);
-            // Some versions of html2canvas struggle with OKLCH/Native CSS colors
-            const bgColor = style.backgroundColor;
-            if (bgColor.includes('oklch')) (el as HTMLElement).style.backgroundColor = '#064e3b';
-            const color = style.color;
-            if (color.includes('oklch')) (el as HTMLElement).style.color = '#064e3b';
+            const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke'];
+            
+            props.forEach(prop => {
+              const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
+              if (value && value.includes('oklch')) {
+                // Hard-coded mapping for common app colors or fallback to a safe neutral
+                let fallback = '#064e3b'; // Default brand green
+                if (value.includes('d4af37')) fallback = '#d4af37'; // Brand gold
+                if (value.includes('fcf8f1')) fallback = '#fcf8f1'; // Background
+                if (value.includes('white') || value.includes('0.9')) fallback = '#ffffff';
+                if (value.includes('black') || value.includes('0.1')) fallback = '#000000';
+                
+                (el as HTMLElement).style.setProperty(prop, fallback, 'important');
+              }
+            });
           });
         }
       });
 
-      // Restore original scroll
-      element.scrollLeft = originalScrollLeft;
-      element.scrollTop = originalScrollTop;
+      const link = document.createElement('a');
+      link.download = `Vamshavali_${profile.name.replace(/\s+/g, '_')}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.9);
+      link.click();
+      
+      toast.dismiss(toastId);
+      toast.success("Image exported successfully");
+    } catch (error) {
+      console.error("Image Export Error:", error);
+      toast.dismiss(toastId);
+      toast.error("Image capture failed. Try zooming out.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const imgData = canvas.toDataURL('image/png', 0.9);
+  const downloadPDF = async () => {
+    if (!profile) return;
+    setIsLoading(true);
+    const toastId = toast.loading("Preparing lineage panorama...");
+    
+    try {
+      const element = document.getElementById('genealogy_container');
+      if (!element) throw new Error("Genealogy container not found");
+      
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
+      // Auto-detect best capture strategy
+      const attemptCapture = async (scale: number) => {
+        return await html2canvas(element!, {
+          scale: scale,
+          useCORS: true,
+          backgroundColor: '#fcf8f1',
+          logging: false,
+          allowTaint: true,
+          onclone: (clonedDoc) => {
+            const controls = clonedDoc.getElementById('tree-controls');
+            if (controls) controls.style.display = 'none';
+            const container = clonedDoc.getElementById('genealogy_container');
+            if (container) {
+              container.style.overflow = 'visible';
+              container.style.height = 'auto';
+              container.style.width = 'auto';
+              container.style.backgroundImage = 'none';
+              container.style.padding = '80px';
+            }
+
+            // Robust oklch fix
+            const allElements = clonedDoc.querySelectorAll('*');
+            allElements.forEach((el) => {
+              const style = window.getComputedStyle(el);
+              const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke'];
+              
+              props.forEach(prop => {
+                const value = (el as HTMLElement).style.getPropertyValue(prop) || style.getPropertyValue(prop);
+                if (value && value.includes('oklch')) {
+                  let fallback = '#064e3b';
+                  if (value.includes('d4af37')) fallback = '#d4af37';
+                  if (value.includes('fcf8f1')) fallback = '#fcf8f1';
+                  if (value.includes('white') || value.includes('0.9')) fallback = '#ffffff';
+                  if (value.includes('black') || value.includes('0.1')) fallback = '#000000';
+                  (el as HTMLElement).style.setProperty(prop, fallback, 'important');
+                }
+              });
+            });
+          }
+        });
+      };
+
+      let canvas;
+      try {
+        canvas = await attemptCapture((isIOS || isMobile) ? 1.0 : 1.5);
+      } catch (e) {
+        console.warn("First capture attempt failed, retrying with low-memory mode...");
+        canvas = await attemptCapture(0.7); // Emergency low-res fallback
+      }
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.6);
       const pdf = new jsPDF(canvas.width > canvas.height ? 'l' : 'p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`Vamshavali_${profile.name.replace(/\s+/g, '_')}.pdf`);
+      const pdfInstance = (pdfHeight > pdf.internal.pageSize.getHeight()) 
+        ? new jsPDF({
+            orientation: canvas.width > canvas.height ? 'l' : 'p',
+            unit: 'mm',
+            format: [pdfWidth, pdfHeight + 20]
+          })
+        : pdf;
+
+      pdfInstance.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdfInstance.save(`Vamshavali_${profile.name.replace(/\s+/g, '_')}.pdf`);
       
       toast.dismiss(toastId);
-      toast.success("Family Chronicle Exported Successfully");
+      toast.success("Ancestral Scroll Exported Successfully");
     } catch (error: any) {
-      console.error("PDF Generation Error:", error);
+      console.error("Capture Error:", error);
       toast.dismiss(toastId);
-      const errorMsg = error?.message?.includes('Canvas area exceeds') 
-        ? "Tree is too large for mobile memory. Please use a desktop browser for full export."
-        : "Export failed. Please try zooming out or using a desktop browser.";
-      toast.error(errorMsg);
+      toast.error("Export stalled. Try zooming out or use 'Export Image' as fallback.");
     } finally {
       setIsLoading(false);
     }
@@ -1314,10 +1366,26 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                 </button>
                              </div>
                            )}
-                           <button onClick={downloadPDF} className="px-6 py-2.5 bg-[#d4af37] text-[#064e3b] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">
+                           <button 
+                             onClick={downloadPDF} 
+                             disabled={isLoading}
+                             className="px-6 py-2.5 bg-[#d4af37] text-[#064e3b] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2 disabled:opacity-50"
+                           >
+                               {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
                                {vt.exportScroll}
                            </button>
-                           <button onClick={downloadManual} className="px-6 py-2.5 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-colors flex items-center gap-2">
+                           <button 
+                             onClick={exportImage} 
+                             disabled={isLoading}
+                             className="px-6 py-2.5 bg-[#064e3b] text-white border border-[#d4af37]/30 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2 disabled:opacity-50"
+                           >
+                               <Heart size={16} className="text-[#d4af37]" />
+                               Export Image
+                           </button>
+                           <button 
+                             onClick={downloadManual} 
+                             className="px-6 py-2.5 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-colors flex items-center gap-2"
+                           >
                                <FileText size={16} /> {vt.manual}
                            </button>
                         </div>
