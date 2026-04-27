@@ -1495,19 +1495,28 @@ async function startServer() {
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
     console.log("[Telegram] Setup requested. Host:", req.headers.host);
-    const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
+    const allKeys = Object.keys(process.env);
+    const telegramKeys = allKeys.filter(k => k.includes('TELEGRAM'));
+    
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || 
+                     process.env.VITE_TELEGRAM_BOT_TOKEN || 
+                     process.env.TELEGRAM_BOT_ ||
+                     process.env[allKeys.find(k => k.toUpperCase().includes('TELEGRAM') && k.toUpperCase().includes('TOKEN')) || ''];
     
     if (!botToken) {
        return res.status(400).send(`
          <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 600px; margin: 40px auto; background: #fef2f2; text-align: center;">
            <h2 style="color: #b91c1c; margin-top: 0;">❌ Missing Telegram Token</h2>
            <p>The server cannot find <b>TELEGRAM_BOT_TOKEN</b> in your Secrets.</p>
-           <p>Please go to <b>Settings > Secrets</b> and add a secret named <code>TELEGRAM_BOT_TOKEN</code> with your value from BotFather.</p>
-           <div style="background: #fff; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 13px; text-align: left;">
-             <b>Common issues:</b><br>
-             1. Typo in the name (must be exactly TELEGRAM_BOT_TOKEN)<br>
-             2. Forgot to click "Save" after adding<br>
-             3. Server needs a restart (click the refresh button in preview)
+           <div style="background: #fff; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; text-align: left; border: 1px solid #fee2e2;">
+             <b>Detected Secrets related to Telegram:</b><br>
+             ${telegramKeys.length > 0 ? telegramKeys.map(k => `<code>${k}</code>`).join(', ') : '<i>None found</i>'}
+             <br><br>
+             <b>How to fix:</b><br>
+             1. Go to <b>Settings > Secrets</b><br>
+             2. Add a secret named: <code>TELEGRAM_BOT_TOKEN</code><br>
+             3. Paste your token from BotFather<br>
+             4. <b>Crucial:</b> Click "Save" and then <b>Refresh</b> the app preview.
            </div>
          </div>
        `);
