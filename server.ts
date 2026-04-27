@@ -1494,22 +1494,27 @@ async function startServer() {
 
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
-    console.log("[Telegram] Setup requested from:", req.headers.host);
+    console.log("[Telegram] Setup requested. Host:", req.headers.host);
     const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
-    if (!botToken) return res.send("Error: TELEGRAM_BOT_TOKEN or VITE_TELEGRAM_BOT_TOKEN is missing in Secrets.");
+    
+    if (!botToken) {
+       return res.status(400).send(`
+         <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 600px; margin: 40px auto; background: #fef2f2; text-align: center;">
+           <h2 style="color: #b91c1c; margin-top: 0;">❌ Missing Telegram Token</h2>
+           <p>The server cannot find <b>TELEGRAM_BOT_TOKEN</b> in your Secrets.</p>
+           <p>Please go to <b>Settings > Secrets</b> and add a secret named <code>TELEGRAM_BOT_TOKEN</code> with your value from BotFather.</p>
+           <div style="background: #fff; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 13px; text-align: left;">
+             <b>Common issues:</b><br>
+             1. Typo in the name (must be exactly TELEGRAM_BOT_TOKEN)<br>
+             2. Forgot to click "Save" after adding<br>
+             3. Server needs a restart (click the refresh button in preview)
+           </div>
+         </div>
+       `);
+    }
     
     let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
     if (Array.isArray(host)) host = host[0];
-
-    if (!process.env.APP_URL && (host?.includes('localhost') || host?.includes('127.0.0.1'))) {
-      return res.send(`
-        <div style="font-family:sans-serif; padding: 20px;">
-          <h2 style="color: #e11d48;">⚠️ Localhost Detected</h2>
-          <p>Telegram requires a public HTTPS URL. Please add a secret named <b>APP_URL</b> with your shared app URL (e.g. <code>https://ais-pre-...run.app</code>).</p>
-          <p>Current Host: <code>${host}</code></p>
-        </div>
-      `);
-    }
 
     let baseUrl = host?.startsWith('http') ? host : `https://${host}`;
     if (baseUrl.startsWith('http:')) baseUrl = baseUrl.replace('http:', 'https:');
