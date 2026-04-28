@@ -750,6 +750,22 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
   };
 
+  const handleSyncProfile = async (targetProfile: any) => {
+    try {
+      console.log("[Vamshavali] Force syncing profile with server...", targetProfile.shareId);
+      const res = await fetch('/api/vamshavali/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetProfile)
+      });
+      if (!res.ok) throw new Error("Sync rejected by server");
+      return true;
+    } catch (e) {
+      console.error("[Vamshavali] Sync error:", e);
+      return false;
+    }
+  };
+
   const handleLinkTelegram = async () => {
     if (!profile) {
       toast.error("Please create a profile first.");
@@ -758,51 +774,60 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     
     // 1. Generate/Verify Share ID (Extremely defensive)
     let finalShareId = (profile as any).shareId;
-    const isInvalid = !finalShareId || 
-                     String(finalShareId).toLowerCase() === 'undefined' || 
-                     String(finalShareId).toLowerCase() === 'null' || 
-                     String(finalShareId).trim() === '' || 
-                     String(finalShareId).length < 5;
+    
+    // Double-check for any form of 'undefined' or missing
+    const isReallyInvalid = !finalShareId || 
+                           String(finalShareId).toLowerCase() === 'undefined' || 
+                           String(finalShareId).toLowerCase() === 'null' || 
+                           String(finalShareId).trim() === '' || 
+                           String(finalShareId).length < 5;
 
-    if (isInvalid) {
+    if (isReallyInvalid) {
       finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      console.log("[Vamshavali] Generating new ShareID:", finalShareId);
+      console.log("[Vamshavali] Generated brand new ShareID:", finalShareId);
     } else {
       finalShareId = String(finalShareId).trim().toUpperCase();
-      console.log("[Vamshavali] Using existing ShareID:", finalShareId);
+      console.log("[Vamshavali] Using verified ShareID:", finalShareId);
     }
     
+    // Final safety check - if it's STILL undefined for some reason, abort and error
+    if (!finalShareId || String(finalShareId) === 'undefined') {
+      toast.error("System generated an invalid ID. Please try manually saving first.");
+      return;
+    }
+
     const updatedProfile = { ...profile, shareId: finalShareId };
-    
     setIsLoading(true);
+
     try {
-      console.log("[Vamshavali] Syncing profile before Telegram link...", finalShareId);
-      const res = await fetch('/api/vamshavali/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedProfile)
-      });
-      
-      if (!res.ok) {
-        throw new Error("Server rejected profile update");
+      // 2. Synchronize with DB first
+      const synced = await handleSyncProfile(updatedProfile);
+      if (!synced) {
+        toast.error("Failed to sync profile. Linking might fail.");
+        // We continue anyway as a fallback, but link might bot-side fail
       }
-      
-      // Update local state AFTER successful server sync
+
       setProfile(updatedProfile);
       
-      // Small delay to ensure DB propagation (though Admin SDK should be fast)
-      await new Promise(r => setTimeout(r, 500));
+      // 3. Small propagation delay
+      await new Promise(r => setTimeout(r, 600));
+
+      // 4. Final verification BEFORE building URL
+      const safeId = String(finalShareId).trim();
+      if (safeId.toLowerCase() === 'undefined' || safeId === '') {
+        throw new Error("ID became undefined right before link generation");
+      }
 
       const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
-      const telegramUrl = `https://t.me/${botUsername}?start=${finalShareId}`;
+      const telegramUrl = `https://t.me/${botUsername}?start=${safeId}`;
       
-      console.log("[Vamshavali] Final Telegram URL:", telegramUrl);
+      console.log("[Vamshavali] Launching Telegram link:", telegramUrl);
       window.open(telegramUrl, '_blank');
       
-      toast.success("Opening Telegram... If it doesn't open, please check your popup blocker.");
+      toast.success(language === 'bn' ? 'টেলিগ্রাম খোলা হচ্ছে...' : "Opening Telegram...");
     } catch (error) {
-      console.error("[Vamshavali] sync error:", error);
-      toast.error("Could not sync profile. Please Save manually first.");
+      console.error("[Vamshavali] Link aborted:", error);
+      toast.error("System Error: Could not generate link properly.");
     } finally {
       setIsLoading(false);
     }

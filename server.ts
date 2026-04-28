@@ -3367,6 +3367,17 @@ async function startServer() {
     const { id, ...data } = req.body;
     if (!id) return res.status(400).json({ error: "Profile ID is required" });
 
+    // Sanitize and validate shareId
+    if (data.shareId) {
+      const sid = String(data.shareId).toLowerCase().trim();
+      if (sid === 'undefined' || sid === 'null' || sid === '') {
+        console.warn(`[Vamshavali] Rejecting invalid shareId update attempt for ${id}: "${data.shareId}"`);
+        delete (data as any).shareId; // Don't save invalid shareId
+      } else {
+        data.shareId = String(data.shareId).trim().toUpperCase();
+      }
+    }
+
     try {
       let saved = false;
       let lastError = null;
@@ -4361,7 +4372,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const normalizedShareId = String(shareId).toLowerCase();
       if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '') {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg(`🚫 *Link Invalid:* The ID you sent was \`${shareId}\`.\n\n*Full Text Received:* \`${text}\`\n\nThis usually happens when the link is clicked too quickly before synchronization finishes. Please try again from the website.`);
+        return sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* This happens when your browser profile cache is stale or if you clicked too fast. Please:\n1. Go back to the website.\n2. **Refresh the page (Ctrl + F5)**.\n3. Ensure your profile name is saved.\n4. Click 'Link Telegram' again.`);
       }
 
       try {
