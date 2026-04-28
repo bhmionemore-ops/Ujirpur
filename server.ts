@@ -4361,47 +4361,66 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
       if (shareId.toLowerCase() === 'undefined' || shareId.toLowerCase() === 'null') {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg("🚫 *Link Invalid:* It seems the link you followed is missing a unique profile ID.\n\nPlease go back to the website, ensure you're logged in, and click 'Link Telegram' again to get a fresh link.");
+        return sendMsg(`🚫 *Link Invalid:* The share ID provided is "${shareId}".\n\nThis usually happens when the profile isn't fully set up. Please go to the website, ensure your profile is saved with a name, and click 'Link Telegram' again.`);
       }
 
       try {
-        console.log(`[Telegram] Attempting to link ChatID ${chatId} to ShareID ${shareId}...`);
+        console.log(`[Telegram] Linking start: ChatID=${chatId}, ShareID="${shareId}"`);
         
-        if (!db) {
-           console.error("[Telegram] Firestore Client SDK (db) is NOT initialized!");
-           return sendMsg("❌ Database connection error. Please try again later.");
+        let profile = null;
+        let profileId = null;
+
+        // 1. Try Admin SDK first (more reliable permissions)
+        if (adminDb) {
+           console.log(`[Telegram] Querying vamshavali_profiles via Admin SDK for: "${shareId}"`);
+           const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim().toUpperCase()).limit(1).get();
+           if (!snap.empty) {
+             profileId = snap.docs[0].id;
+             profile = snap.docs[0].data();
+           } else {
+             // Try case-sensitive just in case
+             const snap2 = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim()).limit(1).get();
+             if (!snap2.empty) {
+               profileId = snap2.docs[0].id;
+               profile = snap2.docs[0].data();
+             }
+           }
         }
 
-        // Use Client SDK (db!) exclusively here because it's already verified and authenticated as server-admin
-        console.log(`[Telegram] Querying vamshavali_profiles for shareId: "${shareId}"`);
-        // Try exact match, then case-insensitive if needed
-        let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
-        let snapshot = await getDocs(q);
-        
-        // Secondary case-insensitive check if needed (though we mostly store as uppercase now)
-        if (snapshot.empty) {
-          q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim().toUpperCase()), limit(1));
-          snapshot = await getDocs(q);
+        // 2. Fallback to Client SDK if Admin SDK failed or not available
+        if (!profile && db) {
+          console.log(`[Telegram] Admin SDK not found profile. Trying Client SDK for: "${shareId}"`);
+          let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim().toUpperCase()), limit(1));
+          let snapshot = await getDocs(q);
+          if (snapshot.empty) {
+            q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
+            snapshot = await getDocs(q);
+          }
+          if (!snapshot.empty) {
+            profileId = snapshot.docs[0].id;
+            profile = snapshot.docs[0].data();
+          }
         }
         
-        if (!snapshot.empty) {
-          const profileDoc = snapshot.docs[0];
-          const profile = profileDoc.data();
-          
+        if (profile && profileId) {
           const linkData = {
-            profileId: profileDoc.id,
-            profileName: profile.name,
+            profileId,
+            profileName: profile.name || "Unnamed Profile",
             linkedAt: new Date().toISOString(),
             serverKey: FIRESTORE_SERVER_KEY
           };
 
-          await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
+          if (adminDb) {
+            await adminDb.collection("telegram_links").doc(String(chatId)).set(linkData);
+          } else if (db) {
+            await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
+          }
           
           console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
-          return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name}"\n• "Update photo for ${profile.name}"`);
+          return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name || 'your profile'}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name || 'X'}"\n• "Update photo for ${profile.name || 'X'}"`);
         } else {
-          console.warn(`[Telegram] No profile found for ShareID: ${shareId}`);
-          return sendMsg("❌ Sorry, I couldn't find that profile. Please try clicking the link from the website again.");
+          console.warn(`[Telegram] Profile NOT FOUND for ShareID: "${shareId}"`);
+          return sendMsg(`❌ *Profile Not Found:* I couldn't find a family profile with ID: \`${shareId}\`.\n\nPlease check the ID on the website or click the link again.`);
         }
       } catch (err) {
         console.error("[Telegram] Linking error detail:", err);

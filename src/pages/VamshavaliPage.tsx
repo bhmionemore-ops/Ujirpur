@@ -758,9 +758,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     
     let currentShareId = profile.shareId;
     
-    // If shareId is missing, improper, or literal 'undefined', generate and save it
-    if (!currentShareId || currentShareId === 'undefined' || currentShareId.length < 5) {
+    // Normalize existing shareId for check
+    const normalizedId = String(currentShareId).trim().toLowerCase();
+    
+    // If shareId is missing, improper, or literal 'undefined'/'null', generate and save it
+    if (!currentShareId || normalizedId === 'undefined' || normalizedId === 'null' || currentShareId.length < 5) {
       currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      console.log("[Vamshavali] Generated fresh ShareID:", currentShareId);
     }
     
     const updatedProfile = { ...profile, shareId: currentShareId };
@@ -769,6 +773,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     setIsLoading(true);
     try {
       // FORCE SYNC: Ensure ShareID is in DB before Telegram bot tries to find it
+      console.log("[Vamshavali] Syncing profile with ShareID:", currentShareId);
       const res = await fetch('/api/vamshavali/update-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -781,14 +786,16 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         return;
       }
     } catch (error) {
+      console.error("[Vamshavali] Sync failed:", error);
       toast.error("Connection error. Please check your internet.");
       setIsLoading(false);
       return;
     }
     setIsLoading(false);
     
-    if (!currentShareId || currentShareId === 'undefined') {
-      toast.error("System error: Could not generate a valid Share ID.");
+    // Final check before opening link
+    if (!currentShareId || String(currentShareId).toLowerCase() === 'undefined' || String(currentShareId).toLowerCase() === 'null') {
+      toast.error("System error: Could not generate a valid Share ID. Please try manual save.");
       return;
     }
     
