@@ -759,12 +759,18 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     let currentShareId = profile.shareId;
     
     // Normalize existing shareId for check
-    const normalizedId = String(currentShareId).trim().toLowerCase();
+    let normalizedId = String(currentShareId || '').trim().toLowerCase();
     
     // If shareId is missing, improper, or literal 'undefined'/'null', generate and save it
-    if (!currentShareId || normalizedId === 'undefined' || normalizedId === 'null' || currentShareId.length < 5) {
+    if (!currentShareId || normalizedId === 'undefined' || normalizedId === 'null' || normalizedId === '' || String(currentShareId).length < 5) {
       currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
       console.log("[Vamshavali] Generated fresh ShareID:", currentShareId);
+      normalizedId = currentShareId.toLowerCase();
+    }
+    
+    if (normalizedId === 'undefined' || normalizedId === 'null') {
+      toast.error("Critical Error: Could not generate a unique ID. Please refresh and try again.");
+      return;
     }
     
     const updatedProfile = { ...profile, shareId: currentShareId };

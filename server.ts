@@ -4349,19 +4349,20 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     // Handle deep linking /start <id>
     if (text.startsWith('/start')) {
-      const parts = text.split(' ');
-      const shareId = parts.length > 1 && parts[1].trim() ? parts[1].trim() : null;
+      const parts = text.trim().split(/\s+/);
+      const shareId = parts.length > 1 ? parts[1].trim() : null;
       
-      console.log(`[Telegram] Start command received. Full text: "${text}", Extracted ShareID: "${shareId}"`);
+      console.log(`[Telegram] Start command diagnostic: text="${text}", parts=${JSON.stringify(parts)}, shareId="${shareId}"`);
 
       if (!shareId) {
         // Just a plain /start command, show welcome message
         return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in/profile created, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
       }
 
-      if (shareId.toLowerCase() === 'undefined' || shareId.toLowerCase() === 'null') {
-        console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg(`🚫 *Link Invalid:* The share ID provided is "${shareId}".\n\nThis usually happens when the profile isn't fully set up. Please go to the website, ensure your profile is saved with a name, and click 'Link Telegram' again.`);
+      const normalizedShareId = String(shareId).toLowerCase();
+      if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '') {
+        console.warn(`[Telegram] Invalid ShareID received in /start command: "${shareId}"`);
+        return sendMsg(`🚫 *Link Invalid:* The share ID provided was \`${shareId}\`.\n\nThis usually happens when the profile isn't fully synchronized. Please go back to the website, click 'Link Telegram' again, and wait for the "Success" message before clicking the link.`);
       }
 
       try {
