@@ -751,12 +751,15 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
 
   const handleLinkTelegram = async () => {
-    if (!profile) return;
+    if (!profile) {
+      toast.error("Please create a profile first.");
+      return;
+    }
     
     let currentShareId = profile.shareId;
     
-    // If shareId is missing, generate it and save it first
-    if (!currentShareId || currentShareId === 'undefined') {
+    // If shareId is missing, improper, or literal 'undefined', generate and save it
+    if (!currentShareId || currentShareId === 'undefined' || currentShareId.length < 5) {
       currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
       const updatedProfile = { ...profile, shareId: currentShareId };
       setProfile(updatedProfile);
@@ -769,7 +772,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
           body: JSON.stringify(updatedProfile)
         });
         if (!res.ok) {
-          toast.error("Failed to sync profile for Telegram. Please try again.");
+          const errData = await res.json();
+          toast.error(`Failed to sync profile: ${errData.error || "Unknown error"}`);
           setIsLoading(false);
           return;
         }
@@ -781,8 +785,14 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       setIsLoading(false);
     }
     
+    if (!currentShareId || currentShareId === 'undefined') {
+      toast.error("System error: Could not generate a valid Share ID.");
+      return;
+    }
+    
     const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
     const telegramUrl = `https://t.me/${botUsername}?start=${currentShareId}`;
+    console.log("[Vamshavali] Linking Telegram with URL:", telegramUrl);
     window.open(telegramUrl, '_blank');
   };
 

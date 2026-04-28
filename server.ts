@@ -3381,11 +3381,11 @@ async function startServer() {
       // 1. Try Admin SDK
       if (adminDb) {
         try {
-          await adminDb.collection("vamshavali_profiles").doc(id).update({
+          await adminDb.collection("vamshavali_profiles").doc(id).set({
             ...updateData,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          console.log("[Vamshavali] Profile updated using Admin SDK");
+          }, { merge: true });
+          console.log("[Vamshavali] Profile updated/set using Admin SDK");
           saved = true;
         } catch (adminError: any) {
           console.warn("[Vamshavali] Admin SDK profile update failed:", adminError.message);
@@ -3396,11 +3396,11 @@ async function startServer() {
       // 2. Fallback to Client SDK
       if (!saved && db) {
         try {
-          await updateDoc(doc(db, "vamshavali_profiles", id), {
+          await setDoc(doc(db, "vamshavali_profiles", id), {
             ...updateData,
             updatedAt: serverTimestamp()
-          });
-          console.log("[Vamshavali] Profile updated using Client SDK fallback");
+          }, { merge: true });
+          console.log("[Vamshavali] Profile updated/set using Client SDK fallback");
           saved = true;
         } catch (clientError: any) {
           console.error("[Vamshavali] Client SDK profile update failed:", clientError.message);
@@ -4348,9 +4348,13 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     };
 
     // Handle deep linking /start <id>
-    if (text.startsWith('/start ') && text.length > 7) {
-      const shareId = text.split(' ')[1];
-      if (!shareId || shareId.toLowerCase() === 'undefined') {
+    if (text.startsWith('/start ') && text.length > 6) {
+      const parts = text.split(' ');
+      const shareId = parts.length > 1 ? parts[1].trim() : null;
+      
+      console.log(`[Telegram] Start command received. Full text: "${text}", Extracted ShareID: "${shareId}"`);
+
+      if (!shareId || shareId.toLowerCase() === 'undefined' || shareId === 'null') {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
         return sendMsg("🚫 *Link Invalid:* It seems the link you followed is missing a unique profile ID. Please go back to the website, ensure you're logged in, and click 'Link Telegram' again.");
       }
