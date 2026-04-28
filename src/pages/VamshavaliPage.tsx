@@ -761,29 +761,31 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     // If shareId is missing, improper, or literal 'undefined', generate and save it
     if (!currentShareId || currentShareId === 'undefined' || currentShareId.length < 5) {
       currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const updatedProfile = { ...profile, shareId: currentShareId };
-      setProfile(updatedProfile);
-      
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/vamshavali/update-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedProfile)
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          toast.error(`Failed to sync profile: ${errData.error || "Unknown error"}`);
-          setIsLoading(false);
-          return;
-        }
-      } catch (error) {
-        toast.error("Connection error. Please check your internet.");
+    }
+    
+    const updatedProfile = { ...profile, shareId: currentShareId };
+    setProfile(updatedProfile);
+    
+    setIsLoading(true);
+    try {
+      // FORCE SYNC: Ensure ShareID is in DB before Telegram bot tries to find it
+      const res = await fetch('/api/vamshavali/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProfile)
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        toast.error(`Failed to sync profile: ${errData.error || "Please save manually first"}`);
         setIsLoading(false);
         return;
       }
+    } catch (error) {
+      toast.error("Connection error. Please check your internet.");
       setIsLoading(false);
+      return;
     }
+    setIsLoading(false);
     
     if (!currentShareId || currentShareId === 'undefined') {
       toast.error("System error: Could not generate a valid Share ID.");

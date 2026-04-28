@@ -356,7 +356,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   className="w-full flex items-center justify-center gap-3 py-4 bg-[#0088cc] hover:bg-[#0077b5] rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98] shadow-lg shadow-[#0088cc]/20"
                 >
                   <MessageCircle size={20} />
-                  {language === 'bn' ? 'টেলিগ্রাম দিয়ে যোগ দিন' : 'Join with Telegram'}
+                  {language === 'bn' ? 'টেলিগ্রাম বটের সাথে কথা বলুন' : 'Chat with Telegram Bot'}
                 </a>
                 
                 <p className="text-[10px] text-zinc-400 font-medium text-center px-4">

@@ -4348,15 +4348,20 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     };
 
     // Handle deep linking /start <id>
-    if (text.startsWith('/start ') && text.length > 6) {
+    if (text.startsWith('/start')) {
       const parts = text.split(' ');
-      const shareId = parts.length > 1 ? parts[1].trim() : null;
+      const shareId = parts.length > 1 && parts[1].trim() ? parts[1].trim() : null;
       
       console.log(`[Telegram] Start command received. Full text: "${text}", Extracted ShareID: "${shareId}"`);
 
-      if (!shareId || shareId.toLowerCase() === 'undefined' || shareId === 'null') {
+      if (!shareId) {
+        // Just a plain /start command, show welcome message
+        return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in/profile created, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
+      }
+
+      if (shareId.toLowerCase() === 'undefined' || shareId.toLowerCase() === 'null') {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg("🚫 *Link Invalid:* It seems the link you followed is missing a unique profile ID. Please go back to the website, ensure you're logged in, and click 'Link Telegram' again.");
+        return sendMsg("🚫 *Link Invalid:* It seems the link you followed is missing a unique profile ID.\n\nPlease go back to the website, ensure you're logged in, and click 'Link Telegram' again to get a fresh link.");
       }
 
       try {
@@ -4419,7 +4424,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     };
 
     if (text.startsWith('/start')) {
-      return await sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. Send me messages like:\n\n• `Add my son Arjun to Suresh` \n• `Update photo for Savitri Devi` \n• `My grandfather was Ramesh, son of Kedar` \n\n*Please send your Family Profile ID first to link your records.*");
+      // Handled above in deep linking block if it had parameters
+      return;
     }
 
     try {
