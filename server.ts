@@ -4053,6 +4053,31 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
     };
 
+    // Handle deep linking /start <id>
+    if (text.startsWith('/start ') && text.length > 7) {
+      const shareId = text.split(' ')[1];
+      try {
+        const snapshot = await adminDb!.collection('vamshavali_profiles').where('shareId', '==', shareId).limit(1).get();
+        if (!snapshot.empty) {
+          const profileDoc = snapshot.docs[0];
+          const profile = profileDoc.data();
+          
+          await adminDb!.collection('telegram_links').doc(String(chatId)).set({
+            profileId: profileDoc.id,
+            profileName: profile.name,
+            linkedAt: new Date().toISOString()
+          });
+          
+          return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name}"\n• "Update photo for ${profile.name}"`);
+        } else {
+          return sendMsg("❌ Sorry, I couldn't find that profile. Please try clicking the link from the website again.");
+        }
+      } catch (err) {
+        console.error("[Telegram] Linking error:", err);
+        return sendMsg("❌ An error occurred while linking. Please try again later.");
+      }
+    }
+
     // Use a simple memory store to link ChatID to ProfileID for this turn/session
     // In production, we'd store this link in Firestore.
     const getLinkedProfileId = async (chatId: number) => {
