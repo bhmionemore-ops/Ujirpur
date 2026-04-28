@@ -532,6 +532,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                 email: user.email,
                 name: user.displayName || user.email.split('@')[0],
                 ownerName: user.displayName || user.email.split('@')[0],
+                shareId: Math.random().toString(36).substring(2, 10).toUpperCase(),
                 members: [],
                 metadata: {
                   history: "",
