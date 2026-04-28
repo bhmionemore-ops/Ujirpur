@@ -1572,7 +1572,7 @@ async function startServer() {
     
     try {
       // First, verify the token by calling getMe
-      const meResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const meResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`, { family: 4, timeout: 10000 });
       const meResult = await meResponse.json();
 
       if (!meResult.ok) {
@@ -1590,7 +1590,7 @@ async function startServer() {
       }
 
       const botInfo = meResult.result;
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`, { family: 4, timeout: 10000 });
       const result = await response.json();
       
       if (result.ok) {
@@ -4302,7 +4302,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' })
+          body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' }),
+          // Enforce IPv4 and add timeout for stability in cloud environments
+          family: 4,
+          timeout: 10000
         });
         const result = await response.json();
         if (!result.ok) {
@@ -4317,24 +4320,48 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     if (text.startsWith('/start ') && text.length > 7) {
       const shareId = text.split(' ')[1];
       try {
-        const snapshot = await adminDb!.collection('vamshavali_profiles').where('shareId', '==', shareId).limit(1).get();
-        if (!snapshot.empty) {
-          const profileDoc = snapshot.docs[0];
+        console.log(`[Telegram] Attempting to link ChatID ${chatId} to ShareID ${shareId}...`);
+        
+        if (!adminDb) {
+           console.error("[Telegram] adminDb is NOT initialized! Attempting to use Client SDK fallback...");
+           // This is a safety fallback since we usually prefer Admin SDK for webhooks
+        }
+
+        const dbToUse = adminDb || db;
+        if (!dbToUse) {
+           console.error("[Telegram] No Firestore instance available (Admin or Client)!");
+           return sendMsg("❌ Database connection error. Please try again later.");
+        }
+
+        const snapshot = await (adminDb ? adminDb.collection('vamshavali_profiles').where('shareId', '==', shareId).limit(1).get() : getDocs(query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId), limit(1))));
+        
+        const docs = adminDb ? snapshot.docs : (snapshot as any).docs;
+        if (docs && docs.length > 0) {
+          const profileDoc = docs[0];
           const profile = profileDoc.data();
           
-          await adminDb!.collection('telegram_links').doc(String(chatId)).set({
+          const linkData = {
             profileId: profileDoc.id,
             profileName: profile.name,
-            linkedAt: new Date().toISOString()
-          });
+            linkedAt: new Date().toISOString(),
+            serverKey: FIRESTORE_SERVER_KEY
+          };
+
+          if (adminDb) {
+            await adminDb.collection('telegram_links').doc(String(chatId)).set(linkData);
+          } else {
+            await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
+          }
           
+          console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
           return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name}"\n• "Update photo for ${profile.name}"`);
         } else {
+          console.warn(`[Telegram] No profile found for ShareID: ${shareId}`);
           return sendMsg("❌ Sorry, I couldn't find that profile. Please try clicking the link from the website again.");
         }
       } catch (err) {
-        console.error("[Telegram] Linking error:", err);
-        return sendMsg("❌ An error occurred while linking. Please try again later.");
+        console.error("[Telegram] Linking error detail:", err);
+        return sendMsg(`❌ An error occurred while linking: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
 

@@ -193,6 +193,7 @@ export const translations = {
       shareOnX: 'X-এ শেয়ার করুন',
       seeMore: 'আরও সংবাদ দেখুন',
       noMoreNews: 'এই মুহূর্তে আর কোনো সংবাদ নেই, পরে আবার দেখুন',
+      justNow: 'এইমাত্র',
     },
     bazar: {
       title: 'বার্নিয়া বাজার',
@@ -566,6 +567,7 @@ export const translations = {
       shareOnX: 'Share on X',
       seeMore: 'See More News',
       noMoreNews: 'No more news right now, check back later',
+      justNow: 'Just now',
     },
     bazar: {
       title: 'Barnia Bazar',

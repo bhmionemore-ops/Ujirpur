@@ -782,7 +782,7 @@ export const LiveNews = () => {
         {/* Last Updated */}
         <div className="mt-12 text-center text-[10px] text-zinc-400 flex items-center justify-center gap-2">
           <RefreshCw size={12} />
-          {t.news.lastUpdated}: {new Date(news.updatedAt).toLocaleString()}
+          {t.news.lastUpdated}: {news.updatedAt ? new Date(news.updatedAt).toLocaleString() : t.news.justNow}
         </div>
 
         {/* See More Button */}
