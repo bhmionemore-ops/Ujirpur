@@ -626,17 +626,17 @@ export const LiveNews = () => {
                   </div>
                   
                   <h3 className="text-2xl font-black text-zinc-900 mb-4 group-hover:text-brand-600 transition-colors leading-tight tracking-tight">
-                    {item.title}
+                    {item.title || item.Title || item.news || item.headline || "Latest Update"}
                   </h3>
                   
                   <div className="text-zinc-500 text-sm leading-relaxed mb-8 flex-1 overflow-hidden">
-                    <p className="line-clamp-[6]">{item.content}</p>
+                    <p className="line-clamp-[6]">{item.content || item.description || item.Content || item.summary || "Reading news details..."}</p>
                   </div>
                   
                   <div className="flex items-center justify-between pt-8 border-t border-zinc-50 mt-auto">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t.news.source}</span>
-                      <span className="text-xs font-bold text-zinc-600">{item.source}</span>
+                      <span className="text-xs font-bold text-zinc-600">{item.source || "Official News"}</span>
                     </div>
                     <button 
                       onClick={() => {
@@ -760,17 +760,17 @@ export const LiveNews = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                   </div>
                   <h3 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
-                    {selectedItem.title}
+                    {selectedItem.title || selectedItem.Title || selectedItem.news || "News Detail"}
                   </h3>
                   <div className="text-zinc-600 leading-relaxed space-y-4 text-lg">
-                    {(selectedItem.content || '').split('\n').map((para: string, idx: number) => (
+                    {((selectedItem.content || selectedItem.Content || selectedItem.description || selectedItem.summary || '') as string).split('\n').map((para: string, idx: number) => (
                       <p key={idx}>{para}</p>
                     ))}
                   </div>
                   <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between text-sm text-zinc-400">
                     <div>
                       <span className="font-bold uppercase mr-2">{t.news.source}:</span>
-                      {selectedItem.source}
+                      {selectedItem.source || "Official News"}
                     </div>
                   </div>
                 </div>

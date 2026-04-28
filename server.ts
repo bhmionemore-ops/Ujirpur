@@ -4339,7 +4339,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         }
 
         // Use Client SDK (db!) exclusively here because it's already verified and authenticated as server-admin
-        const q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId), limit(1));
+        console.log(`[Telegram] Querying vamshavali_profiles for shareId: "${shareId}"`);
+        const q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
         const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
@@ -4423,24 +4424,22 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         return await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
       }
 
-      if (command.action === "ADD" || command.action === "UPDATE") {
-        const profileId = await getLinkedProfileId(chatId);
-        if (!profileId) {
-          return await sendMsg("⚠️ *No profile linked.* Please send your Family Profile ID first (e.g., your email or share ID).");
-        }
+      const profileId = await getLinkedProfileId(chatId);
+      if (!profileId) {
+        return await sendMsg("🚫 *Not Linked:* Please click the Telegram link from your profile page on the website to link your account first.");
+      }
 
-        await sendMsg(`📋 *Instruction Received:* Processing ${command.details.name || 'update'} for ${command.targetMember}...\n\n_Updating the Eternal Archives..._`);
-        
-        const updateResult = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
-        
-        if (updateResult.success) {
-          return await sendMsg(`✨ *Lineage Updated!* ${command.details.name || 'Information'} has been etched into the Vamshavali. Refresh your app to see the change.`);
+      if (command.action === "ADD" || command.action === "UPDATE") {
+        await sendMsg(`🔍 *Processing Request...* (${command.action}: ${command.targetMember})`);
+        const result = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
+        if (result.success) {
+          return await sendMsg(`✨ *Update Successful!* I've updated your family records. Refresh your app to see the change.`);
         } else {
-          return await sendMsg(`❌ *Update Failed:* ${updateResult.error}. Ensure the name matches exactly as shown in the tree.`);
+          return await sendMsg(`❌ *Update Failed:* ${result.error}. Ensure the name matches exactly as shown in the tree.`);
         }
       }
 
-      await sendMsg("I heard you, but I need clearer instructions to update the registry. Try: `Add my son Arjun to Suresh`.");
+      return await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
     } catch (err) {
       console.error("[Telegram] Error processing message:", err);
       await sendMsg("⚠️ The archives are currently busy. Please try again in a moment.");
