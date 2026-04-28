@@ -1496,12 +1496,26 @@ async function startServer() {
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
     const allEnvKeys = Object.keys(process.env);
     
-    // Find any key that looks like a telegram token
-    const botTokenKey = allEnvKeys.find(k => {
-      const uk = k.toUpperCase();
-      return uk.includes('TELEGRAM') && (uk.includes('TOKEN') || uk.includes('BOT'));
-    });
-    
+    // Prioritize specific token keys
+    let botTokenKey: string | undefined = allEnvKeys.find(k => k === 'TELEGRAM_BOT_TOKEN') || 
+                      allEnvKeys.find(k => k === 'VITE_TELEGRAM_BOT_TOKEN');
+
+    // If not found, look for something with TELEGRAM and TOKEN
+    if (!botTokenKey) {
+      botTokenKey = allEnvKeys.find(k => {
+        const uk = k.toUpperCase();
+        return uk.includes('TELEGRAM') && uk.includes('TOKEN');
+      });
+    }
+
+    // Only if still not found, look for anything with TELEGRAM and BOT (but NOT username)
+    if (!botTokenKey) {
+      botTokenKey = allEnvKeys.find(k => {
+        const uk = k.toUpperCase();
+        return uk.includes('TELEGRAM') && uk.includes('BOT') && !uk.includes('USER');
+      });
+    }
+
     let botToken = botTokenKey ? process.env[botTokenKey] : null;
     if (botToken) botToken = botToken.trim();
     
