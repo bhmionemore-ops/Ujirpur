@@ -1495,14 +1495,15 @@ async function startServer() {
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
     const allEnvKeys = Object.keys(process.env);
-    const telegramKeys = allEnvKeys.filter(k => k.toUpperCase().includes('TELEGRAM'));
     
     // Find any key that looks like a telegram token
     const botTokenKey = allEnvKeys.find(k => {
       const uk = k.toUpperCase();
       return uk.includes('TELEGRAM') && (uk.includes('TOKEN') || uk.includes('BOT'));
     });
-    const botToken = botTokenKey ? process.env[botTokenKey] : null;
+    
+    let botToken = botTokenKey ? process.env[botTokenKey] : null;
+    if (botToken) botToken = botToken.trim();
     
     if (!botToken) {
        return res.status(400).send(`
@@ -1510,7 +1511,7 @@ async function startServer() {
            <h2 style="color: #b91c1c; margin-top: 0; text-align:center;">❌ No Telegram Token Found</h2>
            
            <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #fee2e2;">
-             <p>The server is looking for a secret named <b>TELEGRAM_BOT_TOKEN</b> but it is missing.</p>
+             <p>The server is looking for <b>TELEGRAM_BOT_TOKEN</b> but couldn't find a matching Secret.</p>
              
              <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 12px;">
                <b>Current Environment Variables (Names only):</b><br>
@@ -1529,14 +1530,17 @@ async function startServer() {
          </div>
        `);
     }
+
+    // Mask for display
+    const masked = botToken.length > 10 
+      ? botToken.substring(0, 5) + "..." + botToken.substring(botToken.length - 5)
+      : "Too short!";
     
     let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
     if (Array.isArray(host)) host = host[0];
-
-    // Clean up host (remove http/https prefix if accidentally included in secret)
     host = host?.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-    let baseUrl = `https://${host}`;
+    const baseUrl = `https://${host}`;
     const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
     
     try {
@@ -1548,15 +1552,27 @@ async function startServer() {
           <div style="font-family:sans-serif; text-align:center; padding: 50px;">
             <h1 style="color: #059669;">✅ Webhook Connected!</h1>
             <p>Your Family Tree is now listening to Telegram.</p>
+            <p>Token found: <code>${masked}</code> (from secret <code>${botTokenKey}</code>)</p>
             <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; display:inline-block; margin: 20px 0;">
-              <b>Target:</b> <code style="color: #2563eb;">${webhookUrl}</code>
+              <b>Target URL:</b> <code style="color: #2563eb;">${webhookUrl}</code>
             </div>
             <br>
             <a href="https://t.me/${process.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}" style="display:inline-block; margin-top:20px; padding:12px 24px; background:#0088cc; color:white; text-decoration:none; border-radius:10px; font-weight:bold;">Open Telegram Bot</a>
           </div>
         `);
       } else {
-        res.status(400).json({ success: false, message: "Telegram rejected the webhook", result, webhookUrl });
+        res.status(400).send(`
+          <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
+            <h2 style="color: #b91c1c; margin-top: 0;">❌ Telegram Rejected the Token</h2>
+            <p>Telegram returned a <b>${result.error_code} (${result.description})</b> error.</p>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #fee2e2; font-family: monospace; font-size: 13px;">
+              <b>Secret Used:</b> ${botTokenKey}<br>
+              <b>Token Preview:</b> ${masked}<br>
+              <b>Webhook URL:</b> ${webhookUrl}
+            </div>
+            <p style="margin-top: 20px;"><b>Recommendation:</b> Double check your token in BotFather. It should look like <code>12345:AAH...</code>. Make sure there are no spaces when you paste it into Secrets.</p>
+          </div>
+        `);
       }
     } catch (err) {
       res.status(500).json({ success: false, error: String(err) });
