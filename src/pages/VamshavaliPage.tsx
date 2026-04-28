@@ -750,6 +750,42 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
   };
 
+  const handleLinkTelegram = async () => {
+    if (!profile) return;
+    
+    let currentShareId = profile.shareId;
+    
+    // If shareId is missing, generate it and save it first
+    if (!currentShareId || currentShareId === 'undefined') {
+      currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const updatedProfile = { ...profile, shareId: currentShareId };
+      setProfile(updatedProfile);
+      
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/vamshavali/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedProfile)
+        });
+        if (!res.ok) {
+          toast.error("Failed to sync profile for Telegram. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        toast.error("Connection error. Please check your internet.");
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(false);
+    }
+    
+    const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
+    const telegramUrl = `https://t.me/${botUsername}?start=${currentShareId}`;
+    window.open(telegramUrl, '_blank');
+  };
+
   const exportImage = async () => {
     if (!profile) return;
     setIsLoading(true);
@@ -1381,14 +1417,12 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                            </button>
 
                            <div className="flex flex-col gap-2">
-                             <a 
-                               href={`https://t.me/${(import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '')}?start=${profile.shareId}`} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
+                             <button 
+                               onClick={handleLinkTelegram}
                                className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
                              >
                                 <MessageCircle size={16} /> Telegram Update
-                             </a>
+                             </button>
                            </div>
                         </div>
                       </div>
