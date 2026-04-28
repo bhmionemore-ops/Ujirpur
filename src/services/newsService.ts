@@ -85,9 +85,9 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
   Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
 
   const models = [
-    { name: "gemini-3-flash-preview", useTools: true },
-    { name: "gemini-flash-latest", useTools: false },
-    { name: "gemini-3.1-flash-lite-preview", useTools: false }
+    { name: "gemini-1.5-flash", useTools: true },
+    { name: "gemini-2.0-flash", useTools: true },
+    { name: "gemini-flash-latest", useTools: false }
   ];
 
   for (let i = 0; i < models.length; i++) {

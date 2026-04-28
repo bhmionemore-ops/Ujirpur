@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Chrome, Facebook, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Mail, Lock, User, Chrome, Facebook, ArrowRight, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
@@ -348,6 +348,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <Facebook size={20} fill="currentColor" />
                   {language === 'bn' ? 'ফেসবুক দিয়ে লগইন করুন' : 'Sign in with Facebook'}
                 </button>
+
+                <a
+                  href={`https://t.me/${(import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-[#0088cc] hover:bg-[#0077b5] rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98] shadow-lg shadow-[#0088cc]/20"
+                >
+                  <MessageCircle size={20} />
+                  {language === 'bn' ? 'টেলিগ্রাম দিয়ে যোগ দিন' : 'Join with Telegram'}
+                </a>
                 
                 <p className="text-[10px] text-zinc-400 font-medium text-center px-4">
                   {language === 'bn' 

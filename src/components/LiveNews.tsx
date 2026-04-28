@@ -763,7 +763,7 @@ export const LiveNews = () => {
                     {selectedItem.title}
                   </h3>
                   <div className="text-zinc-600 leading-relaxed space-y-4 text-lg">
-                    {selectedItem.content.split('\n').map((para: string, idx: number) => (
+                    {(selectedItem.content || '').split('\n').map((para: string, idx: number) => (
                       <p key={idx}>{para}</p>
                     ))}
                   </div>

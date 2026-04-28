@@ -110,7 +110,11 @@ const EditMemberModal = ({
                 <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Full Legal Name</label>
                 <input 
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    setFormData({...formData, name: caps});
+                  }}
                   className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
                   placeholder="Enter full name"
                 />
@@ -180,7 +184,11 @@ const EditMemberModal = ({
                   <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Full Name</label>
                   <input 
                     value={formData.partnerName}
-                    onChange={(e) => setFormData({...formData, partnerName: e.target.value})}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    setFormData({...formData, partnerName: caps});
+                  }}
                     className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
                   />
                 </div>
@@ -1373,7 +1381,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
                            <div className="flex flex-col gap-2">
                              <a 
-                               href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot'}?start=${profile.shareId}`} 
+                               href={`https://t.me/${(import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '')}?start=${profile.shareId}`} 
                                target="_blank" 
                                rel="noopener noreferrer"
                                className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
@@ -1470,13 +1478,21 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                               <input 
                                 id="manual_numerology_name"
                                 placeholder="Enter Name..."
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  // Auto-capitalize first letter of each word
+                                  const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                  if (val !== caps) e.target.value = caps;
+                                }}
                                 className="w-full px-4 py-2 bg-white border border-[#f4f4f5] rounded-xl text-xs font-bold outline-none focus:border-[#d4af37]"
                               />
                               <button 
                                 onClick={() => {
                                   const nameInput = document.getElementById('manual_numerology_name') as HTMLInputElement;
                                   if (nameInput?.value) {
-                                    getVedicNumerology({ name: nameInput.value, birthYear: 'Present', role: 'Descendant', children: [], id: 'manual' });
+                                    // Robustly get today's year for the reading
+                                    const currentYear = new Date().getFullYear().toString();
+                                    getVedicNumerology({ name: nameInput.value.trim(), birthYear: currentYear, role: 'Descendant', children: [], id: 'manual' });
                                   } else {
                                     toast.error("Please provide a name for the reading.");
                                   }
