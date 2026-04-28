@@ -4348,21 +4348,20 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     };
 
     // Handle deep linking /start <id>
-    if (text.startsWith('/start')) {
-      const parts = text.trim().split(/\s+/);
-      const shareId = parts.length > 1 ? parts[1].trim() : null;
-      
-      console.log(`[Telegram] Start command diagnostic: text="${text}", parts=${JSON.stringify(parts)}, shareId="${shareId}"`);
+    const textParts = text.trim().split(/\s+/);
+    const shareId = textParts.length > 1 ? textParts[1].trim() : null;
+    
+    console.log(`[Telegram] Bot received: "${text}" | Extracted ShareID: "${shareId}" | From: ${chatId}`);
 
+    if (text.startsWith('/start')) {
       if (!shareId) {
-        // Just a plain /start command, show welcome message
-        return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in/profile created, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
+        return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
       }
 
       const normalizedShareId = String(shareId).toLowerCase();
       if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '') {
-        console.warn(`[Telegram] Invalid ShareID received in /start command: "${shareId}"`);
-        return sendMsg(`🚫 *Link Invalid:* The share ID provided was \`${shareId}\`.\n\nThis usually happens when the profile isn't fully synchronized. Please go back to the website, click 'Link Telegram' again, and wait for the "Success" message before clicking the link.`);
+        console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
+        return sendMsg(`🚫 *Link Invalid:* The ID you sent was \`${shareId}\`.\n\n*Full Text Received:* \`${text}\`\n\nThis usually happens when the link is clicked too quickly before synchronization finishes. Please try again from the website.`);
       }
 
       try {

@@ -756,59 +756,56 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       return;
     }
     
-    let currentShareId = profile.shareId;
-    
-    // Normalize existing shareId for check
-    let normalizedId = String(currentShareId || '').trim().toLowerCase();
-    
-    // If shareId is missing, improper, or literal 'undefined'/'null', generate and save it
-    if (!currentShareId || normalizedId === 'undefined' || normalizedId === 'null' || normalizedId === '' || String(currentShareId).length < 5) {
-      currentShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      console.log("[Vamshavali] Generated fresh ShareID:", currentShareId);
-      normalizedId = currentShareId.toLowerCase();
+    // 1. Generate/Verify Share ID (Extremely defensive)
+    let finalShareId = (profile as any).shareId;
+    const isInvalid = !finalShareId || 
+                     String(finalShareId).toLowerCase() === 'undefined' || 
+                     String(finalShareId).toLowerCase() === 'null' || 
+                     String(finalShareId).trim() === '' || 
+                     String(finalShareId).length < 5;
+
+    if (isInvalid) {
+      finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      console.log("[Vamshavali] Generating new ShareID:", finalShareId);
+    } else {
+      finalShareId = String(finalShareId).trim().toUpperCase();
+      console.log("[Vamshavali] Using existing ShareID:", finalShareId);
     }
     
-    if (normalizedId === 'undefined' || normalizedId === 'null') {
-      toast.error("Critical Error: Could not generate a unique ID. Please refresh and try again.");
-      return;
-    }
-    
-    const updatedProfile = { ...profile, shareId: currentShareId };
-    setProfile(updatedProfile);
+    const updatedProfile = { ...profile, shareId: finalShareId };
     
     setIsLoading(true);
     try {
-      // FORCE SYNC: Ensure ShareID is in DB before Telegram bot tries to find it
-      console.log("[Vamshavali] Syncing profile with ShareID:", currentShareId);
+      console.log("[Vamshavali] Syncing profile before Telegram link...", finalShareId);
       const res = await fetch('/api/vamshavali/update-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedProfile)
       });
+      
       if (!res.ok) {
-        const errData = await res.json();
-        toast.error(`Failed to sync profile: ${errData.error || "Please save manually first"}`);
-        setIsLoading(false);
-        return;
+        throw new Error("Server rejected profile update");
       }
+      
+      // Update local state AFTER successful server sync
+      setProfile(updatedProfile);
+      
+      // Small delay to ensure DB propagation (though Admin SDK should be fast)
+      await new Promise(r => setTimeout(r, 500));
+
+      const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
+      const telegramUrl = `https://t.me/${botUsername}?start=${finalShareId}`;
+      
+      console.log("[Vamshavali] Final Telegram URL:", telegramUrl);
+      window.open(telegramUrl, '_blank');
+      
+      toast.success("Opening Telegram... If it doesn't open, please check your popup blocker.");
     } catch (error) {
-      console.error("[Vamshavali] Sync failed:", error);
-      toast.error("Connection error. Please check your internet.");
+      console.error("[Vamshavali] sync error:", error);
+      toast.error("Could not sync profile. Please Save manually first.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-    setIsLoading(false);
-    
-    // Final check before opening link
-    if (!currentShareId || String(currentShareId).toLowerCase() === 'undefined' || String(currentShareId).toLowerCase() === 'null') {
-      toast.error("System error: Could not generate a valid Share ID. Please try manual save.");
-      return;
-    }
-    
-    const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
-    const telegramUrl = `https://t.me/${botUsername}?start=${currentShareId}`;
-    console.log("[Vamshavali] Linking Telegram with URL:", telegramUrl);
-    window.open(telegramUrl, '_blank');
   };
 
   const exportImage = async () => {
