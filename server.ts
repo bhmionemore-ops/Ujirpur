@@ -1892,13 +1892,15 @@ async function startServer() {
         You are a master of Vedic Numerology (Sankhya Shastra) and an expert in the spiritual science of numbers. 
         Analyze the following person from a family tree and provide a profound, beautiful, and spiritually resonant numerological reading.
         
+        IMPORTANT: The current year is 2026. 
+        
         Person Name: ${name}
-        Birth Year: ${birthYear}
+        Birth Year: ${birthYear === 'Present' ? '2026' : birthYear}
         Relationship context: ${relationship}
         Family Context: ${profileContext}
 
         Provide a "Vedic Numerology" reading that includes:
-        1. **Psychic Number & Characteristics**: Based on Vedic principles (Sankhya Shastra), interpret their core personality. Even if only birth year is available, speak to the generational spiritual energy.
+        1. **Psychic Number & Characteristics**: Based on Vedic principles (Sankhya Shastra), interpret their core personality. Even if only birth year is available, speak to the generational spiritual energy of their year.
         2. **Destiny (Karma) Path**: Insights into their life's purpose and spiritual mission.
         3. **Auspicious Deity/Energy**: A "Spiritual Totem" or deity connection that resonates with their numbers.
         4. **Legacy of the Soul**: How they strengthen the roots of ${profileContext || 'their family'} and what energy they pass to future generations.
@@ -2507,6 +2509,110 @@ async function startServer() {
       }
 
       if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+      // If it's the admin and empty/outdated, bootstrap the demo data even on GET
+      if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0 || !profile.members[0]?.children || profile.members[0].children.length < 2)) {
+         const demoMembers = [
+                {
+                  id: "root-1",
+                  name: "Savitri Devi",
+                  role: "Matriarch",
+                  birthYear: "1945",
+                  photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+                  partner: {
+                    name: "Late Shri Ram Sharma",
+                    birthYear: "1940 - 2015",
+                    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop"
+                  },
+                  children: [
+                    {
+                      id: "child-1",
+                      name: "Meera Sharma",
+                      role: "Daughter (Gen 1)",
+                      birthYear: "1972",
+                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                      partner: {
+                        name: "Vikram Sharma",
+                        birthYear: "1970",
+                        photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&auto=format&fit=crop"
+                      },
+                      children: [
+                        {
+                          id: "grand-1",
+                          name: "Ananya Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "1998",
+                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: [
+                            {
+                              id: "great-1",
+                              name: "Ishani Sharma",
+                              role: "Great-Granddaughter (Gen 3)",
+                              birthYear: "2026",
+                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+                              children: []
+                            }
+                          ]
+                        },
+                        {
+                          id: "grand-2",
+                          name: "Rohan Sharma",
+                          role: "Grandson (Gen 2)",
+                          birthYear: "2002",
+                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    },
+                    {
+                      id: "child-2",
+                      name: "Rajesh Sharma",
+                      role: "Son (Gen 1)",
+                      birthYear: "1975",
+                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                      partner: {
+                        name: "Sunita Sharma",
+                        birthYear: "1978",
+                        photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&auto=format&fit=crop"
+                      },
+                      children: [
+                        {
+                          id: "grand-3",
+                          name: "Kavita Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "2005",
+                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ];
+              
+              const updates: any = {
+                name: "The Royal Lineage of Savitri Devi",
+                parents: "Traditional Ancestors",
+                grandparents: "Ancestral Roots",
+                gotra: "Kashyap",
+                kuldevi: "Mata Rani",
+                kuldevta: "Lord Shiva",
+                kuldeviPhoto: "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop",
+                nativePlace: "Varanasi, Uttar Pradesh",
+                additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
+                members: demoMembers,
+                updatedAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
+              };
+              
+              if (adminDb) {
+                await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
+              } else if (db) {
+                updates.serverKey = FIRESTORE_SERVER_KEY;
+                await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);
+              }
+              Object.assign(profile, updates);
+      }
+
       res.json(profile);
     } catch (error) {
        console.error("[Vamshavali] Profile fetch error:", error);
@@ -2735,7 +2841,7 @@ async function startServer() {
                               id: "great-1",
                               name: "Ishani Sharma",
                               role: "Great-Granddaughter (Gen 3)",
-                              birthYear: "2024",
+                              birthYear: "2026",
                               photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
                               children: []
                             }
@@ -2806,61 +2912,61 @@ async function startServer() {
                 role: "Matriarch",
                 birthYear: "1945",
                 photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
-                children: [
-                  {
-                    id: "child-1",
-                    name: "Meera Sharma",
-                    role: "Daughter (Gen 1)",
-                    birthYear: "1972",
-                    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
-                    children: [
-                      {
-                        id: "grand-1",
-                        name: "Ananya Sharma",
-                        role: "Granddaughter (Gen 2)",
-                        birthYear: "1998",
-                        photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
-                        children: [
-                          {
-                            id: "great-1",
-                            name: "Ishani Sharma",
-                            role: "Great-Granddaughter (Gen 3)",
-                            birthYear: "2024",
-                            photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-                            children: []
-                          }
-                        ]
-                      },
-                      {
-                        id: "grand-2",
-                        name: "Rohan Sharma",
-                        role: "Grandson (Gen 2)",
-                        birthYear: "2002",
-                        photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
-                        children: []
-                      }
-                    ]
-                  },
-                  {
-                    id: "child-2",
-                    name: "Rajesh Sharma",
-                    role: "Son (Gen 1)",
-                    birthYear: "1975",
-                    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
-                    children: [
-                      {
-                        id: "grand-3",
-                        name: "Kavita Sharma",
-                        role: "Granddaughter (Gen 2)",
-                        birthYear: "2005",
-                        photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
-                        children: []
-                      }
-                    ]
-                  }
-                ]
-              }
-            ] : [];
+                  children: [
+                    {
+                      id: "child-1",
+                      name: "Meera Sharma",
+                      role: "Daughter (Gen 1)",
+                      birthYear: "1972",
+                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-1",
+                          name: "Ananya Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "1998",
+                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
+                          children: [
+                            {
+                              id: "great-1",
+                              name: "Ishani Sharma",
+                              role: "Great-Granddaughter (Gen 3)",
+                              birthYear: "2026",
+                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+                              children: []
+                            }
+                          ]
+                        },
+                        {
+                          id: "grand-2",
+                          name: "Rohan Sharma",
+                          role: "Grandson (Gen 2)",
+                          birthYear: "2002",
+                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    },
+                    {
+                      id: "child-2",
+                      name: "Rajesh Sharma",
+                      role: "Son (Gen 1)",
+                      birthYear: "1975",
+                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
+                      children: [
+                        {
+                          id: "grand-3",
+                          name: "Kavita Sharma",
+                          role: "Granddaughter (Gen 2)",
+                          birthYear: "2005",
+                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
+                          children: []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ] : [];
 
             const newProfile = {
               email,
@@ -2922,7 +3028,7 @@ async function startServer() {
                               id: "great-1",
                               name: "Ishani Sharma",
                               role: "Great-Granddaughter (Gen 3)",
-                              birthYear: "2024",
+                              birthYear: "2026",
                               photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
                               children: []
                             }
