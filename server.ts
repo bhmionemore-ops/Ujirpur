@@ -1876,13 +1876,8 @@ async function startServer() {
             console.log("[Firebase] Admin SDK reachability verified successfully.");
             adminDb = currentAdminDb;
           } catch (err: any) {
-            if (err.message.includes("PERMISSION_DENIED")) {
-              console.warn(`[Firebase] Admin SDK has NO PERMISSIONS on database ${dbId}. Using Client SDK fallback exclusively.`);
-              adminDb = null;
-            } else {
-              console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. Keeping handle as fallback.`);
-              adminDb = currentAdminDb;
-            }
+            console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. DISABLING Admin SDK to force Client SDK fallback.`);
+            adminDb = null;
           }
         } catch (dbError: any) {
           console.error("[Firebase] Error getting Firestore Admin instance:", dbError.message);
@@ -4217,16 +4212,20 @@ async function startServer() {
   });
 
 async function updateVamshavaliLineage(profileId: string, action: string, targetMemberName: string, details: any) {
-  if (!adminDb) {
-    console.error("[Telegram] Firestore Admin DB not initialized");
+  if (!adminDb && !db) {
+    console.error("[Telegram] No Firestore handle available");
     return { success: false, error: "Database not ready. Please try again in 30 seconds." };
   }
-  const profileRef = adminDb.collection('vamshavali_profiles').doc(profileId);
-  const doc = await profileRef.get();
   
-  if (!doc.exists) return { success: false, error: "Profile not found" };
+  const useAdmin = !!adminDb;
+  const profileRef = useAdmin ? adminDb.collection('vamshavali_profiles').doc(profileId) : doc(db!, 'vamshavali_profiles', profileId);
   
-  const data = doc.data();
+  const snap = useAdmin ? await profileRef.get() : await getDoc(profileRef as any);
+  const exists = useAdmin ? snap.exists : snap.exists();
+  
+  if (!exists) return { success: false, error: "Profile not found" };
+  
+  const data = snap.data();
   let members = data?.members || [];
 
   function findMemberRecursive(list: any[], name: string): any {
@@ -4243,6 +4242,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     }
     return null;
   }
+  
+  const ts = useAdmin ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
   
   if (action === "ADD") {
     const parent = findMemberRecursive(members, targetMemberName);
@@ -4262,7 +4263,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       } else {
         parent.children = [...(parent.children || []), newMember];
       }
-      await profileRef.update({ members, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      
+      if (useAdmin) {
+        await profileRef.update({ members, updatedAt: ts });
+      } else {
+        await updateDoc(profileRef as any, { members, updatedAt: ts });
+      }
       return { success: true };
     }
   } else if (action === "UPDATE") {
@@ -4271,7 +4277,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (details.photo) member.photo = details.photo;
       if (details.birthYear) member.birthYear = details.birthYear;
       if (details.role) member.role = details.role;
-      await profileRef.update({ members, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      
+      if (useAdmin) {
+        await profileRef.update({ members, updatedAt: ts });
+      } else {
+        await updateDoc(profileRef as any, { members, updatedAt: ts });
+      }
       return { success: true };
     }
   }
@@ -4322,22 +4333,17 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       try {
         console.log(`[Telegram] Attempting to link ChatID ${chatId} to ShareID ${shareId}...`);
         
-        if (!adminDb) {
-           console.error("[Telegram] adminDb is NOT initialized! Attempting to use Client SDK fallback...");
-           // This is a safety fallback since we usually prefer Admin SDK for webhooks
-        }
-
-        const dbToUse = adminDb || db;
-        if (!dbToUse) {
-           console.error("[Telegram] No Firestore instance available (Admin or Client)!");
+        if (!db) {
+           console.error("[Telegram] Firestore Client SDK (db) is NOT initialized!");
            return sendMsg("❌ Database connection error. Please try again later.");
         }
 
-        const snapshot = await (adminDb ? adminDb.collection('vamshavali_profiles').where('shareId', '==', shareId).limit(1).get() : getDocs(query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId), limit(1))));
+        // Use Client SDK (db!) exclusively here because it's already verified and authenticated as server-admin
+        const q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId), limit(1));
+        const snapshot = await getDocs(q);
         
-        const docs = adminDb ? snapshot.docs : (snapshot as any).docs;
-        if (docs && docs.length > 0) {
-          const profileDoc = docs[0];
+        if (!snapshot.empty) {
+          const profileDoc = snapshot.docs[0];
           const profile = profileDoc.data();
           
           const linkData = {
@@ -4347,11 +4353,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
             serverKey: FIRESTORE_SERVER_KEY
           };
 
-          if (adminDb) {
-            await adminDb.collection('telegram_links').doc(String(chatId)).set(linkData);
-          } else {
-            await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
-          }
+          await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
           
           console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
           return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name}"\n• "Update photo for ${profile.name}"`);
@@ -4368,8 +4370,15 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     // Use a simple memory store to link ChatID to ProfileID for this turn/session
     // In production, we'd store this link in Firestore.
     const getLinkedProfileId = async (chatId: number) => {
-      const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
-      return snap.exists ? snap.data()?.profileId : null;
+      if (adminDb) {
+        const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
+        return snap.exists ? snap.data()?.profileId : null;
+      } else if (db) {
+        const docRef = doc(db, 'telegram_links', chatId.toString());
+        const snap = await getDoc(docRef);
+        return snap.exists() ? snap.data()?.profileId : null;
+      }
+      return null;
     };
 
     if (text.startsWith('/start')) {
@@ -4396,11 +4405,21 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       });
 
       const responseText = response.text || "{}";
-      console.log("[Telegram] Gemini response:", responseText);
       const command = JSON.parse(responseText);
 
       if (command.action === "LINK") {
-        await adminDb.collection('telegram_links').doc(chatId.toString()).set({ profileId: command.details.id });
+        const linkData = { 
+          profileId: command.details.id,
+          linkedAt: new Date().toISOString(),
+          serverKey: FIRESTORE_SERVER_KEY
+        };
+        
+        if (adminDb) {
+          await adminDb.collection('telegram_links').doc(chatId.toString()).set(linkData);
+        } else if (db) {
+          await setDoc(doc(db, 'telegram_links', chatId.toString()), linkData);
+        }
+        
         return await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
       }
 
