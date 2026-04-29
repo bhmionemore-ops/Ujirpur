@@ -766,43 +766,33 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
   };
 
+  const validateShareIdForLink = (id: any): string => {
+    let sid = String(id || '').trim();
+    const invalid = !sid || 
+                   sid.toLowerCase() === 'undefined' || 
+                   sid.toLowerCase() === 'null' || 
+                   sid.length < 4;
+    
+    if (invalid) {
+      const newsid = 'V' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+      console.log("[Vamshavali] ID was invalid, generated:", newsid);
+      return newsid;
+    }
+    return sid.toUpperCase();
+  };
+
   const handleLinkTelegram = async () => {
     if (!profile) {
       toast.error("Please create a profile first.");
       return;
     }
     
-    // 1. Generate/Verify Share ID (Extremely defensive)
-    let finalShareId = (profile as any).shareId || (profile as any).share_id;
+    // 1. Get/Generate a strictly valid ID
+    let finalShareId = validateShareIdForLink((profile as any).shareId || (profile as any).share_id);
     
-    // Double-check for any form of 'undefined' or missing
-    const isReallyInvalid = !finalShareId || 
-                           String(finalShareId).toLowerCase() === 'undefined' || 
-                           String(finalShareId).toLowerCase() === 'null' || 
-                           String(finalShareId).toLowerCase().trim() === '' || 
-                           String(finalShareId).length < 5;
-
-    if (isReallyInvalid) {
-      finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      console.log("[Vamshavali] Generated brand new ShareID:", finalShareId);
-    } else {
-      // Ensure it is a clean, uppercase string
-      finalShareId = String(finalShareId).trim().toUpperCase();
-      
-      // Secondary check after string conversion
-      if (finalShareId === 'UNDEFINED' || finalShareId === 'NULL') {
-        finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
-        console.log("[Vamshavali] Detected 'UNDEFINED' string, regenerating:", finalShareId);
-      } else {
-        console.log("[Vamshavali] Using verified ShareID:", finalShareId);
-      }
-    }
-    
-    // Final safety check - if it's STILL undefined for some reason, abort and error
-    const finalCheck = String(finalShareId).toLowerCase().trim();
-    if (!finalCheck || finalCheck === 'undefined' || finalCheck === 'null') {
-      toast.error("System generated an invalid ID. Please try manually saving first.");
-      return;
+    // Double check - we should NEVER have "undefined" string here
+    if (finalShareId.toLowerCase().includes('undefined')) {
+       finalShareId = 'V' + Math.random().toString(36).substring(2, 10).toUpperCase();
     }
 
     const updatedProfile = { ...profile, shareId: finalShareId };
@@ -811,32 +801,32 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     try {
       // 2. Synchronize with DB first
       const synced = await handleSyncProfile(updatedProfile);
-      if (!synced) {
-        toast.error("Failed to sync profile. Linking might fail.");
-        // We continue anyway as a fallback, but link might bot-side fail
-      }
-
       setProfile(updatedProfile);
       
-      // 3. Small propagation delay
-      await new Promise(r => setTimeout(r, 600));
+      // 3. Small propagation delay (important for server-side lookups)
+      await new Promise(r => setTimeout(r, 800));
 
       // 4. Final verification BEFORE building URL
       const safeId = String(finalShareId).trim().toUpperCase();
-      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '') {
-        throw new Error(`Critical Error: ShareID is invalid ("${safeId}")`);
+      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '' || safeId.length < 4) {
+        throw new Error(`Critical Error: ShareID is still invalid ("${safeId}")`);
       }
 
       const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
       const telegramUrl = `https://t.me/${botUsername}?start=${safeId}`;
       
-      console.log("[Vamshavali] Launching Telegram link:", telegramUrl);
-      window.open(telegramUrl, '_blank');
+      console.log("[Vamshavali] Linking Launch ->", telegramUrl);
       
+      // Last-second check for "undefined" in the string itself
+      if (telegramUrl.toLowerCase().includes('undefined')) {
+        throw new Error("URL contains 'undefined' string");
+      }
+
+      window.open(telegramUrl, '_blank');
       toast.success(language === 'bn' ? 'টেলিগ্রাম খোলা হচ্ছে...' : "Opening Telegram...");
     } catch (error) {
       console.error("[Vamshavali] Link aborted:", error);
-      toast.error("System Error: Could not generate link properly.");
+      toast.error("System Error: Could not generate link properly. Please try refreshing.");
     } finally {
       setIsLoading(false);
     }

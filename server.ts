@@ -4374,10 +4374,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
       }
 
-      const normalizedShareId = String(shareId).toLowerCase();
-      if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '') {
+      const normalizedShareId = String(shareId).toLowerCase().trim();
+      if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '' || normalizedShareId.length < 4) {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* This happens when your browser profile cache is stale or if you clicked too fast. Please:\n1. Go back to the website.\n2. **Refresh the page (Ctrl + F5)**.\n3. Ensure your profile name is saved.\n4. Click 'Link Telegram' again.`);
+        return sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* Please follow these steps carefully:\n1. Open the Vamshavali page.\n2. **Refresh the page (Ctrl + F5)**.\n3. Make sure you see your name in the dashboard.\n4. Click 'Telegram Update' wait 1 second, then click the link.`);
       }
 
       try {
