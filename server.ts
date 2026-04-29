@@ -3370,12 +3370,17 @@ async function startServer() {
     // Sanitize and validate shareId
     if (data.shareId) {
       const sid = String(data.shareId).toLowerCase().trim();
-      if (sid === 'undefined' || sid === 'null' || sid === '') {
+      if (sid === 'undefined' || sid === 'null' || sid === '' || sid.length < 5) {
         console.warn(`[Vamshavali] Rejecting invalid shareId update attempt for ${id}: "${data.shareId}"`);
-        delete (data as any).shareId; // Don't save invalid shareId
+        data.shareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+        console.log(`[Vamshavali] Endpoint corrected shareId to: "${data.shareId}"`);
       } else {
         data.shareId = String(data.shareId).trim().toUpperCase();
       }
+    } else {
+      // If missing entirely, generate one
+      data.shareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      console.log(`[Vamshavali] Endpoint generated missing shareId for ${id}: "${data.shareId}"`);
     }
 
     try {

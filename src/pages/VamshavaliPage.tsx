@@ -773,25 +773,34 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     }
     
     // 1. Generate/Verify Share ID (Extremely defensive)
-    let finalShareId = (profile as any).shareId;
+    let finalShareId = (profile as any).shareId || (profile as any).share_id;
     
     // Double-check for any form of 'undefined' or missing
     const isReallyInvalid = !finalShareId || 
                            String(finalShareId).toLowerCase() === 'undefined' || 
                            String(finalShareId).toLowerCase() === 'null' || 
-                           String(finalShareId).trim() === '' || 
+                           String(finalShareId).toLowerCase().trim() === '' || 
                            String(finalShareId).length < 5;
 
     if (isReallyInvalid) {
       finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
       console.log("[Vamshavali] Generated brand new ShareID:", finalShareId);
     } else {
+      // Ensure it is a clean, uppercase string
       finalShareId = String(finalShareId).trim().toUpperCase();
-      console.log("[Vamshavali] Using verified ShareID:", finalShareId);
+      
+      // Secondary check after string conversion
+      if (finalShareId === 'UNDEFINED' || finalShareId === 'NULL') {
+        finalShareId = Math.random().toString(36).substring(2, 10).toUpperCase();
+        console.log("[Vamshavali] Detected 'UNDEFINED' string, regenerating:", finalShareId);
+      } else {
+        console.log("[Vamshavali] Using verified ShareID:", finalShareId);
+      }
     }
     
     // Final safety check - if it's STILL undefined for some reason, abort and error
-    if (!finalShareId || String(finalShareId) === 'undefined') {
+    const finalCheck = String(finalShareId).toLowerCase().trim();
+    if (!finalCheck || finalCheck === 'undefined' || finalCheck === 'null') {
       toast.error("System generated an invalid ID. Please try manually saving first.");
       return;
     }
@@ -813,9 +822,9 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       await new Promise(r => setTimeout(r, 600));
 
       // 4. Final verification BEFORE building URL
-      const safeId = String(finalShareId).trim();
-      if (safeId.toLowerCase() === 'undefined' || safeId === '') {
-        throw new Error("ID became undefined right before link generation");
+      const safeId = String(finalShareId).trim().toUpperCase();
+      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '') {
+        throw new Error(`Critical Error: ShareID is invalid ("${safeId}")`);
       }
 
       const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');

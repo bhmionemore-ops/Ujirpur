@@ -244,12 +244,10 @@ export const BarniaBazar = () => {
       const { deleteDoc, doc } = await import('firebase/firestore');
       await deleteDoc(doc(db, 'shops', confirmDelete));
       setConfirmDelete(null);
+      toast.success(language === 'bn' ? 'দোকান মুছে ফেলা হয়েছে' : "Shop deleted successfully");
     } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.DELETE, `shops/${confirmDelete}`);
-      } catch (e) {
-        setError(e as Error);
-      }
+      console.error("Delete error:", err);
+      toast.error("Failed to delete shop");
     }
   };
 
