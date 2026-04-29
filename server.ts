@@ -3432,7 +3432,7 @@ async function startServer() {
       }
 
       if (saved) {
-        res.json({ success: true });
+        res.json({ success: true, shareId: data.shareId });
       } else {
         res.status(500).json({ 
           error: "Failed to update profile", 

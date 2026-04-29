@@ -759,10 +759,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         body: JSON.stringify(targetProfile)
       });
       if (!res.ok) throw new Error("Sync rejected by server");
-      return true;
+      const data = await res.json();
+      return data.shareId || targetProfile.shareId;
     } catch (e) {
       console.error("[Vamshavali] Sync error:", e);
-      return false;
+      return null;
     }
   };
 
@@ -800,33 +801,42 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
     try {
       // 2. Synchronize with DB first
-      const synced = await handleSyncProfile(updatedProfile);
-      setProfile(updatedProfile);
+      const serverShareId = await handleSyncProfile(updatedProfile);
       
-      // 3. Small propagation delay (important for server-side lookups)
-      await new Promise(r => setTimeout(r, 800));
-
-      // 4. Final verification BEFORE building URL
-      const safeId = String(finalShareId).trim().toUpperCase();
-      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '' || safeId.length < 4) {
-        throw new Error(`Critical Error: ShareID is still invalid ("${safeId}")`);
+      if (!serverShareId || String(serverShareId).toLowerCase().includes('undefined')) {
+        throw new Error("Server returned an invalid ID after sync");
       }
 
-      const botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot').replace('@', '');
+      const verifiedProfile = { ...updatedProfile, shareId: serverShareId };
+      setProfile(verifiedProfile as any);
+      
+      // 3. Small propagation delay (important for server-side lookups)
+      await new Promise(r => setTimeout(r, 1000));
+
+      // 4. Final verification BEFORE building URL
+      const safeId = String(serverShareId).trim().toUpperCase();
+      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '' || safeId.length < 4) {
+        throw new Error(`Critical Error: ShareID is still invalid after sync ("${safeId}")`);
+      }
+
+      let botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || '').trim().replace('@', '');
+      if (!botUsername || botUsername.toLowerCase() === 'undefined' || botUsername.toLowerCase() === 'null') {
+        botUsername = 'Vamshavali_bot';
+      }
       const telegramUrl = `https://t.me/${botUsername}?start=${safeId}`;
       
       console.log("[Vamshavali] Linking Launch ->", telegramUrl);
       
       // Last-second check for "undefined" in the string itself
       if (telegramUrl.toLowerCase().includes('undefined')) {
-        throw new Error("URL contains 'undefined' string");
+        throw new Error(`URL contains 'undefined' string: ${telegramUrl}`);
       }
 
       window.open(telegramUrl, '_blank');
       toast.success(language === 'bn' ? 'টেলিগ্রাম খোলা হচ্ছে...' : "Opening Telegram...");
     } catch (error) {
       console.error("[Vamshavali] Link aborted:", error);
-      toast.error("System Error: Could not generate link properly. Please try refreshing.");
+      toast.error(`System Error: ${error instanceof Error ? error.message : "Could not generate link properly"}`);
     } finally {
       setIsLoading(false);
     }
