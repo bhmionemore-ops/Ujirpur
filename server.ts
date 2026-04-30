@@ -52,6 +52,29 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
   }
   throw lastError;
 }
+
+async function getTelegramBotToken(): Promise<string | null> {
+  const allEnvKeys = Object.keys(process.env);
+  let botTokenKey: string | undefined = allEnvKeys.find(k => k === 'TELEGRAM_BOT_TOKEN') || 
+                    allEnvKeys.find(k => k === 'VITE_TELEGRAM_BOT_TOKEN');
+
+  if (!botTokenKey) {
+    botTokenKey = allEnvKeys.find(k => {
+      const uk = k.toUpperCase();
+      return uk.includes('TELEGRAM') && uk.includes('TOKEN');
+    });
+  }
+
+  if (!botTokenKey) {
+    botTokenKey = allEnvKeys.find(k => {
+      const uk = k.toUpperCase();
+      return uk.includes('TELEGRAM') && uk.includes('BOT') && !uk.includes('USER');
+    });
+  }
+  
+  const token = botTokenKey ? process.env[botTokenKey] : null;
+  return token ? token.trim() : null;
+}
 import nodemailer from "nodemailer";
 import dns from "dns";
 import { simpleParser } from "mailparser";
@@ -1507,30 +1530,8 @@ async function startServer() {
 
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
+    const botToken = await getTelegramBotToken();
     const allEnvKeys = Object.keys(process.env);
-    
-    // Prioritize specific token keys
-    let botTokenKey: string | undefined = allEnvKeys.find(k => k === 'TELEGRAM_BOT_TOKEN') || 
-                      allEnvKeys.find(k => k === 'VITE_TELEGRAM_BOT_TOKEN');
-
-    // If not found, look for something with TELEGRAM and TOKEN
-    if (!botTokenKey) {
-      botTokenKey = allEnvKeys.find(k => {
-        const uk = k.toUpperCase();
-        return uk.includes('TELEGRAM') && uk.includes('TOKEN');
-      });
-    }
-
-    // Only if still not found, look for anything with TELEGRAM and BOT (but NOT username)
-    if (!botTokenKey) {
-      botTokenKey = allEnvKeys.find(k => {
-        const uk = k.toUpperCase();
-        return uk.includes('TELEGRAM') && uk.includes('BOT') && !uk.includes('USER');
-      });
-    }
-
-    let botToken = botTokenKey ? process.env[botTokenKey] : null;
-    if (botToken) botToken = botToken.trim();
     
     if (!botToken) {
        return res.status(400).send(`
@@ -1581,7 +1582,6 @@ async function startServer() {
             <h2 style="color: #b91c1c; margin-top: 0;">❌ Invalid Telegram Token</h2>
             <p>Telegram says this token is invalid: <b>${meResult.error_code} (${meResult.description})</b></p>
             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #fee2e2; font-family: monospace; font-size: 13px;">
-              <b>Secret Used:</b> ${botTokenKey}<br>
               <b>Token Preview:</b> ${masked}
             </div>
             <p style="margin-top: 20px;"><b>How to fix:</b> Generate a new token in <a href="https://t.me/BotFather">@BotFather</a> and update your <code>TELEGRAM_BOT_TOKEN</code> secret.</p>
@@ -1612,7 +1612,6 @@ async function startServer() {
             <h2 style="color: #b91c1c; margin-top: 0;">❌ Telegram Rejected the Token</h2>
             <p>Telegram returned a <b>${result.error_code} (${result.description})</b> error.</p>
             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #fee2e2; font-family: monospace; font-size: 13px;">
-              <b>Secret Used:</b> ${botTokenKey}<br>
               <b>Token Preview:</b> ${masked}<br>
               <b>Webhook URL:</b> ${webhookUrl}
             </div>
@@ -4329,17 +4328,20 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
   app.post("/api/webhooks/telegram", async (req, res) => {
     console.log("[Telegram] Webhook received:", JSON.stringify(req.body));
     const { message } = req.body;
-    if (!message || !message.text) {
-      console.log("[Telegram] No message text found, skipping...");
+    
+    // Support text messages or photo captions
+    const text = (message?.text || message?.caption || "").trim();
+    
+    if (!message || (!text && !message.photo)) {
+      console.log("[Telegram] No message text/caption/photo found, skipping...");
       return res.sendStatus(200);
     }
 
     const chatId = message.chat.id;
-    const text = message.text;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
+    const botToken = await getTelegramBotToken();
 
     if (!botToken) {
-      console.error("[Telegram] BOT_TOKEN missing in environment (checked TELEGRAM_BOT_TOKEN and VITE_TELEGRAM_BOT_TOKEN)");
+      console.error("[Telegram] BOT_TOKEN missing in environment");
       return res.sendStatus(200);
     }
 
@@ -4467,17 +4469,24 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const geminiKey = await getGeminiApiKey();
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       
-      const prompt = `You are a genealogy data extractor. Extract family tree updates from the following message: "${text}".
+      const prompt = `You are a genealogy expert assistant for Barnali (Vamshavali AI). 
+      Extract family tree update instructions from this message: "${text}".
       
       Return ONLY a JSON object with:
-      - action: "ADD", "UPDATE", "DELETE", or "UNKNOWN"
-      - targetMember: name of the person to attach to or modify
-      - details: name, role, birthYear, relationship, linkDirection ("child", "partner")
+      - action: "ADD", "UPDATE", "DELETE", "LINK", or "UNKNOWN"
+      - targetMember: name of the existing person in the tree to modify or attach to
+      - details: 
+          role: (e.g., "Father", "Mother", "Son", "Daughter")
+          name: new person's name (if ADD) or field value
+          birthYear: Year (if mentioned)
+          relationship: "child" or "partner" (if ADD)
+          id: Profile ID if this is a LINK action
       
-      If the message is about a project/profile ID (looks like a random string or email), set action to "LINK" and details.id to the ID.`;
+      Context: If you see something that looks like an ID or user says 'Link profile X', use action: "LINK".
+      If the user provides info like 'Add X as son of Y', action is "ADD", targetMember is "Y", name in details is "X".`;
 
       const response = await callGeminiWithRetry(ai, {
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json" }
       });
@@ -4517,9 +4526,17 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
 
       return await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Telegram] Error processing message:", err);
-      await sendMsg("⚠️ The archives are currently busy. Please try again in a moment.");
+      let errorMsg = "⚠️ The archives are currently busy. Please try again in a moment.";
+      
+      if (err?.message?.includes("429") || err?.message?.includes("RESOURCE_EXHAUSTED")) {
+        errorMsg = "⚠️ *High Traffic:* I am receiving too many requests. Please try again in 1 minute.";
+      } else if (err?.message?.includes("API_KEY_INVALID")) {
+        errorMsg = "⚠️ *System Config Error:* The AI component is not properly configured. Please notify the administrator.";
+      }
+      
+      await sendMsg(errorMsg);
     }
 
     res.sendStatus(200);
