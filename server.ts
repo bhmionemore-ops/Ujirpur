@@ -1567,11 +1567,11 @@ async function startServer() {
         const geminiKey = await getGeminiApiKey();
         if (geminiKey) {
            const ai = new GoogleGenAI({ apiKey: geminiKey });
-           const testResult = await ai.models.generateContent({
-             model: "gemini-1.5-flash",
-             contents: [{ role: "user", parts: [{ text: "Hi" }] }]
+           const result = await ai.models.generateContent({
+             model: "gemini-3-flash-preview",
+             contents: "Hi"
            });
-           geminiStatus = testResult ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
+           geminiStatus = result && result.text ? "✅ Gemini AI is working! (3-flash)" : "❌ Gemini returned empty response";
         } else {
            geminiStatus = "❌ Gemini API Key Missing (Required for AI features)";
         }
@@ -4346,8 +4346,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     if (!botToken) {
       console.error("[Telegram] BOT_TOKEN missing in environment");
-      res.sendStatus(200);
-      return;
+      return res.sendStatus(200);
     }
 
     const sendMsg = async (msg: string) => {
@@ -4357,7 +4356,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' }),
-          // Enforce IPv4 and add timeout for stability in cloud environments
           family: 4,
           timeout: 10000
         });
@@ -4369,6 +4367,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         console.error("[Telegram] Send message error:", err);
       }
     };
+
+    // Prevent crashing on images without captions
+    if (!text && message.photo) {
+      await sendMsg("📸 *I see your photo!* Barnali is currently focused on text-based updates. Please send a text message describing the family update (e.g., 'Add Rahul as son of Kedar').");
+      return res.sendStatus(200);
+    }
 
     // Handle deep linking /start <id>
     const textParts = text.trim().split(/\s+/);
@@ -4498,19 +4502,27 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           birthYear: Year (if mentioned)
           relationship: "child" or "partner" (if ADD)
           id: Profile ID if this is a LINK action
+      - clarificationMessage: If the request is ambiguous, incomplete, or you are unsure, provide a polite question to the user asking for the missing info (e.g. "Who should I add this person to?", "Which profile should I update?").
       
       Context: If you see something that looks like an ID or user says 'Link profile X', use action: "LINK".
-      If the user provides info like 'Add X as son of Y', action is "ADD", targetMember is "Y", name in details is "X".`;
+      If the user provides info like 'Add X as son of Y', action is "ADD", targetMember is "Y", name in details is "X".
+      If they just say 'Add Rahul' without saying who he belongs to, set action to UNKNOWN and ask "Where should I add Rahul? (e.g. 'Add Rahul as son of Kedar')".`;
 
       console.log("[Telegram] Calling Gemini for command extraction...");
       const result = await ai.models.generateContent({ 
-        model: "gemini-1.5-flash",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        model: "gemini-3-flash-preview",
+        contents: prompt,
         config: { responseMimeType: "application/json" }
       });
       
-      const responseText = result.text || "{}";
+      let responseText = (result.text || "{}").trim();
       console.log("[Telegram] Gemini Response:", responseText);
+      
+      // Sanitization: Remove markdown code blocks if present
+      if (responseText.startsWith("```")) {
+        responseText = responseText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "").trim();
+      }
+      
       const command = JSON.parse(responseText);
 
       if (command.action === "LINK") {
@@ -4539,6 +4551,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
 
       if (command.action === "ADD" || command.action === "UPDATE") {
+        if (!command.targetMember && command.clarificationMessage) {
+          await sendMsg(`🤔 ${command.clarificationMessage}`);
+          res.sendStatus(200);
+          return;
+        }
         await sendMsg(`🔍 *Processing Request...* (${command.action}: ${command.targetMember})`);
         const result = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
         if (result.success) {
@@ -4550,18 +4567,26 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         return;
       }
 
-      await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
+      if (command.clarificationMessage) {
+        await sendMsg(`🤔 ${command.clarificationMessage}`);
+      } else {
+        await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
+      }
     } catch (err: any) {
       console.error("[Telegram] Error processing message:", err);
+      const errorStr = err?.message || String(err);
+      
       let errorMsg = "⚠️ The archives are currently busy. Please try again in a moment.";
       
-      const errorStr = err?.message || String(err);
       if (errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED")) {
         errorMsg = "⚠️ *High Traffic:* I am receiving too many requests. Please try again in 1 minute.";
       } else if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("API_KEY_SERVICE_BLOCKED") || errorStr.includes("blocked") || errorStr.includes("403")) {
-        errorMsg = "⚠️ *System Config Error:* The AI component (Gemini) is not properly configured or the API key is blocked. Please notify the administrator.";
+        errorMsg = "⚠️ *System Config Error:* The AI component (Gemini) is not properly configured. Please notify the administrator.";
       } else if (errorStr.includes("model not found") || errorStr.includes("gemini-3")) {
         errorMsg = "⚠️ *Model Error:* I couldn't reach the required brain module. Please try again later.";
+      } else {
+        // Log more detail to the user if it's a specific internal error we can share
+        console.log("[Telegram] Unhandled error:", errorStr);
       }
       
       await sendMsg(errorMsg);
