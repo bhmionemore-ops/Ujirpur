@@ -4306,7 +4306,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (useAdmin) {
         await profileRef.update({ members, updatedAt: ts });
       } else {
-        await updateDoc(profileRef as any, { members, updatedAt: ts });
+        await updateDoc(profileRef as any, { 
+          members, 
+          updatedAt: ts,
+          serverKey: FIRESTORE_SERVER_KEY 
+        });
       }
       return { success: true };
     }
@@ -4320,7 +4324,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (useAdmin) {
         await profileRef.update({ members, updatedAt: ts });
       } else {
-        await updateDoc(profileRef as any, { members, updatedAt: ts });
+        await updateDoc(profileRef as any, { 
+          members, 
+          updatedAt: ts,
+          serverKey: FIRESTORE_SERVER_KEY
+        });
       }
       return { success: true };
     }
@@ -4597,9 +4605,15 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         errorMsg = "⚠️ *System Config Error:* The AI component (Gemini) is not properly configured. Please notify the administrator.";
       } else if (errorStr.includes("model not found") || errorStr.includes("gemini-3")) {
         errorMsg = "⚠️ *Model Error:* I couldn't reach the required brain module. Please try again later.";
+      } else if (errorStr.includes("permissions") || errorStr.includes("permission-denied")) {
+        console.error("[Telegram] Permission DENIED! Checking status...");
+        console.log(`[Telegram] auth.currentUser: ${clientAuth?.currentUser?.uid || 'NONE'}`);
+        console.log(`[Telegram] adminDb available: ${!!adminDb}`);
+        console.log(`[Telegram] db available: ${!!db}`);
+        errorMsg = `⚠️ *Archival Permission Error:* Barnali is having trouble accessing the family records. (Status: ${adminDb ? 'ADMIN' : 'CLIENT'})`;
       } else {
         // If it's a specific internal error, we can share a hint
-        errorMsg = `⚠️ *Internal Error:* ${errorStr.substring(0, 50)}${errorStr.length > 50 ? '...' : ''}`;
+        errorMsg = `⚠️ *Internal Error:* ${errorStr.substring(0, 70)}${errorStr.length > 70 ? '...' : ''}`;
       }
       
       await sendMsg(errorMsg);
