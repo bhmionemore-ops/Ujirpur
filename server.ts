@@ -1868,20 +1868,23 @@ async function startServer() {
           // Use getAdminFirestore to ensure proper database mapping
           const currentAdminDb = getAdminFirestore(admin.app(), dbId || undefined);
           
-          // Reachability check
-          try {
-            const testRef = currentAdminDb.collection("_health_check").doc("reachability_test");
-            await testRef.set({ 
-              time: admin.firestore.FieldValue.serverTimestamp(),
-              node: process.env.K_REVISION || 'local'
-            });
-            await testRef.delete();
-            console.log("[Firebase] Admin SDK reachability verified successfully.");
-            adminDb = currentAdminDb;
-          } catch (err: any) {
-            console.warn(`[Firebase] Admin SDK reachability check failed: ${err.message}. DISABLING Admin SDK to force Client SDK fallback.`);
-            adminDb = null;
-          }
+          // Assign adminDb immediately
+          adminDb = currentAdminDb;
+          console.log("[Firebase] Admin Firestore instance assigned.");
+
+          // Reachability check as background log only - DON'T disable adminDb on failure
+          (async () => {
+            try {
+              const testRef = adminDb.collection("_health_check").doc("reachability_test");
+              await testRef.set({ 
+                time: admin.firestore.FieldValue.serverTimestamp(),
+                node: process.env.K_REVISION || 'local'
+              });
+              console.log("[Firebase] Admin SDK reachability verified successfully.");
+            } catch (err: any) {
+              console.warn(`[Firebase] Admin SDK reachability check warning: ${err.message}. Admin operations might still work via other paths.`);
+            }
+          })();
         } catch (dbError: any) {
           console.error("[Firebase] Error getting Firestore Admin instance:", dbError.message);
         }
@@ -4304,7 +4307,16 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
       
       if (useAdmin) {
-        await profileRef.update({ members, updatedAt: ts });
+        try {
+          await profileRef.update({ members, updatedAt: ts });
+        } catch (err: any) {
+          console.error("[Telegram] Admin update failed, trying Client SDK fallback:", err.message);
+          await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
+            members, 
+            updatedAt: serverTimestamp(),
+            serverKey: FIRESTORE_SERVER_KEY 
+          });
+        }
       } else {
         await updateDoc(profileRef as any, { 
           members, 
@@ -4322,7 +4334,16 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (details.role) member.role = details.role;
       
       if (useAdmin) {
-        await profileRef.update({ members, updatedAt: ts });
+        try {
+          await profileRef.update({ members, updatedAt: ts });
+        } catch (err: any) {
+          console.error("[Telegram] Admin update (UPDATE) failed, trying Client SDK fallback:", err.message);
+          await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
+            members, 
+            updatedAt: serverTimestamp(),
+            serverKey: FIRESTORE_SERVER_KEY 
+          });
+        }
       } else {
         await updateDoc(profileRef as any, { 
           members, 
@@ -4610,7 +4631,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         console.log(`[Telegram] auth.currentUser: ${clientAuth?.currentUser?.uid || 'NONE'}`);
         console.log(`[Telegram] adminDb available: ${!!adminDb}`);
         console.log(`[Telegram] db available: ${!!db}`);
-        errorMsg = `⚠️ *Archival Permission Error:* Barnali is having trouble accessing the family records. (Status: ${adminDb ? 'ADMIN' : 'CLIENT'})`;
+        errorMsg = `⚠️ *Archival Permission Error:* Barnali can't access records. (Status: ${adminDb ? 'ADMIN' : 'CLIENT'}${clientAuth?.currentUser?.uid ? '+AUTH' : '-AUTH'})`;
       } else {
         // If it's a specific internal error, we can share a hint
         errorMsg = `⚠️ *Internal Error:* ${errorStr.substring(0, 70)}${errorStr.length > 70 ? '...' : ''}`;
