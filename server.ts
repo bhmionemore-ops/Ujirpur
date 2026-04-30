@@ -4344,9 +4344,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     const chatId = message.chat.id;
     const botToken = await getTelegramBotToken();
 
+    // Acknowledge to Telegram immediately to prevent retry floods during slow AI generation
+    res.sendStatus(200);
+
     if (!botToken) {
       console.error("[Telegram] BOT_TOKEN missing in environment");
-      return res.sendStatus(200);
+      return;
     }
 
     const sendMsg = async (msg: string) => {
@@ -4371,7 +4374,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     // Prevent crashing on images without captions
     if (!text && message.photo) {
       await sendMsg("📸 *I see your photo!* Barnali is currently focused on text-based updates. Please send a text message describing the family update (e.g., 'Add Rahul as son of Kedar').");
-      return res.sendStatus(200);
+      return;
     }
 
     // Handle deep linking /start <id>
@@ -4383,7 +4386,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     if (text.startsWith('/start')) {
       if (!shareId) {
         await sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
-        res.sendStatus(200);
         return;
       }
 
@@ -4391,7 +4393,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '' || normalizedShareId.length < 4) {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
         await sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* Please follow these steps carefully:\n1. Open the Vamshavali page.\n2. **Refresh the page (Ctrl + F5)**.\n3. Make sure you see your name in the dashboard.\n4. Click 'Telegram Update' wait 1 second, then click the link.`);
-        res.sendStatus(200);
         return;
       }
 
@@ -4457,7 +4458,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         console.error("[Telegram] Linking error detail:", err);
         await sendMsg(`❌ An error occurred while linking: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
-      res.sendStatus(200);
       return;
     }
 
@@ -4485,7 +4485,6 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       if (!geminiKey) {
         console.error("[Telegram] Gemini API Key missing");
         await sendMsg("⚠️ *System Error:* AI services are currently unavailable (Key missing).");
-        res.sendStatus(200);
         return;
       }
       const ai = new GoogleGenAI({ apiKey: geminiKey });
@@ -4509,21 +4508,39 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       If they just say 'Add Rahul' without saying who he belongs to, set action to UNKNOWN and ask "Where should I add Rahul? (e.g. 'Add Rahul as son of Kedar')".`;
 
       console.log("[Telegram] Calling Gemini for command extraction...");
-      const result = await ai.models.generateContent({ 
+      const result = await callGeminiWithRetry(ai, { 
         model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: { 
+          responseMimeType: "application/json",
+          temperature: 0.1
+        }
       });
       
-      let responseText = (result.text || "{}").trim();
+      let responseText = "";
+      try {
+        responseText = result.text || "{}";
+      } catch (e) {
+        console.warn("[Telegram] .text getter failed, checking candidates:", e);
+        responseText = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      }
+
       console.log("[Telegram] Gemini Response:", responseText);
       
       // Sanitization: Remove markdown code blocks if present
+      responseText = responseText.trim();
       if (responseText.startsWith("```")) {
         responseText = responseText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "").trim();
       }
       
-      const command = JSON.parse(responseText);
+      let command;
+      try {
+        command = JSON.parse(responseText);
+      } catch (e) {
+        console.error("[Telegram] JSON Parse Error:", e, "Raw output:", responseText);
+        await sendMsg("🤔 I understood your message but couldn't process the update format. Could you rephrase your request? (e.g., 'Add Rahul as son of Kedar')");
+        return;
+      }
 
       if (command.action === "LINK") {
         const linkData = { 
@@ -4539,31 +4556,27 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         }
         
         await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
-        res.sendStatus(200);
         return;
       }
 
       const profileId = await getLinkedProfileId(chatId);
       if (!profileId) {
         await sendMsg("🚫 *Not Linked:* Please click the Telegram link from your profile page on the website to link your account first.");
-        res.sendStatus(200);
         return;
       }
 
       if (command.action === "ADD" || command.action === "UPDATE") {
         if (!command.targetMember && command.clarificationMessage) {
           await sendMsg(`🤔 ${command.clarificationMessage}`);
-          res.sendStatus(200);
           return;
         }
         await sendMsg(`🔍 *Processing Request...* (${command.action}: ${command.targetMember})`);
-        const result = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
-        if (result.success) {
+        const updateResult = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
+        if (updateResult.success) {
           await sendMsg(`✨ *Update Successful!* I've updated your family records. Refresh your app to see the change.`);
         } else {
-          await sendMsg(`❌ *Update Failed:* ${result.error}. Ensure the name matches exactly as shown in the tree.`);
+          await sendMsg(`❌ *Update Failed:* ${updateResult.error}. Ensure the name matches exactly as shown in the tree.`);
         }
-        res.sendStatus(200);
         return;
       }
 
@@ -4585,14 +4598,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       } else if (errorStr.includes("model not found") || errorStr.includes("gemini-3")) {
         errorMsg = "⚠️ *Model Error:* I couldn't reach the required brain module. Please try again later.";
       } else {
-        // Log more detail to the user if it's a specific internal error we can share
-        console.log("[Telegram] Unhandled error:", errorStr);
+        // If it's a specific internal error, we can share a hint
+        errorMsg = `⚠️ *Internal Error:* ${errorStr.substring(0, 50)}${errorStr.length > 50 ? '...' : ''}`;
       }
       
       await sendMsg(errorMsg);
     }
-
-    res.sendStatus(200);
   });
   
   app.post("/api/influencers", async (req, res) => {
