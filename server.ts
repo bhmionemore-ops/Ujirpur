@@ -4431,36 +4431,38 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         let profile = null;
         let profileId = null;
 
-        // 1. Try Admin SDK first (more reliable permissions)
-        if (adminDb) {
-           console.log(`[Telegram] Querying vamshavali_profiles via Admin SDK for: "${shareId}"`);
-           const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim().toUpperCase()).limit(1).get();
-           if (!snap.empty) {
-             profileId = snap.docs[0].id;
-             profile = snap.docs[0].data();
-           } else {
-             // Try case-sensitive just in case
-             const snap2 = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim()).limit(1).get();
-             if (!snap2.empty) {
-               profileId = snap2.docs[0].id;
-               profile = snap2.docs[0].data();
-             }
-           }
+        // Try Client SDK FIRST for reading because it's more reliable in this environment (read = true in rules)
+        if (db) {
+          console.log(`[Telegram] Querying vamshavali_profiles via Client SDK for: "${shareId}"`);
+          try {
+            let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim().toUpperCase()), limit(1));
+            let snapshot = await getDocs(q);
+            if (snapshot.empty) {
+              q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
+              snapshot = await getDocs(q);
+            }
+            if (!snapshot.empty) {
+              profileId = snapshot.docs[0].id;
+              profile = snapshot.docs[0].data();
+              console.log("[Telegram] Profile found via Client SDK");
+            }
+          } catch (clientErr: any) {
+            console.warn("[Telegram] Client SDK read failed:", clientErr.message);
+          }
         }
 
-        // 2. Fallback to Client SDK if Admin SDK failed or not available
-        if (!profile && db) {
-          console.log(`[Telegram] Admin SDK not found profile. Trying Client SDK for: "${shareId}"`);
-          let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim().toUpperCase()), limit(1));
-          let snapshot = await getDocs(q);
-          if (snapshot.empty) {
-            q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
-            snapshot = await getDocs(q);
-          }
-          if (!snapshot.empty) {
-            profileId = snapshot.docs[0].id;
-            profile = snapshot.docs[0].data();
-          }
+        // If Client SDK failed, try Admin SDK if available (might have credentials in some nodes)
+        if (!profile && adminDb) {
+           console.log(`[Telegram] Falling back to Admin SDK for: "${shareId}"`);
+           try {
+             const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim().toUpperCase()).limit(1).get();
+             if (!snap.empty) {
+               profileId = snap.docs[0].id;
+               profile = snap.docs[0].data();
+             }
+           } catch (adminErr: any) {
+             console.error("[Telegram] Admin SDK read also failed:", adminErr.message);
+           }
         }
         
         if (profile && profileId) {
@@ -4471,10 +4473,13 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
             serverKey: FIRESTORE_SERVER_KEY
           };
 
-          if (adminDb) {
-            await adminDb.collection("telegram_links").doc(String(chatId)).set(linkData);
-          } else if (db) {
-            await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
+          // Use Client SDK with Server Key for writes (rules support this)
+          if (db) {
+             console.log("[Telegram] Saving link via Client SDK...");
+             await setDoc(doc(db!, 'telegram_links', String(chatId)), linkData);
+          } else if (adminDb) {
+             console.log("[Telegram] Saving link via Admin SDK...");
+             await adminDb.collection("telegram_links").doc(String(chatId)).set(linkData);
           }
           
           console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
@@ -4493,13 +4498,24 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     // Use a simple memory store to link ChatID to ProfileID for this turn/session
     // In production, we'd store this link in Firestore.
     const getLinkedProfileId = async (chatId: number) => {
+      // 1. Try Client SDK first (read is true)
+      if (db) {
+        try {
+          const ds = await getDoc(doc(db!, 'telegram_links', chatId.toString()));
+          if (ds.exists()) return ds.data()?.profileId;
+        } catch (e: any) {
+          console.warn("[Telegram] Client SDK link lookup failed:", e.message);
+        }
+      }
+
+      // 2. Fallback to Admin SDK
       if (adminDb) {
-        const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
-        return snap.exists ? snap.data()?.profileId : null;
-      } else if (db) {
-        const docRef = doc(db, 'telegram_links', chatId.toString());
-        const snap = await getDoc(docRef);
-        return snap.exists() ? snap.data()?.profileId : null;
+        try {
+          const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
+          return snap.exists ? snap.data()?.profileId : null;
+        } catch (e: any) {
+          console.warn("[Telegram] Admin SDK link lookup failed:", e.message);
+        }
       }
       return null;
     };
@@ -4578,10 +4594,17 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           serverKey: FIRESTORE_SERVER_KEY
         };
         
-        if (adminDb) {
-          await adminDb.collection('telegram_links').doc(chatId.toString()).set(linkData);
-        } else if (db) {
-          await setDoc(doc(db, 'telegram_links', chatId.toString()), linkData);
+        try {
+          if (db) {
+            await setDoc(doc(db, 'telegram_links', chatId.toString()), linkData);
+            console.log("[Telegram] Profile ID linked via Client SDK");
+          } else if (adminDb) {
+            await adminDb.collection('telegram_links').doc(chatId.toString()).set(linkData);
+            console.log("[Telegram] Profile ID linked via Admin SDK");
+          }
+        } catch (e: any) {
+          console.error("[Telegram] Final linking write failed:", e.message);
+          throw e; // Rethrow to let the main catch handle it
         }
         
         await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
