@@ -1530,97 +1530,101 @@ async function startServer() {
 
   // Telegram Setup Route (Moved to top of API section)
   app.get("/api/webhooks/telegram/setup", async (req, res) => {
-    const botToken = await getTelegramBotToken();
-    const allEnvKeys = Object.keys(process.env);
-    
-    if (!botToken) {
-       return res.status(400).send(`
-         <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
-           <h2 style="color: #b91c1c; margin-top: 0; text-align:center;">❌ No Telegram Token Found</h2>
-           
-           <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #fee2e2;">
-             <p>The server is looking for <b>TELEGRAM_BOT_TOKEN</b> but couldn't find a matching Secret.</p>
-             
-             <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 6px; font-family: monospace; font-size: 12px;">
-               <b>Current Environment Variables (Names only):</b><br>
-               ${allEnvKeys.length > 0 ? allEnvKeys.sort().join(', ') : '<i>No environment variables visible</i>'}
-             </div>
-
-             <h4 style="margin-bottom: 8px;">How to fix:</h4>
-             <ol style="line-height:1.6;">
-               <li>Open <b>Settings > Secrets</b></li>
-               <li>Add a secret named <code>TELEGRAM_BOT_TOKEN</code></li>
-               <li>Paste your token (e.g., <code>7234...:AAH...</code>)</li>
-               <li><b>IMPORTANT:</b> Click <b>Save</b></li>
-               <li><b>CRITICAL:</b> Click the <b>Refresh Preview</b> button at the top of the app window to restart the server.</li>
-             </ol>
-           </div>
-         </div>
-       `);
-    }
-
-    // Mask for display
-    const masked = botToken.length > 10 
-      ? botToken.substring(0, 5) + "..." + botToken.substring(botToken.length - 5)
-      : "Too short!";
-    
-    let host = process.env.APP_URL || req.headers['x-forwarded-host'] || req.headers.host;
-    if (Array.isArray(host)) host = host[0];
-    host = host?.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-    const baseUrl = `https://${host}`;
-    const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
-    
     try {
-      // First, verify the token by calling getMe
-      const meResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`, { family: 4, timeout: 10000 });
-      const meResult = await meResponse.json();
-
-      if (!meResult.ok) {
-        return res.status(400).send(`
-          <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
-            <h2 style="color: #b91c1c; margin-top: 0;">❌ Invalid Telegram Token</h2>
-            <p>Telegram says this token is invalid: <b>${meResult.error_code} (${meResult.description})</b></p>
-            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #fee2e2; font-family: monospace; font-size: 13px;">
-              <b>Token Preview:</b> ${masked}
-            </div>
-            <p style="margin-top: 20px;"><b>How to fix:</b> Generate a new token in <a href="https://t.me/BotFather">@BotFather</a> and update your <code>TELEGRAM_BOT_TOKEN</code> secret.</p>
-          </div>
-        `);
-      }
-
-      const botInfo = meResult.result;
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`, { family: 4, timeout: 10000 });
-      const result = await response.json();
+      const botToken = await getTelegramBotToken();
       
-      if (result.ok) {
-        res.send(`
-          <div style="font-family:sans-serif; text-align:center; padding: 50px;">
-            <h1 style="color: #059669;">✅ Webhook Connected!</h1>
-            <p>Your Family Tree is now listening to <b>@${botInfo.username}</b>.</p>
-            <p>Token verified for: <b>${botInfo.first_name}</b></p>
-            <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; display:inline-block; margin: 20px 0;">
-              <b>Target URL:</b> <code style="color: #2563eb;">${webhookUrl}</code>
-            </div>
-            <br>
-            <a href="https://t.me/${botInfo.username}" style="display:inline-block; margin-top:20px; padding:12px 24px; background:#0088cc; color:white; text-decoration:none; border-radius:10px; font-weight:bold;">Open @${botInfo.username}</a>
-          </div>
-        `);
-      } else {
-        res.status(400).send(`
-          <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
-            <h2 style="color: #b91c1c; margin-top: 0;">❌ Telegram Rejected the Token</h2>
-            <p>Telegram returned a <b>${result.error_code} (${result.description})</b> error.</p>
-            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #fee2e2; font-family: monospace; font-size: 13px;">
-              <b>Token Preview:</b> ${masked}<br>
-              <b>Webhook URL:</b> ${webhookUrl}
-            </div>
-            <p style="margin-top: 20px;"><b>Recommendation:</b> Double check your token in BotFather. It should look like <code>12345:AAH...</code>. Make sure there are no spaces when you paste it into Secrets.</p>
-          </div>
-        `);
+      if (!botToken) {
+         return res.status(400).send(`
+           <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
+             <h2 style="color: #b91c1c; margin-top: 0; text-align:center;">❌ No Telegram Token Found</h2>
+             <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #fee2e2;">
+               <p>The server is looking for <b>TELEGRAM_BOT_TOKEN</b> but couldn't find a matching Secret.</p>
+               <h4 style="margin-bottom: 8px;">How to fix:</h4>
+               <ol style="line-height:1.6;">
+                 <li>Open <b>Settings > Secrets</b></li>
+                 <li>Add a secret named <code>TELEGRAM_BOT_TOKEN</code></li>
+                 <li>Paste your token and click <b>Save</b></li>
+                 <li><b>CRITICAL:</b> Click the <b>Refresh Preview</b> button at the top of the app window.</li>
+               </ol>
+             </div>
+           </div>
+         `);
       }
-    } catch (err) {
-      res.status(500).json({ success: false, error: String(err) });
+
+      // 1. Get Bot Info
+      const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`, { timeout: 10000 });
+      const me = await meRes.json() as any;
+      
+      // 2. Set Webhook
+      const baseUrl = req.protocol + "://" + req.get("host");
+      const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
+      const setupRes = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`, { timeout: 10000 });
+      const setupResult = await setupRes.json() as any;
+
+      // 3. Test Gemini
+      let geminiStatus = "Checking...";
+      try {
+        const geminiKey = await getGeminiApiKey();
+        if (geminiKey) {
+           const ai = new GoogleGenAI({ apiKey: geminiKey });
+           const testResult = await ai.models.generateContent({
+             model: "gemini-1.5-flash",
+             contents: [{ role: "user", parts: [{ text: "Hi" }] }]
+           });
+           geminiStatus = testResult ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
+        } else {
+           geminiStatus = "❌ Gemini API Key Missing (Required for AI features)";
+        }
+      } catch (e: any) {
+        const msg = e.message || String(e);
+        geminiStatus = `❌ Gemini Error: ${msg}`;
+        if (msg.includes("403") || msg.includes("permission") || msg.includes("blocked")) {
+          geminiStatus += " (Your key might be restricted or blocked by Google Cloud)";
+        }
+      }
+
+      res.send(`
+        <div style="font-family:sans-serif; padding: 40px; max-width: 800px; margin: 40px auto; background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+          <h1 style="color: #166534; text-align:center; margin-bottom: 30px;">🤖 Bot Setup Dashboard</h1>
+          
+          <div style="grid; grid-template-columns: 1fr 1fr; gap: 20px; display: flex; flex-direction: column;">
+            
+            <div style="background:white; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
+              <h3 style="margin-top:0; color:#0f172a;">📱 Telegram Connection</h3>
+              <p><b>Bot Name:</b> ${me.ok ? `<b>${me.result.first_name}</b> (@${me.result.username})` : '<span style="color:#ef4444;">❌ Failed to connect (Check Token)</span>'}</p>
+              <p><b>Webhook Status:</b> ${setupResult.ok ? '<span style="color:#10b981;">✅ Active</span>' : '<span style="color:#ef4444;">❌ Error</span>'}</p>
+              <div style="background:#f8fafc; padding:10px; border-radius:6px; font-family:monospace; font-size:12px;">
+                URL: ${webhookUrl}
+              </div>
+            </div>
+
+            <div style="background:white; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
+              <h3 style="margin-top:0; color:#0f172a;">🧠 Intelligence (Gemini)</h3>
+              <p style="font-weight: bold; ${geminiStatus.startsWith('✅') ? 'color: #10b981;' : 'color: #ef4444;'}">
+                ${geminiStatus}
+              </p>
+              ${geminiStatus.includes('❌') ? `
+                <div style="margin-top:10px; padding:12px; background:#fff7ed; border-radius:8px; border:1px solid #ffedd5; font-size:13px; color:#9a3412;">
+                  <b>To fix:</b> Ensure <code>GEMINI_API_KEY</code> is correctly set in Secrets and is <b>UNRESTRICTED</b> in Google Cloud Console.
+                </div>
+              ` : ''}
+            </div>
+
+          </div>
+
+          <div style="margin-top: 30px; text-align: center; border-top: 1px solid #dcfce7; padding-top: 20px;">
+            <a href="/vamshavali" style="display:inline-block; background: #059669; color:white; padding: 12px 24px; border-radius:10px; font-weight:bold; text-decoration:none;">Go back to Vamshavali</a>
+            <p style="font-size:12px; color:#6b7280; margin-top:20px;">If the bot is still not replying, please click the <b>Refresh Preview</b> button at the top of AI Studio.</p>
+          </div>
+        </div>
+      `);
+    } catch (err: any) {
+      res.status(500).send(`
+        <div style="font-family:sans-serif; padding: 40px; border: 2px solid #ef4444; border-radius: 12px; max-width: 700px; margin: 40px auto; background: #fef2f2;">
+          <h2 style="color: #b91c1c;">❌ Critical Setup Failure</h2>
+          <pre style="background:white; padding:10px; border-radius:6px; overflow:auto;">${err.message}</pre>
+        </div>
+      `);
     }
   });
 
@@ -4342,7 +4346,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     if (!botToken) {
       console.error("[Telegram] BOT_TOKEN missing in environment");
-      return res.sendStatus(200);
+      res.sendStatus(200);
+      return;
     }
 
     const sendMsg = async (msg: string) => {
@@ -4356,7 +4361,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           family: 4,
           timeout: 10000
         });
-        const result = await response.json();
+        const result = await (response.json() as any).catch(() => ({ ok: false }));
         if (!result.ok) {
           console.error("[Telegram] Send message failed:", JSON.stringify(result));
         }
@@ -4373,13 +4378,17 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     if (text.startsWith('/start')) {
       if (!shareId) {
-        return sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
+        await sendMsg("🏛️ *Welcome to Vamshavali AI* 🏛️\n\nI am Barnali, your family archive keeper. I can help you build and maintain your digital family tree.\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Already have a Share ID?* Just send it to me here!");
+        res.sendStatus(200);
+        return;
       }
 
       const normalizedShareId = String(shareId).toLowerCase().trim();
       if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '' || normalizedShareId.length < 4) {
         console.warn(`[Telegram] Invalid ShareID received: "${shareId}"`);
-        return sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* Please follow these steps carefully:\n1. Open the Vamshavali page.\n2. **Refresh the page (Ctrl + F5)**.\n3. Make sure you see your name in the dashboard.\n4. Click 'Telegram Update' wait 1 second, then click the link.`);
+        await sendMsg(`🚫 *Link Invalid:* The ID received was \`${shareId}\`.\n\n*Full Command:* \`${text}\`\n\n*Solution:* Please follow these steps carefully:\n1. Open the Vamshavali page.\n2. **Refresh the page (Ctrl + F5)**.\n3. Make sure you see your name in the dashboard.\n4. Click 'Telegram Update' wait 1 second, then click the link.`);
+        res.sendStatus(200);
+        return;
       }
 
       try {
@@ -4435,15 +4444,17 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           }
           
           console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
-          return sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name || 'your profile'}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name || 'X'}"\n• "Update photo for ${profile.name || 'X'}"`);
+          await sendMsg(`✅ *Success!* Your Telegram is now linked to *${profile.name || 'your profile'}*.\n\nYou can now tell me things like:\n• "Add someone as child of ${profile.name || 'X'}"\n• "Update photo for ${profile.name || 'X'}"`);
         } else {
           console.warn(`[Telegram] Profile NOT FOUND for ShareID: "${shareId}"`);
-          return sendMsg(`❌ *Profile Not Found:* I couldn't find a family profile with ID: \`${shareId}\`.\n\nPlease check the ID on the website or click the link again.`);
+          await sendMsg(`❌ *Profile Not Found:* I couldn't find a family profile with ID: \`${shareId}\`.\n\nPlease check the ID on the website or click the link again.`);
         }
       } catch (err) {
         console.error("[Telegram] Linking error detail:", err);
-        return sendMsg(`❌ An error occurred while linking: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        await sendMsg(`❌ An error occurred while linking: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
+      res.sendStatus(200);
+      return;
     }
 
     // Use a simple memory store to link ChatID to ProfileID for this turn/session
@@ -4467,6 +4478,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     try {
       const geminiKey = await getGeminiApiKey();
+      if (!geminiKey) {
+        console.error("[Telegram] Gemini API Key missing");
+        await sendMsg("⚠️ *System Error:* AI services are currently unavailable (Key missing).");
+        res.sendStatus(200);
+        return;
+      }
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       
       const prompt = `You are a genealogy expert assistant for Barnali (Vamshavali AI). 
@@ -4485,13 +4502,15 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       Context: If you see something that looks like an ID or user says 'Link profile X', use action: "LINK".
       If the user provides info like 'Add X as son of Y', action is "ADD", targetMember is "Y", name in details is "X".`;
 
-      const response = await callGeminiWithRetry(ai, {
-        model: "gemini-3-flash-preview",
+      console.log("[Telegram] Calling Gemini for command extraction...");
+      const result = await ai.models.generateContent({ 
+        model: "gemini-1.5-flash",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json" }
       });
-
-      const responseText = response.text || "{}";
+      
+      const responseText = result.text || "{}";
+      console.log("[Telegram] Gemini Response:", responseText);
       const command = JSON.parse(responseText);
 
       if (command.action === "LINK") {
@@ -4507,33 +4526,42 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           await setDoc(doc(db, 'telegram_links', chatId.toString()), linkData);
         }
         
-        return await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
+        await sendMsg(`✅ *Profile Linked:* \`${command.details.id}\`. All future messages will update this lineage.`);
+        res.sendStatus(200);
+        return;
       }
 
       const profileId = await getLinkedProfileId(chatId);
       if (!profileId) {
-        return await sendMsg("🚫 *Not Linked:* Please click the Telegram link from your profile page on the website to link your account first.");
+        await sendMsg("🚫 *Not Linked:* Please click the Telegram link from your profile page on the website to link your account first.");
+        res.sendStatus(200);
+        return;
       }
 
       if (command.action === "ADD" || command.action === "UPDATE") {
         await sendMsg(`🔍 *Processing Request...* (${command.action}: ${command.targetMember})`);
         const result = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
         if (result.success) {
-          return await sendMsg(`✨ *Update Successful!* I've updated your family records. Refresh your app to see the change.`);
+          await sendMsg(`✨ *Update Successful!* I've updated your family records. Refresh your app to see the change.`);
         } else {
-          return await sendMsg(`❌ *Update Failed:* ${result.error}. Ensure the name matches exactly as shown in the tree.`);
+          await sendMsg(`❌ *Update Failed:* ${result.error}. Ensure the name matches exactly as shown in the tree.`);
         }
+        res.sendStatus(200);
+        return;
       }
 
-      return await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
+      await sendMsg("🤔 I'm not sure how to handle that request. Try saying 'Add Rahul as child of Kedar' or 'Update photo for Meena'.");
     } catch (err: any) {
       console.error("[Telegram] Error processing message:", err);
       let errorMsg = "⚠️ The archives are currently busy. Please try again in a moment.";
       
-      if (err?.message?.includes("429") || err?.message?.includes("RESOURCE_EXHAUSTED")) {
+      const errorStr = err?.message || String(err);
+      if (errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED")) {
         errorMsg = "⚠️ *High Traffic:* I am receiving too many requests. Please try again in 1 minute.";
-      } else if (err?.message?.includes("API_KEY_INVALID")) {
-        errorMsg = "⚠️ *System Config Error:* The AI component is not properly configured. Please notify the administrator.";
+      } else if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("API_KEY_SERVICE_BLOCKED") || errorStr.includes("blocked") || errorStr.includes("403")) {
+        errorMsg = "⚠️ *System Config Error:* The AI component (Gemini) is not properly configured or the API key is blocked. Please notify the administrator.";
+      } else if (errorStr.includes("model not found") || errorStr.includes("gemini-3")) {
+        errorMsg = "⚠️ *Model Error:* I couldn't reach the required brain module. Please try again later.";
       }
       
       await sendMsg(errorMsg);
