@@ -1449,26 +1449,21 @@ async function startServer() {
       if (!admin.apps.length) {
         try {
           console.log(`[Firebase] Initializing Admin SDK for project: ${firebaseConfig.projectId}...`);
-          // Try with credentials ONLY if we are in environment that has them
-          // Otherwise fallback to projectId-only which works for some read operations
-          if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.K_SERVICE) {
+          // AI Studio environment doesn't always have valid ADC. 
+          // We prefer to ONLY use it if explicitly requested or if we are sure it works.
+          // For now, we will try to prioritize project-only init if no service account file is present.
+          if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             admin.initializeApp({
               credential: admin.credential.applicationDefault(),
               projectId: firebaseConfig.projectId
             });
           } else {
+            // Simplified init - sometimes this allows generic access or tokens if correctly scoped
             admin.initializeApp({ projectId: firebaseConfig.projectId });
           }
           console.log("[Firebase] Admin SDK initialized.");
         } catch (initError: any) {
-          console.warn(`[Firebase] Admin SDK initialization failed: ${initError.message}. Trying simple init...`);
-          try {
-            if (!admin.apps.length) {
-               admin.initializeApp({ projectId: firebaseConfig.projectId });
-            }
-          } catch (lastError: any) {
-            console.error("[Firebase] Admin SDK totally failed to initialize:", lastError.message);
-          }
+          console.warn(`[Firebase] Admin SDK initialization failed: ${initError.message}.`);
         }
       }
 
@@ -4235,130 +4230,144 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     return { success: false, error: "Database not ready. Please try again in 30 seconds." };
   }
   
-  const useAdmin = !!adminDb;
-  const profileRef = useAdmin ? adminDb.collection('vamshavali_profiles').doc(profileId) : doc(db!, 'vamshavali_profiles', profileId);
-  
-  const snap = useAdmin ? await profileRef.get() : await getDoc(profileRef as any);
-  const exists = useAdmin ? snap.exists : snap.exists();
-  
-  if (!exists) return { success: false, error: "Profile not found" };
-  
-  const data = snap.data();
-  let members = data?.members || [];
-
-  function findMemberRecursive(list: any[], name: string): any {
-    for (const member of list) {
-      if (member.name?.toLowerCase() === name.toLowerCase()) return member;
-      if (member.children && member.children.length > 0) {
-        const found = findMemberRecursive(member.children, name);
-        if (found) return found;
-      }
-      if (member.partners && member.partners.length > 0) {
-        const found = findMemberRecursive(member.partners, name);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-  
-  const ts = useAdmin ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
-  
-  if (action === "ADD") {
-    const parent = findMemberRecursive(members, targetMemberName);
-    const newMember = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: details.name,
-      role: details.role || "Member",
-      birthYear: details.birthYear || "",
-      photo: details.photo || "",
-      children: [],
-      partners: []
-    };
+  try {
+    const useAdmin = !!adminDb;
+    const profileRef = useAdmin ? adminDb.collection('vamshavali_profiles').doc(profileId) : doc(db!, 'vamshavali_profiles', profileId);
     
-    if (parent) {
-      if (details.relationship === "partner") {
-        parent.partners = [...(parent.partners || []), newMember];
+    let snap;
+    try {
+      snap = useAdmin ? await profileRef.get() : await getDoc(profileRef as any);
+    } catch (readErr: any) {
+      console.warn("[Telegram] Read via primary engine failed, trying fallback:", readErr.message);
+      if (useAdmin && db) {
+        const fallbackRef = doc(db!, 'vamshavali_profiles', profileId);
+        snap = await getDoc(fallbackRef);
       } else {
-        parent.children = [...(parent.children || []), newMember];
+        throw readErr;
       }
-      
-      if (useAdmin) {
-        try {
-          await profileRef.update({ members, updatedAt: ts });
-        } catch (err: any) {
-          console.error("[Telegram] Admin update failed, trying Client SDK fallback:", err.message);
-          await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
-            members, 
-            updatedAt: serverTimestamp(),
-            serverKey: FIRESTORE_SERVER_KEY 
-          });
-        }
-      } else {
-        await updateDoc(profileRef as any, { 
-          members, 
-          updatedAt: ts,
-          serverKey: FIRESTORE_SERVER_KEY 
-        });
-      }
-      return { success: true };
     }
-  } else if (action === "UPDATE") {
-    // Check if it's a root profile field update
-    const rootFields = ["kuldevi", "kuldevta", "gotra", "nativePlace", "name"];
-    if (details.field && rootFields.includes(details.field)) {
-      const fieldKey = details.field;
-      const updatePayload: any = { 
-        [fieldKey]: details.name || "", 
-        updatedAt: ts,
-        serverKey: FIRESTORE_SERVER_KEY 
+
+    const exists = useAdmin && snap.exists !== undefined ? snap.exists : (snap as any).exists();
+    if (!exists) return { success: false, error: "Profile not found" };
+    
+    const data = snap.data();
+    let members = data?.members || [];
+
+    const ts = useAdmin ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
+    
+    const findMemberRecursive = (list: any[], name: string): any => {
+      for (const member of list) {
+        if (member.name?.toLowerCase() === name.toLowerCase()) return member;
+        if (member.children && member.children.length > 0) {
+          const found = findMemberRecursive(member.children, name);
+          if (found) return found;
+        }
+        if (member.partners && member.partners.length > 0) {
+          const found = findMemberRecursive(member.partners, name);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    if (action === "ADD") {
+      const parent = findMemberRecursive(members, targetMemberName);
+      const newMember = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: details.name,
+        role: details.role || "Member",
+        birthYear: details.birthYear || "",
+        photo: details.photo || "",
+        children: [],
+        partners: []
       };
       
-      // If a photo was sent with a root field update (e.g. Kuldevi photo)
-      if (details.photo) {
-        updatePayload[`${fieldKey}Photo`] = details.photo;
-      }
-
-      if (useAdmin) {
-        try {
-          await profileRef.update(updatePayload);
-        } catch (err: any) {
-          await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, updatePayload);
+      if (parent) {
+        if (details.relationship === "partner") {
+          parent.partners = [...(parent.partners || []), newMember];
+        } else {
+          parent.children = [...(parent.children || []), newMember];
         }
-      } else {
-        await updateDoc(profileRef as any, updatePayload);
-      }
-      return { success: true, updatedField: fieldKey };
-    }
-
-    const member = findMemberRecursive(members, targetMemberName);
-    if (member) {
-      if (details.photo) member.photo = details.photo;
-      if (details.birthYear) member.birthYear = details.birthYear;
-      if (details.role) member.role = details.role;
-      
-      if (useAdmin) {
-        try {
-          await profileRef.update({ members, updatedAt: ts });
-        } catch (err: any) {
-          console.error("[Telegram] Admin update (UPDATE) failed, trying Client SDK fallback:", err.message);
-          await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
+        
+        if (useAdmin) {
+          try {
+            await profileRef.update({ members, updatedAt: ts });
+          } catch (err: any) {
+            console.error("[Telegram] Admin update failed, trying Client SDK fallback:", err.message);
+            await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
+              members, 
+              updatedAt: serverTimestamp(),
+              serverKey: FIRESTORE_SERVER_KEY 
+            });
+          }
+        } else {
+          await updateDoc(profileRef as any, { 
             members, 
-            updatedAt: serverTimestamp(),
+            updatedAt: ts,
             serverKey: FIRESTORE_SERVER_KEY 
           });
         }
-      } else {
-        await updateDoc(profileRef as any, { 
-          members, 
-          updatedAt: ts,
-          serverKey: FIRESTORE_SERVER_KEY
-        });
+        return { success: true };
       }
-      return { success: true };
+    } else if (action === "UPDATE") {
+      const rootFields = ["kuldevi", "kuldevta", "gotra", "nativePlace", "name"];
+      if (details.field && rootFields.includes(details.field)) {
+        const fieldKey = details.field;
+        const updatePayload: any = { 
+          [fieldKey]: details.name || "", 
+          updatedAt: ts,
+          serverKey: FIRESTORE_SERVER_KEY 
+        };
+        if (details.photo) updatePayload[`${fieldKey}Photo`] = details.photo;
+
+        if (useAdmin) {
+          try {
+            await profileRef.update(updatePayload);
+          } catch (err: any) {
+            await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, updatePayload);
+          }
+        } else {
+          await updateDoc(profileRef as any, updatePayload);
+        }
+        return { success: true, updatedField: fieldKey };
+      }
+
+      const member = (targetMemberName === "me" || targetMemberName === data?.name) ? 
+                     members.find((m: any) => m.name === data?.name || m.name?.toLowerCase() === "me") :
+                     findMemberRecursive(members, targetMemberName);
+      
+      if (member) {
+        if (details.photo) member.photo = details.photo;
+        if (details.birthYear) member.birthYear = details.birthYear;
+        if (details.role) member.role = details.role;
+        
+        if (useAdmin) {
+          try {
+            await profileRef.update({ members, updatedAt: ts });
+          } catch (err: any) {
+            await updateDoc(doc(db!, 'vamshavali_profiles', profileId) as any, { 
+              members, 
+              updatedAt: serverTimestamp(),
+              serverKey: FIRESTORE_SERVER_KEY 
+            });
+          }
+        } else {
+          await updateDoc(profileRef as any, { 
+            members, 
+            updatedAt: ts,
+            serverKey: FIRESTORE_SERVER_KEY
+          });
+        }
+        return { success: true };
+      }
     }
+    return { success: false, error: "Target member not found" };
+  } catch (globalErr: any) {
+    console.error("[Telegram] Fatal error in updateVamshavaliLineage:", globalErr);
+    return { success: false, error: globalErr.message };
   }
-  return { success: false, error: "Target member not found" };
 }
+
 
   // Helper to ensure DB is ready before webhook processing
   const ensureDbReady = async (maxWaitSeconds = 10) => {
@@ -4452,9 +4461,30 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       return null;
     };
 
+    const getTelegramFileUrl = async (fileId: string) => {
+      try {
+        const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`, { family: 4 });
+        const fileData: any = await fileRes.json();
+        if (fileData.ok) {
+          return `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
+        }
+      } catch (e) {
+        console.error("[Telegram] Error fetching file URL:", e);
+      }
+      return null;
+    };
+
+    let photoUrl = null;
+    if (message.photo && message.photo.length > 0) {
+      // Get the highest resolution photo
+      const bestPhoto = message.photo[message.photo.length - 1];
+      photoUrl = await getTelegramFileUrl(bestPhoto.file_id);
+      console.log(`[Telegram] Photo received: ${photoUrl}`);
+    }
+
     // Prevent crashing on images without captions
     if (!text && message.photo) {
-      await sendMsg("📸 *I see your photo! (v2.4)* Barnali is currently focused on text-based updates. Please send a text message describing the update (e.g. 'Add photo for Meena').");
+      await sendMsg("📸 *I see your photo!* Please add a caption to this photo (e.g., 'Update photo for Meena' or 'Kuldevi photo') so I know what to do with it.");
       return;
     }
 
@@ -4568,9 +4598,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const geminiKey = await getGeminiApiKey();
       if (!geminiKey) {
         console.error("[Telegram] Gemini API Key missing");
-        await sendMsg("⚠️ *System Error:* AI services are currently unavailable (Key missing).");
+        await sendMsg("⚠️ *Barnali is Resting:* AI services are currently unavailable. Please link your profile again later.");
         return;
       }
+      // Use standard Gemini SDK with explicit key
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       
       const prompt = `You are a genealogy expert assistant for Barnali (Vamshavali AI). 
@@ -4578,7 +4609,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       
       Return ONLY a JSON object with:
       - action: "ADD", "UPDATE", "DELETE", "LINK", or "UNKNOWN"
-      - targetMember: name of the existing person in the tree to modify or attach to
+      - targetMember: name of the existing person in the tree to modify or attach to. If user says 'me' or refers to themselves, and it's a family profile field update, set this to "me".
       - details: 
           role: (e.g., "Father", "Mother", "Son", "Daughter")
           name: new person's name (if ADD) or field value
@@ -4586,11 +4617,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           relationship: "child" or "partner" (if ADD)
           id: Profile ID if this is a LINK action
           field: If updating a profile-wide field, specify which: "kuldevi" (synonyms: kuldavi, kuldevi name, kul devi), "kuldevta", "gotra", "nativePlace", "name"
-      - clarificationMessage: If the request is ambiguous, incomplete, or you are unsure, provide a polite question to the user asking for the missing info (e.g. "Who should I add this person to?", "Which profile should I update?").
+      - clarificationMessage: If the request is ambiguous, incomplete, or you are unsure, provide a polite question to the user asking for the missing info.
       
-      Context: If you see something that looks like an ID or user says 'Link profile X', use action: "LINK".
-      If the user provides info like 'Add X as son of Y', action is "ADD", targetMember is "Y", name in details is "X".
-      If they just say 'Add Rahul' without saying who he belongs to, set action to UNKNOWN and ask "Where should I add Rahul? (e.g. 'Add Rahul as son of Kedar')".`;
+      Context: 
+      - If user says 'Add this picture as my kuldavi name arkhanarirshor', action: "UPDATE", details.field: "kuldevi", details.name: "arkhanarirshor", targetMember: "me".
+      - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
 
       console.log("[Telegram] Calling Gemini for command extraction...");
       const result = await callGeminiWithRetry(ai, { 
@@ -4660,16 +4691,29 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
 
       if (command.action === "ADD" || command.action === "UPDATE") {
+        // Merge photo info if received
+        if (photoUrl) command.details.photo = photoUrl;
+
         if (!command.targetMember && command.clarificationMessage) {
           await sendMsg(`🤔 ${command.clarificationMessage}`);
           return;
         }
-        await sendMsg(`🔍 *Processing Request...* (${command.action}: ${command.targetMember})`);
+        
+        let targetLabel = command.targetMember;
+        if (targetLabel === "me") targetLabel = "Your Profile";
+        
+        await sendMsg(`🔍 *Barnali is checking records...* (${command.action}: ${targetLabel})`);
         const updateResult = await updateVamshavaliLineage(profileId, command.action, command.targetMember, command.details);
+        
         if (updateResult.success) {
-          await sendMsg(`✨ *Update Successful!* I've updated your family records. Refresh your app to see the change.`);
+          const fieldUpdated = (updateResult as any).updatedField;
+          let successMsg = "✨ *Records Updated!* I've successfully added the new information.";
+          if (fieldUpdated === "kuldevi") successMsg = "🔱 *Kuldevi Updated!* I've saved your Kuldevi name and photo.";
+          else if (fieldUpdated === "kuldevta") successMsg = "🚩 *Kuldevta Updated!* I've saved your Kuldevta details.";
+          
+          await sendMsg(`${successMsg}\n\nRefresh the website to see the changes!`);
         } else {
-          await sendMsg(`❌ *Update Failed:* ${updateResult.error}. Ensure the name matches exactly as shown in the tree.`);
+          await sendMsg(`❌ *Could not update:* ${updateResult.error}. Please try again or rephrase (e.g. 'Add Rahul as son of Kedar').`);
         }
         return;
       }
