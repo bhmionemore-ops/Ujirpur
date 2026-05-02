@@ -4385,8 +4385,29 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     // Support text messages or photo captions
     const text = (message?.text || message?.caption || "").trim();
     
-    // Check if the message ITSELF is a Share ID (e.g. VAM-C0E93)
-    const isPotentialId = /^[A-Z0-9]{3,}-[A-Z0-9]{4,}$/i.test(text);
+    // Helper to extract Share ID from various formats
+    const getExtractedShareId = (input: string) => {
+      if (!input) return null;
+      // 1. Check for URL format: https://.../v/ID
+      const urlMatch = input.match(/\/v\/([a-zA-Z0-9]{4,})/);
+      if (urlMatch) return urlMatch[1];
+      
+      // 2. Check for manual entry with hyphen: VAM-XXXX
+      const hyphenMatch = input.match(/[a-zA-Z0-9]{2,}-[a-zA-Z0-9]{3,}/);
+      if (hyphenMatch) return hyphenMatch[0];
+      
+      // 3. Check for standalone alphanumeric ID (6-12 chars)
+      const parts = input.trim().split(/\s+/);
+      for (const part of parts) {
+        const clean = part.replace(/[^a-zA-Z0-9]/g, '');
+        if (["barnali", "start", "profile", "hello", "link"].includes(clean.toLowerCase())) continue;
+        if (/^[a-zA-Z0-9]{6,12}$/.test(clean)) return clean;
+      }
+      return null;
+    };
+
+    const shareId = getExtractedShareId(text);
+    const isPotentialIdAction = !!shareId && (text.startsWith('/start') || text.length < 50);
     
     if (!message || (!text && !message.photo)) {
       console.log("[Telegram] No message text/caption/photo found, skipping...");
@@ -4396,7 +4417,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     const chatId = message.chat.id;
     const botToken = await getTelegramBotToken();
 
-    // Acknowledge to Telegram immediately to prevent retry floods during slow AI generation
+    // Acknowledge to Telegram immediately
     res.sendStatus(200);
 
     if (!botToken) {
@@ -4425,25 +4446,18 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 
     // Prevent crashing on images without captions
     if (!text && message.photo) {
-      await sendMsg("📸 *I see your photo! (v2)* Barnali is currently focused on text-based updates. Please send a text message describing the family update (e.g., 'Add Rahul as son of Kedar').");
+      await sendMsg("📸 *I see your photo! (v2.3)* Barnali is currently focused on text-based updates. Please send a text message describing the family update (e.g., 'Add Rahul as son of Kedar').");
       return;
     }
 
-    // Handle deep linking /start <id> OR manual ID entry
-    const textParts = text.trim().split(/\s+/);
-    let shareId = textParts.length > 1 ? textParts[1].trim() : (isPotentialId ? text : null);
-    
-    // If it's a /start command but we didn't find a shareId in parts, still check if it's the only part (unlikely)
-    if (text.startsWith('/start') && textParts.length === 1) {
-      shareId = null; 
-    }
-    
+    // Handle deep linking /start <id> OR manual ID/Link entry
     console.log(`[Telegram] Bot received: "${text}" | Extracted ShareID: "${shareId}" | From: ${chatId}`);
 
-    if (text.startsWith('/start') || isPotentialId) {
+    if (isPotentialIdAction) {
       if (!shareId) {
+        // This case is unlikely now but kept for safety
         const diag = `\n\n*Diagnostics:*\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Host: ${req.get('host')}`;
-        await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.2)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records:\n1. Click the **Telegram Update** button on our website.\n2. Or just send me your **Share ID** here (e.g., `VAM-C0E93`).\n\n*Your Chat ID:* `" + chatId + "`" + diag);
+        await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.3)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records, just send me your **Share ID** (e.g., `VAM-C0E93`) or paste the link to your profile here.\n\n*Your Chat ID:* `" + chatId + "`" + diag);
         return;
       }
 
@@ -4644,8 +4658,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const profileId = await getLinkedProfileId(chatId);
       if (!profileId) {
         console.warn(`[Telegram] ChatID ${chatId} is NOT LINKED.`);
-        const info = `\n\n*Diagnostics:*\n• Status: DISCONNECTED\n• Chat ID: \`${chatId}\`\n• Host: ${req.get('host')}`;
-        await sendMsg(`🚫 *Connection Required*\n\nTo use Barnali, please link your family records first:\n\n1. Go to your Profile on the website.\n2. Click the **Telegram Update** button.\n3. **Or just send your Share ID here** (e.g., \`VAM-C0E93\`).\n\nOnce linked, I can help you add members and photos!${info}`);
+        const info = `\n\n*Diagnostics:*\n• Status: DISCONNECTED\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Chat ID: \`${chatId}\`\n• Host: ${req.get('host')}`;
+        await sendMsg(`🚫 *Connection Required*\n\nTo use Barnali, please link your family records first:\n\n1. Go to your Profile on the website.\n2. Click the **Telegram Update** button.\n3. **Or just paste your Profile Link / Share ID here** (e.g., \`VAM-C0E93\`).\n\nOnce linked, I can help you add members and photos!${info}`);
         return;
       }
 
