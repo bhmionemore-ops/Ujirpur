@@ -810,7 +810,12 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       const verifiedProfile = { ...updatedProfile, shareId: serverShareId };
       setProfile(verifiedProfile as any);
       
-      // 3. Small propagation delay (important for server-side lookups)
+      // 3. Setup webhook before opening link and add small propagation delay
+      try {
+        await fetch('/api/webhooks/telegram/setup');
+      } catch (e) {
+        console.warn("[Telegram] Webhook setup background call failed:", e);
+      }
       await new Promise(r => setTimeout(r, 1000));
 
       // 4. Final verification BEFORE building URL
@@ -1477,7 +1482,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                onClick={handleLinkTelegram}
                                className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
                              >
-                                <MessageCircle size={16} /> Telegram Update
+                                <MessageCircle size={16} /> Telegram Update (v2.1)
                              </button>
                            </div>
                         </div>
