@@ -4304,13 +4304,20 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     }
   } else if (action === "UPDATE") {
     // Check if it's a root profile field update
-    if (details.field && ["kuldevi", "kuldevta", "gotra", "nativePlace", "name"].includes(details.field)) {
+    const rootFields = ["kuldevi", "kuldevta", "gotra", "nativePlace", "name"];
+    if (details.field && rootFields.includes(details.field)) {
+      const fieldKey = details.field;
       const updatePayload: any = { 
-        [details.field]: details.name, 
+        [fieldKey]: details.name || "", 
         updatedAt: ts,
         serverKey: FIRESTORE_SERVER_KEY 
       };
       
+      // If a photo was sent with a root field update (e.g. Kuldevi photo)
+      if (details.photo) {
+        updatePayload[`${fieldKey}Photo`] = details.photo;
+      }
+
       if (useAdmin) {
         try {
           await profileRef.update(updatePayload);
@@ -4320,7 +4327,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       } else {
         await updateDoc(profileRef as any, updatePayload);
       }
-      return { success: true, updatedField: details.field };
+      return { success: true, updatedField: fieldKey };
     }
 
     const member = findMemberRecursive(members, targetMemberName);
@@ -4378,6 +4385,9 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
     // Support text messages or photo captions
     const text = (message?.text || message?.caption || "").trim();
     
+    // Check if the message ITSELF is a Share ID (e.g. VAM-C0E93)
+    const isPotentialId = /^[A-Z0-9]{3,}-[A-Z0-9]{4,}$/i.test(text);
+    
     if (!message || (!text && !message.photo)) {
       console.log("[Telegram] No message text/caption/photo found, skipping...");
       return res.sendStatus(200);
@@ -4419,16 +4429,21 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       return;
     }
 
-    // Handle deep linking /start <id>
+    // Handle deep linking /start <id> OR manual ID entry
     const textParts = text.trim().split(/\s+/);
-    const shareId = textParts.length > 1 ? textParts[1].trim() : null;
+    let shareId = textParts.length > 1 ? textParts[1].trim() : (isPotentialId ? text : null);
+    
+    // If it's a /start command but we didn't find a shareId in parts, still check if it's the only part (unlikely)
+    if (text.startsWith('/start') && textParts.length === 1) {
+      shareId = null; 
+    }
     
     console.log(`[Telegram] Bot received: "${text}" | Extracted ShareID: "${shareId}" | From: ${chatId}`);
 
-    if (text.startsWith('/start')) {
+    if (text.startsWith('/start') || isPotentialId) {
       if (!shareId) {
-        const diag = `\n\n*Diagnostics:*\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Bot URL: ${req.get('host')}`;
-        await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.1)* 🏛️\n\nI am Barnali, your family archive keeper. I am now running the updated server (v2.1).\n\nTo link your records, please go to the website, ensure you're logged in, and click 'Link Telegram' in your dashboard.\n\n*Chat ID:* `" + chatId + "`" + diag);
+        const diag = `\n\n*Diagnostics:*\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Host: ${req.get('host')}`;
+        await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.2)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records:\n1. Click the **Telegram Update** button on our website.\n2. Or just send me your **Share ID** here (e.g., `VAM-C0E93`).\n\n*Your Chat ID:* `" + chatId + "`" + diag);
         return;
       }
 
@@ -4560,7 +4575,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
           birthYear: Year (if mentioned)
           relationship: "child" or "partner" (if ADD)
           id: Profile ID if this is a LINK action
-          field: If updating a profile-wide field, specify which: "kuldevi", "kuldevta", "gotra", "nativePlace", "name"
+          field: If updating a profile-wide field, specify which: "kuldevi" (synonyms: kuldavi, kuldevi name, kul devi), "kuldevta", "gotra", "nativePlace", "name"
       - clarificationMessage: If the request is ambiguous, incomplete, or you are unsure, provide a polite question to the user asking for the missing info (e.g. "Who should I add this person to?", "Which profile should I update?").
       
       Context: If you see something that looks like an ID or user says 'Link profile X', use action: "LINK".
@@ -4629,8 +4644,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const profileId = await getLinkedProfileId(chatId);
       if (!profileId) {
         console.warn(`[Telegram] ChatID ${chatId} is NOT LINKED.`);
-        const info = `\n\n*Diagnostics:*\n• Status: DISCONNECTED\n• Chat ID: \`${chatId}\`\n• Server: ${req.get('host')}`;
-        await sendMsg(`🚫 *Account Not Connected*\n\nTo use Barnali, please link your Telegram account:\n1. Open your Profile on the website.\n2. Click the **Telegram Update** button.\n3. Click the link provided there.${info}`);
+        const info = `\n\n*Diagnostics:*\n• Status: DISCONNECTED\n• Chat ID: \`${chatId}\`\n• Host: ${req.get('host')}`;
+        await sendMsg(`🚫 *Connection Required*\n\nTo use Barnali, please link your family records first:\n\n1. Go to your Profile on the website.\n2. Click the **Telegram Update** button.\n3. **Or just send your Share ID here** (e.g., \`VAM-C0E93\`).\n\nOnce linked, I can help you add members and photos!${info}`);
         return;
       }
 
