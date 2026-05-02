@@ -4382,40 +4382,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
        console.error("[Telegram] DB connection failed within timeout.");
     }
     
-    // Support text messages or photo captions
-    const text = (message?.text || message?.caption || "").trim();
-    
-    // Helper to extract Share ID from various formats
-    const getExtractedShareId = (input: string) => {
-      if (!input) return null;
-      // 1. Check for URL format: https://.../v/ID
-      const urlMatch = input.match(/\/v\/([a-zA-Z0-9]{4,})/);
-      if (urlMatch) return urlMatch[1];
-      
-      // 2. Check for manual entry with hyphen: VAM-XXXX
-      const hyphenMatch = input.match(/[a-zA-Z0-9]{2,}-[a-zA-Z0-9]{3,}/);
-      if (hyphenMatch) return hyphenMatch[0];
-      
-      // 3. Check for standalone alphanumeric ID (6-12 chars)
-      const parts = input.trim().split(/\s+/);
-      for (const part of parts) {
-        const clean = part.replace(/[^a-zA-Z0-9]/g, '');
-        if (["barnali", "start", "profile", "hello", "link"].includes(clean.toLowerCase())) continue;
-        if (/^[a-zA-Z0-9]{6,12}$/.test(clean)) return clean;
-      }
-      return null;
-    };
-
-    const shareId = getExtractedShareId(text);
-    const isPotentialIdAction = !!shareId && (text.startsWith('/start') || text.length < 50);
-    
-    if (!message || (!text && !message.photo)) {
-      console.log("[Telegram] No message text/caption/photo found, skipping...");
-      return res.sendStatus(200);
-    }
+    if (!message) return res.sendStatus(200);
 
     const chatId = message.chat.id;
     const botToken = await getTelegramBotToken();
+    const text = (message.text || message.caption || "").trim();
 
     // Acknowledge to Telegram immediately
     res.sendStatus(200);
@@ -4444,22 +4415,57 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       }
     };
 
+    // Helper to get linked profile
+    const getLinkedProfileId = async (cid: number) => {
+      if (db) {
+        try {
+          const ds = await getDoc(doc(db!, 'telegram_links', cid.toString()));
+          if (ds.exists()) return ds.data()?.profileId;
+        } catch (e: any) {
+          console.warn("[Telegram] Client SDK link lookup failed:", e.message);
+        }
+      }
+      if (adminDb) {
+        try {
+          const snap = await adminDb.collection('telegram_links').doc(cid.toString()).get();
+          return snap.exists ? snap.data()?.profileId : null;
+        } catch (e: any) {
+          console.warn("[Telegram] Admin SDK link lookup failed:", e.message);
+        }
+      }
+      return null;
+    };
+
+    // Helper to extract Share ID
+    const getExtractedShareId = (input: string) => {
+      if (!input) return null;
+      const urlMatch = input.match(/\/v\/([a-zA-Z0-9]{4,})/);
+      if (urlMatch) return urlMatch[1];
+      const hyphenMatch = input.match(/[a-zA-Z0-9]{2,}-[a-zA-Z0-9]{3,}/);
+      if (hyphenMatch) return hyphenMatch[0];
+      const parts = input.trim().split(/\s+/);
+      for (const part of parts) {
+        const clean = part.replace(/[^a-zA-Z0-9]/g, '');
+        if (["barnali", "start", "profile", "hello", "link"].includes(clean.toLowerCase())) continue;
+        if (/^[a-zA-Z0-9]{6,12}$/.test(clean)) return clean;
+      }
+      return null;
+    };
+
     // Prevent crashing on images without captions
     if (!text && message.photo) {
-      await sendMsg("📸 *I see your photo! (v2.3)* Barnali is currently focused on text-based updates. Please send a text message describing the family update (e.g., 'Add Rahul as son of Kedar').");
+      await sendMsg("📸 *I see your photo! (v2.4)* Barnali is currently focused on text-based updates. Please send a text message describing the update (e.g. 'Add photo for Meena').");
       return;
     }
 
-    // Handle deep linking /start <id> OR manual ID/Link entry
-    console.log(`[Telegram] Bot received: "${text}" | Extracted ShareID: "${shareId}" | From: ${chatId}`);
-
-    if (isPotentialIdAction) {
-      if (!shareId) {
-        // This case is unlikely now but kept for safety
-        const diag = `\n\n*Diagnostics:*\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Host: ${req.get('host')}`;
-        await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.3)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records, just send me your **Share ID** (e.g., `VAM-C0E93`) or paste the link to your profile here.\n\n*Your Chat ID:* `" + chatId + "`" + diag);
-        return;
-      }
+    const shareId = getExtractedShareId(text);
+    const existingProfileId = await getLinkedProfileId(chatId);
+    
+    // Aggressive linking: if we find a shareId and not linked yet (or it's /start), try to link!
+    const isLinkingAttempt = !!shareId && (!existingProfileId || text.toLowerCase().startsWith('/start'));
+    
+    if (isLinkingAttempt) {
+      console.log(`[Telegram] Linking start: ChatID=${chatId}, ShareID="${shareId}"`);
 
       const normalizedShareId = String(shareId).toLowerCase().trim();
       if (normalizedShareId === 'undefined' || normalizedShareId === 'null' || normalizedShareId === '' || normalizedShareId.length < 4) {
@@ -4478,10 +4484,18 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         if (db) {
           console.log(`[Telegram] Querying vamshavali_profiles via Client SDK for: "${shareId}"`);
           try {
-            let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim().toUpperCase()), limit(1));
+            const sid = shareId.trim().toUpperCase();
+            const sidLower = shareId.trim().toLowerCase();
+            const sidVam = sid.startsWith('VAM-') ? sid : `VAM-${sid}`;
+            
+            let q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', sid), limit(1));
             let snapshot = await getDocs(q);
             if (snapshot.empty) {
-              q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', shareId.trim()), limit(1));
+              q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', sidLower), limit(1));
+              snapshot = await getDocs(q);
+            }
+            if (snapshot.empty) {
+              q = query(collection(db!, 'vamshavali_profiles'), where('shareId', '==', sidVam), limit(1));
               snapshot = await getDocs(q);
             }
             if (!snapshot.empty) {
@@ -4498,7 +4512,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         if (!profile && adminDb) {
            console.log(`[Telegram] Falling back to Admin SDK for: "${shareId}"`);
            try {
-             const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId.trim().toUpperCase()).limit(1).get();
+             const sid = shareId.trim().toUpperCase();
+             const sidVam = sid.startsWith('VAM-') ? sid : `VAM-${sid}`;
+             let snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", sid).limit(1).get();
+             if (snap.empty) {
+               snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", sidVam).limit(1).get();
+             }
              if (!snap.empty) {
                profileId = snap.docs[0].id;
                profile = snap.docs[0].data();
@@ -4538,33 +4557,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       return;
     }
 
-    // Use a simple memory store to link ChatID to ProfileID for this turn/session
-    // In production, we'd store this link in Firestore.
-    const getLinkedProfileId = async (chatId: number) => {
-      // 1. Try Client SDK first (read is true)
-      if (db) {
-        try {
-          const ds = await getDoc(doc(db!, 'telegram_links', chatId.toString()));
-          if (ds.exists()) return ds.data()?.profileId;
-        } catch (e: any) {
-          console.warn("[Telegram] Client SDK link lookup failed:", e.message);
-        }
-      }
-
-      // 2. Fallback to Admin SDK
-      if (adminDb) {
-        try {
-          const snap = await adminDb.collection('telegram_links').doc(chatId.toString()).get();
-          return snap.exists ? snap.data()?.profileId : null;
-        } catch (e: any) {
-          console.warn("[Telegram] Admin SDK link lookup failed:", e.message);
-        }
-      }
-      return null;
-    };
-
-    if (text.startsWith('/start')) {
-      // Handled above in deep linking block if it had parameters
+    if (text.toLowerCase().startsWith('/start')) {
+      // If we got here, it's a bare /start without a valid shareId
+      const diag = `\n\n*Diagnostics:*\n• Host: ${req.get('host')}`;
+      await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.4)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records, just send me your **Profile Link** or **Share ID** (e.g., `VAM-C0E93`).\n\nOnce linked, I can help you add members and photos! \n\n*Your Chat ID:* `" + chatId + "`" + diag);
       return;
     }
 
@@ -4655,11 +4651,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         return;
       }
 
-      const profileId = await getLinkedProfileId(chatId);
+      const profileId = existingProfileId;
       if (!profileId) {
         console.warn(`[Telegram] ChatID ${chatId} is NOT LINKED.`);
-        const info = `\n\n*Diagnostics:*\n• Status: DISCONNECTED\n• DB: ${db ? '✅' : '❌'}\n• Admin: ${adminDb ? '✅' : '❌'}\n• Chat ID: \`${chatId}\`\n• Host: ${req.get('host')}`;
-        await sendMsg(`🚫 *Connection Required*\n\nTo use Barnali, please link your family records first:\n\n1. Go to your Profile on the website.\n2. Click the **Telegram Update** button.\n3. **Or just paste your Profile Link / Share ID here** (e.g., \`VAM-C0E93\`).\n\nOnce linked, I can help you add members and photos!${info}`);
+        const info = `\n\n*Diagnostics:*\n• Chat ID: \`${chatId}\`\n• Host: ${req.get('host')}`;
+        await sendMsg(`🏛️ *Welcome to Vamshavali AI (v2.4)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo start, just send me your **Profile Link** or **Share ID** from the website (e.g., \`VAM-C0E93\`).\n\nOnce linked, I will remember you!${info}`);
         return;
       }
 
