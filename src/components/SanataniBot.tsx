@@ -14,18 +14,26 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  */
 async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
   let lastError: any;
+  const modelName = options.model || "gemini-3-flash-preview";
+  
   for (let i = 0; i <= maxRetries; i++) {
+    const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
     try {
-      return await ai.models.generateContent(options);
+      console.log(`[Gemini-Frontend] Requesting ${currentModel}... (Attempt ${i+1})`);
+      return await ai.models.generateContent({
+        ...options,
+        model: currentModel
+      });
     } catch (error: any) {
       lastError = error;
-      const isUnavailable = error?.message?.includes("503") || 
-                          error?.error?.code === 503 || 
-                          error?.status === "UNAVAILABLE";
+      const errorStr = error?.message || String(error);
+      const isUnavailable = errorStr.includes("503") || errorStr.includes("UNAVAILABLE") || errorStr.includes("overloaded");
+      const isQuota = errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("quota");
       
-      if (isUnavailable && i < maxRetries) {
-        const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
-        console.warn(`[Gemini] Model high demand (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+      if ((isUnavailable || isQuota) && i < maxRetries) {
+        const factor = isQuota ? 8000 : 2000;
+        const delay = Math.pow(2, i) * factor + Math.random() * 1000;
+        console.warn(`[Gemini-Frontend] Retry in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -197,7 +205,7 @@ export const SanataniBot = () => {
     setResult(null);
     try {
       const response = await callGeminiWithRetry(ai, {
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: `Fact check this claim: "${input}"`,
         config: {
           systemInstruction,

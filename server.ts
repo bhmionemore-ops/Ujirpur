@@ -26,10 +26,9 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 /**
  * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
  */
-async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 2) {
+async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
   let lastError: any;
-  // Use a mix of models if one fails
-  const modelName = options.model || "gemini-1.5-flash"; 
+  const modelName = options.model || "gemini-3-flash-preview"; 
   
   // Robust contents handling
   const normalizedContents = typeof options.contents === 'string' 
@@ -37,9 +36,10 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 2
     : options.contents;
   
   for (let i = 0; i <= maxRetries; i++) {
-    const currentModel = (i === maxRetries && modelName === "gemini-1.5-flash") ? "gemini-1.5-flash-8b" : modelName;
+    // Alternate models on repeated failure if it's a quota issue
+    const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
     try {
-      console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1})`);
+      console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
       const response = await ai.models.generateContent({
         model: currentModel,
         contents: normalizedContents,
@@ -62,7 +62,7 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 2
       if ((isUnavailable || isQuotaExceeded) && i < maxRetries) {
         const factor = isQuotaExceeded ? 15000 : 5000;
         const delay = Math.pow(2, i) * factor + Math.random() * 3000;
-        console.warn(`[Gemini] Retrying in ${Math.round(delay)}ms...`);
+        console.warn(`[Gemini] ${isQuotaExceeded ? 'Quota' : 'Demand'} issues. Retrying in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -1079,7 +1079,7 @@ async function generateDailySanataniFacts() {
     Respond ONLY with the JSON array.`;
 
     const response = await callGeminiWithRetry(ai, {
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
@@ -1659,7 +1659,7 @@ async function startServer() {
         if (geminiKey) {
            const ai = new GoogleGenAI({ apiKey: geminiKey });
            const result = await ai.models.generateContent({
-             model: "gemini-2.0-flash",
+             model: "gemini-3-flash-preview",
              contents: "Hi"
            });
            geminiStatus = result && result.text ? "✅ Gemini AI is working! (3-flash)" : "❌ Gemini returned empty response";
@@ -1936,7 +1936,7 @@ async function startServer() {
       `;
 
       const response = await callGeminiWithRetry(ai, {
-        model: "gemini-2.0-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt
       });
 
@@ -2173,7 +2173,7 @@ async function startServer() {
       const ai = new GoogleGenAI({ apiKey });
       
       // Try multiple models in order of preference
-      const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest"];
+      const modelsToTry = ["gemini-3-flash-preview", "gemini-flash-latest"];
       let lastError = null;
       
       for (const model of modelsToTry) {
@@ -4666,9 +4666,9 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       - If user says 'Add this picture as my kuldavi name arkhanarirshor', action: "UPDATE", details.field: "kuldevi", details.name: "arkhanarirshor", targetMember: "me".
       - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
 
-      console.log("[Telegram] Calling Gemini (1.5) for command extraction...");
+      console.log("[Telegram] Calling Gemini (3-flash) for command extraction...");
       const result = await callGeminiWithRetry(ai, { 
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: { 
           responseMimeType: "application/json",
