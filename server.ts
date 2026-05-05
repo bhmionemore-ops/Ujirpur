@@ -28,7 +28,7 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  */
 async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
   let lastError: any;
-  const modelName = options.model || "gemini-3-flash-preview"; 
+  const modelName = options.model || "gemini-2.0-flash"; 
   
   // Robust contents handling
   const normalizedContents = typeof options.contents === 'string' 
@@ -4253,6 +4253,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
   try {
     const useAdmin = !!adminDb;
     const profileRef = useAdmin ? adminDb.collection('vamshavali_profiles').doc(profileId) : doc(db!, 'vamshavali_profiles', profileId);
+    console.log(`[Telegram] Accessing profile: ${profileId} (Engine: ${useAdmin ? 'Admin' : 'Client'})`);
     
     let snap;
     try {
@@ -4334,12 +4335,16 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       const rootFields = ["kuldevi", "kuldevta", "gotra", "nativePlace", "name"];
       if (details.field && rootFields.includes(details.field)) {
         const fieldKey = details.field;
+        console.log(`[Telegram] Updating root field: ${fieldKey} with value: ${details.name || 'PHOTO_ONLY'}`);
         const updatePayload: any = { 
           [fieldKey]: details.name || "", 
           updatedAt: ts,
           ...writeOptions
         };
-        if (details.photo) updatePayload[`${fieldKey}Photo`] = details.photo;
+        if (details.photo) {
+          updatePayload[`${fieldKey}Photo`] = details.photo;
+          console.log(`[Telegram] Including photo for ${fieldKey}`);
+        }
 
         if (useAdmin) {
           try {
@@ -4354,8 +4359,8 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         return { success: true, updatedField: fieldKey };
       }
 
-      const member = (targetMemberName === "me" || targetMemberName === data?.name) ? 
-                     members.find((m: any) => m.name === data?.name || m.name?.toLowerCase() === "me") :
+      const member = (targetMemberName === "me" || targetMemberName === data?.name || slugify(targetMemberName) === slugify(data?.name || "")) ? 
+                     members.find((m: any) => m.name === data?.name || m.name?.toLowerCase() === "me" || slugify(m.name) === slugify(data?.name || "")) :
                      findMemberRecursive(members, targetMemberName);
       
       if (member) {
@@ -4644,7 +4649,31 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         await sendMsg("⚠️ *Barnali is Resting:* AI services are currently unavailable. Please link your profile again later.");
         return;
       }
-      // Use standard Gemini SDK with explicit key
+
+      // 🔍 Diagnostics / Status check command
+      if (text.toLowerCase() === '/status' || text.toLowerCase() === '/diagnostic' || text.toLowerCase() === '/info') {
+        let geminiStatus = "Checking...";
+        try {
+          const aiTest = new GoogleGenAI({ apiKey: geminiKey });
+          const result = await aiTest.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
+          });
+          geminiStatus = result?.response?.text() ? "✅ Gemini 2.0-flash is ACTIVE" : "❌ Gemini returned empty";
+        } catch (e: any) {
+          geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
+        }
+
+        await sendMsg(`🏛️ *Barnali Diagnostics* 🏛️
+• Chat ID: \`${chatId}\`
+• Linked Profile: \`${existingProfileId || '❌ NOT LINKED'}\`
+• AI Status: ${geminiStatus}
+• DB Engine: ${adminDb ? 'Admin (Full Access)' : 'Client (Restricted Access)'}
+
+_Note: If updates aren't appearing, ensure you are linked to the correct profile ID._`);
+        return;
+      }
+
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       
       const prompt = `You are a genealogy expert assistant for Barnali (Vamshavali AI). 
@@ -4666,9 +4695,9 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
       - If user says 'Add this picture as my kuldavi name arkhanarirshor', action: "UPDATE", details.field: "kuldevi", details.name: "arkhanarirshor", targetMember: "me".
       - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
 
-      console.log("[Telegram] Calling Gemini (3-flash) for command extraction...");
+      console.log("[Telegram] Calling Gemini (2.0-flash) for command extraction...");
       const result = await callGeminiWithRetry(ai, { 
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: { 
           responseMimeType: "application/json",

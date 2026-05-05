@@ -260,7 +260,7 @@ const GoldenFrame = ({ photo, name, pulse = false, size = "md" }: { photo?: stri
   );
 };
 
-const DeityFrame = ({ photo, name }: { photo?: string; name: string }) => {
+const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string; isKuldevta?: boolean }) => {
   return (
     <div className="relative group mb-12 flex flex-col items-center">
       {/* Divine Aura / Energy Field */}
@@ -306,7 +306,7 @@ const DeityFrame = ({ photo, name }: { photo?: string; name: string }) => {
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/30 p-12 text-center space-y-6">
               <Landmark size={80} strokeWidth={0.5} />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] leading-loose">Sacred Presence of<br/>The Divine Mother</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] leading-loose">Sacred Presence of<br/>The Divine {isKuldevta ? "Lord" : "Mother"}</p>
             </div>
           )}
           
@@ -411,6 +411,7 @@ interface VamshavaliProfile {
   kuldevi: string;
   kuldevta: string;
   kuldeviPhoto?: string;
+  kuldevtaPhoto?: string;
   nativePlace: string;
   additionalNotes: string;
   members: FamilyMember[];
@@ -1688,6 +1689,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                   {(profile.kuldevi || profile.kuldeviPhoto) && (
                                     <div className="mb-16">
                                       <DeityFrame photo={profile.kuldeviPhoto} name={profile.kuldevi} />
+                                    </div>
+                                  )}
+                                  {(profile.kuldevta || profile.kuldevtaPhoto) && (
+                                    <div className="mb-16">
+                                      <DeityFrame photo={profile.kuldevtaPhoto} name={profile.kuldevta} isKuldevta />
                                     </div>
                                   )}
                                   <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
