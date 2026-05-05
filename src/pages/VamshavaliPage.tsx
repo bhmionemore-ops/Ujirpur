@@ -15,6 +15,7 @@ import Markdown from 'react-markdown';
 import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
 import { Language } from '../i18n';
+import { db, onSnapshot, doc } from '../firebase';
 
 interface FamilyMember {
   id: string;
@@ -318,15 +319,15 @@ const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string;
           
           <div className="absolute bottom-8 left-0 right-0 text-center px-4">
             <h5 className="text-[#d4af37] font-serif font-black text-2xl italic drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
-              {name || "Mata"}
+              {name || (isKuldevta ? "Deva" : "Mata")}
             </h5>
-            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.5em] mt-2">Protector of {name || 'Family'} Lineage</p>
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.5em] mt-2">Protector of {name || (isKuldevta ? "Kuldevta" : "Kuldevi")} Lineage</p>
           </div>
         </div>
 
         {/* Sacred Mantra Label */}
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#d4af37] text-[#064e3b] px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-[0_10px_20px_rgba(0,0,0,0.2)] border-2 border-white whitespace-nowrap">
-          Om Devi Namah
+          {isKuldevta ? "Om Deva Namah" : "Om Devi Namah"}
         </div>
       </motion.div>
 
@@ -561,6 +562,37 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     };
     syncProfile();
   }, [user]);
+
+  // Real-time synchronization listener
+  useEffect(() => {
+    if (profile?.id) {
+      console.log(`[Vamshavali] Activating real-time sync for profile: ${profile.id}`);
+      const profileRef = doc(db, 'vamshavali_profiles', profile.id);
+      const unsubscribe = onSnapshot(profileRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const newData = snapshot.data() as any;
+          // We update state only if it differs from the current profile and we're NOT in a local edit mode
+          // (To prevent overwriting local changes if someone happened to be editing)
+          if (!isEditing) {
+            console.log(`[Vamshavali] Remote update detected for ${profile.id}. Syncing...`);
+            setProfile(prev => {
+              // Deep compare simple check to avoid unnecessary state updates
+              if (JSON.stringify(prev) !== JSON.stringify(newData)) {
+                return { ...newData, id: snapshot.id };
+              }
+              return prev;
+            });
+          }
+        }
+      }, (error) => {
+        console.error("[Vamshavali] Sync listener error:", error);
+      });
+      return () => {
+        console.log(`[Vamshavali] Deactivating real-time sync for ${profile.id}`);
+        unsubscribe();
+      };
+    }
+  }, [profile?.id, isEditing]);
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
     try {

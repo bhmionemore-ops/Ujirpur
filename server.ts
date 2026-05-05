@@ -2656,8 +2656,8 @@ async function startServer() {
         } else {
           return res.status(404).json({ error: "Profile not found" });
         }
-      } else if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0 || !profile.members[0]?.children || profile.members[0].children.length < 2)) {
-        // If profile exists but is empty/outdated for admin, update it
+      } else if (email === "okbgmi611@gmail.com" && (!profile.members || profile.members.length === 0)) {
+        // Only bootstrap if COMPLETELY empty - avoid overwriting user's real updates
          const demoMembers = [
                 {
                   id: "root-1",
@@ -4337,10 +4337,12 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         const fieldKey = details.field;
         console.log(`[Telegram] Updating root field: ${fieldKey} with value: ${details.name || 'PHOTO_ONLY'}`);
         const updatePayload: any = { 
-          [fieldKey]: details.name || "", 
           updatedAt: ts,
           ...writeOptions
         };
+        if (details.name) {
+          updatePayload[fieldKey] = details.name;
+        }
         if (details.photo) {
           updatePayload[`${fieldKey}Photo`] = details.photo;
           console.log(`[Telegram] Including photo for ${fieldKey}`);
@@ -4655,11 +4657,11 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         let geminiStatus = "Checking...";
         try {
           const aiTest = new GoogleGenAI({ apiKey: geminiKey });
-          const result = await aiTest.models.generateContent({
+          const response = await aiTest.models.generateContent({
             model: "gemini-2.0-flash",
-            contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
+            contents: "Hi"
           });
-          geminiStatus = result?.response?.text() ? "✅ Gemini 2.0-flash is ACTIVE" : "❌ Gemini returned empty";
+          geminiStatus = response.text ? "✅ Gemini 2.0-flash is ACTIVE" : "❌ Gemini returned empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
@@ -4696,7 +4698,7 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
 
       console.log("[Telegram] Calling Gemini (2.0-flash) for command extraction...");
-      const result = await callGeminiWithRetry(ai, { 
+      const response = await callGeminiWithRetry(ai, { 
         model: "gemini-2.0-flash",
         contents: prompt,
         config: { 
@@ -4707,10 +4709,10 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       
       let responseText = "";
       try {
-        responseText = result.text || "{}";
+        responseText = response.text || "{}";
       } catch (e) {
         console.warn("[Telegram] .text getter failed, checking candidates:", e);
-        responseText = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       }
 
       console.log("[Telegram] Gemini Response:", responseText);
