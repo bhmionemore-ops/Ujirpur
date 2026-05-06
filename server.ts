@@ -5144,6 +5144,16 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   });
 
   let vite: any;
+  // Endpoint to download doc tex
+  app.get("/api/admin/download-docs", async (req, res) => {
+    const filePath = path.join(process.cwd(), 'project_documentation.tex');
+    if (fs.existsSync(filePath)) {
+      res.download(filePath, 'project_documentation.tex');
+    } else {
+      res.status(404).json({ error: "Documentation file not found." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     vite = await createViteServer({

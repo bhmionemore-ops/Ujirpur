@@ -776,6 +776,26 @@ export const AdminAnalytics = () => {
                 <Download size={18} />
               </button>
             </div>
+
+            <div className="bg-white p-6 rounded-[2rem] border border-zinc-200 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                  <Database size={24} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-zinc-900">School Project Documentation</p>
+                  <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">LaTeX (.TeX) Source Code</p>
+                </div>
+              </div>
+              <a 
+                href="/api/admin/download-docs"
+                download
+                className="p-3 bg-zinc-900 text-white rounded-xl hover:bg-brand-600 transition-all shadow-lg shadow-zinc-900/10"
+                title="Download .TeX File"
+              >
+                <Download size={18} />
+              </a>
+            </div>
           </div>
         </div>
 

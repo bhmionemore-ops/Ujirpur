@@ -1,0 +1,59 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=1in}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=cyan}
+
+\title{Vamshavali (Lineage): An AI-Powered Family Tree Application}
+\author{Project Documentation for School}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Project Overview}
+The \textbf{Vamshavali} project is a full-stack web application designed to preserve and visualize family lineages. It combines traditional genealogy with modern Artificial Intelligence (AI) to make data entry as simple as chatting with a friend.
+
+\section{System Architecture}
+The application follows a modern full-stack architecture:
+\begin{itemize}
+    \item \textbf{Frontend:} Built with \textbf{React.js} and \textbf{Vite}. It uses \textbf{Tailwind CSS} for a responsive, modern UI and \textbf{Lucide-React} for iconography.
+    \item \textbf{Backend:} A \textbf{Node.js} server using the \textbf{Express} framework handles API requests, Telegram webhooks, and AI processing.
+    \item \textbf{Database:} Utilizes \textbf{Firebase Firestore} (NoSQL) for real-time data storage, allowing family tree updates to reflect instantly across all devices.
+    \item \textbf{AI Engine:} Integrated with \textbf{Google Gemini} (using the \texttt{@google/generative-ai} SDK) to understand human language and process images.
+\end{itemize}
+
+\section{Key Features}
+
+\subsection{Interactive Family Tree}
+A dynamic visualization where users can explore their ancestry. It supports adding members, defining relationships (father, mother, child, partner), and viewing detailed profiles including Gotra and Kuldevi information.
+
+\subsection{Barnali: The AI Telegram Bot}
+The most advanced part of the project is \textbf{Barnali}, an AI assistant available via Telegram.
+\begin{itemize}
+    \item \textbf{Natural Language Processing:} Users can send messages like ``Add Rahul as son of Sanjay'' or ``Update my Kuldevi name to Arkhanarirshor.''
+    \item \textbf{Computer Vision:} Users can upload photos of their ancestors or deities. Barnali uses Gemini's multi-modal capabilities to process these images and link them to the correct profiles.
+    \item \textbf{High Availability:} The system includes a custom \texttt{callGeminiWithRetry} logic that automatically falls back to different AI models (like Gemini 1.5 Flash or Gemini 3) if one region is busy or restricted.
+\end{itemize}
+
+\subsection{News and Cultural Integration}
+The app features an automated news system that generates local news (Barnia/Nadia region) and facts in both \textbf{Bengali} and \textbf{English} using AI, keeping the community connected to their roots.
+
+\section{Technical Implementation Details}
+\begin{itemize}
+    \item \textbf{Security:} All sensitive operations and API keys (Telegram, Gemini, SMTP) are handled server-side to ensure user privacy and data integrity.
+    \item \textbf{SMTP Email System:} An automated email system greets new members, using IPv4-forced configurations for maximum reliability in production environments.
+    \item \textbf{Responsive Design:} The application is fully optimized for both desktop browsers and mobile devices.
+\end{itemize}
+
+\section{Conclusion}
+This project demonstrates how AI can be used to preserve heritage. By moving away from complex forms and into natural conversation via Telegram, Vamshavali makes genealogy accessible to all generations of a family.
+
+\end{document}

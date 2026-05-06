@@ -3,8 +3,9 @@
 ## Critical Areas (Do Not Modify Without Permission)
 The following areas are currently working perfectly and MUST NOT be modified or refactored without explicit permission from the user. Any new features or changes to other parts of the app must be carefully implemented to ensure they do not break or affect these areas:
 
-1. **Live Chat (Barnali):**
-   - The chat widget, client-side sorting, and Gemini integration are stable.
+1. **Live Chat & Telegram Bot (Barnali):**
+   - The Telegram bot webhook, image processing, and Gemini SDK integration are stable.
+   - The model fallback logic in `callGeminiWithRetry` is working perfectly and handles regional restrictions.
    - The bot name is "Barnali".
    - Firestore rules for `support_messages` are correctly configured.
 
