@@ -5,7 +5,7 @@ import {
   Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
   User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
   CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2, Sparkles,
-  Maximize, Minimize2, ScreenShare, Facebook, MessageCircle
+  Maximize, Minimize2, ScreenShare, Facebook, MessageCircle, Fingerprint
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -261,7 +261,16 @@ const GoldenFrame = ({ photo, name, pulse = false, size = "md" }: { photo?: stri
   );
 };
 
+const getSafeImageUrl = (url?: string) => {
+  if (!url) return undefined;
+  if (url.includes("telegram.org")) {
+    return `/api/telegram-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string; isKuldevta?: boolean }) => {
+  const safeUrl = getSafeImageUrl(photo);
   return (
     <div className="relative group mb-12 flex flex-col items-center">
       {/* Divine Aura / Energy Field */}
@@ -302,8 +311,8 @@ const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string;
         
         {/* Sacred Content */}
         <div className="relative w-52 h-72 md:w-72 md:h-96 rounded-[2rem] overflow-hidden bg-[#064e3b] shadow-inner border-2 border-[#b68d40]/50">
-          {photo ? (
-            <img src={photo} alt={name} className="w-full h-full object-cover" />
+          {safeUrl ? (
+            <img src={safeUrl} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/30 p-12 text-center space-y-6">
               <Landmark size={80} strokeWidth={0.5} />
@@ -1729,6 +1738,9 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                     </div>
                                   )}
                                   <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
+                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-8 flex items-center gap-2">
+                                     <Fingerprint size={12} /> ID: {profile.shareId || profile.id}
+                                  </div>
                                   <RoyalOrnament />
                                </div>
                                <div className="flex justify-center">

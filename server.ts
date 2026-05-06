@@ -28,7 +28,7 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  */
 async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
   let lastError: any;
-  const modelName = options.model || "gemini-2.0-flash"; 
+  const modelName = options.model || "gemini-1.5-flash"; 
   
   // Robust contents handling
   const normalizedContents = typeof options.contents === 'string' 
@@ -36,7 +36,7 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
     : options.contents;
   
   for (let i = 0; i <= maxRetries; i++) {
-    // Alternate models on repeated failure if it's a quota issue
+    // Alternate models on repeated failure if it's a quota or regional issue
     const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
@@ -58,6 +58,14 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
       const isQuotaExceeded = errorStr.includes("429") || 
                             errorStr.includes("RESOURCE_EXHAUSTED") ||
                             errorStr.includes("quota");
+
+      const isLocationError = errorStr.includes("User location is not supported");
+
+      // If it's a location error, immediately switch to a potentially more available model
+      if (isLocationError && i < maxRetries) {
+        options.model = "gemini-flash-latest"; 
+        continue;
+      }
 
       if ((isUnavailable || isQuotaExceeded) && i < maxRetries) {
         const factor = isQuotaExceeded ? 15000 : 5000;
@@ -1432,6 +1440,31 @@ async function saveData(data: any) {
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Telegram Image Proxy to bypass CORS on frontend
+  app.get("/api/telegram-proxy", async (req, res) => {
+    const imageUrl = req.query.url as string;
+    if (!imageUrl || !imageUrl.includes("telegram.org")) {
+      return res.status(403).send("Forbidden or invalid URL");
+    }
+    try {
+      console.log(`[Proxy] Fetching image from Telegram: ${imageUrl.substring(0, 50)}...`);
+      const response = await fetch(imageUrl, { family: 4 });
+      if (!response.ok) throw new Error(`Telegram returned ${response.status}`);
+      
+      const contentType = response.headers.get("content-type");
+      if (contentType) res.setHeader("Content-Type", contentType);
+      
+      // Cache for 24 hours to reduce load on Telegram API
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      
+      const buffer = await response.buffer();
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("[Proxy] Telegram image proxy error:", error.message);
+      res.status(500).send("Error proxying image");
+    }
+  });
 
   // Initialize Firebase FIRST and FAST
   const initFirebase = async () => {
@@ -4658,10 +4691,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         try {
           const aiTest = new GoogleGenAI({ apiKey: geminiKey });
           const response = await aiTest.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: "Hi"
+            model: "gemini-1.5-flash",
+            contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
           });
-          geminiStatus = response.text ? "✅ Gemini 2.0-flash is ACTIVE" : "❌ Gemini returned empty";
+          geminiStatus = response.text ? "✅ Gemini 1.5-flash is ACTIVE" : "❌ Gemini returned empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
@@ -4697,9 +4730,9 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       - If user says 'Add this picture as my kuldavi name arkhanarirshor', action: "UPDATE", details.field: "kuldevi", details.name: "arkhanarirshor", targetMember: "me".
       - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
 
-      console.log("[Telegram] Calling Gemini (2.0-flash) for command extraction...");
+      console.log("[Telegram] Calling Gemini (1.5-flash) for command extraction...");
       const response = await callGeminiWithRetry(ai, { 
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: { 
           responseMimeType: "application/json",
@@ -4785,6 +4818,7 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
           if (fieldUpdated === "kuldevi") successMsg = "🔱 *Kuldevi Updated!* I've saved your Kuldevi details.";
           else if (fieldUpdated === "kuldevta") successMsg = "🚩 *Kuldevta Updated!* I've saved your Kuldevta details.";
           
+          console.log(`[Telegram] Update success for field: ${fieldUpdated} in profile: ${profileId}`);
           await sendMsg(`${successMsg}\n\nI have saved your profile connection permanently. You can now just send me names, photos, or updates and I will remember you!`);
         } else {
           await sendMsg(`❌ *Could not update:* ${updateResult.error}. Please try again or rephrase (e.g. 'Add Rahul as son of Kedar').`);
