@@ -33,7 +33,7 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4
   // Define a sequence of models to try if the primary fails (especially for regional/quota issues)
   const modelsToTry = [
     primaryModel,
-    "gemini-1.5-flash-8b",
+    "gemini-1.5-flash", 
     "gemini-flash-latest",
     "gemini-1.5-pro"
   ];
@@ -4866,23 +4866,27 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       console.error("[Telegram] Error processing message:", err);
       const errorStr = err?.message || String(err);
       
-      let errorMsg = "⚠️ The archives are currently busy. Please try again in a moment.";
+      let errorMsg = "⚠️ Barnali is having trouble processing that right now. Please try again in a moment.";
       
       if (errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED")) {
         errorMsg = "⚠️ *Busy Archives:* Barnali is receiving many requests. Please try again in a few seconds!";
+      } else if (errorStr.includes("404") || errorStr.includes("not found")) {
+        errorMsg = "⚠️ *Brain Module Error:* I am having trouble connecting to my processing unit. Retrying with a different brain...";
       } else if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("API_KEY_SERVICE_BLOCKED") || errorStr.includes("blocked") || errorStr.includes("403")) {
-        errorMsg = "⚠️ *System Config Error:* The AI credentials (Gemini) are not ready. Please notify the administrator.";
+        errorMsg = "⚠️ *System Config Error:* My AI credentials are not fully ready. Please notify the administrator.";
       } else if (errorStr.includes("User location is not supported") || errorStr.includes("location")) {
-        errorMsg = "⚠️ *Regional Restriction:* Barnali's brain module is restricted in this server region. Attempting fallback... please wait.";
-      } else if (errorStr.includes("permissions") || errorStr.includes("permission-denied")) {
-        console.error("[Telegram] Permission DENIED! Checking status...");
-        console.log(`[Telegram] auth.currentUser: ${clientAuth?.currentUser?.uid || 'NONE'}`);
-        console.log(`[Telegram] adminDb available: ${!!adminDb}`);
-        console.log(`[Telegram] db available: ${!!db}`);
-        errorMsg = `⚠️ *Archival Permission Error:* Barnali can't access records. (Status: ${adminDb ? 'ADMIN' : 'CLIENT'}${clientAuth?.currentUser?.uid ? '+AUTH' : '-AUTH'})`;
+        errorMsg = "⚠️ *Regional Restriction:* My processing module is restricted in this server region. Attempting fallback...";
+      } else if (errorStr.includes("PERMISSION_DENIED") || errorStr.includes("permission")) {
+        errorMsg = "⚠️ *Access Denied:* I don't have the required permissions to update these family records.";
+      } else if (errorStr.startsWith("{") && errorStr.includes("error")) {
+        try {
+          const parsed = JSON.parse(errorStr);
+          errorMsg = `⚠️ *Archival Sync Error:* Failed to ${parsed.operationType || 'access'} the lineage database.`;
+        } catch (e) {
+          errorMsg = "⚠️ *Database Link Error:* I could not safely synchronize with the family archives.";
+        }
       } else {
-        // If it's a specific internal error, we can share a hint
-        errorMsg = `⚠️ *Internal Error:* ${errorStr.substring(0, 70)}${errorStr.length > 70 ? '...' : ''}`;
+        errorMsg = `⚠️ *Internal Error:* Process failed. Please try rephrasing your request.`;
       }
       
       await sendMsg(errorMsg);
