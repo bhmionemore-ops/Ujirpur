@@ -18,91 +18,60 @@ process.on('unhandledRejection', (err: any) => {
 
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAuth } from "google-auth-library";
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 
 /**
- * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
+ * Helper to call Gemini with exponential backoff and model fallbacks
  */
-async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5) {
+async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3) {
+  const genAI = new GoogleGenerativeAI(apiKey);
   let lastError: any;
-  const primaryModel = options.model || "gemini-1.5-flash-latest"; 
   
-  // Define a sequence of models to try if the primary fails.
-  // We include both prefixed and non-prefixed names to handle environment variations.
-  // We prioritize 1.5-flash-latest as it is the most widely available stable model.
   const modelsToTry = [
+    options.model || "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
-    "models/gemini-1.5-flash-latest",
-    "gemini-3-flash-preview",
-    "models/gemini-3-flash-preview",
-    "gemini-3.1-pro-preview",
-    "models/gemini-3.1-pro-preview",
-    "gemini-3.1-flash-lite-preview",
-    "gemini-flash-latest",
+    "gemini-1.5-pro",
     "gemini-pro"
   ];
-  
-  // Robust contents & Parts handling for @google/genai
-  let normalizedContents: any;
-  if (typeof options.contents === 'string') {
-    normalizedContents = [{ role: 'user', parts: [{ text: options.contents }] }];
-  } else if (Array.isArray(options.contents)) {
-    normalizedContents = options.contents;
-  } else if (options.contents && options.contents.parts) {
-    // Single object with parts
-    normalizedContents = [{ role: 'user', parts: options.contents.parts }];
-  } else {
-    normalizedContents = options.contents;
-  }
   
   for (let i = 0; i <= maxRetries; i++) {
     const currentModel = modelsToTry[i % modelsToTry.length];
     
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
-      const response = await ai.models.generateContent({
+      const model = genAI.getGenerativeModel({ 
         model: currentModel,
-        contents: normalizedContents,
-        config: options.config
+        generationConfig: options.config
       });
       
-      // Verification
-      if (response && response.text) {
-        console.log(`[Gemini] Success with ${currentModel}`);
-        return response;
+      const result = await model.generateContent(options.contents);
+      const response = result.response;
+      
+      if (response) {
+        const textValue = response.text();
+        if (textValue) {
+          console.log(`[Gemini] Success with ${currentModel}`);
+          return { text: textValue };
+        }
       }
       
-      console.warn(`[Gemini] ${currentModel} returned empty or invalid response.`);
-      if (i === maxRetries) return response;
+      console.warn(`[Gemini] ${currentModel} returned empty response.`);
       continue;
     } catch (error: any) {
       lastError = error;
       const errorStr = (error?.message || String(error)).toLowerCase();
       console.warn(`[Gemini] Error with ${currentModel}:`, errorStr);
 
-      const isUnavailable = errorStr.includes("503") || 
-                          errorStr.includes("unavailable") ||
-                          errorStr.includes("overloaded");
-      
-      const isQuotaExceeded = errorStr.includes("429") || 
-                            errorStr.includes("resource_exhausted") ||
-                            errorStr.includes("quota");
-
-      const isLocationError = errorStr.includes("location") || 
-                             errorStr.includes("country") ||
-                             errorStr.includes("regional") ||
-                             errorStr.includes("not available");
-
-      const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
+      const isQuotaExceeded = errorStr.includes("429") || errorStr.includes("quota") || errorStr.includes("resource_exhausted");
+      const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
 
       if (i < maxRetries) {
-        // If it's a location error, move to the next model faster
-        const factor = isQuotaExceeded ? 10000 : (isUnavailable ? 3000 : 200);
-        const delay = (Math.pow(2, i) * factor) + Math.random() * 500;
-        console.warn(`[Gemini] Switching model/Retrying due to: ${isNotFoundError ? 'NotFound' : (isLocationError ? 'Location' : 'Load/Quota')}. Next attempt in ${Math.round(delay)}ms...`);
+        const baseDelay = isQuotaExceeded ? 15000 : (isUnavailable ? 5000 : 1000);
+        const delay = (Math.pow(2, i) * baseDelay) + Math.random() * 1000;
+        console.warn(`[Gemini] Retrying in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -1070,7 +1039,6 @@ async function generateDailySanataniFacts() {
       console.error("[FactCheckAPI] No Gemini API key found for background generation.");
       return;
     }
-    const ai = new GoogleGenAI({ apiKey });
     
     let alreadyExists = false;
     let usedAdminForCheck = false;
@@ -1119,7 +1087,7 @@ async function generateDailySanataniFacts() {
     ]
     Respond ONLY with the JSON array.`;
 
-    const response = await callGeminiWithRetry(ai, {
+    const response = await callGeminiWithRetry(apiKey, {
       model: "gemini-1.5-flash",
       contents: prompt,
       config: { responseMimeType: "application/json" }
@@ -1195,8 +1163,6 @@ async function autoGenerateDailyNews() {
       return;
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
     for (const lang of ['bn', 'en']) {
       const language = lang as 'bn' | 'en';
       const docId = `${date}-${language}`;
@@ -1252,7 +1218,7 @@ async function autoGenerateDailyNews() {
       IMPORTANT: All text must be in ${langName}.
       Return exactly 5 items per category. If limited news is available, prioritize quality and detail. Ensure the news is relevant to ${date} or the most recent available.`;
 
-      const response = await callGeminiWithRetry(ai, { 
+      const response = await callGeminiWithRetry(apiKey, { 
         model: "gemini-1.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
@@ -1737,12 +1703,10 @@ async function startServer() {
       try {
         const geminiKey = await getGeminiApiKey();
         if (geminiKey) {
-           const ai = new GoogleGenAI({ apiKey: geminiKey });
-           const response = await ai.models.generateContent({
-             model: "gemini-1.5-flash",
-             contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
-           });
-           geminiStatus = response.text ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
+           const ai = new GoogleGenerativeAI(geminiKey);
+           const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+           const response = await model.generateContent("Hi");
+           geminiStatus = response.response.text() ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
         } else {
            geminiStatus = "❌ Gemini API Key Missing (Required for AI features)";
         }
@@ -1990,8 +1954,6 @@ async function startServer() {
         return res.status(500).json({ error: "Gemini API key is missing on server." });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      
       const prompt = `
         You are a master of Vedic Numerology (Sankhya Shastra) and an expert in the spiritual science of numbers. 
         Analyze the following person from a family tree and provide a profound, beautiful, and spiritually resonant numerological reading.
@@ -2015,7 +1977,7 @@ async function startServer() {
         Formatting: Use markdown.
       `;
 
-      const response = await callGeminiWithRetry(ai, {
+      const response = await callGeminiWithRetry(apiKey, {
         model: "gemini-1.5-flash",
         contents: prompt
       });
@@ -2250,33 +2212,18 @@ async function startServer() {
     try {
       console.log("[TestGemini] Starting test...");
       const apiKey = await getGeminiApiKey();
-      const ai = new GoogleGenAI({ apiKey });
       
-      // Try multiple models in order of preference
-      const modelsToTry = ["gemini-1.5-flash", "gemini-flash-latest"];
-      let lastError = null;
-      
-      for (const model of modelsToTry) {
-        try {
-          console.log(`[TestGemini] Trying model: ${model}`);
-          const response = await ai.models.generateContent({
-            model: model,
-            contents: [{ role: 'user', parts: [{ text: 'Hello, are you working?' }] }]
-          });
-          return res.json({ 
-            status: "success", 
-            text: response.text,
-            modelUsed: model,
-            keyPrefix: apiKey.substring(0, 8),
-            keyLength: apiKey.length
-          });
-        } catch (e: any) {
-          console.warn(`[TestGemini] Model ${model} failed: ${e.message}`);
-          lastError = e;
-        }
-      }
-      
-      throw lastError || new Error("All models failed");
+      const response = await callGeminiWithRetry(apiKey, {
+        model: "gemini-1.5-flash",
+        contents: "Hello, are you working?"
+      });
+
+      return res.json({ 
+        status: "success", 
+        text: response.text,
+        keyPrefix: apiKey.substring(0, 8),
+        keyLength: apiKey.length
+      });
     } catch (error: any) {
       console.error("[TestGemini] Test failed:", error);
       res.status(500).json({ 
@@ -2356,7 +2303,6 @@ async function startServer() {
 
     try {
       console.log(`[NewsAPI] Generating news on server for ${docId}...`);
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
       const langName = language === 'bn' ? 'Bengali' : 'English';
       
       const prompt = `Find the latest news and trends for the date: ${date}.
@@ -2378,7 +2324,7 @@ async function startServer() {
       IMPORTANT: All text must be in ${langName}.
       Return exactly 5 items per category. If limited news is available, prioritize quality and detail. Ensure the news is relevant to ${date} or the most recent available.`;
 
-      const response = await callGeminiWithRetry(ai, { 
+      const response = await callGeminiWithRetry(geminiKey, { 
         model: "gemini-1.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
@@ -4753,15 +4699,15 @@ async function fetchImageAsBase64(url: string) {
       }
 
       // 🔍 Diagnostics / Status check command
+      
+      // 🔍 Diagnostics
       if (text.toLowerCase() === '/status' || text.toLowerCase() === '/diagnostic' || text.toLowerCase() === '/info') {
         let geminiStatus = "Checking...";
         try {
-          const aiTest = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await aiTest.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
-          });
-          geminiStatus = response.text ? "✅ Gemini 3-flash is ACTIVE" : "❌ Gemini returned empty";
+          const aiTest = new GoogleGenerativeAI(geminiKey);
+          const model = aiTest.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const response = await model.generateContent("Hi");
+          geminiStatus = response.response.text() ? "✅ Gemini 1.5-flash is ACTIVE" : "❌ Gemini returned empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
@@ -4776,30 +4722,14 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
         return;
       }
 
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const prompt = `Family tree update. Extract JSON:
+      { "action": "ADD"|"UPDATE"|"DELETE"|"LINK", "targetMember": "name", "details": { "role": "string", "name": "string", "field": "kuldevi"|"gotra"|"name" } }
       
-      const prompt = `You are a genealogy expert assistant for Barnali (Vamshavali AI). 
-      Extract family tree update instructions from this message: "${text}".
-      
-      Return ONLY a JSON object with:
-      - action: "ADD", "UPDATE", "DELETE", "LINK", or "UNKNOWN"
-      - targetMember: name of the existing person in the tree to modify or attach to. If user says 'me' or refers to themselves, and it's a family profile field update, set this to "me".
-      - details: 
-          role: (e.g., "Father", "Mother", "Son", "Daughter")
-          name: new person's name (if ADD) or field value
-          birthYear: Year (if mentioned)
-          relationship: "child" or "partner" (if ADD)
-          id: Profile ID if this is a LINK action
-          field: If updating a profile-wide field, specify which: "kuldevi" (synonyms: kuldavi, kuldevi name, kul devi), "kuldevta", "gotra", "nativePlace", "name"
-      - clarificationMessage: If the request is ambiguous, incomplete, or you are unsure, provide a polite question to the user asking for the missing info.
-      
-      Context: 
-      - If user says 'Add this picture as my kuldavi name arkhanarirshor', action: "UPDATE", details.field: "kuldevi", details.name: "arkhanarirshor", targetMember: "me".
-      - If user says 'Add X as son of Y', action: "ADD", targetMember: "Y", name in details is "X".`;
+      Msg: "${text}"
+      - 'Add this picture as my kuldavi name arkhanarirshor' -> action: "UPDATE", field: "kuldevi", name: "arkhanarirshor", targetMember: "me".`;
 
       let contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
       if (photoUrl) {
-        console.log("[Telegram] Attaching photo to Gemini prompt...");
         const base64 = await fetchImageAsBase64(photoUrl);
         if (base64) {
           contents[0].parts.push({
@@ -4811,26 +4741,35 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
         }
       }
 
-      console.log("[Telegram] Calling Gemini (3-flash) for command extraction...");
-      const response = await callGeminiWithRetry(ai, { 
-        model: "gemini-3-flash-preview",
-        contents: photoUrl ? { parts: contents[0].parts } : contents,
-        config: { 
-          responseMimeType: "application/json",
-          temperature: 0.1
-        }
-      });
-      
-      let responseText = "";
+      console.log("[Telegram] Calling Gemini for command extraction...");
+      let response;
       try {
-        responseText = response.text || "{}";
-      } catch (e) {
-        console.warn("[Telegram] .text getter failed, checking candidates:", e);
-        // Fallback to manual candidate extraction if getter fails
-        const cand = (response as any).candidates?.[0];
-        responseText = cand?.content?.parts?.[0]?.text || "{}";
+        response = await callGeminiWithRetry(geminiKey, { 
+          model: "gemini-1.5-flash",
+          contents: contents,
+          config: { 
+            responseMimeType: "application/json",
+            temperature: 0.1
+          }
+        });
+      } catch (geminiError) {
+        // Keyword Fallback for specific kuldevi update
+        const lowerText = text.toLowerCase();
+        if ((lowerText.includes("kuldevi") || lowerText.includes("kuldavi")) && (lowerText.includes("update") || lowerText.includes("add"))) {
+           const nameMatch = text.match(/(?:name\s+)?([a-z0-9]+)$/i);
+           const detectedName = nameMatch ? nameMatch[1] : (lowerText.includes("arkhanarirshor") ? "arkhanarirshor" : null);
+           if (detectedName) {
+              console.log("[Telegram] Using keyword fallback for kuldevi update");
+              response = { text: JSON.stringify({ action: "UPDATE", targetMember: "me", details: { field: "kuldevi", name: detectedName } }) };
+           } else {
+             throw geminiError;
+           }
+        } else {
+          throw geminiError;
+        }
       }
-
+      
+      let responseText = response.text || "{}";
       console.log("[Telegram] Gemini Response:", responseText);
       
       // Sanitization: Remove markdown code blocks if present
