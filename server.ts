@@ -28,16 +28,19 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  */
 async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5) {
   let lastError: any;
-  const primaryModel = options.model || "gemini-1.5-flash"; 
+  const primaryModel = options.model || "gemini-3-flash-preview"; 
   
-  // Define a sequence of models to try if the primary fails
+  // Define a sequence of models to try if the primary fails.
+  // We include both prefixed and non-prefixed names to handle environment variations.
   const modelsToTry = [
     primaryModel,
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
+    "gemini-3-flash-preview",
+    "models/gemini-3-flash-preview",
+    "gemini-3.1-pro-preview",
+    "models/gemini-3.1-pro-preview",
     "gemini-flash-latest",
-    "gemini-1.5-pro",
-    "gemini-pro"
+    "models/gemini-1.5-flash-latest",
+    "gemini-3.1-flash-lite-preview"
   ];
   
   // Robust contents handling
@@ -57,11 +60,12 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5
       });
       
       // Verification
-      try {
-        if (response.text) return response;
-      } catch (e) {
-        console.warn(`[Gemini] ${currentModel} response empty or invalid`);
+      if (response && response.text) {
+        console.log(`[Gemini] Success with ${currentModel}`);
+        return response;
       }
+      
+      console.warn(`[Gemini] ${currentModel} returned empty or invalid response.`);
       if (i === maxRetries) return response;
       continue;
     } catch (error: any) {
@@ -79,14 +83,15 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5
 
       const isLocationError = errorStr.includes("User location is not supported") || 
                              errorStr.includes("not available in your country") ||
-                             errorStr.includes("restricted");
+                             errorStr.includes("restricted") ||
+                             errorStr.includes("403");
 
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
       if (i < maxRetries) {
         const factor = isQuotaExceeded ? 10000 : (isUnavailable ? 3000 : 500);
         const delay = (Math.pow(2, i) * factor) + Math.random() * 1000;
-        console.warn(`[Gemini] Attempting next model due to error. Retry ${i+1}/${maxRetries} in ${Math.round(delay)}ms...`);
+        console.warn(`[Gemini] Switching model/Retrying due to: ${isNotFoundError ? 'NotFound' : (isLocationError ? 'Location' : 'Load/Quota')}. Next attempt in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -4482,6 +4487,10 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
 async function fetchImageAsBase64(url: string) {
   try {
     const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[Gemini] Failed to fetch image: ${res.status} ${res.statusText}`);
+      return null;
+    }
     const buffer = await res.arrayBuffer();
     return Buffer.from(buffer).toString('base64');
   } catch (e) {
@@ -4738,10 +4747,10 @@ async function fetchImageAsBase64(url: string) {
         try {
           const aiTest = new GoogleGenAI({ apiKey: geminiKey });
           const response = await aiTest.models.generateContent({
-            model: "gemini-1.5-flash",
+            model: "gemini-3-flash-preview",
             contents: [{ role: 'user', parts: [{ text: 'Hi' }] }]
           });
-          geminiStatus = response.text ? "✅ Gemini 1.5-flash is ACTIVE" : "❌ Gemini returned empty";
+          geminiStatus = response.text ? "✅ Gemini 3-flash is ACTIVE" : "❌ Gemini returned empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
@@ -4791,10 +4800,10 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
         }
       }
 
-      console.log("[Telegram] Calling Gemini (1.5-flash) for command extraction...");
+      console.log("[Telegram] Calling Gemini (3-flash) for command extraction...");
       const response = await callGeminiWithRetry(ai, { 
-        model: "gemini-1.5-flash",
-        contents: contents,
+        model: "gemini-3-flash-preview",
+        contents: photoUrl ? { parts: contents[0].parts } : contents,
         config: { 
           responseMimeType: "application/json",
           temperature: 0.1
@@ -4806,7 +4815,9 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
         responseText = response.text || "{}";
       } catch (e) {
         console.warn("[Telegram] .text getter failed, checking candidates:", e);
-        responseText = response.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        // Fallback to manual candidate extraction if getter fails
+        const cand = (response as any).candidates?.[0];
+        responseText = cand?.content?.parts?.[0]?.text || "{}";
       }
 
       console.log("[Telegram] Gemini Response:", responseText);
