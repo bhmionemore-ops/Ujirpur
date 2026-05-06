@@ -28,25 +28,35 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  */
 async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5) {
   let lastError: any;
-  const primaryModel = options.model || "gemini-3-flash-preview"; 
+  const primaryModel = options.model || "gemini-1.5-flash-latest"; 
   
   // Define a sequence of models to try if the primary fails.
   // We include both prefixed and non-prefixed names to handle environment variations.
+  // We prioritize 1.5-flash-latest as it is the most widely available stable model.
   const modelsToTry = [
-    primaryModel,
+    "gemini-1.5-flash-latest",
+    "models/gemini-1.5-flash-latest",
     "gemini-3-flash-preview",
     "models/gemini-3-flash-preview",
     "gemini-3.1-pro-preview",
     "models/gemini-3.1-pro-preview",
+    "gemini-3.1-flash-lite-preview",
     "gemini-flash-latest",
-    "models/gemini-1.5-flash-latest",
-    "gemini-3.1-flash-lite-preview"
+    "gemini-pro"
   ];
   
-  // Robust contents handling
-  const normalizedContents = typeof options.contents === 'string' 
-    ? [{ role: 'user', parts: [{ text: options.contents }] }]
-    : options.contents;
+  // Robust contents & Parts handling for @google/genai
+  let normalizedContents: any;
+  if (typeof options.contents === 'string') {
+    normalizedContents = [{ role: 'user', parts: [{ text: options.contents }] }];
+  } else if (Array.isArray(options.contents)) {
+    normalizedContents = options.contents;
+  } else if (options.contents && options.contents.parts) {
+    // Single object with parts
+    normalizedContents = [{ role: 'user', parts: options.contents.parts }];
+  } else {
+    normalizedContents = options.contents;
+  }
   
   for (let i = 0; i <= maxRetries; i++) {
     const currentModel = modelsToTry[i % modelsToTry.length];
@@ -70,27 +80,28 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5
       continue;
     } catch (error: any) {
       lastError = error;
-      const errorStr = error?.message || String(error);
+      const errorStr = (error?.message || String(error)).toLowerCase();
       console.warn(`[Gemini] Error with ${currentModel}:`, errorStr);
 
       const isUnavailable = errorStr.includes("503") || 
-                          errorStr.includes("UNAVAILABLE") ||
+                          errorStr.includes("unavailable") ||
                           errorStr.includes("overloaded");
       
       const isQuotaExceeded = errorStr.includes("429") || 
-                            errorStr.includes("RESOURCE_EXHAUSTED") ||
+                            errorStr.includes("resource_exhausted") ||
                             errorStr.includes("quota");
 
-      const isLocationError = errorStr.includes("User location is not supported") || 
-                             errorStr.includes("not available in your country") ||
-                             errorStr.includes("restricted") ||
-                             errorStr.includes("403");
+      const isLocationError = errorStr.includes("location") || 
+                             errorStr.includes("country") ||
+                             errorStr.includes("regional") ||
+                             errorStr.includes("not available");
 
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
       if (i < maxRetries) {
-        const factor = isQuotaExceeded ? 10000 : (isUnavailable ? 3000 : 500);
-        const delay = (Math.pow(2, i) * factor) + Math.random() * 1000;
+        // If it's a location error, move to the next model faster
+        const factor = isQuotaExceeded ? 10000 : (isUnavailable ? 3000 : 200);
+        const delay = (Math.pow(2, i) * factor) + Math.random() * 500;
         console.warn(`[Gemini] Switching model/Retrying due to: ${isNotFoundError ? 'NotFound' : (isLocationError ? 'Location' : 'Load/Quota')}. Next attempt in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
@@ -4905,21 +4916,21 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       }
     } catch (err: any) {
       console.error("[Telegram] Error processing message:", err);
-      const errorStr = err?.message || String(err);
+      const errorStr = (err?.message || String(err)).toLowerCase();
       
       let errorMsg = "⚠️ Barnali is having trouble processing that right now. Please try again in a moment.";
       
-      if (errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED")) {
+      if (errorStr.includes("429") || errorStr.includes("resource_exhausted")) {
         errorMsg = "⚠️ *Busy Archives:* Barnali is receiving many requests. Please try again in a few seconds!";
       } else if (errorStr.includes("404") || errorStr.includes("not found")) {
-        errorMsg = "⚠️ *Brain Module Error:* I am having trouble connecting to my processing unit. Retrying with a different brain...";
-      } else if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("API_KEY_SERVICE_BLOCKED") || errorStr.includes("blocked") || errorStr.includes("403")) {
+        errorMsg = "⚠️ *Processing Error:* I am having trouble connecting to my processing unit. I've logged this for the administrator.";
+      } else if (errorStr.includes("api_key_invalid") || errorStr.includes("api_key_service_blocked") || errorStr.includes("blocked") || errorStr.includes("403")) {
         errorMsg = "⚠️ *System Config Error:* My AI credentials are not fully ready. Please notify the administrator.";
-      } else if (errorStr.includes("User location is not supported") || errorStr.includes("location")) {
-        errorMsg = "⚠️ *Regional Restriction:* My processing module is restricted in this server region. Attempting fallback...";
-      } else if (errorStr.includes("PERMISSION_DENIED") || errorStr.includes("permission")) {
+      } else if (errorStr.includes("location") || errorStr.includes("country") || errorStr.includes("regional")) {
+        errorMsg = "⚠️ *Regional Restriction:* Gemini AI is restricted in this server region. Attempting to use a worldwide fallback...";
+      } else if (errorStr.includes("permission_denied") || errorStr.includes("permission")) {
         errorMsg = "⚠️ *Access Denied:* I don't have the required permissions to update these family records.";
-      } else if (errorStr.startsWith("{") && errorStr.includes("error")) {
+      } else if (errorStr.includes("{") && errorStr.includes("error")) {
         try {
           const parsed = JSON.parse(errorStr);
           errorMsg = `⚠️ *Archival Sync Error:* Failed to ${parsed.operationType || 'access'} the lineage database.`;
