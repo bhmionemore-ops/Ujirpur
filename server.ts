@@ -26,16 +26,18 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 /**
  * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
  */
-async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4) {
+async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 5) {
   let lastError: any;
   const primaryModel = options.model || "gemini-1.5-flash"; 
   
-  // Define a sequence of models to try if the primary fails (especially for regional/quota issues)
+  // Define a sequence of models to try if the primary fails
   const modelsToTry = [
     primaryModel,
-    "gemini-1.5-flash", 
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
     "gemini-flash-latest",
-    "gemini-1.5-pro"
+    "gemini-1.5-pro",
+    "gemini-pro"
   ];
   
   // Robust contents handling
@@ -44,7 +46,6 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4
     : options.contents;
   
   for (let i = 0; i <= maxRetries; i++) {
-    // Pick model from the rotation if it's a retry
     const currentModel = modelsToTry[i % modelsToTry.length];
     
     try {
@@ -54,10 +55,20 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4
         generationConfig: options.config,
         safetySettings: options.safety
       });
+      
       const result = await model.generateContent({
         contents: normalizedContents
       });
-      return result.response;
+      
+      const response = result.response;
+      // Verification
+      try {
+        if (response.text()) return response;
+      } catch (e) {
+        console.warn(`[Gemini] ${currentModel} response empty or invalid`);
+      }
+      if (i === maxRetries) return response;
+      continue;
     } catch (error: any) {
       lastError = error;
       const errorStr = error?.message || String(error);
@@ -77,21 +88,13 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4
 
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
-      // On location, not found, or capacity error, immediately move to next model in the list
-      if ((isLocationError || isNotFoundError || isUnavailable || isQuotaExceeded) && i < maxRetries) {
-        const factor = isQuotaExceeded ? 10000 : 2000;
-        const delay = (isLocationError || isNotFoundError ? 500 : (Math.pow(2, i) * factor)) + Math.random() * 2000;
-        
-        console.warn(`[Gemini] Switching model due to: ${isLocationError ? 'Location' : (isNotFoundError ? 'NotFound' : 'Quota/Load')}. Next attempt in ${Math.round(delay)}ms...`);
+      if (i < maxRetries) {
+        const factor = isQuotaExceeded ? 10000 : (isUnavailable ? 3000 : 500);
+        const delay = (Math.pow(2, i) * factor) + Math.random() * 1000;
+        console.warn(`[Gemini] Attempting next model due to error. Retry ${i+1}/${maxRetries} in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      
-      // If none of the specific retryable errors occurred, we might still want to try the next model once
-      if (i < 1) {
-        continue;
-      }
-
       throw error;
     }
   }
@@ -4894,7 +4897,10 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
           errorMsg = "⚠️ *Database Link Error:* I could not safely synchronize with the family archives.";
         }
       } else {
-        errorMsg = `⚠️ *Internal Error:* Process failed. Please try rephrasing your request.`;
+        errorMsg = `⚠️ *Archival Error:* Barnali is having trouble processing this message.
+        
+_Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked with VAM-XXXXX'_`;
+        console.error("[Telegram] Unhandled Processing Error:", errorStr);
       }
       
       await sendMsg(errorMsg);
