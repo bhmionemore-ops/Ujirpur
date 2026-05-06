@@ -26,9 +26,17 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 /**
  * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
  */
-async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
+async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 4) {
   let lastError: any;
-  const modelName = options.model || "gemini-1.5-flash"; 
+  const primaryModel = options.model || "gemini-1.5-flash"; 
+  
+  // Define a sequence of models to try if the primary fails (especially for regional/quota issues)
+  const modelsToTry = [
+    primaryModel,
+    "gemini-1.5-flash-8b",
+    "gemini-flash-latest",
+    "gemini-1.5-pro"
+  ];
   
   // Robust contents handling
   const normalizedContents = typeof options.contents === 'string' 
@@ -36,8 +44,9 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
     : options.contents;
   
   for (let i = 0; i <= maxRetries; i++) {
-    // Alternate models on repeated failure if it's a quota or regional issue
-    const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
+    // Pick model from the rotation if it's a retry
+    const currentModel = modelsToTry[i % modelsToTry.length];
+    
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
       const response = await ai.models.generateContent({
@@ -59,21 +68,25 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
                             errorStr.includes("RESOURCE_EXHAUSTED") ||
                             errorStr.includes("quota");
 
-      const isLocationError = errorStr.includes("User location is not supported");
+      const isLocationError = errorStr.includes("User location is not supported") || 
+                             errorStr.includes("not available in your country") ||
+                             errorStr.includes("restricted");
 
-      // If it's a location error, immediately switch to a potentially more available model
-      if (isLocationError && i < maxRetries) {
-        options.model = "gemini-flash-latest"; 
-        continue;
-      }
-
-      if ((isUnavailable || isQuotaExceeded) && i < maxRetries) {
-        const factor = isQuotaExceeded ? 15000 : 5000;
-        const delay = Math.pow(2, i) * factor + Math.random() * 3000;
-        console.warn(`[Gemini] ${isQuotaExceeded ? 'Quota' : 'Demand'} issues. Retrying in ${Math.round(delay)}ms...`);
+      // On location or capacity error, immediately move to next model in the list
+      if ((isLocationError || isUnavailable || isQuotaExceeded) && i < maxRetries) {
+        const factor = isQuotaExceeded ? 10000 : 2000;
+        const delay = (isLocationError ? 500 : (Math.pow(2, i) * factor)) + Math.random() * 2000;
+        
+        console.warn(`[Gemini] Switching model due to: ${isLocationError ? 'Location' : 'Quota/Load'}. Next attempt in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
+      
+      // If none of the specific retryable errors occurred, we might still want to try the next model once
+      if (i < 1) {
+        continue;
+      }
+
       throw error;
     }
   }
@@ -4856,11 +4869,11 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       let errorMsg = "⚠️ The archives are currently busy. Please try again in a moment.";
       
       if (errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED")) {
-        errorMsg = "⚠️ *Busy Archives:* I am receiving many requests. Please try again in 10 seconds!";
+        errorMsg = "⚠️ *Busy Archives:* Barnali is receiving many requests. Please try again in a few seconds!";
       } else if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("API_KEY_SERVICE_BLOCKED") || errorStr.includes("blocked") || errorStr.includes("403")) {
-        errorMsg = "⚠️ *System Config Error:* The AI component (Gemini) is not properly configured. Please notify the administrator.";
-      } else if (errorStr.includes("model not found") || errorStr.includes("gemini-1.5")) {
-        errorMsg = "⚠️ *Model Error:* I couldn't reach the required brain module. Please try again later.";
+        errorMsg = "⚠️ *System Config Error:* The AI credentials (Gemini) are not ready. Please notify the administrator.";
+      } else if (errorStr.includes("User location is not supported") || errorStr.includes("location")) {
+        errorMsg = "⚠️ *Regional Restriction:* Barnali's brain module is restricted in this server region. Attempting fallback... please wait.";
       } else if (errorStr.includes("permissions") || errorStr.includes("permission-denied")) {
         console.error("[Telegram] Permission DENIED! Checking status...");
         console.log(`[Telegram] auth.currentUser: ${clientAuth?.currentUser?.uid || 'NONE'}`);
