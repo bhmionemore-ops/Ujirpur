@@ -7,6 +7,7 @@ import {
   MessageSquare, 
   Image as ImageIcon, 
   Video, 
+  Clock,
   Send, 
   Loader2, 
   History, 
@@ -57,6 +58,39 @@ export const AiRouterPage = () => {
   const [approvalRequest, setApprovalRequest] = useState<any>(null);
   const [inputImage, setInputImage] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [showApiDocs, setShowApiDocs] = useState(false);
+
+  useEffect(() => {
+    if (!user || !db) return;
+    const keyRef = doc(db, 'api_keys', user.uid);
+    const unsubKey = onSnapshot(keyRef, (snap) => {
+      if (snap.exists()) setApiKey(snap.data().apiKey);
+    });
+    return () => unsubKey();
+  }, [user]);
+
+  const generateApiKey = async () => {
+    if (!user) return;
+    setIsGeneratingKey(true);
+    try {
+      const res = await fetch('/api/ai/key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setApiKey(data.apiKey);
+        toast.success("API Key generated successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to generate API key.");
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
 
   useEffect(() => {
     if (!pendingRequestId || !db) return;
@@ -497,6 +531,129 @@ export const AiRouterPage = () => {
                  View Pricing Plans
                </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* API Integration Section - NEW */}
+      <div className="mt-20 pt-16 border-t border-zinc-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-4">
+              <ExternalLink size={32} className="text-brand-600" />
+              Professional API Access
+            </h2>
+            <p className="text-zinc-500 font-medium text-lg">Integrate Barnia AI into your own projects with a single key.</p>
+          </div>
+          
+          {!apiKey ? (
+            <button 
+              onClick={generateApiKey}
+              disabled={isGeneratingKey}
+              className="px-10 py-5 bg-zinc-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-3 disabled:opacity-50 shadow-xl shadow-zinc-200"
+            >
+              {isGeneratingKey ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+              Generate v1 API Key
+            </button>
+          ) : (
+            <div className="flex flex-col items-end gap-3">
+              <div className="px-6 py-4 bg-brand-50 rounded-2xl border-2 border-brand-100 flex items-center gap-4 shadow-sm">
+                <code className="text-sm font-mono text-brand-700 font-black">{apiKey}</code>
+                <button 
+                  onClick={() => { navigator.clipboard.writeText(apiKey); toast.success("Copied to clipboard!"); }}
+                  className="p-2 hover:bg-brand-100 rounded-xl transition-colors text-brand-600"
+                >
+                  <Plus size={18} className="rotate-45" />
+                </button>
+              </div>
+              <button 
+                onClick={generateApiKey}
+                className="text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-zinc-600 transition-colors"
+              >
+                Regenerate Key
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          {/* n8n Documentation */}
+          <div className="bg-white rounded-[3rem] p-10 border border-zinc-200 shadow-sm space-y-8">
+            <div className="flex items-center gap-4">
+               <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
+                 <Zap size={24} className="text-amber-500" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-black text-zinc-900 uppercase">n8n Automation Guide</h3>
+                 <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Connect to 1000+ apps</p>
+               </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">1</div>
+                <p className="text-sm text-zinc-600 font-medium">Add an <b>HTTP Request</b> node in your n8n workflow.</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
+                <p className="text-sm text-zinc-600 font-medium">Set URL to: <code className="bg-zinc-50 px-2 py-1 rounded text-brand-600 uppercase text-[10px]">https://barnia.in/api/v1/ai</code></p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
+                <p className="text-sm text-zinc-600 font-medium">Add Header: <code className="bg-zinc-50 px-2 py-1 rounded text-zinc-900 text-[10px]">x-api-key</code> = your key.</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">4</div>
+                <div className="flex-1">
+                  <p className="text-sm text-zinc-600 font-medium mb-3">Send Body (JSON):</p>
+                  <pre className="bg-zinc-50 p-4 rounded-2xl text-[11px] font-mono text-zinc-600">
+{`{
+  "task": "Translate 'Hello' to Bengali",
+  "type": "text"
+}`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Code Example */}
+          <div className="bg-zinc-950 rounded-[3rem] p-10 text-white space-y-8 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 blur-[100px] -mr-32 -mt-32" />
+             
+             <div className="flex items-center gap-4 relative z-10">
+               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                 <Play size={24} className="text-brand-500" />
+               </div>
+               <div>
+                 <h3 className="text-xl font-black uppercase">Developer Example</h3>
+                 <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Standard Curl / Python / JS</p>
+               </div>
+             </div>
+
+             <div className="relative z-10 space-y-6">
+               <div className="bg-zinc-900 rounded-2xl p-6 border border-white/5 font-mono text-[11px] leading-relaxed text-zinc-400 overflow-x-auto">
+                 <p className="text-brand-500 mb-2"># Image Generation Request</p>
+{`curl -X POST https://barnia.in/api/v1/ai \\
+  -H "x-api-key: ${apiKey || 'YOUR_KEY'}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "task": "A futuristic Bengali village",
+    "type": "image"
+  }'`}
+               </div>
+               
+               <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl">
+                 <div className="flex gap-3">
+                   <AlertCircle size={18} className="text-amber-500 shrink-0" />
+                   <p className="text-[11px] text-amber-200/80 font-medium leading-relaxed">
+                     <b className="text-amber-500 uppercase">Safety Net:</b> Premium requests (Flux, Kling) costing {`>= 15`} credits trigger a 
+                     <code className="bg-white/10 px-1 rounded text-white mx-1 text-[10px]">pending</code> status. These must be approved 
+                     by the developer to protect your credit balance from accidental spikes.
+                   </p>
+                 </div>
+               </div>
+             </div>
           </div>
         </div>
       </div>

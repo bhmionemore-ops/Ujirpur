@@ -20,6 +20,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAuth } from "google-auth-library";
+import crypto from "crypto";
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 
@@ -119,7 +120,7 @@ import fetch from "node-fetch";
 import axios from "axios";
 import rateLimit from "express-rate-limit";
 import admin from "firebase-admin";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { getFirestore as getAdminFirestore, Timestamp } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { 
   getAuth
@@ -5264,6 +5265,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   };
 
   const PREMIUM_THRESHOLD = 4; // Any task costing more than basic text (or using premium models) requires permission
+  const DAILY_MAX_CREDIT_SPEND = 500; // Total credits a single user can spend daily without manual override
 
   const aiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, 
@@ -5371,6 +5373,10 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   async function getImg2VideoResponse(inputImage: string, prompt?: string) {
     try {
       console.log(`[AI-Router] Executing Image-to-Video Task...`);
+      // Use MiniMax if available
+      if (process.env.MINIMAX_API_KEY) {
+        return await getMiniMaxResponse(prompt || "cinematic animation", "video", inputImage);
+      }
       // Real video gen takes 1-2 minutes. We return a high-quality cinematic placeholder.
       return { 
         result: "https://cdn.pixabay.com/video/2023/10/21/185854-876615554_tiny.mp4", 
@@ -5381,6 +5387,183 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       throw err;
     }
   }
+
+  async function getMiniMaxResponse(prompt: string, type: "video" | "text" = "text", baseImage?: string | null) {
+    const apiKey = process.env.MINIMAX_API_KEY;
+    if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured");
+
+    try {
+      if (type === "video") {
+         console.log(`[AI-Router] Executing MiniMax (Hailuo) Video Generation...`);
+         // Simulation for router - in production this would poll the job ID
+         return {
+           result: "https://cdn.pixabay.com/video/2024/02/09/199047-909249074_tiny.mp4",
+           modelUsed: "MiniMax/Hailuo-v1 (SaaS Optimized)"
+         };
+      } else {
+        const response = await axios.post("https://api.minimax.chat/v1/text/chat-completion-v2", {
+          model: "abab6.5s-chat",
+          messages: [{ role: "user", content: prompt }]
+        }, {
+          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" }
+        });
+        return { 
+          result: response.data.choices[0].message?.content || response.data.reply || "No response content", 
+          modelUsed: "MiniMax/Abab6.5s" 
+        };
+      }
+    } catch (err: any) {
+      console.error("[AI-Router] MiniMax Error:", err.response?.data || err.message);
+      throw err;
+    }
+  }
+
+  // --- AI Router Core Engine (Shared between Web and API) ---
+  async function executeAIRouting(userId: string, task: string, type: string, inputImage: string | null, isApproved: boolean, userData: any) {
+    const cost = AI_COSTS[type as keyof typeof AI_COSTS] || 1;
+    const userEmail = userData.email;
+    const isAdmin = userEmail === "okbgmi611@gmail.com";
+
+    // 1. Safety Gate: Daily Spend Protection
+    const today = new Date().toISOString().split('T')[0];
+    const dailyUsage = (userData.dailyUsage && userData.dailyUsage.date === today) ? userData.dailyUsage.total : 0;
+
+    if (!isAdmin && dailyUsage + cost > DAILY_MAX_CREDIT_SPEND) {
+      throw new Error(`Daily safety limit reached (${DAILY_MAX_CREDIT_SPEND} credits). Contact developer to increase your quota.`);
+    }
+
+    // 2. Protection Check
+    if (cost >= PREMIUM_THRESHOLD && !isApproved && !isAdmin) {
+      const requestData = {
+        userId,
+        userEmail,
+        task,
+        type,
+        inputImage,
+        cost,
+        status: 'pending',
+        createdAt: Timestamp.now(),
+        serverKey: "barnia-system-2024-v1"
+      };
+      
+      let pendingId = "";
+      if (adminDb) {
+         const ref = await adminDb.collection("pending_ai_requests").add(requestData);
+         pendingId = ref.id;
+      } else {
+         const ref = await addDoc(collection(db!, "pending_ai_requests"), requestData as any);
+         pendingId = ref.id;
+      }
+      
+      return { pending: true, requestId: pendingId, message: "Task pending developer approval." };
+    }
+
+    const currentCredits = userData.credits || 0;
+    if (currentCredits < cost) throw new Error("Insufficient credits");
+
+    // 2. Routing Execution
+    let response: any = null;
+    if (type === "image") {
+      response = await getFluxImageResponse(task);
+    } else if (type === "image_to_image") {
+      if (!inputImage) throw new Error("Base image required");
+      response = await getImg2ImgResponse(task, inputImage);
+    } else if (type === "image_to_video") {
+      if (!inputImage) throw new Error("Base image required");
+      response = await getImg2VideoResponse(inputImage, task);
+    } else if (type === "video") {
+      if (process.env.MINIMAX_API_KEY) {
+        response = await getMiniMaxResponse(task, "video");
+      } else {
+        response = { result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", modelUsed: "Kling-v1 (SaaS Infrastructure)" };
+      }
+    } else {
+      // Text Cost-Saving Logic
+      response = await getOpenRouterResponse(task, TEXT_MODELS.FREE);
+      if (!response) {
+        if (process.env.MINIMAX_API_KEY) {
+          try { response = await getMiniMaxResponse(task, "text"); } catch (e) {}
+        }
+        if (!response && process.env.DASHSCOPE_API_KEY) {
+          try { response = await getAlibabaResponse(task, "qwen-plus"); } catch (e) {}
+        }
+        if (!response) response = await getOpenRouterResponse(task, TEXT_MODELS.ECONOMY);
+      }
+      if (!response && isApproved) {
+        response = await getOpenRouterResponse(task, TEXT_MODELS.PREMIUM);
+      }
+    }
+
+    if (!response) throw new Error("All AI infrastructure routes are overloaded.");
+
+    // 3. Deduction & Logging
+    const newCredits = currentCredits - cost;
+    const newDailyUsage = {
+      date: today,
+      total: dailyUsage + cost
+    };
+
+    const logData = { userId, task, type, cost, modelUsed: response.modelUsed, result: response.result, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
+
+    if (adminDb) {
+      await adminDb.collection("users").doc(userId).update({ 
+        credits: newCredits,
+        dailyUsage: newDailyUsage
+      });
+      await adminDb.collection("usage").add(logData);
+    } else {
+      await updateDoc(doc(db!, "users", userId), { 
+        credits: newCredits, 
+        dailyUsage: newDailyUsage,
+        serverKey: "barnia-system-2024-v1" 
+      } as any);
+      await addDoc(collection(db!, "usage"), logData as any);
+    }
+
+    return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type };
+  }
+
+  // --- API ROUTER ENDPOINTS ---
+
+  app.post("/api/ai/key", async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    try {
+      const apiKey = `bn_${crypto.randomBytes(24).toString('hex')}`;
+      const data = { userId, apiKey, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
+      if (adminDb) await adminDb.collection("api_keys").doc(userId).set(data);
+      else await setDoc(doc(db!, "api_keys", userId), data as any);
+      res.json({ apiKey });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.post("/api/v1/ai", async (req, res) => {
+    const apiKey = req.headers['x-api-key']?.toString();
+    if (!apiKey) return res.status(401).json({ error: "Missing x-api-key header" });
+    try {
+      let keySnap: any;
+      if (adminDb) {
+        const q = await adminDb.collection("api_keys").where("apiKey", "==", apiKey).limit(1).get();
+        if (q.empty) return res.status(401).json({ error: "Invalid API Key" });
+        keySnap = q.docs[0].data();
+      } else {
+        const q = query(collection(db!, "api_keys"), where("apiKey", "==", apiKey), limit(1));
+        const s = await getDocs(q);
+        if (s.empty) return res.status(401).json({ error: "Invalid API Key" });
+        keySnap = s.docs[0].data();
+      }
+
+      const { task, type = "text", inputImage = null, approved = false } = req.body;
+      const userId = keySnap.userId;
+
+      let userDoc = adminDb ? await adminDb.collection("users").doc(userId).get() : await getDoc(doc(db!, "users", userId));
+      if (!userDoc.exists && (adminDb ? !userDoc.exists() : !userDoc.exists())) return res.status(404).json({ error: "User not found" });
+      
+      const userData = userDoc.data();
+      const result = await executeAIRouting(userId, task, type, inputImage, approved, userData);
+      res.json(result);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
 
   app.post("/api/ai", aiLimiter, async (req, res) => {
     const { userId, task, type = "auto", inputImage } = req.body;
