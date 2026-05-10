@@ -425,7 +425,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /pending_ai_requests/{requestId} {
+      allow read: if (isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
+      allow delete: if isAdmin();
+    }
 
+    match /ai_logs/{logId} {
+      allow read: if (isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
+      allow delete: if isAdmin();
+    }
 
     match /system/{docId} {
       allow read: if true; // Publicly viewable status

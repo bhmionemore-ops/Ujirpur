@@ -14,7 +14,11 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Upload,
+  X,
+  Plus,
+  Play
 } from 'lucide-react';
 import { doc, onSnapshot, collection, query, where, orderBy, limit, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -22,7 +26,7 @@ import { toast } from 'sonner';
 
 interface AIResult {
   success: boolean;
-  type: 'text' | 'image' | 'video';
+  type: 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video';
   result: string;
   modelUsed: string;
   cost: number;
@@ -45,12 +49,44 @@ export const AiRouterPage = () => {
   const { user } = useFirebase();
   const { t, language } = useLanguage();
   const [task, setTask] = useState('');
-  const [type, setType] = useState<'auto' | 'text' | 'image' | 'video'>('auto');
+  const [type, setType] = useState<'auto' | 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video'>('auto');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
   const [credits, setCredits] = useState<number>(0);
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<any>(null);
+  const [inputImage, setInputImage] = useState<string | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingRequestId || !db) return;
+
+    const reqRef = doc(db, 'pending_ai_requests', pendingRequestId);
+    const unsubReq = onSnapshot(reqRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.status === 'completed') {
+          setResult({
+            success: true,
+            type: data.type,
+            result: data.result,
+            modelUsed: data.modelUsed,
+            cost: data.cost,
+            remainingCredits: credits - data.cost
+          });
+          setLoading(false);
+          setPendingRequestId(null);
+          toast.success("Admin approved! Task completed.");
+        } else if (data.status === 'denied') {
+          setLoading(false);
+          setPendingRequestId(null);
+          toast.error("Admin denied the premium request.");
+        }
+      }
+    });
+
+    return () => unsubReq();
+  }, [pendingRequestId, credits]);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -85,12 +121,31 @@ export const AiRouterPage = () => {
     };
   }, [user]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size too large (max 5MB)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setInputImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (isApproved = false) => {
     if (!user) {
       toast.error('Please login to use AI Router');
       return;
     }
-    if (!task.trim()) return;
+    if (!task.trim() && type !== 'image_to_video') {
+       toast.error('Please describe your task or prompt');
+       return;
+    }
 
     setLoading(true);
     setResult(null);
@@ -104,6 +159,7 @@ export const AiRouterPage = () => {
           userId: user.uid,
           task,
           type,
+          inputImage,
           approved: isApproved
         })
       });
@@ -117,6 +173,9 @@ export const AiRouterPage = () => {
       if (data.needsApproval) {
         setApprovalRequest(data);
         toast.info(data.message);
+      } else if (data.pending) {
+        setPendingRequestId(data.requestId);
+        toast.info("Waiting for developer approval...");
       } else {
         setResult(data);
         setTask('');
@@ -152,13 +211,17 @@ export const AiRouterPage = () => {
         <div className="space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100">
             <div className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
-            <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">AI Router Engine v2.1</span>
+            <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Router Protection Active</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-zinc-900 uppercase tracking-tighter leading-none">
             Intelligent <br /> <span className="text-brand-600">Assistant</span>
           </h1>
+          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-lg w-fit">
+            <CheckCircle2 size={12} className="text-emerald-600" />
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight">Protecting Developer API Budget</span>
+          </div>
           <p className="text-zinc-500 font-bold max-w-xl">
-            Access world-class AI models through a single gateway. Pay only for what you use.
+            Access world-class AI models. We prioritize free and economy models to save you real-world costs. Premium models require your manual approval.
           </p>
         </div>
 
@@ -170,7 +233,10 @@ export const AiRouterPage = () => {
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Available Credits</p>
             <p className="text-3xl font-black text-zinc-900 tracking-tight">{credits}</p>
           </div>
-          <button className="ml-4 p-3 bg-zinc-100 rounded-xl hover:bg-zinc-200 transition-all text-zinc-600 font-black text-[10px] uppercase tracking-widest">
+          <button 
+            onClick={() => toast.info("To add more credits, please contact the administrator (Barnali Support). For demo purposes, admins can top up users via the Admin Panel.")}
+            className="ml-4 p-3 bg-zinc-100 rounded-xl hover:bg-zinc-200 transition-all text-zinc-600 font-black text-[10px] uppercase tracking-widest"
+          >
             Top Up
           </button>
         </div>
@@ -185,7 +251,9 @@ export const AiRouterPage = () => {
                 { id: 'auto', icon: Zap, label: 'Auto Detect' },
                 { id: 'text', icon: MessageSquare, label: 'Text/Chat' },
                 { id: 'image', icon: ImageIcon, label: 'Flux Image' },
+                { id: 'image_to_image', icon: Plus, label: 'Img 2 Img' },
                 { id: 'video', icon: Video, label: 'Video Gen' },
+                { id: 'image_to_video', icon: Play, label: 'Img 2 Video' },
               ].map((t) => (
                 <button
                   key={t.id}
@@ -202,16 +270,56 @@ export const AiRouterPage = () => {
               ))}
             </div>
 
+            {(type === 'image_to_image' || type === 'image_to_video') && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Base Image Resource</p>
+                   {inputImage && (
+                     <button 
+                       onClick={() => setInputImage(null)}
+                       className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all"
+                     >
+                       <X size={14} />
+                     </button>
+                   )}
+                </div>
+                
+                {!inputImage ? (
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-zinc-200 rounded-[2rem] bg-zinc-50 cursor-pointer hover:bg-zinc-100 transition-all group">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-3 text-zinc-300 group-hover:text-brand-500 transition-all" />
+                      <p className="mb-2 text-sm text-zinc-500 font-bold uppercase tracking-tight">Click to upload base image</p>
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest">PNG, JPG or WebP (MAX. 5MB)</p>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                  </label>
+                ) : (
+                  <div className="relative rounded-[2rem] overflow-hidden border-2 border-brand-500/20 shadow-lg group">
+                    <img src={inputImage} alt="Base" className="w-full h-48 object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                       <p className="text-white font-black text-[10px] uppercase tracking-widest">Image Ready</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <textarea
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
-                placeholder="Describe your task... (e.g., 'Write a poem about Barnia' or 'A futuristic city in the mountains')"
+                placeholder={
+                  type === 'image_to_video' 
+                  ? "Describe motion... (optional, e.g. 'Slow cinematic zoom in')" 
+                  : type === 'image_to_image'
+                  ? "How should we change the image? (e.g. 'Make it a winter theme')"
+                  : "Describe your task... (e.g., 'Write a poem about Barnia' or 'A futuristic city in the mountains')"
+                }
                 className="w-full h-48 bg-zinc-50 rounded-[2rem] p-8 text-lg font-bold text-zinc-900 placeholder:text-zinc-300 border-none focus:ring-4 focus:ring-brand-100 transition-all resize-none"
               />
               <button
                 onClick={() => handleSubmit()}
-                disabled={loading || !task.trim()}
+                disabled={loading || (!task.trim() && type !== 'image_to_video')}
                 className="absolute bottom-6 right-6 px-10 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/30 disabled:opacity-50 disabled:shadow-none"
               >
                 {loading ? (
@@ -227,6 +335,27 @@ export const AiRouterPage = () => {
           </div>
 
           <AnimatePresence mode="wait">
+            {pendingRequestId && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-amber-50 rounded-[3rem] p-12 border-2 border-amber-200 border-dashed text-center space-y-4"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                   <Clock size={32} className="text-amber-600" />
+                </div>
+                <h3 className="text-xl font-black text-amber-900 uppercase">Approval Pending</h3>
+                <p className="text-amber-700 font-medium max-w-md mx-auto">
+                  Your premium request has been sent to the developer for budget verification. 
+                  Once approved, it will automatically execute.
+                </p>
+                <div className="flex items-center justify-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                  <Loader2 size={12} className="animate-spin" />
+                  Monitoring real-time response from router
+                </div>
+              </motion.div>
+            )}
+
             {result && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -249,9 +378,9 @@ export const AiRouterPage = () => {
                 </div>
 
                 <div className="prose prose-zinc max-w-none">
-                  {result.type === 'image' || result.type === 'video' ? (
+                  {result.type === 'image' || result.type === 'video' || result.type === 'image_to_image' || result.type === 'image_to_video' ? (
                     <div className="rounded-[2rem] overflow-hidden border border-zinc-100 shadow-inner">
-                      {result.type === 'image' ? (
+                      {(result.type === 'image' || result.type === 'image_to_image') ? (
                         <img src={result.result} alt="Generated AI Content" className="w-full h-auto" />
                       ) : (
                         <video src={result.result} controls className="w-full h-auto" />
@@ -331,11 +460,11 @@ export const AiRouterPage = () => {
                   <div key={log.id} className="group relative">
                     <div className="flex items-start gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        log.type === 'image' ? 'bg-blue-50 text-blue-600' :
-                        log.type === 'video' ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600'
+                        (log.type === 'image' || log.type === 'image_to_image') ? 'bg-blue-50 text-blue-600' :
+                        (log.type === 'video' || log.type === 'image_to_video') ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600'
                       }`}>
-                        {log.type === 'image' ? <ImageIcon size={18} /> : 
-                         log.type === 'video' ? <Video size={18} /> : 
+                        {(log.type === 'image' || log.type === 'image_to_image') ? <ImageIcon size={18} /> : 
+                         (log.type === 'video' || log.type === 'image_to_video') ? <Video size={18} /> : 
                          <MessageSquare size={18} />}
                       </div>
                       <div className="min-w-0 flex-1">

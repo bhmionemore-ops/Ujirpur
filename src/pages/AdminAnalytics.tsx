@@ -45,6 +45,17 @@ interface InboundEmail {
   raw?: string;
 }
 
+interface AIRequest {
+  id: string;
+  userId: string;
+  userEmail: string;
+  task: string;
+  type: string;
+  cost: number;
+  status: 'pending' | 'completed' | 'denied';
+  createdAt: Timestamp;
+}
+
 export const AdminAnalytics = () => {
   const { isAdmin, user } = useFirebase();
   const { language, t: globalT } = useLanguage();
@@ -52,12 +63,14 @@ export const AdminAnalytics = () => {
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
+  const [aiRequests, setAiRequests] = useState<AIRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [diagData, setDiagData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<InboundEmail | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
   
   // Email Signature State
   const [adminName, setAdminName] = useState(user?.displayName || 'Your Name Here');
@@ -84,6 +97,47 @@ export const AdminAnalytics = () => {
       toast.error("Error seeding database.");
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const handleApproveAI = async (requestId: string) => {
+    if (!user?.uid) return;
+    setApproving(requestId);
+    try {
+      const res = await fetch('/api/admin/approve-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, adminId: user.uid })
+      });
+      if (res.ok) {
+        toast.success("AI Task approved and executed successfully!");
+      } else {
+        const data = await res.json();
+        toast.error(`Approval failed: ${data.error}`);
+      }
+    } catch (err) {
+      toast.error("Network error during approval.");
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleDenyAI = async (requestId: string) => {
+    if (!user?.uid) return;
+    if (!confirm("Are you sure you want to deny this premium AI request?")) return;
+    try {
+      const res = await fetch('/api/admin/deny-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, adminId: user.uid })
+      });
+      if (res.ok) {
+        toast.success("AI Task denied.");
+      } else {
+        toast.error("Failed to deny task.");
+      }
+    } catch (err) {
+      toast.error("Network error.");
     }
   };
 
@@ -188,6 +242,15 @@ export const AdminAnalytics = () => {
       } catch (e) {
         setError(e as Error);
       }
+    });
+
+    // Fetch AI Requests
+    const qAi = query(collection(db, 'pending_ai_requests'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubAi = onSnapshot(qAi, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIRequest));
+      setAiRequests(docs);
+    }, (err) => {
+      console.error("Error fetching AI requests:", err);
     });
 
     // Fetch diagnostic data
@@ -520,6 +583,105 @@ export const AdminAnalytics = () => {
                         <Mail size={48} className="text-zinc-100 mx-auto mb-4" />
                         <p className="text-zinc-400 font-medium text-sm">No emails received yet.</p>
                         <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Waiting for webhook data...</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending AI Approvals - NEW */}
+        <div className="space-y-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <Zap size={20} className="text-brand-600" />
+              Pending AI Approvals (Developer Protection)
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                  {aiRequests.filter(r => r.status === 'pending').length} Requests Waiting
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50 border-b border-zinc-100">
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Customer</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Details</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pricing</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Protection Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {aiRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-bold text-zinc-900">{req.userEmail}</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">Type: {req.type.toUpperCase()}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-medium text-zinc-600 line-clamp-1 italic">"{req.task || 'Media Animation'}"</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black px-2 py-0.5 bg-brand-50 text-brand-600 rounded-full">
+                             {req.cost} CREDITS
+                           </span>
+                           {req.cost >= 20 && (
+                             <span className="text-[8px] font-black px-2 py-0.5 bg-red-50 text-red-600 rounded-full animate-pulse">
+                               HIGH VALUE
+                             </span>
+                           )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-[10px] font-bold text-zinc-500">
+                          {req.createdAt?.toDate()?.toLocaleString() || 'Just now'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {req.status === 'pending' ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handleApproveAI(req.id)}
+                              disabled={approving === req.id}
+                              className="px-4 py-2 bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                              {approving === req.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                              Approve
+                            </button>
+                            <button 
+                              onClick={() => handleDenyAI(req.id)}
+                              className="px-4 py-2 border border-red-200 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all flex items-center gap-2"
+                            >
+                              <Trash2 size={12} />
+                              Deny
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${
+                            req.status === 'completed' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {req.status}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {aiRequests.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <Zap size={48} className="text-zinc-100 mx-auto mb-4" />
+                        <p className="text-zinc-400 font-medium text-sm">No premium AI tasks waiting for approval.</p>
+                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Router Protection system is active.</p>
                       </td>
                     </tr>
                   )}

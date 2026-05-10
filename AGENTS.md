@@ -13,7 +13,13 @@ The following areas are currently working perfectly and MUST NOT be modified or 
    - The news generation and cleanup background tasks are working.
    - Firestore rules for `news` are stable.
 
-3. **Email System:**
+3. **AI Router SaaS Logic:**
+   - **Cost Priority:** The system MUST prioritize saving the *developer's actual money* (API costs) over customer credits.
+   - **Hierarchy:** Always try **FREE** models first (cost $0.00 to developer), then **ECONOMY** budget models (DeepSeek/Qwen).
+   - **Protection:** Any task using premium models (GPT-4o/Claude) or costing >= 15 credits **MUST** trigger a `needsApproval` response.
+   - **Providers:** OpenRouter (Tiers), Alibaba DashScope (Economy), Flux (Image), Kling/Mock (Video).
+
+4. **Email System:**
    - SMTP is configured to use **Port 587** with **IPv4 forced** (`family: 4`) to ensure compatibility with production/cloud environments.
    - Welcome emails and test endpoints are verified.
 

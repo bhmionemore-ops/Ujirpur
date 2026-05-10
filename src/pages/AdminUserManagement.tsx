@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteField, where, getDocs } from 'firebase/firestore';
-import { Users, Shield, CheckCircle, XCircle, Search, ArrowLeft, User, Mail, Facebook, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Users, Shield, CheckCircle, XCircle, Search, ArrowLeft, User, Mail, Facebook, Trash2, ShieldCheck, ShieldAlert, CreditCard, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -15,6 +15,7 @@ interface UserData {
   photoURL: string;
   role: 'admin' | 'user';
   facebookId?: string;
+  credits?: number;
   createdAt?: any;
   lastLogin?: any;
 }
@@ -104,6 +105,22 @@ export const AdminUserManagement = () => {
     }
   };
 
+  const addCredits = async (userId: string, currentCredits: number = 0) => {
+    const amount = window.prompt('Enter amount of credits to add:', '50');
+    if (!amount || isNaN(parseInt(amount))) return;
+
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        credits: currentCredits + parseInt(amount)
+      });
+      toast.success(`Added ${amount} credits to user.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to add credits.');
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -179,10 +196,23 @@ export const AdminUserManagement = () => {
                       <Mail size={12} />
                       {u.email || 'No email'}
                     </p>
+                    <p className="text-brand-600 text-xs font-bold mt-1 flex items-center gap-1.5">
+                      <CreditCard size={12} />
+                      {u.credits || 0} Credits
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                  {/* Credits Top Up */}
+                  <button
+                    onClick={() => addCredits(u.id, u.credits)}
+                    className="flex-1 md:flex-none px-4 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20"
+                  >
+                    <Plus size={14} />
+                    Top Up
+                  </button>
+
                   {/* Verification Toggle */}
                   <button
                     onClick={() => toggleVerification(u.id, !!u.facebookId)}
