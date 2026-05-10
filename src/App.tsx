@@ -15,6 +15,7 @@ import { AdminAnalytics } from './pages/AdminAnalytics';
 import { AdminUserManagement } from './pages/AdminUserManagement';
 import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { VamshavaliPage } from './pages/VamshavaliPage';
+import { AiRouterPage } from './pages/AiRouterPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -381,6 +382,7 @@ function AppContent() {
           <Route path="/news/:date/:tab/:index" element={<Home />} />
           <Route path="/vamshavali" element={<VamshavaliPage />} />
           <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
+          <Route path="/ai-router" element={<AiRouterPage />} />
         </Routes>
       </main>
 

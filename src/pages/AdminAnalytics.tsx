@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -795,6 +795,25 @@ export const AdminAnalytics = () => {
               >
                 <Download size={18} />
               </a>
+            </div>
+
+            <div className="bg-white p-6 rounded-[2rem] border border-zinc-200 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center">
+                  <Zap size={24} className="text-brand-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-zinc-900">AI Router Hub</p>
+                  <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">SaaS Router Dashboard</p>
+                </div>
+              </div>
+              <Link 
+                to="/ai-router"
+                className="p-3 bg-zinc-900 text-white rounded-xl hover:bg-brand-600 transition-all shadow-lg shadow-zinc-900/10"
+                title="Open AI Router"
+              >
+                <ExternalLink size={18} />
+              </Link>
             </div>
           </div>
         </div>

@@ -31,8 +31,12 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   let lastError: any;
   
   const modelsToTry = [
-    options.model || "gemini-1.5-flash",
+    options.model || "gemini-3-flash-preview",
+    "gemini-3-flash-preview",
+    "gemini-2.0-flash-exp",
     "gemini-1.5-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro-latest",
     "gemini-1.5-pro",
     "gemini-pro"
   ];
@@ -67,9 +71,10 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
 
       const isQuotaExceeded = errorStr.includes("429") || errorStr.includes("quota") || errorStr.includes("resource_exhausted");
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
+      const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
       if (i < maxRetries) {
-        const baseDelay = isQuotaExceeded ? 15000 : (isUnavailable ? 5000 : 1000);
+        const baseDelay = isQuotaExceeded ? 15000 : (isUnavailable ? 5000 : (isNotFoundError ? 100 : 1000));
         const delay = (Math.pow(2, i) * baseDelay) + Math.random() * 1000;
         console.warn(`[Gemini] Retrying in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -109,7 +114,10 @@ import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs/promises";
+import fsSync from "fs";
 import fetch from "node-fetch";
+import axios from "axios";
+import rateLimit from "express-rate-limit";
 import admin from "firebase-admin";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
@@ -1504,7 +1512,14 @@ async function startServer() {
           // In AI Studio/Cloud Run, we often don't have a service account file.
           // Project-only initialization sometimes works for basic reads if the environment is scoped.
           // But for writes, it usually needs credentials.
-          if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+          if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            console.log("[Firebase] Using FIREBASE_SERVICE_ACCOUNT secret for Admin SDK.");
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            admin.initializeApp({
+              credential: admin.credential.cert(serviceAccount),
+              projectId: firebaseConfig.projectId
+            });
+          } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             admin.initializeApp({
               credential: admin.credential.applicationDefault(),
               projectId: firebaseConfig.projectId
@@ -4820,8 +4835,18 @@ _Note: If updates aren't appearing, ensure you are linked to the correct profile
       }
 
       if (command.action === "ADD" || command.action === "UPDATE") {
-        // Merge photo info if received
-        if (photoUrl) command.details.photo = photoUrl;
+        // Merge photo info if received - Convert to Base64 immediately to avoid Telegram URL expiration
+        if (photoUrl && photoUrl.includes('telegram.org')) {
+          console.log("[Telegram] Converting Telegram photo to permanent Base64 storage...");
+          const b64 = await fetchImageAsBase64(photoUrl);
+          if (b64) {
+             command.details.photo = `data:image/jpeg;base64,${b64}`;
+          } else {
+             command.details.photo = photoUrl; // Fallback
+          }
+        } else if (photoUrl) {
+          command.details.photo = photoUrl;
+        }
 
         if (!command.targetMember && command.clarificationMessage) {
           await sendMsg(`🤔 ${command.clarificationMessage}`);
@@ -5143,11 +5168,244 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     }
   });
 
+  // --- AI Router SaaS Implementation ---
+  const AI_COSTS = {
+    text: 1,
+    image: 5,
+    video: 20
+  };
+
+  const aiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, 
+    max: 10, 
+    message: { success: false, error: "Too many requests. Limit: 10 per minute." },
+    // Use the request identity if user is logged in, otherwise default to IP
+    keyGenerator: (req: any) => {
+      const id = req.body && req.body.userId ? req.body.userId : req['ip'];
+      return String(id || 'anon');
+    },
+    validate: { xForwardedForHeader: false, default: false }
+  });
+
+  async function getOpenRouterResponse(prompt: string, models: string[]) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
+
+    for (const model of models) {
+      try {
+        console.log(`[AI-Router] Trying OpenRouter model: ${model}`);
+        const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+          model,
+          messages: [{ role: "user", content: prompt }],
+        }, {
+          headers: { 
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://barnia.in",
+            "X-Title": "Barnia AI Router"
+          },
+          timeout: 30000
+        });
+        return { result: response.data.choices[0].message.content, modelUsed: model };
+      } catch (err: any) {
+        console.warn(`[AI-Router] OpenRouter error for ${model}:`, err.message);
+      }
+    }
+    throw new Error("All configured text models failed or are unavailable.");
+  }
+
+  async function getAlibabaResponse(prompt: string, model: string = "qwen-plus") {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) throw new Error("DASHSCOPE_API_KEY is not configured");
+
+    try {
+      console.log(`[AI-Router] Trying Alibaba DashScope model: ${model}`);
+      const response = await axios.post("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", {
+        model,
+        messages: [{ role: "user", content: prompt }],
+      }, {
+        headers: { 
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 30000
+      });
+      return { result: response.data.choices[0].message.content, modelUsed: `Alibaba/${model}` };
+    } catch (err: any) {
+      console.error(`[AI-Router] Alibaba Error for ${model}:`, err.response?.data || err.message);
+      throw err;
+    }
+  }
+
+  async function getFluxImageResponse(prompt: string) {
+    const apiKey = process.env.FLUX_API_KEY;
+    if (!apiKey) throw new Error("FLUX_API_KEY is not configured");
+    // Using Together AI or Fal.ai pattern for Flux
+    try {
+      const response = await axios.post("https://api.together.xyz/v1/images/generations", {
+        prompt: prompt,
+        model: "black-forest-labs/FLUX.1-schnell",
+        width: 1024,
+        height: 768,
+        steps: 4,
+        n: 1,
+        response_format: "url"
+      }, {
+        headers: { "Authorization": `Bearer ${apiKey}` }
+      });
+      return { result: response.data.data[0].url, modelUsed: "FLUX.1-schnell" };
+    } catch (err: any) {
+      console.error("[AI-Router] Flux Error:", err.response?.data || err.message);
+      throw new Error("Image generation failed. Please try again later.");
+    }
+  }
+
+  app.post("/api/ai", aiLimiter, async (req, res) => {
+    const { userId, task, type = "auto" } = req.body;
+
+    if (!userId) return res.status(400).json({ success: false, error: "userId is required" });
+    if (!task) return res.status(400).json({ success: false, error: "task is required" });
+
+    try {
+      // 1. Authenticate & Check Credits
+      // Support both Admin SDK and Client SDK fallback
+      const effectiveDb = adminDb || db;
+      if (!effectiveDb) throw new Error("Database not connected");
+
+      const userRef = adminDb 
+        ? adminDb.collection("users").doc(userId)
+        : doc(db!, "users", userId);
+      
+      const userDoc = adminDb ? await userRef.get() : await getDoc(userRef);
+      
+      if (!userDoc.exists || (adminDb ? !userDoc.exists : !userDoc.exists())) {
+        // Auto-create user with starter credits
+        const initialData = {
+          credits: 10,
+          email: "user@barnia.in",
+          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+          serverKey: adminDb ? undefined : "barnia-system-2024-v1"
+        };
+        
+        if (adminDb) {
+          await userRef.set(initialData);
+        } else {
+          await setDoc(userRef as any, initialData);
+        }
+      }
+      
+      const userData = (adminDb ? userDoc.data() : userDoc.data()) || { credits: 10 };
+      const currentCredits = userData.credits || 0;
+
+      // 2. Detect Type if 'auto'
+      let finalType = type;
+      if (type === "auto") {
+        const detectionPrompt = `Identify the task type (text, image, video) for this request: "${task}". Return ONLY the word.`;
+        const geminiKey = await getGeminiApiKey();
+        if (geminiKey) {
+          const detection = await callGeminiWithRetry(geminiKey, { contents: detectionPrompt });
+          const dt = detection.text.toLowerCase();
+          if (dt.includes("image")) finalType = "image";
+          else if (dt.includes("video")) finalType = "video";
+          else finalType = "text";
+        } else {
+          finalType = "text"; // Fallback
+        }
+      }
+
+      const cost = AI_COSTS[finalType as keyof typeof AI_COSTS] || 1;
+
+      if (currentCredits < cost) {
+        return res.status(403).json({ 
+          success: false, 
+          error: "Insufficient credits", 
+          required: cost, 
+          current: currentCredits 
+        });
+      }
+
+      // 3. Routing & Model Selection
+      let response;
+      if (finalType === "image") {
+        response = await getFluxImageResponse(task);
+      } else if (finalType === "video") {
+        // Video is expensive, return approval request if not pre-approved
+        if (!req.body.approved) {
+          return res.json({
+            needsApproval: true,
+            cost: cost,
+            message: `Video generation costs ${cost} credits. Proceed?`
+          });
+        }
+        // Mock Video Response for now as Kling/Hailuo API access varies
+        response = { 
+          result: "https://cdn.pixabay.com/video/2023/10/21/185854-876615554_tiny.mp4", 
+          modelUsed: "Kling-v1 (Mock)" 
+        };
+      } else {
+        // Text Routing: Try Alibaba first if available (often more stable/faster in Asia), then OpenRouter
+        if (process.env.DASHSCOPE_API_KEY) {
+          try {
+            response = await getAlibabaResponse(task, "qwen-plus");
+          } catch (e) {
+            console.warn("[AI-Router] Alibaba failed, falling back to OpenRouter...");
+            const models = ["openrouter/free", "deepseek/deepseek-chat", "qwen/qwen-2.5-7b-instruct"];
+            response = await getOpenRouterResponse(task, models);
+          }
+        } else {
+          const models = ["openrouter/free", "deepseek/deepseek-chat", "qwen/qwen-2.5-7b-instruct"];
+          response = await getOpenRouterResponse(task, models);
+        }
+      }
+
+      // 4. Deduct Credits & Log Usage
+      const newCredits = currentCredits - cost;
+      
+      if (adminDb) {
+        await userRef.update({ credits: newCredits });
+        await adminDb.collection("usage").add({
+          userId,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          task,
+          type: finalType,
+          cost,
+          modelUsed: response.modelUsed
+        });
+      } else {
+        await updateDoc(userRef as any, { 
+          credits: newCredits,
+          serverKey: "barnia-system-2024-v1" 
+        });
+        await addDoc(collection(db!, "usage"), {
+          userId,
+          timestamp: serverTimestamp(),
+          task,
+          type: finalType,
+          cost,
+          modelUsed: response.modelUsed,
+          serverKey: "barnia-system-2024-v1"
+        });
+      }
+
+      res.json({
+        success: true,
+        type: finalType,
+        result: response.result,
+        modelUsed: response.modelUsed,
+        cost,
+        remainingCredits: newCredits
+      });
+
+    } catch (error: any) {
+      console.error("[AI-Router] Runtime Error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   let vite: any;
   // Endpoint to download doc tex
   app.get("/api/admin/download-docs", async (req, res) => {
     const filePath = path.join(process.cwd(), 'project_documentation.tex');
-    if (fs.existsSync(filePath)) {
+    if (fsSync.existsSync(filePath)) {
       res.download(filePath, 'project_documentation.tex');
     } else {
       res.status(404).json({ error: "Documentation file not found." });
