@@ -18,7 +18,7 @@ process.on('unhandledRejection', (err: any) => {
 
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
 import crypto from "crypto";
 
@@ -28,45 +28,40 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  * Helper to call Gemini with exponential backoff and model fallbacks
  */
 async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3) {
-  const genAI = new GoogleGenerativeAI(apiKey);
+  const ai = new GoogleGenAI({ apiKey });
   let lastError: any;
   
   const modelsToTry = [
-    options.model || "gemini-1.5-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro"
+    options.model || "gemini-3-flash-preview",
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview"
   ];
   
   for (let i = 0; i <= maxRetries; i++) {
-    const rawModelName = modelsToTry[i % modelsToTry.length];
-    const modelName = rawModelName.startsWith("models/") ? rawModelName : `models/${rawModelName}`;
+    const currentModel = modelsToTry[i % modelsToTry.length];
     
     try {
-      console.log(`[Gemini] Requesting ${modelName}... (Attempt ${i+1}/${maxRetries+1})`);
-      const model = genAI.getGenerativeModel({ model: modelName });
+      console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
       
-      const generationConfig = options.config || options.generationConfig || {};
-      
-      const result = await model.generateContent({
+      const response = await ai.models.generateContent({
+        model: currentModel,
         contents: options.contents,
-        generationConfig
+        config: options.config || options.generationConfig || {}
       });
       
-      const response = result.response;
-      const textValue = response.text();
+      const textValue = response.text;
       
       if (textValue) {
-        console.log(`[Gemini] Success with ${modelName}`);
+        console.log(`[Gemini] Success with ${currentModel}`);
         return { text: textValue };
       }
       
-      console.warn(`[Gemini] ${modelName} returned empty response.`);
+      console.warn(`[Gemini] ${currentModel} returned empty response.`);
       continue;
     } catch (error: any) {
       lastError = error;
       const errorStr = (error?.message || String(error)).toLowerCase();
-      console.warn(`[Gemini] Error with ${modelName}:`, errorStr);
+      console.warn(`[Gemini] Error with ${currentModel}:`, errorStr);
 
       const isQuotaExceeded = errorStr.includes("429") || errorStr.includes("quota") || errorStr.includes("resource_exhausted");
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
@@ -1719,10 +1714,9 @@ async function startServer() {
       try {
         const geminiKey = await getGeminiApiKey();
         if (geminiKey) {
-           const genAI = new GoogleGenerativeAI(geminiKey);
-           const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
-           const response = await model.generateContent("Hi");
-           geminiStatus = response.response.text() ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
+           const ai = new GoogleGenAI({ apiKey: geminiKey });
+           const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
+           geminiStatus = response.text ? "✅ Gemini AI is working! (Gemini 3 Flash)" : "❌ Gemini returned empty response";
         } else {
            geminiStatus = "❌ Gemini API Key Missing (Required for AI features)";
         }
@@ -4795,10 +4789,9 @@ async function fetchImageAsBase64(url: string) {
         
         let geminiStatus = "Checking...";
         try {
-          const aiTest = new GoogleGenerativeAI(geminiKey);
-          const model = aiTest.getGenerativeModel({ model: "gemini-1.5-flash" });
-          const response = await model.generateContent("Hi");
-          geminiStatus = response.response.text() ? "✅ Gemini 1.5-flash ACTIVE" : "❌ Gemini Empty";
+          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
+          geminiStatus = response.text ? "✅ Gemini 3-flash ACTIVE" : "❌ Gemini Empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
