@@ -22,6 +22,11 @@ import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
 import crypto from "crypto";
 import twilio from "twilio";
+import dns from "dns";
+
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 
@@ -112,7 +117,6 @@ async function getTelegramBotToken(): Promise<string | null> {
   return token ? token.trim() : null;
 }
 import nodemailer from "nodemailer";
-import dns from "dns";
 import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import path from "path";
@@ -1647,9 +1651,11 @@ async function startServer() {
   // Verify transporter on startup
   transporter.verify((error, success) => {
     if (error) {
-      console.error('[Server] Email Transporter Verification Failed:', error.message);
+      console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
+      console.error('[Server] ❌ Error Details:', JSON.stringify(error, null, 2));
+      console.error('[Server] 💡 Tip: Verify your App Password and ensure IPv4 is enabled in your environment.');
     } else {
-      console.log('[Server] Email Transporter is ready to send messages');
+      console.log('[Server] ✅ Email Transporter is ready to send messages');
     }
   });
 
@@ -4577,7 +4583,8 @@ async function fetchImageAsBase64(url: string) {
 
     // 1. Send Email to Admin (Async)
     if (transporter) {
-      const senderEmail = process.env.EMAIL_USER || "no-reply@barnia.in";
+      const senderEmail = emailUser || process.env.EMAIL_USER || "no-reply@barnia.in";
+      console.log(`[LeadGen] Attempting specialized email from ${senderEmail} to ${adminEmail}`);
       transporter.sendMail({
         from: `"Barnali AI Bot" <${senderEmail}>`,
         to: adminEmail,
@@ -4589,10 +4596,10 @@ async function fetchImageAsBase64(url: string) {
           <hr />
           <p>Please follow up with this user immediately to close the deal!</p>
         </div>`
-      }).then(() => console.log("[LeadGen] ✅ Notification Email Sent to:", adminEmail))
-        .catch(e => console.error("[LeadGen] ❌ Email Failed:", e.message));
+      }).then(() => console.log(`[LeadGen] ✅ Email Sent Successfully to ${adminEmail}`))
+        .catch(e => console.error(`[LeadGen] ❌ Email Sending Failed for ${adminEmail}:`, e.message));
     } else {
-       console.warn("[LeadGen] ⚠️ No email transporter configured.");
+       console.warn("[LeadGen] ⚠️ No email transporter available in scope.");
     }
 
     // 2. Send Telegram Notification to Admin
