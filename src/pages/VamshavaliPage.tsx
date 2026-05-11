@@ -15,6 +15,7 @@ import Markdown from 'react-markdown';
 import { useFirebase } from '../FirebaseContext';
 import { useLanguage } from '../LanguageContext';
 import { Language } from '../i18n';
+import { useTracking } from '../TrackingContext';
 import { db, onSnapshot, doc } from '../firebase';
 
 interface FamilyMember {
@@ -522,6 +523,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
   const { language, setLanguage, t: globalT } = useLanguage();
   const { user, signIn, signInWithFacebook, setAuthModalOpen } = useFirebase();
+  const { logEvent } = useTracking();
 
   useEffect(() => {
     // If the authenticated user changes, and we are in login step, we can try to fetch their profile
@@ -534,6 +536,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
               const data = await res.json();
               setProfile(data);
               setStep('dashboard');
+              logEvent('vamshavali_social_login', { email: user.email, profileId: data.id });
               toast.success("Welcome to your Vamshavali Dashboard");
             } else {
               // Profile doesn't exist yet, auto-create a basic one for social users
@@ -758,6 +761,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       if (res.ok) {
         setProfile(data.profile);
         setStep('dashboard');
+        logEvent('vamshavali_otp_login', { email, profileId: data.profile.id });
         toast.success("Welcome to your Vamshavali Dashboard");
       } else {
         toast.error(data.error || "Invalid OTP");

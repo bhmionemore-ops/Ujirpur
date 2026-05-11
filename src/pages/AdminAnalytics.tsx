@@ -356,6 +356,10 @@ export const AdminAnalytics = () => {
     return acc;
   }, {} as Record<string, number>);
 
+  const lineageLogins = sessions.filter(s => 
+    s.events?.some(e => e.includes('vamshavali_login'))
+  ).sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
+
   const sortedChartData = Object.entries(dailyTraffic)
     .map(([date, count]) => ({ 
       date, 
@@ -637,7 +641,7 @@ export const AdminAnalytics = () => {
                            </span>
                            {req.cost >= 20 && (
                              <span className="text-[8px] font-black px-2 py-0.5 bg-red-50 text-red-600 rounded-full animate-pulse">
-                               HIGH VALUE
+                                HIGH VALUE
                              </span>
                            )}
                         </div>
@@ -682,6 +686,99 @@ export const AdminAnalytics = () => {
                         <Zap size={48} className="text-zinc-100 mx-auto mb-4" />
                         <p className="text-zinc-400 font-medium text-sm">No premium AI tasks waiting for approval.</p>
                         <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Router Protection system is active.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Family Tree Portal Activity - NEW */}
+        <div className="space-y-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <Landmark size={20} className="text-[#064e3b]" />
+              Family Tree Portal Logs (Lineage System)
+            </h2>
+            <div className="px-4 py-2 bg-[#fdfbf7] rounded-xl border border-[#d4af37]/20">
+              <p className="text-[10px] font-black text-[#064e3b] uppercase tracking-widest">
+                {lineageLogins.length} Active Generations
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#fdfbf7] border-b border-[#d4af37]/10">
+                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Archivist (User)</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Login Type</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Profile ID</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Last Activity</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest text-right">Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {lineageLogins.map((req) => {
+                    const loginEvent = req.events?.find(e => e.includes('vamshavali_login')) || '';
+                    const isSocial = loginEvent.includes('social');
+                    let profileId = 'Pending';
+                    try {
+                      if (loginEvent.includes('{')) {
+                        const jsonStr = loginEvent.split(': ')[1];
+                        const data = JSON.parse(jsonStr);
+                        profileId = data.profileId || profileId;
+                      }
+                    } catch(e) {}
+
+                    return (
+                      <tr key={req.id} className="hover:bg-[#fdfbf7]/40 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-[#064e3b] flex items-center justify-center text-[#d4af37]">
+                              <User size={14} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-900">{req.email || 'Anonymous Keeper'}</p>
+                              <p className="text-[10px] text-zinc-400 font-medium">Session: {req.id.substring(0, 8)}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                            isSocial ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                          }`}>
+                            {isSocial ? 'Social OAuth' : 'OTP Verified'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                           <code className="text-[10px] bg-zinc-100 px-2 py-1 rounded font-mono text-zinc-600">
+                             {profileId}
+                           </code>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-[10px] font-bold text-zinc-500">
+                            {req.lastSeen?.toDate()?.toLocaleString() || 'Live'}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2 text-zinc-500 font-bold text-[10px]">
+                             <MapPin size={10} />
+                             {req.city}, {req.country}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {lineageLogins.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <Landmark size={48} className="text-zinc-100 mx-auto mb-4" />
+                        <p className="text-zinc-400 font-medium text-sm">No lineage archives accessed recently.</p>
+                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Barnali Registry is waiting for genealogists.</p>
                       </td>
                     </tr>
                   )}
@@ -790,8 +887,11 @@ export const AdminAnalytics = () => {
                       <tr key={session.id} className="hover:bg-zinc-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-zinc-900 truncate max-w-[150px]">
+                            <span className="text-xs font-bold text-zinc-900 truncate max-w-[150px] flex items-center gap-2">
                               {session.email || `Guest (${session.id.substring(0, 6)})`}
+                              {session.events?.some(e => e.includes('vamshavali_')) && (
+                                <span className="w-2 h-2 rounded-full bg-[#064e3b] shadow-[0_0_5px_#064e3b]" title="Lineage Archivist" />
+                              )}
                             </span>
                             <span className="text-[10px] text-zinc-400 font-mono">{session.ip}</span>
                           </div>

@@ -17,7 +17,8 @@ The following areas are currently working perfectly and MUST NOT be modified or 
    - **Cost Priority:** The system MUST prioritize saving the *developer's actual money* (API costs) over customer credits.
    - **Hierarchy:** Always try **FREE** models first (cost $0.00 to developer), then **ECONOMY** budget models (DeepSeek/Qwen).
    - **Protection:** Any task using premium models (GPT-4o/Claude) or costing >= 15 credits **MUST** trigger a `needsApproval` response.
-   - **Providers:** OpenRouter (Tiers), Alibaba DashScope (Economy), Flux (Image), Kling/Mock (Video).
+   - **Providers:** OpenRouter (Tiers), Alibaba DashScope (Economy), Flux (Image), MiniMax/Hailuo (Video).
+   - **API Ownership:** The Keys `DASHSCOPE_API_KEY`, `MINIMAX_API_KEY`, and `OPENROUTER_API_KEY` are strictly dedicated to the **AI Router Hub** and **Barnali AI** features. These integrations must NOT be modified, refactored, or repurposed for other tools without explicit permission from the user.
 
 4. **Email System:**
    - SMTP is configured to use **Port 587** with **IPv4 forced** (`family: 4`) to ensure compatibility with production/cloud environments.
