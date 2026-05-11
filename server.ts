@@ -59,7 +59,7 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
           contents: options.contents,
           config: options.config || options.generationConfig || { temperature: 0.7 }
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Gemini Request Timeout (45s) for ${currentModel}`)), 45000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Gemini Request Timeout (25s) for ${currentModel}`)), 25000))
       ]) as any;
       
       const textValue = response.text;
@@ -4924,107 +4924,52 @@ _Use '/link <id>' if features are missing._`);
         return;
       }
 
-      const prompt = `Barnali AI Router & Archive Assistant.
-      Priority Rules:
-      1. Primary: Help customers build and manage their Family Tree (Vamshavali).
-      2. Secondary: Promote AI Hub (Image/Video) ONLY if users are interested in AI or premium features. 
-      3. Info: To add credits or upgrade, users should go to "/upgrade" page.
-      4. Lead Generation (CRITICAL): If the message contains a Name, Email, or Phone number, OR if the user expresses interest in "premium", "upgrade", "buy credits", or "contact support", action MUST be "LEAD".
-      5. Sentiment Analysis: Detect the user's mood (happy, interested, curious, angry, neutral).
-      
-      Analyze message: "${text}"
-      
-      Extract JSON:
-      { 
-        "action": "ADD" | "UPDATE" | "DELETE" | "LINK" | "CHAT" | "LEAD", 
-        "taskType": "text" | "image" | "video",
-        "sentiment": "string (mood)",
-        "targetMember": "name", 
-        "details": { 
-          "role": "string", "name": "string", "field": "kuldevi"|"gotra"|"name",
-          "leadInfo": { "name": "string", "email": "string", "phone": "string" }
-        },
-        "userQuestion": "Short, clear prompt for AI Hub if CHAT"
-      }
+      // ⚡ INSTANT FEEDBACK
+      await sendMsg(`🤖 *Barnali Typing...*`);
 
-      LEAD Detection Logic:
-      - If user says: "My name is X, email Y, phone Z" -> Action: LEAD.
-      - If user provides ONLY an email like "test@me.com" -> Action: LEAD.
-      - If user asks: "How much for premium?" -> LEAD (if they are ready to discuss) or CHAT (if they just ask).
-      
-      Persona: Professional CLEAR and SHORT. No fluff. Focus on family lineage. NEVER invent UI buttons.
-      If user interest is high, set action as LEAD and extract details.
-      Examples:
-      - 'My name is John, email john@me.com' -> { "action": "LEAD", "sentiment": "interested", "details": { "leadInfo": { "name": "John", "email": "john@me.com" } } }
-      - 'I want to upgrade, contact me 1234' -> { "action": "LEAD", "sentiment": "excited", "details": { "leadInfo": { "phone": "1234" } } }`;
-
-      let contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
-      if (photoUrl) {
-        const base64 = await fetchImageAsBase64(photoUrl);
-        if (base64) {
-          contents[0].parts.push({
-            inlineData: {
-              data: base64,
-              mimeType: "image/jpeg"
-            }
-          });
-        }
-      }
-
-      console.log("[Telegram] Calling Gemini for Routing Extraction...");
-      let response;
-      try {
-        response = await callGeminiWithRetry(geminiKey, { 
-          model: "gemini-1.5-flash",
-          contents: contents,
-          config: { 
-            responseMimeType: "application/json",
-            temperature: 0.1
-          }
-        });
-      } catch (geminiError) {
-        // Keyword Fallback for specific kuldevi update
-        const lowerText = text.toLowerCase();
-        if ((lowerText.includes("kuldevi") || lowerText.includes("kuldavi")) && (lowerText.includes("update") || lowerText.includes("add"))) {
-           const nameMatch = text.match(/(?:name\s+)?([a-z0-9]+)$/i);
-           const detectedName = nameMatch ? nameMatch[1] : (lowerText.includes("arkhanarirshor") ? "arkhanarirshor" : null);
-           if (detectedName) {
-              console.log("[Telegram] Using keyword fallback for kuldevi update");
-              response = { text: JSON.stringify({ action: "UPDATE", targetMember: "me", details: { field: "kuldevi", name: detectedName } }) };
-           } else {
-             throw geminiError;
-           }
-        } else {
-          // If Gemini fails, default to a CHAT task for generic routing
-          response = { text: JSON.stringify({ action: "CHAT", taskType: "text", userQuestion: text }) };
-        }
-      }
-      
-      let responseText = response.text || "{}";
-      console.log("[Telegram] Gemini Response:", responseText);
-      
-      // Sanitization: Remove markdown code blocks if present
-      responseText = responseText.trim();
-      if (responseText.startsWith("```")) {
-        responseText = responseText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "").trim();
-      }
+      // FAST TRACK: Keywords for Leads
+      const lowText = text.toLowerCase();
+      const quickLeadMatch = lowText.includes("upgrade") || lowText.includes("premium") || lowText.includes("buy credits") || lowText.includes("contact");
       
       let command;
-      try {
-        command = JSON.parse(responseText);
-      } catch (e) {
-        console.error("[Telegram] JSON Parse Error:", e, "Raw output:", responseText);
-        await sendMsg("🤔 I understood your message but couldn't process the update format. Could you rephrase your request? (e.g., 'Add Rahul as son of Kedar')");
-        return;
+      if (quickLeadMatch) {
+         console.log("[Telegram] FAST TRACK Lead Detected");
+         command = { action: "LEAD", details: { leadInfo: {} }, sentiment: "interested" };
+      } else {
+        const routingPrompt = `[Task: Route user intent]. Analyze: "${text}". 
+        Options: ADD, UPDATE, DELETE, LINK, CHAT, LEAD. 
+        Output strictly JSON: { "action": "...", "taskType": "text"|"image", "sentiment": "...", "details": { "leadInfo": { "name":"", "email":"" } } }`;
+
+        let contents: any[] = [{ role: 'user', parts: [{ text: routingPrompt }] }];
+        if (photoUrl) {
+          const base64 = await fetchImageAsBase64(photoUrl);
+          if (base64) contents[0].parts.push({ inlineData: { data: base64, mimeType: "image/jpeg" } });
+        }
+
+        console.log("[Telegram] Calling Gemini for Fast Routing...");
+        try {
+          const response = await callGeminiWithRetry(geminiKey, { 
+            model: "gemini-1.5-flash",
+            contents: contents,
+            config: { responseMimeType: "application/json", temperature: 0.1 }
+          });
+          command = JSON.parse(response.text || "{}");
+        } catch (e) {
+          command = { action: "CHAT", taskType: "text", userQuestion: text };
+        }
+      }
+
+      // Sanitization (if command came from AI)
+      if (typeof command === 'string') {
+        try { command = JSON.parse(command); } catch(e) { command = { action: "CHAT" }; }
       }
 
       if (command.action === "CHAT") {
         const isTextTask = command.taskType === "text" || !command.taskType;
         
         if (isTextTask) {
-          await sendMsg(`🤖 *Barnali Typing...*`);
           try {
-            console.log(`[Telegram] Starting Chat: ${chatId}`);
+            console.log(`[Telegram] Starting Multi-Model Brain for: ${chatId}`);
             const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
             // AGGRESSIVE LEAD CAPTURE INSTRUCTIONS
             const chatPrompt = `[Persona: Barnali Assistant. Tone: Warm, Helpful, Short.]
@@ -5109,7 +5054,7 @@ _Use '/link <id>' if features are missing._`);
         }
 
         // Image/Video tasks still use the AI Router
-        await sendMsg(`🤖 *Barnali Typing...* (using AI Router)`);
+        console.log(`[Telegram] AI Router Engagement for: ${chatId}`);
         
         try {
           // Attempt to find a linked user for credit management
@@ -5312,76 +5257,58 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   app.post("/api/webhooks/whatsapp", async (req, res) => {
     try {
       const body = req.body;
-      console.log("[WhatsApp] Received Message Body:", JSON.stringify(body, null, 2));
-
-      // Meta sends a lot of metadata, we need to extract the message
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const message = value?.messages?.[0];
 
-      if (!message) {
-        return res.sendStatus(200); // Not a message event (likely a status update)
-      }
+      if (!message) return res.sendStatus(200);
 
-      const from = message.from; // User's phone number
+      const from = message.from;
       const text = message.text?.body || "";
       const phoneNumberId = value?.metadata?.phone_number_id;
 
-      res.sendStatus(200); // Acknowledge receipt to Meta
+      res.sendStatus(200);
 
       const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-      if (!accessToken || !phoneNumberId) {
-        console.warn("[WhatsApp] Configuration missing (Token or Phone ID)");
-        return;
-      }
+      if (!accessToken || !phoneNumberId) return;
 
-      // Helper to send WhatsApp messages via Meta Cloud API
       const sendWhatsAppMsg = async (to: string, content: string) => {
         try {
           await fetch(`https://graph.facebook.com/v17.0/${phoneNumberId}/messages`, {
             method: "POST",
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
-              to: to,
-              type: "text",
-              text: { body: content }
-            })
+            headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: content } })
           });
-          console.log(`[WhatsApp] Sent response to ${to}`);
-        } catch (err: any) {
-          console.error("[WhatsApp] API Error:", err.message);
-        }
+        } catch (e: any) { console.error("[WhatsApp] API Error:", e.message); }
       };
 
-      if (text) {
-        const lowerText = text.toLowerCase().trim();
-        if (lowerText === "hi" || lowerText === "hello" || lowerText === "start") {
-          await sendWhatsAppMsg(from, "Namaste! 🙏 I am Barnali, your Family Archive Keeper. I'm now available on WhatsApp for free! I can help with your Vamshavali (Family Tree) or AI Hub questions. How can I assist you today?");
-          return;
-        }
+      if (!text) return;
 
-        console.log(`[WhatsApp] Typing for ${from}...`);
-        const geminiKey = process.env.GEMINI_API_KEY;
-        const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
-        
-        const chatPromptBase = `[Persona: Barnali Assistant on WhatsApp. Tone: Human-like, Respectful, Concise.]
-        GUIDELINES:
-        1. Help with Family Archive/Vamshavali.
-        2. LEAD CAPTURE: If user wants premium/AI Hub, ask for Name, Email, and Phone.
-        3. If they give any detail, acknowledge it warmly and ask for the remaining bits.
-        4. NEVER refuse to capture info. You act as the intake agent for Barnali archives.
-        5. Link for form: ${host}/upgrade
-        User: ${text}`;
-        
-        // 1. Routing Attempt
-        let command = { action: "CHAT", sentiment: "interested", details: { leadInfo: {} }, userQuestion: text };
+      const lowerText = text.toLowerCase().trim();
+      if (lowerText === "hi" || lowerText === "hello" || lowerText === "start") {
+        await sendWhatsAppMsg(from, "Namaste! 🙏 I am Barnali. I'm ready to help with your Family Tree or Premium AI Hub! How can I assist you today?");
+        return;
+      }
+
+      // 🚨 FAST FEEDBACK: Inform user we are processing immediately
+      console.log(`[WhatsApp] ⚡ Quick acknowledgment to ${from}`);
+      await sendWhatsAppMsg(from, "🤖 *Barnali Typing...*");
+
+      // FAST TRACK: Keywords for Leads
+      const quickLeadMatch = lowerText.includes("upgrade") || lowerText.includes("premium") || lowerText.includes("buy credits") || (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || text.match(/\+?\d{10,}/));
+      
+      const geminiKey = process.env.GEMINI_API_KEY;
+      const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
+      const chatPromptBase = `[Persona: Barnali Assistant. Tone: Human-like, Concise. Focus: Vamshavali/AI Hub. Upgrade Link: ${host}/upgrade] User: ${text}`;
+      
+      let command = { action: "CHAT", sentiment: "interested", details: { leadInfo: {} } };
+      if (quickLeadMatch) {
+         console.log("[WhatsApp] FAST TRACK Lead Detected");
+         command.action = "LEAD";
+      } else {
         try {
-          const routingPrompt = `Identify intent & sentiment for: "${text}". Output JSON: { "action": "CHAT"|"LEAD", "sentiment": "string", "details": { "leadInfo": { "name": "...", "email": "...", "phone": "..." } } }`;
+          const routingPrompt = `Identify intent for: "${text}". JSON: { "action": "CHAT"|"LEAD", "details": { "leadInfo": { "name": "", "email": "" } } }`;
           const routeRes = await callGeminiWithRetry(geminiKey!, { 
              contents: [{ role: 'user', parts: [{ text: routingPrompt }] }],
              config: { responseMimeType: "application/json", temperature: 0.1 }
@@ -5392,6 +5319,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         } catch (e) {
           console.warn("[WhatsApp] Routing extraction failed, defaulting to CHAT");
         }
+      }
 
         if (command.action === "LEAD") {
           await handleLeadAction(from, "WhatsApp", command.details?.leadInfo || {}, text, async (m) => { await sendWhatsAppMsg(from, m); }, command.sentiment || "interested");
@@ -5420,7 +5348,6 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         }
 
         await sendWhatsAppMsg(from, `💌 Barnali: ${finalReply}`);
-      }
     } catch (err: any) {
       console.error("[WhatsApp] Global Webhook Error:", err.message);
       res.sendStatus(500);
