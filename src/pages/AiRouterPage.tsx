@@ -62,11 +62,16 @@ export const AiRouterPage = () => {
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [showApiDocs, setShowApiDocs] = useState(false);
 
+  const [showNoCredits, setShowNoCredits] = useState(false);
+  const [requiredCredits, setRequiredCredits] = useState(0);
+
   useEffect(() => {
     if (!user || !db) return;
     const keyRef = doc(db, 'api_keys', user.uid);
     const unsubKey = onSnapshot(keyRef, (snap) => {
       if (snap.exists()) setApiKey(snap.data().apiKey);
+    }, (err) => {
+      console.warn("[Firebase] API Key read error:", err.message);
     });
     return () => unsubKey();
   }, [user]);
@@ -125,12 +130,18 @@ export const AiRouterPage = () => {
   useEffect(() => {
     if (!user || !db) return;
 
-    // Real-time credits listener
+    // Real-time credits listener - Check both 'users' and possibly a dedicated 'ai_credits' if exists
+    // The previous implementation used 'users' collection
     const userRef = doc(db, 'users', user.uid);
     const unsubCredits = onSnapshot(userRef, (doc) => {
       if (doc.exists()) {
         setCredits(doc.data().credits || 0);
+      } else {
+        console.log("[Firebase] User profile not found for credits, defaulting to 0");
+        setCredits(0);
       }
+    }, (err) => {
+      console.error("[Firebase] Credits read permission error:", err.message);
     });
 
     // Recent usage logs listener
@@ -147,6 +158,8 @@ export const AiRouterPage = () => {
         ...doc.data()
       })) as UsageLog[];
       setLogs(newLogs);
+    }, (err) => {
+       console.warn("[Firebase] Usage logs read error:", err.message);
     });
 
     return () => {
@@ -171,6 +184,20 @@ export const AiRouterPage = () => {
     reader.readAsDataURL(file);
   };
 
+  const calculateCost = () => {
+    if (type === 'text') return 1;
+    if (type === 'image') return 15;
+    if (type === 'image_to_image') return 20;
+    if (type === 'video') return 50;
+    if (type === 'image_to_video') return 45;
+    return 1; // Default
+  };
+
+  const handleTopUp = () => {
+    const botUser = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot';
+    window.open(`https://t.me/${botUser}`, '_blank');
+  };
+
   const handleSubmit = async (isApproved = false) => {
     if (!user) {
       toast.error('Please login to use AI Router');
@@ -181,9 +208,17 @@ export const AiRouterPage = () => {
        return;
     }
 
+    const estimatedCost = calculateCost();
+    if (credits < estimatedCost && !isApproved) {
+      setRequiredCredits(estimatedCost);
+      setShowNoCredits(true);
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setApprovalRequest(null);
+    setShowNoCredits(false);
 
     try {
       const response = await fetch('/api/ai', {
@@ -240,6 +275,56 @@ export const AiRouterPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 md:py-20 lg:px-8">
+      {/* Insufficient Credits Modal */}
+      <AnimatePresence>
+        {showNoCredits && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-brand-500" />
+              <button 
+                onClick={() => setShowNoCredits(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-zinc-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-zinc-400" />
+              </button>
+
+              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CreditCard size={40} className="text-amber-500" />
+              </div>
+
+              <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight mb-4">
+                Insufficient Credits
+              </h3>
+              
+              <p className="text-zinc-500 font-bold mb-8">
+                This task requires <span className="text-brand-600">{requiredCredits} credits</span>, but you only have <span className="text-zinc-900">{credits}</span>. Please top up to continue.
+              </p>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleTopUp}
+                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-brand-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-brand-500/20"
+                >
+                  <MessageSquare size={18} />
+                  Top Up via Barnali Bot
+                </button>
+                <button
+                  onClick={() => setShowNoCredits(false)}
+                  className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div className="space-y-4">
@@ -268,8 +353,8 @@ export const AiRouterPage = () => {
             <p className="text-3xl font-black text-zinc-900 tracking-tight">{credits}</p>
           </div>
           <button 
-            onClick={() => toast.info("To add more credits, please contact the administrator (Barnali Support). For demo purposes, admins can top up users via the Admin Panel.")}
-            className="ml-4 p-3 bg-zinc-100 rounded-xl hover:bg-zinc-200 transition-all text-zinc-600 font-black text-[10px] uppercase tracking-widest"
+            onClick={handleTopUp}
+            className="ml-4 p-3 bg-brand-600 rounded-xl hover:bg-brand-700 transition-all text-white font-black text-[10px] uppercase tracking-widest"
           >
             Top Up
           </button>

@@ -4901,6 +4901,22 @@ _Use '/link <id>' if features are missing._`);
       }
 
       if (command.action === "CHAT") {
+        const isTextTask = command.taskType === "text" || !command.taskType;
+        
+        if (isTextTask) {
+          await sendMsg(`🤖 *Barnali Thinking...*`);
+          try {
+            const chatPrompt = `[Persona: Barnali Family Archive Keeper. Guidelines: 1. Help with Vamshavali (Family Tree). 2. Promote AI Router for Image/Video Hub if interested. 3. Upgrade/Credits: AI Router page. 4. If asked for premium/upgrade, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff.] User: ${command.userQuestion || text}`;
+            const aiRes = await callGeminiWithRetry(geminiKey!, { contents: [{ role: 'user', parts: [{ text: chatPrompt }] }] });
+            await sendMsg(`💌 *Barnali:* ${aiRes.text || "How can I help with your family lineage today?"}`);
+          } catch (e) {
+            console.error("[Telegram] Gemini Chat Error:", e);
+            await sendMsg(`⚠️ *Busy Archives:* I'm having trouble thinking right now. Please try again!`);
+          }
+          return;
+        }
+
+        // Image/Video tasks still use the AI Router
         await sendMsg(`🤖 *Barnali Thinking...* (using AI Router)`);
         
         try {
@@ -5638,8 +5654,23 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         response = { result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", modelUsed: "Kling-v1 (SaaS Infrastructure)" };
       }
     } else {
-      // Text Cost-Saving Logic
-      response = await getOpenRouterResponse(finalTask, TEXT_MODELS.FREE);
+      // Text Cost-Saving Logic: Priority 1 (Platform Gemini Free)
+      try {
+        const sysGeminiKey = process.env.GEMINI_API_KEY;
+        if (sysGeminiKey) {
+          const aiRes = await callGeminiWithRetry(sysGeminiKey, { contents: [{ role: 'user', parts: [{ text: finalTask }] }] });
+          if (aiRes && aiRes.text) {
+            response = { result: aiRes.text, modelUsed: "Gemini 1.5 Flash (System Free)" };
+          }
+        }
+      } catch (e) {
+        console.warn("[AI-Router] Gemini System Text Priority Failed, trying OpenRouter...", e);
+      }
+
+      if (!response) {
+        response = await getOpenRouterResponse(finalTask, TEXT_MODELS.FREE);
+      }
+      
       if (!response) {
         if (process.env.MINIMAX_API_KEY) {
           try { response = await getMiniMaxResponse(finalTask, "text"); } catch (e) {}
