@@ -4544,6 +4544,53 @@ async function fetchImageAsBase64(url: string) {
   }
 }
 
+  // Helper to handle Lead Generation for all platforms
+  const handleLeadAction = async (chatId: string | number, source: string, leadInfo: any, rawMessage: string, sendMsgFn: (msg: string) => Promise<void>) => {
+    const adminEmail = process.env.NOTIFICATION_EMAIL || "okbgmi611@gmail.com";
+    const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
+    const botToken = await getTelegramBotToken();
+
+    const leadDisplay = `
+🌟 *New Premium Lead Detected!* (${source})
+• Name: ${leadInfo.name || 'Not provided'}
+• Email: ${leadInfo.email || 'Not provided'}
+• Phone: ${leadInfo.phone || 'Not provided'}
+• Client ID: \`${chatId}\`
+• Source: Barnali AI (${source})
+• Raw Message: "${rawMessage}"
+    `;
+
+    console.log(`[LeadGen] Processing lead from ${source} for ${leadInfo.email || leadInfo.name}`);
+
+    // 1. Send Email to Admin (Async - don't block user reply)
+    if (transporter) {
+      transporter.sendMail({
+        from: `"Barnali AI Lead" <${process.env.SMTP_USER || 'no-reply@barnali.ai'}>`,
+        to: adminEmail,
+        subject: `🔥 [${source}] Premium Lead: ${leadInfo.name || 'Anonymous'}`,
+        text: leadDisplay,
+        html: leadDisplay.replace(/\n/g, '<br>')
+      }).then(() => console.log("[LeadGen] Email sent to admin"))
+        .catch(e => console.error("[LeadGen] Email failed:", e.message));
+    }
+
+    // 2. Send Telegram Notification to Admin
+    if (adminChatId && botToken) {
+       fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: adminChatId, text: leadDisplay, parse_mode: 'Markdown' }),
+        family: 4
+      }).then(() => console.log("[LeadGen] Admin Telegram notified"))
+        .catch(e => console.error("[LeadGen] Admin Telegram failed:", e.message));
+    }
+
+    // 3. Confirm to User
+    const host = process.env.VITE_APP_URL || "https://barnia.in";
+    const leadLink = `${host}/upgrade`;
+    await sendMsgFn(`✅ *Interest Registered:* Thank you, ${leadInfo.name || 'there'}! I've shared your request with our premium support team.\n\nFor more details or to see our premium features, you can also visit: ${leadLink}\n\nWe will contact you at ${leadInfo.email || leadInfo.phone || 'your provided details'} soon! 🚀`);
+  };
+
   // Telegram Bot Webhook Handler
   app.post("/api/webhooks/telegram", async (req, res) => {
     console.log("[Telegram] Webhook received:", JSON.stringify(req.body));
@@ -4839,9 +4886,9 @@ _Use '/link <id>' if features are missing._`);
       const prompt = `Barnali AI Router & Archive Assistant.
       Priority Rules:
       1. Primary: Help customers build and manage their Family Tree (Vamshavali).
-      2. Secondary: Promote AI Hub (Image/Video) ONLY if users have credits. 
-      3. Info: To add credits or upgrade, users should go to "AI Router" page and check their balance.
-      4. Lead Generation: If a user expresses interest in premium/upgrade or provides contact details (Name, Email, Phone), action is "LEAD".
+      2. Secondary: Promote AI Hub (Image/Video) ONLY if users have interested in AI or premium features. 
+      3. Info: To add credits or upgrade, users should go to "/upgrade" page.
+      4. Lead Generation (CRITICAL): If the message contains a Name, Email, or Phone number, OR if the user expresses interest in "premium", "upgrade", "buy credits", or "contact support", action MUST be "LEAD".
       
       Analyze message: "${text}"
       
@@ -4854,15 +4901,18 @@ _Use '/link <id>' if features are missing._`);
           "role": "string", "name": "string", "field": "kuldevi"|"gotra"|"name",
           "leadInfo": { "name": "string", "email": "string", "phone": "string" }
         },
-        "userQuestion": "Short, clear prompt for AI Hub"
+        "userQuestion": "Short, clear prompt for AI Hub if CHAT"
       }
 
-      Persona: Professional CLEAR and SHORT. No fluff. Focus on family lineage. NEVER invent UI buttons.
-      If a user is interested in upgrade/premium, Barnali MUST politely ask for their Name, Email, and Phone number so a representative can contact them.
+      LEAD Detection Logic:
+      - If user says: "My name is X, email Y, phone Z" -> Action: LEAD.
+      - If user provides ONLY an email like "test@me.com" -> Action: LEAD.
+      - If user asks: "How much for premium?" -> Action: CHAT (Initial query), but once they give details -> LEAD.
       
+      Persona: Professional CLEAR and SHORT. No fluff. Focus on family lineage. NEVER invent UI buttons.
       Examples:
-      - 'How to upgrade?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Acknowledge interest and ask for Name, Email, and Phone to assist better." }
-      - 'My name is John, email john@me.com, phone 12345' -> { "action": "LEAD", "details": { "leadInfo": { "name": "John", "email": "john@me.com", "phone": "12345" } } }
+      - 'My name is John, email john@me.com' -> { "action": "LEAD", "details": { "leadInfo": { "name": "John", "email": "john@me.com" } } }
+      - 'I want to upgrade, contact me at +91123456789' -> { "action": "LEAD", "details": { "leadInfo": { "phone": "+91123456789" } } }
       - 'Who are you?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Explain you are Barnali, the Family Keeper. Suggest starting their tree." }
       - 'Why using AI Router?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Explain that AI Router picks the best model for their needs, balancing cost and quality." }
       - 'Add Rahul as son of Sanjay' -> { "action": "ADD", "taskType": "text", "targetMember": "Rahul", "details": { "role": "Son", "name": "Rahul" } }`;
@@ -4931,10 +4981,11 @@ _Use '/link <id>' if features are missing._`);
         const isTextTask = command.taskType === "text" || !command.taskType;
         
         if (isTextTask) {
-          await sendMsg(`🤖 *Barnali Thinking...*`);
+          await sendMsg(`🤖 *Barnali Typing...*`);
           try {
             console.log(`[Telegram] Starting Chat: ${chatId}`);
-            const chatPrompt = `[Persona: Barnali Family Archive Keeper. Guidelines: 1. Help with Vamshavali (Family Tree). 2. Promote AI Router for Image/Video Hub if interested. 3. Upgrade/Credits: AI Router page. 4. If asked for premium/upgrade, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff.] User: ${command.userQuestion || text}`;
+            const host = process.env.VITE_APP_URL || "https://barnia.in";
+            const chatPrompt = `[Persona: Barnali Family Archive Keeper. Guidelines: 1. Help with Vamshavali. 2. Promote AI Hub if interested. 3. Upgrade/Credits: Offer this link for professional support: ${host}/upgrade. 4. If asked for premium, provide the link first. Reply CLEAR and SHORT.] User: ${command.userQuestion || text}`;
             
             let finalReply = "";
             let providerUsed = "";
@@ -5001,14 +5052,14 @@ _Use '/link <id>' if features are missing._`);
             await sendMsg(`💌 *Barnali:* ${finalReply}`);
           } catch (e: any) {
             console.error("[Telegram] Multi-Model Chat Error:", e);
-            const errMsg = e.message || "Thinking process failed after all fallbacks.";
+            const errMsg = e.message || "Typing process failed after all fallbacks.";
             await sendMsg(`⚠️ *Busy Archives:* I'm having trouble thinking right now. (${errMsg}) Please try again!`);
           }
           return;
         }
 
         // Image/Video tasks still use the AI Router
-        await sendMsg(`🤖 *Barnali Thinking...* (using AI Router)`);
+        await sendMsg(`🤖 *Barnali Typing...* (using AI Router)`);
         
         try {
           // Attempt to find a linked user for credit management
@@ -5077,52 +5128,7 @@ _Use '/link <id>' if features are missing._`);
       }
 
       if (command.action === "LEAD") {
-        const lead = command.details.leadInfo || {};
-        const adminEmail = process.env.NOTIFICATION_EMAIL || "okbgmi611@gmail.com";
-        const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
-
-        const leadDetails = `
-🌟 *New Premium Lead Detected!*
-• Name: ${lead.name || 'Not provided'}
-• Email: ${lead.email || 'Not provided'}
-• Phone: ${lead.phone || 'Not provided'}
-• Telegram CID: \`${chatId}\`
-• Source: Barnali AI Support
-• Message: "${text}"
-        `;
-
-        // 1. Send Email to Admin
-        try {
-          if (transporter) {
-            await transporter.sendMail({
-              from: `"Barnali AI" <${process.env.SMTP_USER || 'no-reply@barnali.ai'}>`,
-              to: adminEmail,
-              subject: `🔥 New Premium Feature Interest: ${lead.name || 'Anonymous User'}`,
-              text: leadDetails,
-              html: leadDetails.replace(/\n/g, '<br>')
-            });
-            console.log("[LeadGen] Email sent to admin");
-          }
-        } catch (mailErr: any) {
-          console.error("[LeadGen] Failed to send lead email:", mailErr.message);
-        }
-
-        // 2. Send Telegram to Admin (if configured)
-        if (adminChatId) {
-          try {
-             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: adminChatId, text: leadDetails, parse_mode: 'Markdown' }),
-              family: 4
-            });
-            console.log("[LeadGen] Telegram notification sent to admin");
-          } catch (tErr: any) {
-            console.error("[LeadGen] Failed to send lead telegram:", tErr.message);
-          }
-        }
-
-        await sendMsg(`✅ *Interest Registered:* Thank you, ${lead.name || 'there'}! I've shared your request with our premium support team. We will contact you at ${lead.email || lead.phone || 'your provided details'} soon to discuss the upgrade! 🚀`);
+        await handleLeadAction(chatId, "Telegram", command.details.leadInfo || {}, text, sendMsg);
         return;
       }
 
@@ -5309,16 +5315,36 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
           return;
         }
 
-        console.log(`[WhatsApp] Thinking for ${from}...`);
+        console.log(`[WhatsApp] Typing for ${from}...`);
         const geminiKey = process.env.GEMINI_API_KEY;
-        const chatPrompt = `[Persona: Barnali Family Archive Assistant on WhatsApp. Tone: Short, helpful, respectful. Focus: Vamshavali (Family Tree) and AI Hub.] User says: ${text}`;
+        const host = process.env.VITE_APP_URL || "https://barnia.in";
+        const chatPromptBase = `[Persona: Barnali Family Archive Assistant on WhatsApp. Tone: Short, helpful, respectful. Focus: Vamshavali (Family Tree) and AI Hub. Upgrade Link: ${host}/upgrade] User says: ${text}`;
         
-        let finalReply = "";
+        // 1. Routing Attempt
+        let command = { action: "CHAT", details: { leadInfo: {} }, userQuestion: text };
+        try {
+          const routingPrompt = `Identify intent for: "${text}". Output JSON: { "action": "CHAT"|"LEAD", "details": { "leadInfo": { "name": "...", "email": "...", "phone": "..." } } }. If details provided, action: LEAD.`;
+          const routeRes = await callGeminiWithRetry(geminiKey!, { 
+             contents: [{ role: 'user', parts: [{ text: routingPrompt }] }],
+             config: { responseMimeType: "application/json", temperature: 0.1 }
+          });
+          if (routeRes.text) {
+             command = { ...command, ...JSON.parse(routeRes.text) };
+          }
+        } catch (e) {
+          console.warn("[WhatsApp] Routing extraction failed, defaulting to CHAT");
+        }
 
-        // Use the smart routing hierarchy
+        if (command.action === "LEAD") {
+          await handleLeadAction(from, "WhatsApp", command.details?.leadInfo || {}, text, async (m) => { await sendWhatsAppMsg(from, m); });
+          return;
+        }
+
+        let finalReply = "";
+        // Use the smart routing hierarchy for CHAT
         try {
           const aiRes = await callGeminiWithRetry(geminiKey!, {
-            contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
+            contents: [{ role: 'user', parts: [{ text: chatPromptBase }] }],
             config: { maxOutputTokens: 500, temperature: 0.7 }
           });
           finalReply = aiRes?.text || "";
@@ -5326,7 +5352,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
 
         if (!finalReply) {
           try {
-            const orRes = await getOpenRouterResponse(chatPrompt, TEXT_MODELS.FREE);
+            const orRes = await getOpenRouterResponse(chatPromptBase, TEXT_MODELS.FREE);
             finalReply = orRes?.result || "";
           } catch (e) {}
         }
@@ -5340,6 +5366,24 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     } catch (err: any) {
       console.error("[WhatsApp] Global Webhook Error:", err.message);
       res.sendStatus(500);
+    }
+  });
+
+  app.post("/api/leads", async (req, res) => {
+    const { name, email, phone, interest, message, source } = req.body;
+    
+    // We reuse handleLeadAction logic but bypassing the bot reply (handled by frontend)
+    try {
+       await handleLeadAction(
+         email || phone || "web_user", 
+         source || "Web Form", 
+         { name, email, phone }, 
+         `Interest: ${interest} | Msg: ${message}`, 
+         async () => {} // Silent confirm
+       );
+       res.json({ success: true });
+    } catch (e: any) {
+       res.status(500).json({ error: e.message });
     }
   });
 

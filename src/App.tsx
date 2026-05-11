@@ -16,6 +16,7 @@ import { AdminUserManagement } from './pages/AdminUserManagement';
 import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { VamshavaliPage } from './pages/VamshavaliPage';
 import { AiRouterPage } from './pages/AiRouterPage';
+import UpgradeLeadPage from './pages/UpgradeLeadPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -385,6 +386,7 @@ function AppContent() {
           <Route path="/vamshavali" element={<VamshavaliPage />} />
           <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
           <Route path="/ai-router" element={<AiRouterPage />} />
+          <Route path="/upgrade" element={<UpgradeLeadPage />} />
         </Routes>
       </main>
 
