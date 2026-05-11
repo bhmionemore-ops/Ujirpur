@@ -1476,9 +1476,11 @@ async function startServer() {
       console.log(`[Firebase] Initializing Client SDK for project: ${firebaseConfig.projectId}`);
       const clientApp = initializeClientApp(firebaseConfig);
       
+      const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+      console.log(`[Firebase] Initializing Client Firestore with Database: ${dbId}`);
       db = initializeFirestore(clientApp, {
         experimentalForceLongPolling: true,
-      }, firebaseConfig.firestoreDatabaseId || undefined);
+      }, dbId);
       clientAuth = getAuth(clientApp);
       
       // Async Client SDK health check
@@ -1488,6 +1490,7 @@ async function startServer() {
             setTimeout(() => reject(new Error("Client SDK connection timed out")), 15000)
           );
           // Try to read a dedicated health check doc
+          console.log(`[Firebase] Server performing client-sdk check on database: ${dbId}`);
           await Promise.race([
             getDocFromServer(doc(db!, '_system_', 'health')),
             timeoutPromise
@@ -4759,9 +4762,13 @@ async function fetchImageAsBase64(url: string) {
     }
 
     if (text.toLowerCase().startsWith('/start')) {
-      // If we got here, it's a bare /start without a valid shareId
       const diag = `\n\n*Diagnostics:*\n• Host: ${req.get('host')}`;
-      await sendMsg("🏛️ *Welcome to Vamshavali AI (v2.4)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records, just send me your **Profile Link** or **Share ID** (e.g., `VAM-C0E93`).\n\nOnce linked, I can help you add members and photos! \n\n*Your Chat ID:* `" + chatId + "`" + diag);
+      await sendMsg(`🏛️ *Welcome to Vamshavali AI (v2.4)* 🏛️\n\nI am Barnali, your family archive keeper.\n\nTo link your records, send me your **Profile Link** or **Share ID** (e.g., \`VAM-C0E93\`).\n\n*Your Admin Chat ID:* \`${chatId}\` ${diag}`);
+      return;
+    }
+
+    if (text === "/myid") {
+      await sendMsg(`🆔 *Your Telegram Chat ID:* \`${chatId}\`\n\nCopy this number and add it to your AI Studio environment variables as \`ADMIN_TELEGRAM_CHAT_ID\`.`);
       return;
     }
 
@@ -4803,26 +4810,34 @@ _Use '/link <id>' if features are missing._`);
       }
 
       const prompt = `Barnali AI Router & Archive Assistant.
+      Priority Rules:
+      1. Primary: Help customers build and manage their Family Tree (Vamshavali).
+      2. Secondary: Promote AI Hub (Image/Video) ONLY if users have credits. 
+      3. Info: To add credits or upgrade, users should go to "AI Router" page and check their balance.
+      4. Lead Generation: If a user expresses interest in premium/upgrade or provides contact details (Name, Email, Phone), action is "LEAD".
+      
       Analyze message: "${text}"
       
       Extract JSON:
       { 
-        "action": "ADD" | "UPDATE" | "DELETE" | "LINK" | "CHAT", 
+        "action": "ADD" | "UPDATE" | "DELETE" | "LINK" | "CHAT" | "LEAD", 
         "taskType": "text" | "image" | "video",
         "targetMember": "name", 
-        "details": { "role": "string", "name": "string", "field": "kuldevi"|"gotra"|"name" },
-        "userQuestion": "Refined prompt for AI Router (ONLY if action is CHAT)"
+        "details": { 
+          "role": "string", "name": "string", "field": "kuldevi"|"gotra"|"name",
+          "leadInfo": { "name": "string", "email": "string", "phone": "string" }
+        },
+        "userQuestion": "Short, clear prompt for AI Hub"
       }
 
-      Logic:
-      1. If message is about adding/updating family tree members -> "ADD"/"UPDATE".
-      2. If message is a general question, greeting, or request for image/video -> "CHAT".
-      3. If asking "Who are you?" or "Why AI Router?", action is "CHAT".
+      Persona: Professional CLEAR and SHORT. No fluff. Focus on family lineage. NEVER invent UI buttons.
+      If a user is interested in upgrade/premium, Barnali MUST politely ask for their Name, Email, and Phone number so a representative can contact them.
       
       Examples:
-      - 'Who are you?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Introduce yourself as Barnali, the Smart Family Archive Keeper." }
-      - 'Why using AI Router?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Explain that AI Router helps you choose the best, most cost-effective models to preserve lineage efficiently." }
-      - 'Make a photo of a temple' -> { "action": "CHAT", "taskType": "image", "userQuestion": "Ancient Indian temple in the mountains" }
+      - 'How to upgrade?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Acknowledge interest and ask for Name, Email, and Phone to assist better." }
+      - 'My name is John, email john@me.com, phone 12345' -> { "action": "LEAD", "details": { "leadInfo": { "name": "John", "email": "john@me.com", "phone": "12345" } } }
+      - 'Who are you?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Explain you are Barnali, the Family Keeper. Suggest starting their tree." }
+      - 'Why using AI Router?' -> { "action": "CHAT", "taskType": "text", "userQuestion": "Explain that AI Router picks the best model for their needs, balancing cost and quality." }
       - 'Add Rahul as son of Sanjay' -> { "action": "ADD", "taskType": "text", "targetMember": "Rahul", "details": { "role": "Son", "name": "Rahul" } }`;
 
       let contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
@@ -4941,9 +4956,9 @@ _Use '/link <id>' if features are missing._`);
           
           if (command?.taskType === "text" || !command?.taskType) {
             try {
-              const fallbackPrompt = `[Persona: Barnali Smart Agent. Support & Persuasive Sales. Short.] User: ${command?.userQuestion || text}`;
+              const fallbackPrompt = `[Persona: Barnali Family Assistant. Help with Tree first. Clear & Short. To upgrade/add credits: Visit AI Router page. If user is interested, ask for Name, Email, and Phone. Do NOT invent UI info.] User: ${command?.userQuestion || text}`;
               const fallbackRes = await callGeminiWithRetry(geminiKey!, { contents: [{ role: 'user', parts: [{ text: fallbackPrompt }] }] });
-              await sendMsg(`💌 *Barnali (Support Mode):* ${fallbackRes.text || "I am here, but my records are currently syncing. How can I help?"}`);
+              await sendMsg(`💌 *Barnali (Support Mode):* ${fallbackRes.text || "How can I help with your family lineage today?"}`);
             } catch (e) {
               await sendMsg(`⚠️ *System Overload:* Backup busy. Try again!`);
             }
@@ -4951,6 +4966,56 @@ _Use '/link <id>' if features are missing._`);
             await sendMsg(`⚠️ *Routing Error:* ${routerErr.message || "Infrastructure failed to respond."}`);
           }
         }
+        return;
+      }
+
+      if (command.action === "LEAD") {
+        const lead = command.details.leadInfo || {};
+        const adminEmail = process.env.NOTIFICATION_EMAIL || "okbgmi611@gmail.com";
+        const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
+
+        const leadDetails = `
+🌟 *New Premium Lead Detected!*
+• Name: ${lead.name || 'Not provided'}
+• Email: ${lead.email || 'Not provided'}
+• Phone: ${lead.phone || 'Not provided'}
+• Telegram CID: \`${chatId}\`
+• Source: Barnali AI Support
+• Message: "${text}"
+        `;
+
+        // 1. Send Email to Admin
+        try {
+          if (transporter) {
+            await transporter.sendMail({
+              from: `"Barnali AI" <${process.env.SMTP_USER || 'no-reply@barnali.ai'}>`,
+              to: adminEmail,
+              subject: `🔥 New Premium Feature Interest: ${lead.name || 'Anonymous User'}`,
+              text: leadDetails,
+              html: leadDetails.replace(/\n/g, '<br>')
+            });
+            console.log("[LeadGen] Email sent to admin");
+          }
+        } catch (mailErr: any) {
+          console.error("[LeadGen] Failed to send lead email:", mailErr.message);
+        }
+
+        // 2. Send Telegram to Admin (if configured)
+        if (adminChatId) {
+          try {
+             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: adminChatId, text: leadDetails, parse_mode: 'Markdown' }),
+              family: 4
+            });
+            console.log("[LeadGen] Telegram notification sent to admin");
+          } catch (tErr: any) {
+            console.error("[LeadGen] Failed to send lead telegram:", tErr.message);
+          }
+        }
+
+        await sendMsg(`✅ *Interest Registered:* Thank you, ${lead.name || 'there'}! I've shared your request with our premium support team. We will contact you at ${lead.email || lead.phone || 'your provided details'} soon to discuss the upgrade! 🚀`);
         return;
       }
 
@@ -5549,7 +5614,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (currentCredits < cost) throw new Error("Insufficient credits");
 
     const finalTask = type === "text" || !type 
-      ? `[Barnali Persona Guideline: You are a professional support agent for the Vamshavali (Family Tree) service and a persuasive salesperson. Keep replies short, helpful, and focused on the family tree portal and your premium AI features. Do NOT give general wiki-style answers.] User Query: ${task}`
+      ? `[Barnali Guidelines: 1. Help with Family Tree (Vamshavali). 2. Promote AI Hub if credits exist. 3. Upgrade/Credits: AI Router page. 4. If user interested in premium, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff. No invented UI.] User: ${task}`
       : task;
 
     // 2. Routing Execution

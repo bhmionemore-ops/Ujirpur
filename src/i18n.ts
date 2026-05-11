@@ -106,6 +106,7 @@ export const translations = {
       transport: 'পরিবহন',
       factCheck: 'সনাতনী ফ্যাক্ট-চেক',
       vamshavali: 'বংশাবলী',
+      aiRouter: 'এআই রাউটার হাব',
     },
     transport: {
       title: 'গ্রাম্য পরিবহন সেবা',
@@ -171,6 +172,8 @@ export const translations = {
       viewPonjika: 'পঞ্জিকা দেখুন',
       joinFacebookTitle: 'আমাদের ফেসবুক গ্রুপে যোগ দিন',
       joinFacebookDesc: 'আমাদের ফেসবুক গ্রুপে যোগ দিয়ে সর্বশেষ আপডেট পান, আপনার মতামত শেয়ার করুন এবং সবার সাথে যুক্ত থাকুন।',
+      vamshavaliDesc: 'আপনার পরিবারের বংশতালিকা ডিজিটালভাবে তৈরি ও সংরক্ষণ করুন।',
+      aiRouterDesc: 'মাল্টি-মডেল এআই এবং স্মার্ট লিনিয়েজ টিকার সহ এআই হাব।',
     },
     news: {
       title: 'ভাইরাল ট্রেন্ড হাব',
@@ -480,6 +483,7 @@ export const translations = {
       transport: 'Transport',
       factCheck: 'Sanatani Fact Check',
       vamshavali: 'Family Tree',
+      aiRouter: 'AI Router Hub',
     },
     transport: {
       title: 'Village Transport Service',
@@ -545,6 +549,8 @@ export const translations = {
       viewPonjika: 'View Ponjika',
       joinFacebookTitle: 'Join Our Facebook Community',
       joinFacebookDesc: 'Get the latest updates, share your thoughts, and stay connected with everyone in our official Facebook group. Join thousands of other members!',
+      vamshavaliDesc: 'Build and preserve your family lineage digitally with stunning trees.',
+      aiRouterDesc: 'Smart AI Hub with multi-model routing and automated tools.',
     },
     news: {
       title: 'Viral Trend Hub',
@@ -810,6 +816,7 @@ export const translations = {
       transport: 'परिवहन',
       factCheck: 'सनातनी फैक्ट चेक',
       vamshavali: 'वंशावली',
+      aiRouter: 'एआई राउटर हब',
     },
     transport: {
       title: 'ग्रामीण परिवहन सेवा',
@@ -875,6 +882,8 @@ export const translations = {
       viewPonjika: 'पंजिका देखें',
       joinFacebookTitle: 'हमारे फेसबुक समुदाय से जुड़ें',
       joinFacebookDesc: 'हमारे आधिकारिक फेसबुक ग्रुप में नवीनतम अपडेट प्राप्त करें, अपने विचार साझा करें और सभी के साथ जुड़े रहें। हजारों अन्य सदस्यों के साथ जुड़ें!',
+      vamshavaliDesc: 'अपनी पारिवारिक वंशावली को डिजिटल रूप से बनाएं और सुरक्षित रखें।',
+      aiRouterDesc: 'मल्टी-मॉडल राउटिंग और स्मार्ट टूल्स के साथ एआई हब।',
     },
     news: {
       title: 'वायरल ट्रेंड हब',

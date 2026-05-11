@@ -41,9 +41,12 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Use initializeFirestore for more robust connection in iframes/proxies
+const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
+console.log(`[Firebase] Initializing Firestore with Database: ${databaseId}`);
+
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+}, databaseId);
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -103,7 +106,7 @@ export {
 async function testConnection(retries = 3, delay = 2000) {
   for (let i = 0; i < retries; i++) {
     try {
-      console.log(`[Firebase] Connection attempt ${i + 1}/${retries} to database: "${firebaseConfig.firestoreDatabaseId}"...`);
+      console.log(`[Firebase] Connection attempt ${i + 1}/${retries} to project: ${firebaseConfig.projectId}, database: "${databaseId}"...`);
       
       // Use a promise with timeout for the connection test
       const timeoutPromise = new Promise((_, reject) => 
@@ -111,8 +114,10 @@ async function testConnection(retries = 3, delay = 2000) {
       );
       
       // We try to get a non-existent doc just to check network reachability
+      // We use getDocFromServer to bypass local cache
+      const healthDoc = doc(db, '_health_check', 'ping');
       await Promise.race([
-        getDocFromServer(doc(db, '_health_check', 'ping')),
+        getDocFromServer(healthDoc),
         timeoutPromise
       ]);
       
@@ -120,21 +125,22 @@ async function testConnection(retries = 3, delay = 2000) {
       return;
     } catch (error: any) {
       const isLastRetry = i === retries - 1;
-      const isOffline = error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('unavailable'));
-      const isTimeout = error instanceof Error && error.message.includes('timed out');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isOffline = errorMsg.includes('the client is offline') || errorMsg.includes('unavailable');
+      const isTimeout = errorMsg.includes('timed out');
       
-      console.warn(`[Firebase] Attempt ${i + 1} failed: ${error.message}`);
+      console.warn(`[Firebase] Attempt ${i + 1} failed: ${errorMsg}`);
 
       if (isOffline || isTimeout) {
         if (isLastRetry) {
-          console.error("Firebase connection failed permanently: The client is offline or the connection timed out. Please check your Firebase configuration and ensure the database exists in region europe-west2.");
+          console.error(`Firebase connection failed permanently: ${errorMsg}. Check Firebase Console and configuration.`);
         } else {
           console.warn(`[Firebase] Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       } else {
-        // Other errors (like permissions) might actually mean the connection IS working but we just can't read that specific doc
-        console.log("[Firebase] Connection test received response (backend is reachable):", error instanceof Error ? error.message : String(error));
+        // Permission errors actually mean the connection IS working
+        console.log("[Firebase] Connection check: Backend is reachable (Response received):", errorMsg);
         return;
       }
     }

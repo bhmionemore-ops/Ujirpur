@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Store, ChevronRight, Facebook, Calendar, Car, Search, Activity } from 'lucide-react';
+import { Users, Store, ChevronRight, Facebook, Calendar, Car, Search, Activity, Zap, Share2 } from 'lucide-react';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -144,6 +144,58 @@ export const Home = () => {
               </p>
               <div className="flex items-center gap-2 font-black text-sm uppercase tracking-widest">
                 {t.transport.findRide}
+                <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Vamshavali Box */}
+          <motion.div
+            whileHover={{ y: -10 }}
+            onClick={() => navigate('/vamshavali')}
+            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-amber-900 p-10 text-white shadow-2xl shadow-amber-900/20 border-4 border-amber-800"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+              <Share2 size={120} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center mb-6 shadow-lg shadow-brand-500/20">
+                <Share2 size={32} />
+              </div>
+              <h3 className="text-3xl font-black mb-4 tracking-tight">
+                {t.nav.vamshavali}
+              </h3>
+              <p className="text-amber-200/80 font-medium mb-8 max-w-xs leading-relaxed">
+                {t.banner.vamshavaliDesc}
+              </p>
+              <div className="flex items-center gap-2 font-black text-sm uppercase tracking-widest text-brand-500">
+                {t.banner.getStarted}
+                <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* AI Router Box */}
+          <motion.div
+            whileHover={{ y: -10 }}
+            onClick={() => navigate('/ai-router')}
+            className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-indigo-950 p-10 text-white shadow-2xl shadow-indigo-900/20 border-4 border-indigo-900"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+              <Zap size={120} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
+                <Zap size={32} />
+              </div>
+              <h3 className="text-3xl font-black mb-4 tracking-tight">
+                {t.nav.aiRouter}
+              </h3>
+              <p className="text-indigo-200/80 font-medium mb-8 max-w-xs leading-relaxed">
+                {t.banner.aiRouterDesc}
+              </p>
+              <div className="flex items-center gap-2 font-black text-sm uppercase tracking-widest text-indigo-400">
+                {t.banner.getStarted}
                 <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
               </div>
             </div>

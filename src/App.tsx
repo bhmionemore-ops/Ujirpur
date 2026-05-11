@@ -193,6 +193,7 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
+                  { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
                 ].map((link) => (
                   <Link 
@@ -329,6 +330,7 @@ function AppContent() {
               { to: '/vamshavali', label: t.nav.vamshavali },
               { to: '/influencers', label: t.nav.influencers },
               { to: '/fact-check', label: t.nav.factCheck },
+              { to: '/ai-router', label: t.nav.aiRouter },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
               <Link 
@@ -457,6 +459,7 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
+                  { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (
                   <Link 
