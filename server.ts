@@ -43,19 +43,30 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
     
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
-      const response = await ai.models.generateContent({
+      const result = await ai.models.generateContent({
         model: currentModel,
         contents: options.contents,
         config: options.config
       });
       
-      const textValue = response.text;
+      // Handle the different response structures of @google/genai and @google/generative-ai
+      let textValue: string | undefined;
+      
+      const response = (result as any).response || result;
+      if (typeof response.text === 'function') {
+        textValue = response.text();
+      } else if (typeof response.text === 'string') {
+        textValue = response.text;
+      } else if (response.candidates && response.candidates[0]?.content?.parts && response.candidates[0].content.parts[0]?.text) {
+        textValue = response.candidates[0].content.parts[0].text;
+      }
+      
       if (textValue) {
         console.log(`[Gemini] Success with ${currentModel}`);
         return { text: textValue };
       }
       
-      console.warn(`[Gemini] ${currentModel} returned empty response.`);
+      console.warn(`[Gemini] ${currentModel} returned empty or incompatible response format.`);
       continue;
     } catch (error: any) {
       lastError = error;

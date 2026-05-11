@@ -194,8 +194,24 @@ export const AiRouterPage = () => {
   };
 
   const handleTopUp = () => {
-    const botUser = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'Vamshavali_bot';
-    window.open(`https://t.me/${botUser}`, '_blank');
+    let botUser = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || '').trim().replace('@', '');
+    
+    // Safety fallback
+    if (!botUser || botUser.toLowerCase() === 'undefined' || botUser.toLowerCase() === 'null' || botUser === '') {
+      botUser = 'Vamshavali_bot';
+    }
+    
+    console.log(`[TopUp] Redirecting to bot: ${botUser}`);
+    const url = `https://t.me/${botUser}`;
+    
+    // Use an anchor tag for better reliability in some browsers
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSubmit = async (isApproved = false) => {
