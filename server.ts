@@ -1549,13 +1549,8 @@ async function startServer() {
             adminDb = currentAdminDb;
             console.log("[Firebase] Admin SDK verified and assigned.");
           } catch (verifyError: any) {
-            if (verifyError.message.includes("PERMISSION_DENIED") || verifyError.code === 7) {
-              console.log("[Firebase] Admin SDK has restricted access (Normal for unauthenticated server). Using Client SDK fallback.");
-              adminDb = null;
-            } else {
-              console.warn(`[Firebase] Admin SDK verification warning: ${verifyError.message}`);
-              adminDb = currentAdminDb;
-            }
+            console.log(`[Firebase] Admin SDK verification failed: ${verifyError.message}. Using Client SDK fallback.`);
+            adminDb = null;
           }
         } catch (dbError: any) {
           console.error("[Firebase] Error getting Firestore Admin instance:", dbError.message);
@@ -4920,7 +4915,15 @@ _Use '/link <id>' if features are missing._`);
             if (!uSnap.empty) {
               const uDoc = uSnap.docs[0];
               userId = uDoc.id;
-              userData = { ...userData, ...uDoc.data() };
+              userData = { ...userData, ...uDoc.data() } as any;
+            }
+          } else if (db) {
+            const q = query(collection(db, "users"), where("email", "==", linkUserEmail), limit(1));
+            const uSnap = await getDocs(q);
+            if (!uSnap.empty) {
+               const uDoc = uSnap.docs[0];
+               userId = uDoc.id;
+               userData = { ...userData, ...uDoc.data() } as any;
             }
           }
 
@@ -4944,7 +4947,11 @@ _Use '/link <id>' if features are missing._`);
           }
         } catch (routerErr: any) {
           console.error("[Telegram] AI Router Error:", routerErr.message);
-          await sendMsg(`⚠️ *Routing Error:* ${routerErr.message || "Infrastructure failed to respond."}`);
+          let errMsg = `⚠️ *Routing Error:* ${routerErr.message || "Infrastructure failed to respond."}`;
+          if (routerErr.message?.includes("credentials")) {
+            errMsg = `⚠️ *Credential Error:* Barnali could not authenticate with Google Services. Please ensure your \`FIREBASE_SERVICE_ACCOUNT\` secret is correctly configured in the settings. Trying to use fallback routes...`;
+          }
+          await sendMsg(errMsg);
         }
         return;
       }
