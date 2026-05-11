@@ -21,6 +21,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
 import crypto from "crypto";
+import twilio from "twilio";
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 
@@ -53,14 +54,14 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
           contents: options.contents,
           config: options.config || options.generationConfig || { temperature: 0.7 }
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini Request Timeout (45s)")), 45000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Gemini Request Timeout (45s) for ${currentModel}`)), 45000))
       ]) as any;
       
       const textValue = response.text;
       
       if (textValue) {
         console.log(`[Gemini] Success with ${currentModel}`);
-        return { text: textValue };
+        return { text: textValue, modelUsed: currentModel };
       }
       
       console.warn(`[Gemini] ${currentModel} returned empty response.`);
@@ -4932,19 +4933,75 @@ _Use '/link <id>' if features are missing._`);
         if (isTextTask) {
           await sendMsg(`🤖 *Barnali Thinking...*`);
           try {
-            console.log(`[Telegram] Starting Chat Chat: ${chatId}`);
+            console.log(`[Telegram] Starting Chat: ${chatId}`);
             const chatPrompt = `[Persona: Barnali Family Archive Keeper. Guidelines: 1. Help with Vamshavali (Family Tree). 2. Promote AI Router for Image/Video Hub if interested. 3. Upgrade/Credits: AI Router page. 4. If asked for premium/upgrade, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff.] User: ${command.userQuestion || text}`;
-            const aiRes = await callGeminiWithRetry(geminiKey!, { 
-              contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
-              config: { maxOutputTokens: 800, temperature: 0.7 } 
-            });
             
-            const finalReply = aiRes.text || "I'm Barnali, your Family Keeper! How can I help with your tree today?";
-            console.log(`[Telegram] Chat success. Reply length: ${finalReply.length}`);
+            let finalReply = "";
+            let providerUsed = "";
+
+            // 1. Try Gemini (Priority 1)
+            try {
+              const aiRes = await callGeminiWithRetry(geminiKey!, { 
+                contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
+                config: { maxOutputTokens: 800, temperature: 0.7 } 
+              });
+              if (aiRes && aiRes.text) {
+                finalReply = aiRes.text;
+                providerUsed = "Gemini";
+              }
+            } catch (e: any) {
+              console.warn("[Telegram] Gemini fallback triggered:", e.message);
+            }
+
+            // 2. Try OpenRouter (Priority 2)
+            if (!finalReply) {
+              try {
+                // @ts-ignore - TEXT_MODELS is defined later but hoisted or available at runtime
+                const orRes = await getOpenRouterResponse(chatPrompt, TEXT_MODELS.FREE);
+                if (orRes && orRes.result) {
+                  finalReply = orRes.result;
+                  providerUsed = `OpenRouter (${orRes.modelUsed})`;
+                }
+              } catch (e: any) {
+                console.warn("[Telegram] OpenRouter fallback triggered:", e.message);
+              }
+            }
+
+            // 3. Try Alibaba (Priority 3 - Use Turbo for high success rate/often free trials)
+            if (!finalReply) {
+              try {
+                // @ts-ignore
+                const aliRes = await getAlibabaResponse(chatPrompt, "qwen-turbo");
+                if (aliRes && aliRes.result) {
+                  finalReply = aliRes.result;
+                  providerUsed = aliRes.modelUsed;
+                }
+              } catch (e: any) {
+                console.warn("[Telegram] Alibaba fallback failed:", e.message);
+              }
+            }
+
+            // 4. Try DeepSeek/Economy (Priority 4 - Paid but extremely cheap fallback to ensure bot stays smart)
+            if (!finalReply) {
+              try {
+                // @ts-ignore
+                const ecoRes = await getOpenRouterResponse(chatPrompt, TEXT_MODELS.ECONOMY);
+                if (ecoRes && ecoRes.result) {
+                  finalReply = ecoRes.result;
+                  providerUsed = ecoRes.modelUsed;
+                }
+              } catch (e: any) {
+                console.warn("[Telegram] DeepSeek/Economy fallback failed:", e.message);
+              }
+            }
+
+            if (!finalReply) throw new Error("All brain routes (Gemini, OpenRouter, Alibaba, DeepSeek) are currently unavailable.");
+
+            console.log(`[Telegram] Chat success via ${providerUsed}. Reply length: ${finalReply.length}`);
             await sendMsg(`💌 *Barnali:* ${finalReply}`);
           } catch (e: any) {
-            console.error("[Telegram] Gemini Chat Error:", e);
-            const errMsg = e.message || "Thinking process timed out or failed.";
+            console.error("[Telegram] Multi-Model Chat Error:", e);
+            const errMsg = e.message || "Thinking process failed after all fallbacks.";
             await sendMsg(`⚠️ *Busy Archives:* I'm having trouble thinking right now. (${errMsg}) Please try again!`);
           }
           return;
@@ -5179,7 +5236,113 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       await sendMsg(errorMsg);
     }
   });
-  
+
+  // --- Official WhatsApp Cloud API Webhook (Meta) ---
+  // 1. Verification (GET)
+  app.get("/api/webhooks/whatsapp", (req, res) => {
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode === "subscribe" && token === verifyToken) {
+      console.log("[WhatsApp] Webhook verified successfully.");
+      return res.status(200).send(challenge);
+    }
+    return res.sendStatus(403);
+  });
+
+  // 2. Message Handling (POST)
+  app.post("/api/webhooks/whatsapp", async (req, res) => {
+    try {
+      const body = req.body;
+      console.log("[WhatsApp] Received Message Body:", JSON.stringify(body, null, 2));
+
+      // Meta sends a lot of metadata, we need to extract the message
+      const entry = body.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+      const message = value?.messages?.[0];
+
+      if (!message) {
+        return res.sendStatus(200); // Not a message event (likely a status update)
+      }
+
+      const from = message.from; // User's phone number
+      const text = message.text?.body || "";
+      const phoneNumberId = value?.metadata?.phone_number_id;
+
+      res.sendStatus(200); // Acknowledge receipt to Meta
+
+      const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      if (!accessToken || !phoneNumberId) {
+        console.warn("[WhatsApp] Configuration missing (Token or Phone ID)");
+        return;
+      }
+
+      // Helper to send WhatsApp messages via Meta Cloud API
+      const sendWhatsAppMsg = async (to: string, content: string) => {
+        try {
+          await fetch(`https://graph.facebook.com/v17.0/${phoneNumberId}/messages`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: to,
+              type: "text",
+              text: { body: content }
+            })
+          });
+          console.log(`[WhatsApp] Sent response to ${to}`);
+        } catch (err: any) {
+          console.error("[WhatsApp] API Error:", err.message);
+        }
+      };
+
+      if (text) {
+        const lowerText = text.toLowerCase().trim();
+        if (lowerText === "hi" || lowerText === "hello" || lowerText === "start") {
+          await sendWhatsAppMsg(from, "Namaste! 🙏 I am Barnali, your Family Archive Keeper. I'm now available on WhatsApp for free! I can help with your Vamshavali (Family Tree) or AI Hub questions. How can I assist you today?");
+          return;
+        }
+
+        console.log(`[WhatsApp] Thinking for ${from}...`);
+        const geminiKey = process.env.GEMINI_API_KEY;
+        const chatPrompt = `[Persona: Barnali Family Archive Assistant on WhatsApp. Tone: Short, helpful, respectful. Focus: Vamshavali (Family Tree) and AI Hub.] User says: ${text}`;
+        
+        let finalReply = "";
+
+        // Use the smart routing hierarchy
+        try {
+          const aiRes = await callGeminiWithRetry(geminiKey!, {
+            contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
+            config: { maxOutputTokens: 500, temperature: 0.7 }
+          });
+          finalReply = aiRes?.text || "";
+        } catch (e) {}
+
+        if (!finalReply) {
+          try {
+            const orRes = await getOpenRouterResponse(chatPrompt, TEXT_MODELS.FREE);
+            finalReply = orRes?.result || "";
+          } catch (e) {}
+        }
+
+        if (!finalReply) {
+          finalReply = "I'm having a quiet moment in the archives. Please try again in 30 seconds!";
+        }
+
+        await sendWhatsAppMsg(from, `💌 Barnali: ${finalReply}`);
+      }
+    } catch (err: any) {
+      console.error("[WhatsApp] Global Webhook Error:", err.message);
+      res.sendStatus(500);
+    }
+  });
+
   app.post("/api/influencers", async (req, res) => {
     const influencer = {
       ...req.body,
@@ -5449,12 +5612,16 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   const TEXT_MODELS = {
     FREE: [
       "google/gemini-2.0-flash-lite-preview-02-05:free",
+      "google/gemini-pro-1.5:free",
       "meta-llama/llama-3.1-8b-instruct:free",
-      "mistralai/mistral-7b-instruct:free"
+      "mistralai/mistral-7b-instruct:free",
+      "qwen/qwen-2-7b-instruct:free",
+      "microsoft/phi-3-mini-128k-instruct:free"
     ],
     ECONOMY: [
       "deepseek/deepseek-chat",
-      "qwen/qwen-2.5-7b-instruct"
+      "qwen/qwen-2.5-7b-instruct",
+      "deepseek/deepseek-reasoner"
     ],
     PREMIUM: [
       "openai/gpt-4o",
@@ -5688,34 +5855,82 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         response = { result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", modelUsed: "Kling-v1 (SaaS Infrastructure)" };
       }
     } else {
-      // Text Cost-Saving Logic: Priority 1 (Platform Gemini Free)
+      // TEXT ROUTING: STRICT HIERARCHY TO PRESERVE DEVELOPER CASH
+      
+      // Step 1: System Priority (Gemini Platform - Truly $0 Cost for Dev)
       try {
         const sysGeminiKey = process.env.GEMINI_API_KEY;
         if (sysGeminiKey) {
-          const aiRes = await callGeminiWithRetry(sysGeminiKey, { contents: [{ role: 'user', parts: [{ text: finalTask }] }] });
+          // Try Flash first, then Pro (both free tier)
+          let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
+            contents: [{ role: 'user', parts: [{ text: finalTask }] }],
+            config: { temperature: 0.7, maxOutputTokens: 1000 },
+            model: "gemini-1.5-flash"
+          });
+          
+          if (!aiRes || !aiRes.text) {
+             console.log("[AI-Router] Tier-1 Flash failed, trying Pro...");
+             aiRes = await callGeminiWithRetry(sysGeminiKey, { 
+               contents: [{ role: 'user', parts: [{ text: finalTask }] }],
+               config: { temperature: 0.7, maxOutputTokens: 2000 },
+               model: "gemini-1.5-pro"
+             });
+          }
+
           if (aiRes && aiRes.text) {
-            response = { result: aiRes.text, modelUsed: "Gemini 1.5 Flash (System Free)" };
+            response = { result: aiRes.text, modelUsed: `Gemini (${aiRes.modelUsed || "System Free"})` };
           }
         }
       } catch (e) {
-        console.warn("[AI-Router] Gemini System Text Priority Failed, trying OpenRouter...", e);
+        console.warn("[AI-Router] Tier-1 Gemini failed, falling back to Tier-2...", (e as Error).message);
       }
 
+      // Step 2: OpenRouter FREE Tier ($0.00 Provider Bill)
       if (!response) {
-        response = await getOpenRouterResponse(finalTask, TEXT_MODELS.FREE);
+        try {
+          response = await getOpenRouterResponse(finalTask, TEXT_MODELS.FREE);
+          if (response) console.log(`[AI-Router] Tier-2 OpenRouter Free Success: ${response.modelUsed}`);
+        } catch (e) {
+          console.warn("[AI-Router] Tier-2 OpenRouter Free failed...", (e as Error).message);
+        }
       }
       
-      if (!response) {
-        if (process.env.MINIMAX_API_KEY) {
-          try { response = await getMiniMaxResponse(finalTask, "text"); } catch (e) {}
+      // Step 3: Alibaba DashScope (Often Free or Extremely Cheap Economy)
+      // Since user mentioned Singapore based API, this is likely their preferred low-cost fallback
+      if (!response && process.env.DASHSCOPE_API_KEY) {
+        try {
+          console.log("[AI-Router] Tier-3 Attempting Alibaba Qwen-Turbo...");
+          response = await getAlibabaResponse(finalTask, "qwen-turbo");
+        } catch (e) {
+          console.warn("[AI-Router] Tier-3 Alibaba failed...", (e as Error).message);
         }
-        if (!response && process.env.DASHSCOPE_API_KEY) {
-          try { response = await getAlibabaResponse(finalTask, "qwen-plus"); } catch (e) {}
-        }
-        if (!response) response = await getOpenRouterResponse(finalTask, TEXT_MODELS.ECONOMY);
       }
-      if (!response && isApproved) {
-        response = await getOpenRouterResponse(finalTask, TEXT_MODELS.PREMIUM);
+
+      // Step 4: MiniMax (If configured and free/trial)
+      if (!response && process.env.MINIMAX_API_KEY) {
+        try {
+          response = await getMiniMaxResponse(finalTask, "text");
+        } catch (e) {}
+      }
+      
+      // Step 5: Economy Fallback (DeepSeek/Qwen - Extremely cheap paid models)
+      if (!response) {
+        try {
+          console.log("[AI-Router] Free routes exhausted, using ECONOMY (DeepSeek/Qwen) to ensure success...");
+          response = await getOpenRouterResponse(finalTask, TEXT_MODELS.ECONOMY);
+        } catch (e) {
+          console.warn("[AI-Router] Tier-5 Economy failed...", (e as Error).message);
+        }
+      }
+
+      // Final Fallback: PREMIUM Tier (Requires Approval or Admin status)
+      if (!response) {
+        if (isAdmin || isApproved || currentCredits >= 100) {
+          console.log(`[AI-Router] Escalating to PREMIUM logic (Auth: ${isAdmin}, Credits: ${currentCredits})...`);
+          response = await getOpenRouterResponse(finalTask, TEXT_MODELS.PREMIUM);
+        } else {
+          throw new Error("High-traffic mode active. Standard AI routes are cooling down. Please use Barnali credits for premium routing.");
+        }
       }
     }
 
@@ -5896,12 +6111,15 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
 
       // 3. ROUTING ENGINE: ANALYZE PROVIDER COST & BEST VALUE
       // Focus: Save Developer actual money ($ Provider bill) vs Customer fixed credit.
+      // Shared with executeAIRouting logic
       let response: any = null;
-      console.log(`[AI-Router] Executing Cost Analysis for task type: ${finalType}`);
+      console.log(`[AI-Router] Executing Cost-Optimized Routing for task type: ${finalType}`);
 
       if (finalType === "image") {
-        // High fidelity image gen
         response = await getFluxImageResponse(task);
+        if (!response && process.env.DASHSCOPE_API_KEY) {
+          response = await getImg2ImgResponse(task, ""); 
+        }
       } else if (finalType === "image_to_image") {
         if (!inputImage) throw new Error("Base image is required for image-to-image");
         response = await getImg2ImgResponse(task, inputImage);
@@ -5909,45 +6127,68 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         if (!inputImage) throw new Error("Base image is required for image-to-video");
         response = await getImg2VideoResponse(inputImage, task);
       } else if (finalType === "video") {
-        // High-end video generation - Mocked until stable Kling/Luma API connected
-        response = { 
-          result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", 
-          modelUsed: "Kling-v1 (SaaS Infrastructure)" 
-        };
+        if (process.env.MINIMAX_API_KEY) {
+          response = await getMiniMaxResponse(task, "video");
+        } else {
+          response = { result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", modelUsed: "Kling-v1 (SaaS Infrastructure)" };
+        }
       } else {
         // TEXT ROUTING: STRICT HIERARCHY TO PRESERVE DEVELOPER CASH
         
-        // Priority 1: FREE MODELS ($0.00 Provider Bill)
-        console.log("[AI-Router] Attempting Free Route ($0.00 cost)...");
-        response = await getOpenRouterResponse(task, TEXT_MODELS.FREE);
-        
-        // Priority 2: ECONOMY MODELS (Sub-penny per call)
-        if (!response) {
-          console.log("[AI-Router] Free Route failed. Transitioning to Economy Route (Alibaba DashScope / DeepSeek)...");
-          if (process.env.DASHSCOPE_API_KEY) {
-            try { response = await getAlibabaResponse(task, "qwen-plus"); } catch (e) {}
+        // 1. Gemini Portal (Tier-1 Free)
+        try {
+          const sysGeminiKey = process.env.GEMINI_API_KEY;
+          if (sysGeminiKey) {
+            let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
+              contents: [{ role: 'user', parts: [{ text: task }] }],
+              model: "gemini-1.5-flash"
+            });
+            if (!aiRes || !aiRes.text) {
+              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
+                contents: [{ role: 'user', parts: [{ text: task }] }],
+                model: "gemini-1.5-pro"
+              });
+            }
+            if (aiRes && aiRes.text) response = { result: aiRes.text, modelUsed: `Gemini (${aiRes.modelUsed || "Tier-1"})` };
           }
-          if (!response) {
+        } catch (e) {}
+
+        // 2. OpenRouter FREE (Tier-2 Free)
+        if (!response) {
+          try { response = await getOpenRouterResponse(task, TEXT_MODELS.FREE); } catch (e) {}
+        }
+        
+        // 3. Alibaba DashScope Turbo (Tier-3 Economy/Trial)
+        if (!response && process.env.DASHSCOPE_API_KEY) {
+          try { response = await getAlibabaResponse(task, "qwen-turbo"); } catch (e) {}
+        }
+
+        // 4. Economy Fallback (DeepSeek/Qwen - Extremely cheap paid models)
+        if (!response) {
+          try {
+            console.log("[AI-Router] Free routes exhausted, using ECONOMY (DeepSeek/Qwen) for API delivery...");
             response = await getOpenRouterResponse(task, TEXT_MODELS.ECONOMY);
+          } catch (e) {
+            console.warn("[AI-Router] API Economy fallback failed...", (e as Error).message);
           }
         }
 
-        // Priority 3: PREMIUM MODELS (Expensive calls - requires Permission)
+        // Fallback to PREMIUM if necessary
         if (!response) {
           if (req.body.approved) {
-             console.log("[AI-Router] Intelligent Routing: Escalating to Premium models (GPT-4o/Claude) via OpenRouter.");
+             response = await getOpenRouterResponse(task, TEXT_MODELS.PREMIUM);
+          } else if (isAdmin || currentCredits >= 50) {
+             console.log("[AI-Router] Falling back to PREMIUM for high-credit user/admin...");
              response = await getOpenRouterResponse(task, TEXT_MODELS.PREMIUM);
           } else {
             return res.json({
               needsApproval: true,
-              message: "Cheaper models are currently congested. High-Performance Premium routing is available but costs real-world API credits. Proceed?"
+              message: "Free & Budget AI routes are congested. High-Performance Premium routing is available but costs real-world tokens. Proceed?"
             });
           }
         }
 
-        if (!response) {
-          throw new Error("Critical: All AI infrastructure routes are currently overloaded. Please try again in 60 seconds.");
-        }
+        if (!response) throw new Error("All AI routes currently unavailable.");
       }
 
       // 4. Deduct Credits & Log Usage
