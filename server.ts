@@ -28,13 +28,16 @@ const lastPhotos = new Map<number, { url: string, timestamp: number }>();
  * Helper to call Gemini with exponential backoff and model fallbacks
  */
 async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3) {
+  if (!apiKey) throw new Error("Gemini API Key is missing");
   const ai = new GoogleGenAI({ apiKey });
   let lastError: any;
   
+  // Use most stable models first
   const modelsToTry = [
-    options.model || "gemini-3-flash-preview",
-    "gemini-3.1-pro-preview",
-    "gemini-3-flash-preview"
+    options.model || "gemini-1.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro"
   ];
   
   for (let i = 0; i <= maxRetries; i++) {
@@ -43,11 +46,15 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
       
-      const response = await ai.models.generateContent({
-        model: currentModel,
-        contents: options.contents,
-        config: options.config || options.generationConfig || {}
-      });
+      // Use a shorter timeout for the thinking part to avoid keeping the user waiting indefinitely
+      const response = await Promise.race([
+        ai.models.generateContent({
+          model: currentModel,
+          contents: options.contents,
+          config: options.config || options.generationConfig || { temperature: 0.7 }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini Request Timeout (45s)")), 45000))
+      ]) as any;
       
       const textValue = response.text;
       
@@ -61,14 +68,15 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
     } catch (error: any) {
       lastError = error;
       const errorStr = (error?.message || String(error)).toLowerCase();
-      console.warn(`[Gemini] Error with ${currentModel}:`, errorStr);
+      console.error(`[Gemini] Error with ${currentModel}:`, errorStr);
 
       const isQuotaExceeded = errorStr.includes("429") || errorStr.includes("quota") || errorStr.includes("resource_exhausted");
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
       if (i < maxRetries) {
-        const baseDelay = isQuotaExceeded ? 15000 : (isUnavailable ? 5000 : (isNotFoundError ? 100 : 1000));
+        // Shorter delays for better responsiveness
+        const baseDelay = isQuotaExceeded ? 5000 : (isUnavailable ? 2000 : (isNotFoundError ? 100 : 1000));
         const delay = (Math.pow(2, i) * baseDelay) + Math.random() * 1000;
         console.warn(`[Gemini] Retrying in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -1715,8 +1723,8 @@ async function startServer() {
         const geminiKey = await getGeminiApiKey();
         if (geminiKey) {
            const ai = new GoogleGenAI({ apiKey: geminiKey });
-           const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
-           geminiStatus = response.text ? "✅ Gemini AI is working! (Gemini 3 Flash)" : "❌ Gemini returned empty response";
+           const response = await ai.models.generateContent({ model: "gemini-1.5-flash", contents: "Hi" });
+           geminiStatus = response.text ? "✅ Gemini AI is working! (1.5-flash)" : "❌ Gemini returned empty response";
         } else {
            geminiStatus = "❌ Gemini API Key Missing (Required for AI features)";
         }
@@ -4562,17 +4570,34 @@ async function fetchImageAsBase64(url: string) {
 
     const sendMsg = async (msg: string) => {
       console.log(`[Telegram] Sending message to ${chatId}: ${msg}`);
+      // Basic escaping for common Telegram Markdown issues
+      const escapedMsg = msg.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, (match, p1) => {
+        // Only escape if not part of a markdown-like structure we actually want
+        // This is a naive attempt, better to just use a cleaner message if possible
+        return p1; 
+      });
+      
       try {
         const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' }),
           family: 4,
-          timeout: 10000
+          timeout: 15000 // Increased timeout
         });
         const result = await (response.json() as any).catch(() => ({ ok: false }));
         if (!result.ok) {
           console.error("[Telegram] Send message failed:", JSON.stringify(result));
+          // Retry WITHOUT markdown if markdown fails
+          if (msg.includes('*') || msg.includes('_') || msg.includes('`')) {
+             console.log("[Telegram] Retrying without Markdown...");
+             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({ chat_id: chatId, text: msg.replace(/[*_`]/g, '') }),
+               family: 4
+             });
+          }
         }
       } catch (err) {
         console.error("[Telegram] Send message error:", err);
@@ -4790,8 +4815,8 @@ async function fetchImageAsBase64(url: string) {
         let geminiStatus = "Checking...";
         try {
           const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
-          geminiStatus = response.text ? "✅ Gemini 3-flash ACTIVE" : "❌ Gemini Empty";
+          const response = await ai.models.generateContent({ model: "gemini-1.5-flash", contents: "Hi" });
+          geminiStatus = response.text ? "✅ Gemini 1.5-flash ACTIVE" : "❌ Gemini Empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
         }
@@ -4907,12 +4932,19 @@ _Use '/link <id>' if features are missing._`);
         if (isTextTask) {
           await sendMsg(`🤖 *Barnali Thinking...*`);
           try {
+            console.log(`[Telegram] Starting Chat Chat: ${chatId}`);
             const chatPrompt = `[Persona: Barnali Family Archive Keeper. Guidelines: 1. Help with Vamshavali (Family Tree). 2. Promote AI Router for Image/Video Hub if interested. 3. Upgrade/Credits: AI Router page. 4. If asked for premium/upgrade, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff.] User: ${command.userQuestion || text}`;
-            const aiRes = await callGeminiWithRetry(geminiKey!, { contents: [{ role: 'user', parts: [{ text: chatPrompt }] }] });
-            await sendMsg(`💌 *Barnali:* ${aiRes.text || "How can I help with your family lineage today?"}`);
+            const aiRes = await callGeminiWithRetry(geminiKey!, { 
+              contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
+              config: { maxOutputTokens: 800, temperature: 0.7 } 
+            });
+            
+            const finalReply = aiRes.text || "I'm Barnali, your Family Keeper! How can I help with your tree today?";
+            console.log(`[Telegram] Chat success. Reply length: ${finalReply.length}`);
+            await sendMsg(`💌 *Barnali:* ${finalReply}`);
           } catch (e: any) {
             console.error("[Telegram] Gemini Chat Error:", e);
-            const errMsg = e.message || "Unknown error";
+            const errMsg = e.message || "Thinking process timed out or failed.";
             await sendMsg(`⚠️ *Busy Archives:* I'm having trouble thinking right now. (${errMsg}) Please try again!`);
           }
           return;
