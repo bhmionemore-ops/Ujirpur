@@ -4909,24 +4909,22 @@ _Use '/link <id>' if features are missing._`);
           }
           
           // Try to get corresponding userId and user object
-          let userData = { email: linkUserEmail, credits: 10, dailyUsage: { date: "", total: 0 } };
+          let userData = { email: linkUserEmail, credits: 15, dailyUsage: { date: "", total: 0 } };
           if (adminDb) {
-            const uSnap = await adminDb.collection("users").where("email", "==", linkUserEmail).limit(1).get();
-            if (!uSnap.empty) {
-              const uDoc = uSnap.docs[0];
-              userId = uDoc.id;
-              userData = { ...userData, ...uDoc.data() } as any;
-            }
-          } else if (db) {
-            const q = query(collection(db, "users"), where("email", "==", linkUserEmail), limit(1));
-            const uSnap = await getDocs(q);
-            if (!uSnap.empty) {
-               const uDoc = uSnap.docs[0];
-               userId = uDoc.id;
-               userData = { ...userData, ...uDoc.data() } as any;
+            try {
+              const uSnap = await adminDb.collection("users").where("email", "==", linkUserEmail).limit(1).get();
+              if (!uSnap.empty) {
+                const uDoc = uSnap.docs[0];
+                userId = uDoc.id;
+                userData = { ...userData, ...uDoc.data() } as any;
+              }
+            } catch (e) {
+              console.warn("[Telegram] Admin read failed, using optimistic guest flow:", e);
             }
           }
-
+          // Note: Client SDK read (db) is skipped here because it will catch "Permission Denied" 
+          // on server without auth. We rely on the 'userData' defaults or Admin SDK success.
+          
           const routingResult = await executeAIRouting(
             userId,
             command.userQuestion || text,
@@ -5539,6 +5537,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
          const ref = await adminDb.collection("pending_ai_requests").add(requestData);
          pendingId = ref.id;
       } else {
+         // Using client SDK with serverKey bypass as defined in firestore.rules
          const ref = await addDoc(collection(db!, "pending_ai_requests"), requestData as any);
          pendingId = ref.id;
       }
@@ -5589,30 +5588,34 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!response) throw new Error("All AI infrastructure routes are overloaded.");
 
     // 3. Deduction & Logging
-    const newCredits = currentCredits - cost;
-    const newDailyUsage = {
-      date: today,
-      total: dailyUsage + cost
-    };
-
     const logData = { userId, task, type, cost, modelUsed: response.modelUsed, result: response.result, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
 
-    if (adminDb) {
-      await adminDb.collection("users").doc(userId).update({ 
-        credits: newCredits,
-        dailyUsage: newDailyUsage
-      });
-      await adminDb.collection("usage").add(logData);
-    } else {
-      await updateDoc(doc(db!, "users", userId), { 
-        credits: newCredits, 
-        dailyUsage: newDailyUsage,
-        serverKey: "barnia-system-2024-v1" 
-      } as any);
-      await addDoc(collection(db!, "usage"), logData as any);
-    }
+    if (userId !== "telegram_guest" && userId !== "guest") {
+      const newCredits = currentCredits - cost;
+      const newDailyUsage = {
+        date: today,
+        total: dailyUsage + cost
+      };
 
-    return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type };
+      if (adminDb) {
+        await adminDb.collection("users").doc(userId).update({ 
+          credits: newCredits,
+          dailyUsage: newDailyUsage
+        });
+        await adminDb.collection("usage").add(logData);
+      } else {
+        await updateDoc(doc(db!, "users", userId), { 
+          credits: newCredits, 
+          dailyUsage: newDailyUsage,
+          serverKey: "barnia-system-2024-v1" 
+        } as any);
+        await addDoc(collection(db!, "usage"), logData as any);
+      }
+      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type };
+    } else {
+      // For Guest users, we just return the result without modifying user docs
+      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: currentCredits, type };
+    }
   }
 
   // --- API ROUTER ENDPOINTS ---

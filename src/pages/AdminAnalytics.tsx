@@ -357,7 +357,7 @@ export const AdminAnalytics = () => {
   }, {} as Record<string, number>);
 
   const lineageLogins = sessions.filter(s => 
-    s.events?.some(e => e.includes('vamshavali_login'))
+    s.events?.some(e => e.includes('vamshavali_') && e.includes('login'))
   ).sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
 
   const sortedChartData = Object.entries(dailyTraffic)
@@ -723,7 +723,7 @@ export const AdminAnalytics = () => {
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
                   {lineageLogins.map((req) => {
-                    const loginEvent = req.events?.find(e => e.includes('vamshavali_login')) || '';
+                    const loginEvent = req.events?.find(e => e.includes('vamshavali_') && e.includes('login')) || '';
                     const isSocial = loginEvent.includes('social');
                     let profileId = 'Pending';
                     try {
