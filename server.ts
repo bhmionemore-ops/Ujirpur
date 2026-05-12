@@ -28,11 +28,7 @@ import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
 import crypto from "crypto";
 import twilio from "twilio";
-import dns from "dns";
-
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+import path from "path";
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
 
@@ -1691,9 +1687,16 @@ async function startServer() {
   transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', 
     port: 587,
-    secure: false, // Port 587 uses STARTTLS
+    secure: false, 
     pool: false,
-    family: 4, // Force IPv4
+    family: 4, 
+    lookup: (hostname: string, options: any, callback: any) => {
+      // Force lookup to IPv4 only
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        if (err) return callback(err);
+        callback(null, address, 4);
+      });
+    },
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1703,8 +1706,8 @@ async function startServer() {
       minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 60000, 
-    greetingTimeout: 60000,
+    connectionTimeout: 40000, 
+    greetingTimeout: 40000,
     socketTimeout: 60000,
     debug: true,
     logger: true
@@ -2917,13 +2920,19 @@ async function startServer() {
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
+          lookup: (hostname: string, options: any, callback: any) => {
+            dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+              if (err) return callback(err);
+              callback(null, address, 4);
+            });
+          },
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
           },
           debug: true,
           logger: true,
-          connectionTimeout: 60000
+          connectionTimeout: 40000
         };
         transporter = nodemailer.createTransport(options);
       }
@@ -2971,16 +2980,16 @@ async function startServer() {
 
       // Send email using global transporter
       const mailOptions = {
-        from: `"Barnali AI (v4-587)" <${emailUser || 'no-reply@barnaliai.com'}>`,
+        from: `"Barnali AI (v5-587)" <${emailUser || 'no-reply@barnaliai.com'}>`,
         to: email,
-        subject: `Your OTP for Barnali AI Login [v4-587]`,
+        subject: `Your OTP for Barnali AI Login [v5-587]`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
             <h2 style="color: #f58e27;">Barnali AI Security</h2>
             <p>Your One-Time Password (OTP) for login is:</p>
             <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; padding: 10px; background: #f9f9f9; text-align: center; border-radius: 5px;">${otp}</div>
             <p style="color: #666; font-size: 14px; margin-top: 20px;">Requested at: ${new Date().toLocaleString()}</p>
-            <p style="color: #666; font-size: 14px;">Server IP used: ${resolvedSmtpHost}</p>
+            <p style="color: #666; font-size: 14px;">Mode: v5-Forced-IPv4-STARTTLS</p>
             <p style="color: #666; font-size: 14px; margin-top: 20px;">This OTP will expire in 10 minutes. If you didn't request this, please ignore this email.</p>
           </div>
         `
@@ -2997,7 +3006,7 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(v4-587) ${error.message}`,
+        details: `(v5-587) ${error.message}`,
         diagnostic: {
           host: 'smtp.gmail.com',
           port: 587,
