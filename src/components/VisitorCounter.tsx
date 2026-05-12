@@ -5,11 +5,8 @@ import { useLanguage } from '../LanguageContext';
 
 export const VisitorCounter = () => {
   const [count, setCount] = useState<number | null>(null);
-  const [error, setError] = useState<Error | null>(null);
   const { t } = useLanguage();
   const BASE_COUNT = 100000;
-
-  if (error) throw error;
 
   useEffect(() => {
     const visitorDoc = doc(db, 'stats', 'visitors');
@@ -44,12 +41,8 @@ export const VisitorCounter = () => {
       if (doc.exists()) {
         setCount(doc.data().count);
       }
-    }, (error) => {
-      try {
-        handleFirestoreError(error, OperationType.GET, 'stats/visitors');
-      } catch (e) {
-        setError(e as Error);
-      }
+    }, (err) => {
+       console.warn("[VisitorCounter] Read error (ignoring for UI stability):", err.message);
     });
 
     return () => unsub();

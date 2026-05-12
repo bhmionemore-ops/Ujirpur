@@ -117,6 +117,11 @@ async function getTelegramBotToken(): Promise<string | null> {
   return token ? token.trim() : null;
 }
 import nodemailer from "nodemailer";
+
+// Global mail variables
+let transporter: any = null;
+let emailUser = process.env.EMAIL_USER;
+let emailPass = process.env.EMAIL_PASS;
 import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import path from "path";
@@ -1604,9 +1609,9 @@ async function startServer() {
     }, 3600000); // Every hour
   });
 
-  // Email Transporter
-  const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
-  const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+  // Update global mail variables
+  emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+  emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
   
   console.log(`[Server] Initializing email transporter...`);
   console.log(`[Server] EMAIL_USER: ${emailUser || 'NOT_SET'}`);
@@ -1627,7 +1632,7 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  const transporter = nodemailer.createTransport({
+  transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // Use STARTTLS for port 587
@@ -2831,10 +2836,15 @@ async function startServer() {
   // Send OTP
   app.post("/api/vamshavali/send-otp", async (req, res) => {
     const { email } = req.body;
+    console.log(`[Vamshavali] Incoming OTP request for email: ${email}`);
+    
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     try {
-      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      const eUser = process.env.EMAIL_USER;
+      const ePass = process.env.EMAIL_PASS;
+      
+      if (!eUser || !ePass) {
         console.error("[Vamshavali] Email configuration is missing (EMAIL_USER/EMAIL_PASS)");
         return res.status(400).json({ 
           error: "OTP service not configured", 
@@ -6093,11 +6103,11 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
 
       const cost = AI_COSTS[finalType as keyof typeof AI_COSTS] || 1;
       const userEmail = userData.email;
-      const isAdmin = userEmail === "okbgmi611@gmail.com";
+      const isActuallyAdmin = userEmail === "okbgmi611@gmail.com";
 
       // RULE: If high value API is needed, ask for permission
       // If it's a customer (not admin), we store it as a pending request for the developer to approve
-      if (cost >= PREMIUM_THRESHOLD && !req.body.approved && !isAdmin) {
+      if (cost >= PREMIUM_THRESHOLD && !req.body.approved && !isActuallyAdmin) {
         // Create a pending request in Firestore
         const requestData = {
           userId,
@@ -6129,7 +6139,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         });
       }
 
-      if (currentCredits < cost) {
+      if (currentCredits < cost && !isActuallyAdmin) {
         return res.status(403).json({ 
           success: false, 
           error: "Insufficient credits", 
@@ -6137,6 +6147,9 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
           current: currentCredits 
         });
       }
+
+      // Ad-hoc: Ensure admin always has at least 'cost' for visual consistency if they somehow have 0
+      const finalCredits = isActuallyAdmin ? Math.max(currentCredits, cost) : currentCredits;
 
       // 3. ROUTING ENGINE: ANALYZE PROVIDER COST & BEST VALUE
       // Focus: Save Developer actual money ($ Provider bill) vs Customer fixed credit.
@@ -6221,10 +6234,12 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       }
 
       // 4. Deduct Credits & Log Usage
-      const newCredits = currentCredits - cost;
+      const newCredits = isActuallyAdmin ? (userData.credits || 10) : (currentCredits - cost);
       
       if (adminDb) {
-        await userRef.update({ credits: newCredits });
+        if (!isActuallyAdmin) {
+          await userRef.update({ credits: newCredits });
+        }
         await adminDb.collection("usage").add({
           userId,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
@@ -6234,10 +6249,12 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
           modelUsed: response.modelUsed
         });
       } else {
-        await updateDoc(userRef as any, { 
-          credits: newCredits,
-          serverKey: "barnia-system-2024-v1" 
-        });
+        if (!isActuallyAdmin) {
+          await updateDoc(userRef as any, { 
+            credits: newCredits,
+            serverKey: "barnia-system-2024-v1" 
+          });
+        }
         await addDoc(collection(db!, "usage"), {
           userId,
           timestamp: serverTimestamp(),

@@ -160,6 +160,15 @@ export const AiRouterPage = () => {
       setLogs(newLogs);
     }, (err) => {
        console.warn("[Firebase] Usage logs read error:", err.message);
+       if (err.message.toLowerCase().includes("permission") || err.message.toLowerCase().includes("index")) {
+         console.log("[Firebase] Attempting fallback simple query for logs...");
+         const simpleQ = query(usageRef, where('userId', '==', user.uid), limit(10));
+         onSnapshot(simpleQ, (snap) => {
+            setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })) as UsageLog[]);
+         }, (err2) => {
+            console.error("[Firebase] Fallback query failed:", err2.message);
+         });
+       }
     });
 
     return () => {
