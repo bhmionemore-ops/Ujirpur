@@ -1650,7 +1650,6 @@ async function startServer() {
     secure: false, // Use STARTTLS for port 587
     pool: false,   // Disable pooling for serverless/cloud environments
     family: 4,     // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
-    localAddress: '0.0.0.0', // Explicitly bind to IPv4 local address
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -2869,7 +2868,6 @@ async function startServer() {
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
-          localAddress: '0.0.0.0', // Force IPv4
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
