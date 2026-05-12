@@ -17,6 +17,12 @@ process.on('unhandledRejection', (err: any) => {
 });
 
 import express from "express";
+import dns from "dns";
+
+// FORCE IPv4 globally for the process to avoid ENETUNREACH on IPv6
+if (dns && (dns as any).setDefaultResultOrder) {
+  (dns as any).setDefaultResultOrder('ipv4first');
+}
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
@@ -1683,11 +1689,11 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: '74.125.138.108', // Hardcoded smtp.gmail.com IPv4 to avoid IPv6 issues
-    port: 465,
-    secure: true, // Use SSL for port 465
-    pool: false, // Simple connections for maximal compatibility
-    family: 4, 
+    host: 'smtp.gmail.com', 
+    port: 587,
+    secure: false, // Port 587 uses STARTTLS
+    pool: false,
+    family: 4, // Force IPv4
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1695,7 +1701,7 @@ async function startServer() {
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com' // Important for certificate matching
+      servername: 'smtp.gmail.com'
     },
     connectionTimeout: 60000, 
     greetingTimeout: 60000,
@@ -2906,9 +2912,9 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: '74.125.138.108',
-          port: 465,
-          secure: true,
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
           tls: { 
@@ -2917,7 +2923,7 @@ async function startServer() {
           },
           debug: true,
           logger: true,
-          connectionTimeout: 40000
+          connectionTimeout: 60000
         };
         transporter = nodemailer.createTransport(options);
       }
@@ -2965,9 +2971,9 @@ async function startServer() {
 
       // Send email using global transporter
       const mailOptions = {
-        from: `"Barnali AI (v3-465)" <${emailUser || 'no-reply@barnaliai.com'}>`,
+        from: `"Barnali AI (v4-587)" <${emailUser || 'no-reply@barnaliai.com'}>`,
         to: email,
-        subject: `Your OTP for Barnali AI Login [v3-${resolvedSmtpHost}]`,
+        subject: `Your OTP for Barnali AI Login [v4-587]`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
             <h2 style="color: #f58e27;">Barnali AI Security</h2>
@@ -2991,10 +2997,10 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(v3-465) ${error.message}`,
+        details: `(v4-587) ${error.message}`,
         diagnostic: {
-          host: '74.125.138.108',
-          port: 465,
+          host: 'smtp.gmail.com',
+          port: 587,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
