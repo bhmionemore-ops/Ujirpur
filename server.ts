@@ -130,13 +130,23 @@ async function resolveSmtpHost() {
   try {
     const addresses = await new Promise<string[]>((resolve, reject) => {
       dns.resolve4('smtp.gmail.com', (err, addrs) => {
-        if (err) reject(err);
+        if (err) resolve([]); // Don't reject, just return empty
         else resolve(addrs);
       });
     });
     if (addresses && addresses.length > 0) {
       resolvedSmtpHost = addresses[0];
       console.log(`[Email] Resolved smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
+    } else {
+      // Fallback: try dns.lookup if resolve4 fails (some environments behave differently)
+      const lookupResult = await new Promise<{address: string}>((resolve, reject) => {
+        dns.lookup('smtp.gmail.com', { family: 4 }, (err, address) => {
+          if (err) reject(err);
+          else resolve({ address });
+        });
+      });
+      resolvedSmtpHost = lookupResult.address;
+      console.log(`[Email] Looked up smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
     }
   } catch (err) {
     console.error(`[Email] Failed to resolve smtp.gmail.com to IPv4.`, err);
@@ -1667,11 +1677,15 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: resolvedSmtpHost,
+    host: 'smtp.gmail.com', // Use hostname here
     port: 587,
-    secure: false, // Use STARTTLS
+    secure: false, 
     pool: false,
-    family: 4,
+    family: 4, // Force IPv4 at connection level
+    lookup: (hostname: string, options: any, callback: any) => {
+      // Force lookup to IPv4
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1679,7 +1693,7 @@ async function startServer() {
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com' // Explicitly set SNI to original hostname
+      servername: 'smtp.gmail.com'
     },
     connectionTimeout: 20000, 
     greetingTimeout: 20000,
@@ -2885,11 +2899,14 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
+          lookup: (hostname: string, options: any, callback: any) => {
+            dns.lookup(hostname, { family: 4 }, callback);
+          },
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
