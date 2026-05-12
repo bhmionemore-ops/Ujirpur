@@ -1648,15 +1648,17 @@ async function startServer() {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // Use STARTTLS for port 587
-    pool: false,   // Disable pooling for serverless/Cloud Run environments
+    pool: false,   // Disable pooling for serverless/cloud environments
     family: 4,     // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
+    localAddress: '0.0.0.0', // Explicitly bind to IPv4 local address
     auth: {
       user: emailUser,
       pass: emailPass,
     },
     tls: {
       rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
+      minVersion: 'TLSv1.2',
+      servername: 'smtp.gmail.com' // Ensure SNI matches the host
     },
     connectionTimeout: 20000, 
     greetingTimeout: 20000,
@@ -2867,7 +2869,14 @@ async function startServer() {
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
-          tls: { rejectUnauthorized: false }
+          localAddress: '0.0.0.0', // Force IPv4
+          tls: { 
+            rejectUnauthorized: false,
+            servername: 'smtp.gmail.com'
+          },
+          debug: true,
+          logger: true,
+          connectionTimeout: 20000
         };
         transporter = nodemailer.createTransport(options);
       }
