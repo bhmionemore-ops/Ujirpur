@@ -125,12 +125,14 @@ import nodemailer from "nodemailer";
 import cors from "cors";
 
 // Force IPv4 for Gmail SMTP to avoid ENETUNREACH IPv6 issues
-let resolvedSmtpHost = 'smtp.gmail.com';
+// Default to a balanced Gmail SMTP IPv4 IP (this is one of many, but very stable)
+let resolvedSmtpHost = '142.251.5.108'; 
 async function resolveSmtpHost() {
   try {
+    console.log(`[Email] Attempting to resolve smtp.gmail.com to IPv4...`);
     const addresses = await new Promise<string[]>((resolve, reject) => {
       dns.resolve4('smtp.gmail.com', (err, addrs) => {
-        if (err) resolve([]); // Don't reject, just return empty
+        if (err) resolve([]); 
         else resolve(addrs);
       });
     });
@@ -139,17 +141,21 @@ async function resolveSmtpHost() {
       console.log(`[Email] Resolved smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
     } else {
       // Fallback: try dns.lookup if resolve4 fails (some environments behave differently)
-      const lookupResult = await new Promise<{address: string}>((resolve, reject) => {
+      const lookupResult = await new Promise<{address: string} | null>((resolve) => {
         dns.lookup('smtp.gmail.com', { family: 4 }, (err, address) => {
-          if (err) reject(err);
+          if (err) resolve(null);
           else resolve({ address });
         });
       });
-      resolvedSmtpHost = lookupResult.address;
-      console.log(`[Email] Looked up smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
+      if (lookupResult) {
+        resolvedSmtpHost = lookupResult.address;
+        console.log(`[Email] Looked up smtp.gmail.com to IPv4 via dns.lookup: ${resolvedSmtpHost}`);
+      } else {
+        console.warn(`[Email] All DNS resolutions failed. Using hardcoded fallback: ${resolvedSmtpHost}`);
+      }
     }
   } catch (err) {
-    console.error(`[Email] Failed to resolve smtp.gmail.com to IPv4.`, err);
+    console.error(`[Email] Critical error during SMTP resolution. Using fallback ${resolvedSmtpHost}`, err);
   }
 }
 
@@ -1677,15 +1683,11 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', // Use hostname here
+    host: resolvedSmtpHost, // Force resolved IPv4 IP
     port: 587,
     secure: false, 
     pool: false,
-    family: 4, // Force IPv4 at connection level
-    lookup: (hostname: string, options: any, callback: any) => {
-      // Force lookup to IPv4
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
+    family: 4, 
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1693,7 +1695,7 @@ async function startServer() {
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com'
+      servername: 'smtp.gmail.com' // Crucial for SNI when using IP as host
     },
     connectionTimeout: 20000, 
     greetingTimeout: 20000,
@@ -1706,10 +1708,15 @@ async function startServer() {
   transporter.verify((error, success) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] ❌ Error Details:', JSON.stringify(error, null, 2));
+      console.error('[Server] ❌ Error Details:', JSON.stringify({
+        code: error.code,
+        command: error.command,
+        host: resolvedSmtpHost,
+        user: emailUser ? 'Set' : 'Not Set'
+      }, null, 2));
       console.error('[Server] 💡 Tip: Verify your App Password and ensure IPv4 is enabled in your environment.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready to send messages');
+      console.log('[Server] ✅ Email Transporter is ready to send messages using host:', resolvedSmtpHost);
     }
   });
 
@@ -2899,14 +2906,11 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpHost,
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
-          lookup: (hostname: string, options: any, callback: any) => {
-            dns.lookup(hostname, { family: 4 }, callback);
-          },
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
@@ -2983,7 +2987,16 @@ async function startServer() {
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
       console.error("[Vamshavali] Error sending OTP:", error);
-      res.status(500).json({ error: "Failed to send OTP", details: error.message });
+      res.status(500).json({ 
+        error: "Failed to send OTP", 
+        details: error.message,
+        diagnostic: {
+          host: resolvedSmtpHost,
+          code: error.code,
+          command: error.command,
+          timestamp: new Date().toISOString()
+        }
+      });
     }
   });
 
@@ -3615,7 +3628,7 @@ async function startServer() {
         config: {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpHost,
           port: 587
         }
       });
@@ -3700,7 +3713,7 @@ async function startServer() {
         success: true, 
         message: "SMTP connection verified successfully",
         config: {
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpHost,
           port: 587,
           family: 4,
           user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 3)}...` : 'Not Set'
@@ -3715,7 +3728,7 @@ async function startServer() {
         command: err.command,
         stack: err.stack,
         config: {
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpHost,
           port: 587,
           family: 4
         }
