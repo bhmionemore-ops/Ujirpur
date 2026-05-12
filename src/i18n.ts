@@ -391,7 +391,7 @@ export const translations = {
       subtitle: 'Digital Family Tree',
       manual: 'User Manual',
       downloadManual: 'Download Manual',
-      loginTitle: 'Preserve Your Roots, Grow Your Legacy.',
+      loginTitle: 'Preserve Your Roots (v3), Grow Your Legacy.',
       loginSubtitle: 'A digital Vamshavali is more than a list of names—it is the living heart of your family\'s history and spiritual identity.',
       manualPdfTitle: 'Vamshavali: Digital Lineage Manual',
       manualIntro: '1. Introduction',

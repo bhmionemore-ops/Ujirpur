@@ -1683,10 +1683,10 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: resolvedSmtpHost, // Force resolved IPv4 IP
-    port: 587,
-    secure: false, 
-    pool: false,
+    host: '74.125.138.108', // Hardcoded smtp.gmail.com IPv4 to avoid IPv6 issues
+    port: 465,
+    secure: true, // Use SSL for port 465
+    pool: false, // Simple connections for maximal compatibility
     family: 4, 
     auth: {
       user: emailUser,
@@ -1695,11 +1695,11 @@ async function startServer() {
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com' // Crucial for SNI when using IP as host
+      servername: 'smtp.gmail.com' // Important for certificate matching
     },
-    connectionTimeout: 20000, 
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
+    connectionTimeout: 60000, 
+    greetingTimeout: 60000,
+    socketTimeout: 60000,
     debug: true,
     logger: true
   } as any);
@@ -2906,9 +2906,9 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: resolvedSmtpHost,
-          port: 587,
-          secure: false,
+          host: '74.125.138.108',
+          port: 465,
+          secure: true,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
           tls: { 
@@ -2917,7 +2917,7 @@ async function startServer() {
           },
           debug: true,
           logger: true,
-          connectionTimeout: 20000
+          connectionTimeout: 40000
         };
         transporter = nodemailer.createTransport(options);
       }
@@ -2965,14 +2965,16 @@ async function startServer() {
 
       // Send email using global transporter
       const mailOptions = {
-        from: `"Barnali AI" <${emailUser || 'no-reply@barnaliai.com'}>`,
+        from: `"Barnali AI (v3-465)" <${emailUser || 'no-reply@barnaliai.com'}>`,
         to: email,
-        subject: "Your OTP for Barnali AI Login",
+        subject: `Your OTP for Barnali AI Login [v3-${resolvedSmtpHost}]`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
             <h2 style="color: #f58e27;">Barnali AI Security</h2>
             <p>Your One-Time Password (OTP) for login is:</p>
             <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; padding: 10px; background: #f9f9f9; text-align: center; border-radius: 5px;">${otp}</div>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">Requested at: ${new Date().toLocaleString()}</p>
+            <p style="color: #666; font-size: 14px;">Server IP used: ${resolvedSmtpHost}</p>
             <p style="color: #666; font-size: 14px; margin-top: 20px;">This OTP will expire in 10 minutes. If you didn't request this, please ignore this email.</p>
           </div>
         `
@@ -2989,9 +2991,10 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: error.message,
+        details: `(v3-465) ${error.message}`,
         diagnostic: {
-          host: resolvedSmtpHost,
+          host: '74.125.138.108',
+          port: 465,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
