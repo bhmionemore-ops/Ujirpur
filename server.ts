@@ -126,48 +126,12 @@ async function getTelegramBotToken(): Promise<string | null> {
 import nodemailer from "nodemailer";
 import cors from "cors";
 
-// Force IPv4 for Gmail SMTP to avoid ENETUNREACH IPv6 issues
-// Default to a balanced Gmail SMTP IPv4 IP (this is one of many, but very stable)
-let resolvedSmtpHost = '142.251.5.108'; 
-async function resolveSmtpHost() {
-  try {
-    console.log(`[Email] Attempting to resolve smtp.gmail.com to IPv4...`);
-    const addresses = await new Promise<string[]>((resolve, reject) => {
-      dns.resolve4('smtp.gmail.com', (err, addrs) => {
-        if (err) resolve([]); 
-        else resolve(addrs);
-      });
-    });
-    if (addresses && addresses.length > 0) {
-      resolvedSmtpHost = addresses[0];
-      console.log(`[Email] Resolved smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
-    } else {
-      // Fallback: try dns.lookup if resolve4 fails (some environments behave differently)
-      const lookupResult = await new Promise<{address: string} | null>((resolve) => {
-        dns.lookup('smtp.gmail.com', { family: 4 }, (err, address) => {
-          if (err) resolve(null);
-          else resolve({ address });
-        });
-      });
-      if (lookupResult) {
-        resolvedSmtpHost = lookupResult.address;
-        console.log(`[Email] Looked up smtp.gmail.com to IPv4 via dns.lookup: ${resolvedSmtpHost}`);
-      } else {
-        console.warn(`[Email] All DNS resolutions failed. Using hardcoded fallback: ${resolvedSmtpHost}`);
-      }
-    }
-  } catch (err) {
-    console.error(`[Email] Critical error during SMTP resolution. Using fallback ${resolvedSmtpHost}`, err);
-  }
-}
-
 // Global mail variables
 let transporter: any = null;
 let emailUser = process.env.EMAIL_USER;
 let emailPass = process.env.EMAIL_PASS;
 import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
-import path from "path";
 import fs from "fs/promises";
 import fsSync from "fs";
 import fetch from "node-fetch";
@@ -1500,9 +1464,6 @@ async function saveData(data: any) {
 }
 
 async function startServer() {
-  // Resolve SMTP host early to force IPv4
-  await resolveSmtpHost();
-  
   const app = express();
   const PORT = 3000;
 
@@ -1685,10 +1646,11 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: resolvedSmtpHost, 
+    host: 'smtp.gmail.com', 
     port: 587,
     secure: false, 
-    pool: false,
+    pool: true, // Use pooling for better performance with multiple concurrent requests
+    maxConnections: 3,
     family: 4, 
     auth: {
       user: emailUser,
@@ -1696,14 +1658,13 @@ async function startServer() {
     },
     tls: {
       rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com'
+      minVersion: 'TLSv1.2'
     },
-    connectionTimeout: 40000, 
-    greetingTimeout: 40000,
-    socketTimeout: 60000,
-    debug: true,
-    logger: true
+    connectionTimeout: 20000, 
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
+    debug: false,
+    logger: false
   } as any);
 
   // Verify transporter on startup
@@ -1713,12 +1674,11 @@ async function startServer() {
       console.error('[Server] ❌ Error Details:', JSON.stringify({
         code: error.code,
         command: error.command,
-        host: resolvedSmtpHost,
         user: emailUser ? 'Set' : 'Not Set'
       }, null, 2));
-      console.error('[Server] 💡 Tip: Verify your App Password and ensure IPv4 is enabled in your environment.');
+      console.error('[Server] 💡 Tip: Verify your App Password and check for network restrictions on port 587.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready to send messages using host:', resolvedSmtpHost);
+      console.log('[Server] ✅ Email Transporter is ready to send messages.');
     }
   });
 
@@ -2908,14 +2868,13 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
           tls: { 
-            rejectUnauthorized: false,
-            servername: 'smtp.gmail.com'
+            rejectUnauthorized: false
           },
           debug: true,
           logger: true,
@@ -2967,17 +2926,30 @@ async function startServer() {
 
       // Send email using global transporter
       const mailOptions = {
-        from: `"Barnali AI (v6-587)" <${emailUser || 'no-reply@barnaliai.com'}>`,
+        from: `"Barnali AI (Security)" <${emailUser || 'no-reply@barnaliai.com'}>`,
         to: email,
-        subject: `Your OTP for Barnali AI Login [v6-587]`,
+        subject: `Your OTP for Barnali AI Login [Fixed]`,
         html: `
-          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
-            <h2 style="color: #f58e27;">Barnali AI Security</h2>
-            <p>Your One-Time Password (OTP) for login is:</p>
-            <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; padding: 10px; background: #f9f9f9; text-align: center; border-radius: 5px;">${otp}</div>
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">Requested at: ${new Date().toLocaleString()}</p>
-            <p style="color: #666; font-size: 14px;">Mode: v6-Resolved-IP (${resolvedSmtpHost})</p>
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">This OTP will expire in 10 minutes. If you didn't request this, please ignore this email.</p>
+          <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+            <div style="background-color: #4f46e5; padding: 32px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Barnali AI Security</h1>
+            </div>
+            <div style="padding: 32px 24px;">
+              <p style="font-size: 16px; color: #1f2937; margin-bottom: 24px;">Hello,</p>
+              <p style="font-size: 16px; color: #4b5563; line-height: 1.5; margin-bottom: 32px;">
+                You requested a One-Time Password (OTP) to access your family lineage records. Please use the following code to login:
+              </p>
+              <div style="background-color: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 32px;">
+                <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: bold; color: #4f46e5; letter-spacing: 8px;">${otp}</span>
+              </div>
+              <p style="font-size: 14px; color: #94a3b8; margin-bottom: 16px;">
+                This code will expire in 10 minutes. If you did not request this, please ignore this email.
+              </p>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: Stable-IPv4-STARTTLS</p>
+            </div>
           </div>
         `
       };
@@ -2993,9 +2965,9 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(v6-587) ${error.message}`,
+        details: `(Fixed-587) ${error.message}`,
         diagnostic: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           code: error.code,
           command: error.command,
@@ -3633,7 +3605,7 @@ async function startServer() {
         config: {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587
         }
       });
@@ -3718,7 +3690,7 @@ async function startServer() {
         success: true, 
         message: "SMTP connection verified successfully",
         config: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           family: 4,
           user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 3)}...` : 'Not Set'
@@ -3733,7 +3705,7 @@ async function startServer() {
         command: err.command,
         stack: err.stack,
         config: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           family: 4
         }
