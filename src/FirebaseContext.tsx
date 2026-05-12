@@ -26,12 +26,19 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
 
   useEffect(() => {
+    // Safety timeout to prevent infinite loading screen if Firebase fails to connect
+    const safetyTimeout = setTimeout(() => {
+      console.warn("[FirebaseContext] Initialization safety timeout reached. Setting loading to false.");
+      setLoading(false);
+    }, 8000);
+
     // Handle redirect result for mobile
     handleRedirectResult().catch(err => {
       console.error("Redirect result error:", err);
     });
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      clearTimeout(safetyTimeout);
       setUser(currentUser);
       
       if (currentUser) {

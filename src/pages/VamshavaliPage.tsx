@@ -577,32 +577,36 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
   // Real-time synchronization listener
   useEffect(() => {
-    if (profile?.id) {
+    if (profile?.id && db) {
       console.log(`[Vamshavali] Activating real-time sync for profile: ${profile.id}`);
-      const profileRef = doc(db, 'vamshavali_profiles', profile.id);
-      const unsubscribe = onSnapshot(profileRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const newData = snapshot.data() as any;
-          // We update state only if it differs from the current profile and we're NOT in a local edit mode
-          // (To prevent overwriting local changes if someone happened to be editing)
-          if (!isEditing) {
-            console.log(`[Vamshavali] Remote update detected for ${profile.id}. Syncing...`);
-            setProfile(prev => {
-              // Deep compare simple check to avoid unnecessary state updates
-              if (JSON.stringify(prev) !== JSON.stringify(newData)) {
-                return { ...newData, id: snapshot.id };
-              }
-              return prev;
-            });
+      try {
+        const profileRef = doc(db, 'vamshavali_profiles', profile.id);
+        const unsubscribe = onSnapshot(profileRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const newData = snapshot.data() as any;
+            // We update state only if it differs from the current profile and we're NOT in a local edit mode
+            // (To prevent overwriting local changes if someone happened to be editing)
+            if (!isEditing) {
+              console.log(`[Vamshavali] Remote update detected for ${profile.id}. Syncing...`);
+              setProfile(prev => {
+                // Deep compare simple check to avoid unnecessary state updates
+                if (JSON.stringify(prev) !== JSON.stringify(newData)) {
+                  return { ...newData, id: snapshot.id };
+                }
+                return prev;
+              });
+            }
           }
-        }
-      }, (error) => {
-        console.error("[Vamshavali] Sync listener error:", error);
-      });
-      return () => {
-        console.log(`[Vamshavali] Deactivating real-time sync for ${profile.id}`);
-        unsubscribe();
-      };
+        }, (error) => {
+          console.error("[Vamshavali] Sync listener error:", error.message);
+        });
+        return () => {
+          console.log(`[Vamshavali] Deactivating real-time sync for ${profile.id}`);
+          unsubscribe();
+        };
+      } catch (err: any) {
+        console.error("[Vamshavali] Snapshot attachment failed:", err.message);
+      }
     }
   }, [profile?.id, isEditing]);
 

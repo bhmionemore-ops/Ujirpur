@@ -22,11 +22,7 @@ export const VisitorCounter = () => {
           });
         }
       } catch (error) {
-        try {
-          handleFirestoreError(error, OperationType.WRITE, 'stats/visitors');
-        } catch (e) {
-          setError(e as Error);
-        }
+        console.warn("[VisitorCounter] Increment failed (ignoring for UI stability):", error);
       }
     };
 
