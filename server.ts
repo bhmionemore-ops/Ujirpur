@@ -52,14 +52,14 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
     try {
       console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
       
-      // Use a shorter timeout for the thinking part to avoid keeping the user waiting indefinitely
+      // Increase timeout for better stability with larger prompts/slower regions
       const response = await Promise.race([
         ai.models.generateContent({
           model: currentModel,
           contents: options.contents,
           config: options.config || options.generationConfig || { temperature: 0.7 }
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Gemini Request Timeout (25s) for ${currentModel}`)), 25000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Gemini Request Timeout (60s) for ${currentModel}`)), 60000))
       ]) as any;
       
       const textValue = response.text;
@@ -2020,7 +2020,7 @@ async function startServer() {
       `;
 
       const response = await callGeminiWithRetry(apiKey, {
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt
       });
 
@@ -2256,7 +2256,7 @@ async function startServer() {
       const apiKey = await getGeminiApiKey();
       
       const response = await callGeminiWithRetry(apiKey, {
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: "Hello, are you working?"
       });
 
@@ -2367,7 +2367,7 @@ async function startServer() {
       Return exactly 5 items per category. If limited news is available, prioritize quality and detail. Ensure the news is relevant to ${date} or the most recent available.`;
 
       const response = await callGeminiWithRetry(geminiKey, { 
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -4925,7 +4925,7 @@ async function fetchImageAsBase64(url: string) {
         let geminiStatus = "Checking...";
         try {
           const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({ model: "gemini-1.5-flash", contents: "Hi" });
+           const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
           geminiStatus = response.text ? "✅ Gemini 1.5-flash ACTIVE" : "❌ Gemini Empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
@@ -5918,7 +5918,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
           let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
             contents: [{ role: 'user', parts: [{ text: finalTask }] }],
             config: { temperature: 0.7, maxOutputTokens: 1000 },
-            model: "gemini-1.5-flash"
+            model: "gemini-3-flash-preview"
           });
           
           if (!aiRes || !aiRes.text) {
@@ -5926,7 +5926,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                contents: [{ role: 'user', parts: [{ text: finalTask }] }],
                config: { temperature: 0.7, maxOutputTokens: 2000 },
-               model: "gemini-1.5-pro"
+               model: "gemini-3.1-pro-preview"
              });
           }
 
@@ -6202,7 +6202,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
             if (!aiRes || !aiRes.text) {
               aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                 contents: [{ role: 'user', parts: [{ text: task }] }],
-                model: "gemini-1.5-pro"
+                model: "gemini-3.1-pro-preview"
               });
             }
             if (aiRes && aiRes.text) response = { result: aiRes.text, modelUsed: `Gemini (${aiRes.modelUsed || "Tier-1"})` };
