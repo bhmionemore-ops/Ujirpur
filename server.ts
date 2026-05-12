@@ -124,6 +124,25 @@ async function getTelegramBotToken(): Promise<string | null> {
 import nodemailer from "nodemailer";
 import cors from "cors";
 
+// Force IPv4 for Gmail SMTP to avoid ENETUNREACH IPv6 issues
+let resolvedSmtpHost = 'smtp.gmail.com';
+async function resolveSmtpHost() {
+  try {
+    const addresses = await new Promise<string[]>((resolve, reject) => {
+      dns.resolve4('smtp.gmail.com', (err, addrs) => {
+        if (err) reject(err);
+        else resolve(addrs);
+      });
+    });
+    if (addresses && addresses.length > 0) {
+      resolvedSmtpHost = addresses[0];
+      console.log(`[Email] Resolved smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
+    }
+  } catch (err) {
+    console.error(`[Email] Failed to resolve smtp.gmail.com to IPv4.`, err);
+  }
+}
+
 // Global mail variables
 let transporter: any = null;
 let emailUser = process.env.EMAIL_USER;
@@ -1463,6 +1482,9 @@ async function saveData(data: any) {
 }
 
 async function startServer() {
+  // Resolve SMTP host early to force IPv4
+  await resolveSmtpHost();
+  
   const app = express();
   const PORT = 3000;
 
@@ -1645,14 +1667,11 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    host: resolvedSmtpHost,
     port: 587,
-    secure: false, // Use STARTTLS for port 587
-    pool: false,   // Disable pooling for serverless/cloud environments
-    family: 4,     // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
-    lookup: (hostname: string, options: any, callback: any) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
+    secure: false, // Use STARTTLS
+    pool: false,
+    family: 4,
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1660,7 +1679,7 @@ async function startServer() {
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      servername: 'smtp.gmail.com' // Ensure SNI matches the host
+      servername: 'smtp.gmail.com' // Explicitly set SNI to original hostname
     },
     connectionTimeout: 20000, 
     greetingTimeout: 20000,
@@ -2866,14 +2885,11 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpHost,
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
-          lookup: (hostname: string, options: any, callback: any) => {
-            dns.lookup(hostname, { family: 4 }, callback);
-          },
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
