@@ -1650,6 +1650,9 @@ async function startServer() {
     secure: false, // Use STARTTLS for port 587
     pool: false,   // Disable pooling for serverless/cloud environments
     family: 4,     // Force IPv4 to avoid ENETUNREACH issues with IPv6 in Cloud Run
+    lookup: (hostname: string, options: any, callback: any) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -2868,6 +2871,9 @@ async function startServer() {
           secure: false,
           auth: { user: emailUser, pass: emailPass },
           family: 4,
+          lookup: (hostname: string, options: any, callback: any) => {
+            dns.lookup(hostname, { family: 4 }, callback);
+          },
           tls: { 
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
