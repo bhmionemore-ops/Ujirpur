@@ -1675,14 +1675,14 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to Gmail Port 465 (SSL)
+  // Force SMTP to Gmail Port 587 (STARTTLS) - More robust for cloud egress
   const smtpHost = 'smtp.gmail.com';
-  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 465, SSL, IPv4 Forced)...`);
+  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 587, STARTTLS, IPv4 Forced)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
-    port: 465,
-    secure: true, // Port 465 uses direct SSL
+    port: 587,
+    secure: false, // Port 587 uses STARTTLS
     pool: true, 
     family: 4, 
     auth: {
@@ -1693,18 +1693,18 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 60000, 
-    greetingTimeout: 60000,
-    socketTimeout: 90000
+    connectionTimeout: 80000, 
+    greetingTimeout: 80000,
+    socketTimeout: 120000
   } as any);
 
   // Verify transporter on startup
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Using Port 465 (SSL). Verify App Password is 16 chars without spaces.');
+      console.error('[Server] 💡 Tip: Using Port 587 (STARTTLS). Verify App Password is 16 chars without spaces.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready (Port 465 SSL).');
+      console.log('[Server] ✅ Email Transporter is ready (Port 587 STARTTLS).');
     }
   });
 
