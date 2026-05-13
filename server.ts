@@ -1660,6 +1660,12 @@ async function startServer() {
       minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
+    lookup: (hostname: string, options: any, callback: any) => {
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        if (err) return callback(err);
+        callback(null, address, 4);
+      });
+    },
     connectionTimeout: 20000, 
     greetingTimeout: 20000,
     socketTimeout: 30000,
@@ -2877,6 +2883,12 @@ async function startServer() {
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
           },
+          lookup: (hostname: string, opts: any, callback: any) => {
+            dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+              if (err) return callback(err);
+              callback(null, address, 4);
+            });
+          },
           connectionTimeout: 20000,
           greetingTimeout: 20000
         };
@@ -2948,7 +2960,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: Stable-IPv4-STARTTLS</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V8-ForceIPv4-STARTTLS</p>
             </div>
           </div>
         `
@@ -2965,7 +2977,7 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(Stable-587) ${error.message}`,
+        details: `(V8-IPv4) ${error.message}`,
         diagnostic: {
           host: 'smtp.gmail.com',
           port: 587,
