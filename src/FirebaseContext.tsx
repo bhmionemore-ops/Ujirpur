@@ -78,7 +78,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setIsAdmin(false);
           } else {
             console.log(`[FirebaseContext] User already exists in Firestore: ${currentUser.email}`);
-            setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com');
+            setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com');
           }
         } catch (error) {
           console.error("Error syncing user:", error);
