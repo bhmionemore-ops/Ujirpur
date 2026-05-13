@@ -127,27 +127,6 @@ import nodemailer from "nodemailer";
 import cors from "cors";
 
 // Global mail variables
-let resolvedSmtpHost = '142.251.5.108'; // Default to a known stable Gmail SMTP IPv4
-async function resolveSmtpHost() {
-  try {
-    console.log(`[Email] Attempting to resolve smtp.gmail.com to IPv4 for better connectivity...`);
-    const addresses = await new Promise<string[]>((resolve) => {
-      dns.resolve4('smtp.gmail.com', (err, addrs) => {
-        if (err || !addrs || addrs.length === 0) resolve([]);
-        else resolve(addrs);
-      });
-    });
-    if (addresses.length > 0) {
-      resolvedSmtpHost = addresses[0];
-      console.log(`[Email] Successfully resolved smtp.gmail.com to IPv4: ${resolvedSmtpHost}`);
-    } else {
-      console.warn(`[Email] DNS resolution returned no IPv4 addresses. Using fallback: ${resolvedSmtpHost}`);
-    }
-  } catch (err) {
-    console.warn(`[Email] Error during SMTP host resolution:`, err);
-  }
-}
-
 let transporter: any = null;
 let emailUser = process.env.EMAIL_USER;
 let emailPass = process.env.EMAIL_PASS;
@@ -1666,14 +1645,11 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  await resolveSmtpHost();
-  
   transporter = nodemailer.createTransport({
-    host: resolvedSmtpHost, 
+    host: 'smtp.gmail.com', 
     port: 587,
     secure: false, 
-    pool: true, 
-    maxConnections: 3,
+    pool: false, 
     family: 4, 
     auth: {
       user: emailUser,
@@ -1684,15 +1660,11 @@ async function startServer() {
       minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 40000, 
-    greetingTimeout: 40000,
-    socketTimeout: 60000,
-    debug: true,
-    logger: true,
-    lookup: (hostname: string, options: any, callback: any) => {
-      // Force IPv4 for everything in this transporter
-      dns.lookup(hostname, { family: 4 }, callback);
-    }
+    connectionTimeout: 20000, 
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
+    debug: false,
+    logger: false
   } as any);
 
   // Verify transporter on startup
@@ -2896,7 +2868,7 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
@@ -2905,12 +2877,8 @@ async function startServer() {
             rejectUnauthorized: false,
             servername: 'smtp.gmail.com'
           },
-          debug: true,
-          logger: true,
-          connectionTimeout: 40000,
-          lookup: (hostname: string, opts: any, callback: any) => {
-            dns.lookup(hostname, { family: 4 }, callback);
-          }
+          connectionTimeout: 20000,
+          greetingTimeout: 20000
         };
         transporter = nodemailer.createTransport(options);
       }
@@ -2997,9 +2965,9 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V7-Fixed) ${error.message}`,
+        details: `(Stable-587) ${error.message}`,
         diagnostic: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           code: error.code,
           command: error.command,
@@ -3637,7 +3605,7 @@ async function startServer() {
         config: {
           user: process.env.EMAIL_USER ? "Set (Masked)" : "Not Set",
           pass: process.env.EMAIL_PASS ? "Set (Masked)" : "Not Set",
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587
         }
       });
@@ -3722,7 +3690,7 @@ async function startServer() {
         success: true, 
         message: "SMTP connection verified successfully",
         config: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           family: 4,
           user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 3)}...` : 'Not Set'
@@ -3737,7 +3705,7 @@ async function startServer() {
         command: err.command,
         stack: err.stack,
         config: {
-          host: resolvedSmtpHost,
+          host: 'smtp.gmail.com',
           port: 587,
           family: 4
         }
