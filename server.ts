@@ -31,6 +31,7 @@ import twilio from "twilio";
 import path from "path";
 
 const lastPhotos = new Map<number, { url: string, timestamp: number }>();
+const telegramLinkCache = new Map<number, { profileId: string, timestamp: number }>();
 
 /**
  * Helper to call Gemini with exponential backoff and model fallbacks
@@ -42,10 +43,10 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   
   // Use most stable models first
   const modelsToTry = [
-    options.model?.includes("1.5") || options.model?.includes("2.0") ? "gemini-3-flash-preview" : (options.model || "gemini-3-flash-preview"),
-    "gemini-flash-latest",
-    "gemini-3-flash-preview",
-    "gemini-3.1-pro-preview"
+    options.model?.includes("1.5") || options.model?.includes("2.0") ? "gemini-1.5-flash" : (options.model || "gemini-1.5-flash"),
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.0-flash-exp"
   ];
   
   for (let i = 0; i <= maxRetries; i++) {
@@ -127,6 +128,28 @@ import nodemailer from "nodemailer";
 import cors from "cors";
 
 // Global mail variables
+let resolvedSmtpIp: string = '142.251.5.108'; // Default fallback IPv4 for smtp.gmail.com
+async function resolveGmailSmtp() {
+  try {
+    const addresses = await new Promise<string[]>((resolve) => {
+      dns.resolve4('smtp.gmail.com', (err, addrs) => {
+        if (err || !addrs || addrs.length === 0) resolve([]);
+        else resolve(addrs);
+      });
+    });
+    if (addresses.length > 0) {
+      resolvedSmtpIp = addresses[0];
+      console.log(`[Email] Successfully resolved smtp.gmail.com to IPv4: ${resolvedSmtpIp}`);
+    }
+  } catch (err) {
+    console.warn(`[Email] Error resolving SMTP host:`, err);
+  }
+}
+async function bootstrapEmail() {
+  await resolveGmailSmtp();
+}
+bootstrapEmail();
+
 let transporter: any = null;
 let emailUser = process.env.EMAIL_USER;
 let emailPass = process.env.EMAIL_PASS;
@@ -1646,7 +1669,7 @@ async function startServer() {
   }
 
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', 
+    host: resolvedSmtpIp, 
     port: 587,
     secure: false, 
     pool: false, 
@@ -2874,7 +2897,7 @@ async function startServer() {
            return res.status(500).json({ error: "Email service not configured on server" });
         }
         const options: any = {
-          host: 'smtp.gmail.com',
+          host: resolvedSmtpIp,
           port: 587,
           secure: false,
           auth: { user: emailUser, pass: emailPass },
@@ -4762,25 +4785,36 @@ async function fetchImageAsBase64(url: string) {
       }
     };
 
-    // Helper to get linked profile
+    // Helper to get linked profile with in-memory caching
     const getLinkedProfileId = async (cid: number) => {
+      // 1. Check cache first (valid for 1 hour)
+      const cached = telegramLinkCache.get(cid);
+      if (cached && (Date.now() - cached.timestamp < 3600000)) {
+        return cached.profileId;
+      }
+
+      let profileId = null;
       if (db) {
         try {
           const ds = await getDoc(doc(db!, 'telegram_links', cid.toString()));
-          if (ds.exists()) return ds.data()?.profileId;
+          if (ds.exists()) profileId = ds.data()?.profileId;
         } catch (e: any) {
           console.warn("[Telegram] Client SDK link lookup failed:", e.message);
         }
       }
-      if (adminDb) {
+      if (!profileId && adminDb) {
         try {
           const snap = await adminDb.collection('telegram_links').doc(cid.toString()).get();
-          return snap.exists ? snap.data()?.profileId : null;
+          profileId = snap.exists ? snap.data()?.profileId : null;
         } catch (e: any) {
           console.warn("[Telegram] Admin SDK link lookup failed:", e.message);
         }
       }
-      return null;
+
+      if (profileId) {
+        telegramLinkCache.set(cid, { profileId, timestamp: Date.now() });
+      }
+      return profileId;
     };
 
     // Helper to extract Share ID
@@ -4973,7 +5007,7 @@ async function fetchImageAsBase64(url: string) {
         let geminiStatus = "Checking...";
         try {
           const ai = new GoogleGenAI({ apiKey: geminiKey });
-           const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: "Hi" });
+           const response = await ai.models.generateContent({ model: "gemini-1.5-flash", contents: "Hi" });
           geminiStatus = response.text ? "✅ Gemini 1.5-flash ACTIVE" : "❌ Gemini Empty";
         } catch (e: any) {
           geminiStatus = "❌ Gemini Error: " + (e.message || "Unknown");
@@ -5000,31 +5034,63 @@ _Use '/link <id>' if features are missing._`);
       const lowText = text.toLowerCase();
       const quickLeadMatch = lowText.includes("upgrade") || lowText.includes("premium") || lowText.includes("buy credits") || lowText.includes("contact");
       
-      let command;
+      let command: any;
       if (quickLeadMatch) {
          console.log("[Telegram] FAST TRACK Lead Detected");
          command = { action: "LEAD", details: { leadInfo: {} }, sentiment: "interested" };
       } else {
-        const routingPrompt = `[Task: Route user intent]. Analyze: "${text}". 
-        Options: ADD, UPDATE, DELETE, LINK, CHAT, LEAD. 
-        Output strictly JSON: { "action": "...", "taskType": "text"|"image", "sentiment": "...", "details": { "leadInfo": { "name":"", "email":"" } } }`;
+        // OPTIMIZATION: If no image, do Joint Routing and Reasoning to reduce AI latency
+        if (!photoUrl && text.length < 500) {
+           console.log("[Telegram] Executing Joint Routing & Reasoning...");
+           const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
+           const jointPrompt = `[Task: Family AI Assistant]. 
+           Analyze intent for: "${text}".
+           1. If user wants to ADD/UPDATE family members or link profile, return JSON: {"action":"ADD/UPDATE/LINK", "details":{...}}.
+           2. If this is a question, reply as Barnali (Warm, Short) and return JSON: {"action":"CHAT", "reply":"..."}.
+           
+            Barnali Instructions: CAPTURE LEADS for premium upgrades at ${host}/upgrade. If user is interested, ASK for Name/Email.
+           
+           Output strictly JSON: {"action":"...", "reply":"...", "taskType":"text", "sentiment":"..."}`;
 
-        let contents: any[] = [{ role: 'user', parts: [{ text: routingPrompt }] }];
-        if (photoUrl) {
-          const base64 = await fetchImageAsBase64(photoUrl);
-          if (base64) contents[0].parts.push({ inlineData: { data: base64, mimeType: "image/jpeg" } });
+           try {
+             const response = await callGeminiWithRetry(geminiKey, { 
+               model: "gemini-1.5-flash",
+               contents: jointPrompt,
+               config: { responseMimeType: "application/json", temperature: 0.7 }
+             });
+             command = JSON.parse(response.text || "{}");
+             if (command.action === "CHAT" && command.reply) {
+                console.log("[Telegram] Joint result: CHAT success.");
+                await sendMsg(`💌 *Barnali:* ${command.reply}`);
+                return; // Early exit for fast reply
+             }
+           } catch (e) {
+             console.warn("[Telegram] Joint routing failed, falling back to legacy flow:", e);
+           }
         }
 
-        console.log("[Telegram] Calling Gemini for Fast Routing...");
-        try {
-          const response = await callGeminiWithRetry(geminiKey, { 
-            model: "gemini-3-flash-preview",
-            contents: contents,
-            config: { responseMimeType: "application/json", temperature: 0.1 }
-          });
-          command = JSON.parse(response.text || "{}");
-        } catch (e) {
-          command = { action: "CHAT", taskType: "text", userQuestion: text };
+        if (!command) {
+            const routingPrompt = `[Task: Route user intent]. Analyze: "${text}". 
+            Options: ADD, UPDATE, DELETE, LINK, CHAT, LEAD. 
+            Output strictly JSON: { "action": "...", "taskType": "text"|"image", "sentiment": "...", "details": { "leadInfo": { "name":"", "email":"" } } }`;
+
+            let contents: any[] = [{ role: 'user', parts: [{ text: routingPrompt }] }];
+            if (photoUrl) {
+              const base64 = await fetchImageAsBase64(photoUrl);
+              if (base64) contents[0].parts.push({ inlineData: { data: base64, mimeType: "image/jpeg" } });
+            }
+
+            console.log("[Telegram] Calling Gemini for Fast Routing...");
+            try {
+              const response = await callGeminiWithRetry(geminiKey, { 
+                model: "gemini-1.5-flash",
+                contents: contents,
+                config: { responseMimeType: "application/json", temperature: 0.1 }
+              });
+              command = JSON.parse(response.text || "{}");
+            } catch (e) {
+              command = { action: "CHAT", taskType: "text", userQuestion: text };
+            }
         }
       }
 
@@ -5058,7 +5124,8 @@ _Use '/link <id>' if features are missing._`);
             try {
               const aiRes = await callGeminiWithRetry(geminiKey!, { 
                 contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
-                config: { maxOutputTokens: 800, temperature: 0.7 } 
+                config: { maxOutputTokens: 800, temperature: 0.7 },
+                model: "gemini-1.5-flash"
               });
               if (aiRes && aiRes.text) {
                 finalReply = aiRes.text;
@@ -5703,21 +5770,21 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   // --- AI Router SaaS Implementation ---
   const AI_COSTS = {
     text: 1,
-    image: 5,
-    video: 20,
-    image_to_image: 10,
-    image_to_video: 50
+    image: 15,
+    video: 50,
+    image_to_image: 20,
+    image_to_video: 45
   };
 
   // Hierarchy for Text Models (Ordered by actual cost to developer: $0.00 -> High)
   const TEXT_MODELS = {
     FREE: [
-      "google/gemini-flash-lite-preview-02-05:free",
-      "google/gemini-pro-1.5:free",
+      "google/gemini-2.0-flash-lite-preview-02-05:free",
+      "google/gemini-flash-1.5:free",
       "meta-llama/llama-3.1-8b-instruct:free",
-      "mistralai/mistral-7b-instruct:free",
-      "qwen/qwen-2-7b-instruct:free",
-      "microsoft/phi-3-mini-128k-instruct:free"
+      "qwen/qwen-2.5-72b-instruct:free",
+      "mistralai/pixtral-12b:free",
+      "google/gemini-pro-1.5:free"
     ],
     ECONOMY: [
       "deepseek/deepseek-chat",
@@ -5889,7 +5956,29 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
 
   // --- AI Router Core Engine (Shared between Web and API) ---
   async function executeAIRouting(userId: string, task: string, type: string, inputImage: string | null, isApproved: boolean, userData: any) {
-    const cost = AI_COSTS[type as keyof typeof AI_COSTS] || 1;
+    let finalType = type;
+    if (type === "auto" && task) {
+      try {
+        const detectionPrompt = `Identify the task type (text, image, video) for this request: "${task}". Return ONLY the word.`;
+        const geminiKey = process.env.GEMINI_API_KEY;
+        if (geminiKey) {
+          const detection = await callGeminiWithRetry(geminiKey, { 
+            contents: [{ role: 'user', parts: [{ text: detectionPrompt }] }],
+            model: "gemini-1.5-flash"
+          });
+          const dt = detection.text.toLowerCase();
+          if (dt.includes("image")) finalType = "image";
+          else if (dt.includes("video")) finalType = "video";
+          else finalType = "text";
+        } else {
+          finalType = "text";
+        }
+      } catch (e) {
+        finalType = "text";
+      }
+    }
+
+    const cost = AI_COSTS[finalType as keyof typeof AI_COSTS] || 1;
     const userEmail = userData.email;
     const isAdmin = userEmail === "okbgmi611@gmail.com";
 
@@ -5966,7 +6055,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
           let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
             contents: [{ role: 'user', parts: [{ text: finalTask }] }],
             config: { temperature: 0.7, maxOutputTokens: 1000 },
-            model: "gemini-3-flash-preview"
+            model: "gemini-1.5-flash"
           });
           
           if (!aiRes || !aiRes.text) {
@@ -5974,7 +6063,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                contents: [{ role: 'user', parts: [{ text: finalTask }] }],
                config: { temperature: 0.7, maxOutputTokens: 2000 },
-               model: "gemini-3.1-pro-preview"
+               model: "gemini-1.5-pro"
              });
           }
 
@@ -6038,7 +6127,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!response) throw new Error("All AI infrastructure routes are overloaded.");
 
     // 3. Deduction & Logging
-    const logData = { userId, task, type, cost, modelUsed: response.modelUsed, result: response.result, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
+    const logData = { userId, task, type: finalType, cost, modelUsed: response.modelUsed, result: response.result, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
 
     if (userId !== "telegram_guest" && userId !== "guest") {
       const newCredits = currentCredits - cost;
@@ -6061,10 +6150,10 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         } as any);
         await addDoc(collection(db!, "usage"), logData as any);
       }
-      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type };
+      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type: finalType };
     } else {
       // For Guest users, we just return the result without modifying user docs
-      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: currentCredits, type };
+      return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: currentCredits, type: finalType };
     }
   }
 
@@ -6111,17 +6200,12 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
   });
 
   app.post("/api/ai", aiLimiter, async (req, res) => {
-    const { userId, task, type = "auto", inputImage } = req.body;
+    const { userId, task, type = "auto", inputImage, approved = false } = req.body;
 
     if (!userId) return res.status(400).json({ success: false, error: "userId is required" });
     if (!task && type !== 'image_to_video') return res.status(400).json({ success: false, error: "task is required" });
 
     try {
-      // 1. Authenticate & Check Credits
-      // Support both Admin SDK and Client SDK fallback
-      const effectiveDb = adminDb || db;
-      if (!effectiveDb) throw new Error("Database not connected");
-
       const userRef = adminDb 
         ? adminDb.collection("users").doc(userId)
         : doc(db!, "users", userId);
@@ -6129,217 +6213,27 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       const userDoc = adminDb ? await userRef.get() : await getDoc(userRef);
       
       if (!userDoc.exists || (adminDb ? !userDoc.exists : !userDoc.exists())) {
-        // Auto-create user with starter credits
         const initialData = {
           credits: 10,
           email: "user@barnia.in",
-          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
-          serverKey: adminDb ? undefined : "barnia-system-2024-v1"
+          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
         };
-        
-        if (adminDb) {
-          await userRef.set(initialData);
-        } else {
-          await setDoc(userRef as any, initialData);
-        }
+        if (adminDb) await userRef.set(initialData);
+        else await setDoc(userRef as any, initialData);
       }
       
       const userData = (adminDb ? userDoc.data() : userDoc.data()) || { credits: 10 };
-      const currentCredits = userData.credits || 0;
-
-      // 2. Detect Type if 'auto'
-      let finalType = type;
-      if (type === "auto") {
-        const detectionPrompt = `Identify the task type (text, image, video) for this request: "${task}". Return ONLY the word.`;
-        const geminiKey = await getGeminiApiKey();
-        if (geminiKey) {
-          const detection = await callGeminiWithRetry(geminiKey, { contents: detectionPrompt });
-          const dt = detection.text.toLowerCase();
-          if (dt.includes("image")) finalType = "image";
-          else if (dt.includes("video")) finalType = "video";
-          else finalType = "text";
-        } else {
-          finalType = "text"; // Fallback
-        }
-      }
-
-      const cost = AI_COSTS[finalType as keyof typeof AI_COSTS] || 1;
-      const userEmail = userData.email;
-      const isActuallyAdmin = userEmail === "okbgmi611@gmail.com";
-
-      // RULE: If high value API is needed, ask for permission
-      // If it's a customer (not admin), we store it as a pending request for the developer to approve
-      if (cost >= PREMIUM_THRESHOLD && !req.body.approved && !isActuallyAdmin) {
-        // Create a pending request in Firestore
-        const requestData = {
-          userId,
-          userEmail,
-          task,
-          type: finalType,
-          inputImage,
-          cost,
-          status: 'pending',
-          createdAt: Timestamp.now()
-        };
-        
-        let pendingId = "";
-        if (adminDb) {
-           const ref = await adminDb.collection("pending_ai_requests").add(requestData);
-           pendingId = ref.id;
-        } else {
-           const ref = await addDoc(collection(db!, "pending_ai_requests"), requestData as any);
-           pendingId = ref.id;
-        }
-        
-        console.log(`[AI-Router] 🚨 PREMIUM TASK PENDING: User ${userEmail} requested ${finalType}. Cost: ${cost} credits.`);
-
-        return res.json({
-          success: true,
-          pending: true,
-          requestId: pendingId,
-          message: "This high-performance task requires developer approval to ensure optimal API budget allocation. Please wait..."
-        });
-      }
-
-      if (currentCredits < cost && !isActuallyAdmin) {
-        return res.status(403).json({ 
-          success: false, 
-          error: "Insufficient credits", 
-          required: cost, 
-          current: currentCredits 
-        });
-      }
-
-      // Ad-hoc: Ensure admin always has at least 'cost' for visual consistency if they somehow have 0
-      const finalCredits = isActuallyAdmin ? Math.max(currentCredits, cost) : currentCredits;
-
-      // 3. ROUTING ENGINE: ANALYZE PROVIDER COST & BEST VALUE
-      // Focus: Save Developer actual money ($ Provider bill) vs Customer fixed credit.
-      // Shared with executeAIRouting logic
-      let response: any = null;
-      console.log(`[AI-Router] Executing Cost-Optimized Routing for task type: ${finalType}`);
-
-      if (finalType === "image") {
-        response = await getFluxImageResponse(task);
-        if (!response && process.env.DASHSCOPE_API_KEY) {
-          response = await getImg2ImgResponse(task, ""); 
-        }
-      } else if (finalType === "image_to_image") {
-        if (!inputImage) throw new Error("Base image is required for image-to-image");
-        response = await getImg2ImgResponse(task, inputImage);
-      } else if (finalType === "image_to_video") {
-        if (!inputImage) throw new Error("Base image is required for image-to-video");
-        response = await getImg2VideoResponse(inputImage, task);
-      } else if (finalType === "video") {
-        if (process.env.MINIMAX_API_KEY) {
-          response = await getMiniMaxResponse(task, "video");
-        } else {
-          response = { result: "https://pic.onlinewebfonts.com/thumbnails/f_2871.png", modelUsed: "Kling-v1 (SaaS Infrastructure)" };
-        }
-      } else {
-        // TEXT ROUTING: STRICT HIERARCHY TO PRESERVE DEVELOPER CASH
-        
-        // 1. Gemini Portal (Tier-1 Free)
-        try {
-          const sysGeminiKey = process.env.GEMINI_API_KEY;
-          if (sysGeminiKey) {
-            let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
-              contents: [{ role: 'user', parts: [{ text: task }] }],
-              model: "gemini-3-flash-preview"
-            });
-            if (!aiRes || !aiRes.text) {
-              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
-                contents: [{ role: 'user', parts: [{ text: task }] }],
-                model: "gemini-3.1-pro-preview"
-              });
-            }
-            if (aiRes && aiRes.text) response = { result: aiRes.text, modelUsed: `Gemini (${aiRes.modelUsed || "Tier-1"})` };
-          }
-        } catch (e) {}
-
-        // 2. OpenRouter FREE (Tier-2 Free)
-        if (!response) {
-          try { response = await getOpenRouterResponse(task, TEXT_MODELS.FREE); } catch (e) {}
-        }
-        
-        // 3. Alibaba DashScope Turbo (Tier-3 Economy/Trial)
-        if (!response && process.env.DASHSCOPE_API_KEY) {
-          try { response = await getAlibabaResponse(task, "qwen-turbo"); } catch (e) {}
-        }
-
-        // 4. Economy Fallback (DeepSeek/Qwen - Extremely cheap paid models)
-        if (!response) {
-          try {
-            console.log("[AI-Router] Free routes exhausted, using ECONOMY (DeepSeek/Qwen) for API delivery...");
-            response = await getOpenRouterResponse(task, TEXT_MODELS.ECONOMY);
-          } catch (e) {
-            console.warn("[AI-Router] API Economy fallback failed...", (e as Error).message);
-          }
-        }
-
-        // Fallback to PREMIUM if necessary
-        if (!response) {
-          if (req.body.approved) {
-             response = await getOpenRouterResponse(task, TEXT_MODELS.PREMIUM);
-          } else if (isActuallyAdmin || currentCredits >= 50) {
-             console.log("[AI-Router] Falling back to PREMIUM for high-credit user/admin...");
-             response = await getOpenRouterResponse(task, TEXT_MODELS.PREMIUM);
-          } else {
-            return res.json({
-              needsApproval: true,
-              message: "Free & Budget AI routes are congested. High-Performance Premium routing is available but costs real-world tokens. Proceed?"
-            });
-          }
-        }
-
-        if (!response) throw new Error("All AI routes currently unavailable.");
-      }
-
-      // 4. Deduct Credits & Log Usage
-      const newCredits = isActuallyAdmin ? (userData.credits || 10) : (currentCredits - cost);
       
-      if (adminDb) {
-        if (!isActuallyAdmin) {
-          await userRef.update({ credits: newCredits });
-        }
-        await adminDb.collection("usage").add({
-          userId,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          task,
-          type: finalType,
-          cost,
-          modelUsed: response.modelUsed
-        });
-      } else {
-        if (!isActuallyAdmin) {
-          await updateDoc(userRef as any, { 
-            credits: newCredits,
-            serverKey: "barnia-system-2024-v1" 
-          });
-        }
-        await addDoc(collection(db!, "usage"), {
-          userId,
-          timestamp: serverTimestamp(),
-          task,
-          type: finalType,
-          cost,
-          modelUsed: response.modelUsed,
-          serverKey: "barnia-system-2024-v1"
-        });
-      }
-
+      // Execute consolidated routing logic
+      const result = await executeAIRouting(userId, task, type, inputImage, approved, userData);
       res.json({
         success: true,
-        type: finalType,
-        result: response.result,
-        modelUsed: response.modelUsed,
-        cost,
-        remainingCredits: newCredits
+        ...result,
+        remainingCredits: result.remainingCredits || userData.credits
       });
-
-    } catch (error: any) {
-      console.error("[AI-Router] Runtime Error:", error);
-      res.status(500).json({ success: false, error: error.message });
+    } catch (err: any) {
+      console.error("[AI-Router] API Error:", err.message);
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
