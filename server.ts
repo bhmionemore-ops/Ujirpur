@@ -1668,10 +1668,11 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
+  // Force SMTP to port 465 (SSL) which is often more robust in these environments
   transporter = nodemailer.createTransport({
-    host: resolvedSmtpIp, 
-    port: 587,
-    secure: false, 
+    host: 'smtp.gmail.com', 
+    port: 465,
+    secure: true, // Use SSL
     pool: false, 
     family: 4, 
     auth: {
@@ -1680,7 +1681,6 @@ async function startServer() {
     },
     tls: {
       rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
     lookup: (hostname: string, options: any, callback: any) => {
@@ -6127,7 +6127,17 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!response) throw new Error("All AI infrastructure routes are overloaded.");
 
     // 3. Deduction & Logging
-    const logData = { userId, task, type: finalType, cost, modelUsed: response.modelUsed, result: response.result, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
+    const logData = { 
+      userId, 
+      task, 
+      type: finalType, 
+      cost, 
+      modelUsed: response.modelUsed, 
+      result: response.result, 
+      timestamp: serverTimestamp(), // Match frontend expectation
+      createdAt: serverTimestamp(),  // Legacy compatibility
+      serverKey: "barnia-system-2024-v1" 
+    };
 
     if (userId !== "telegram_guest" && userId !== "guest") {
       const newCredits = currentCredits - cost;

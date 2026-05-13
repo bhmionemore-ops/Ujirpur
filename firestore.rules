@@ -102,10 +102,9 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasRequiredFields(['role']) &&
+      return (!('role' in data) || data.role in ['admin', 'user']) &&
              (!('email' in data) || data.email == null || (data.email is string && isValidEmail(data.email))) &&
-             (!('facebookId' in data) || data.facebookId is string) &&
-             data.role in ['admin', 'user'];
+             (!('facebookId' in data) || data.facebookId is string);
     }
 
     function isValidInfluencer(data) {
@@ -214,15 +213,15 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
-                    (isOwner(userId) && request.resource.data.role == 'user' || isAdmin());
-      allow update: if (isAuthenticated() && isValidUser(request.resource.data) && 
-                    (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin())) ||
+      allow create: if isAuthenticated() && isOwner(userId) && 
+                    request.resource.data.get('role', 'user') == 'user';
+      allow update: if (isAuthenticated() && isOwner(userId) && 
+                    (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) ||
                     (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
     }
 
     match /usage/{usageId} {
-      allow get, list: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow get, list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
     }
 
@@ -398,9 +397,7 @@ service cloud.firestore {
       // Allow creation/update if it has the correct server key OR is admin
       allow create, update: if isAdmin() || (
         request.resource != null && 
-        request.resource.data.serverKey == "barnia-system-2024-v1" &&
-        request.resource.data.otp is string &&
-        request.resource.data.otp.size() == 6
+        request.resource.data.get('serverKey', '') == "barnia-system-2024-v1"
       );
       // Allow deletion for cleanup
       allow delete: if true;
@@ -430,7 +427,7 @@ service cloud.firestore {
     }
 
     match /pending_ai_requests/{requestId} {
-      allow read: if (isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
       allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
