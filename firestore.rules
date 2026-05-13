@@ -60,8 +60,8 @@ service cloud.firestore {
     function isServerAdmin() {
       return request.auth != null && (
         request.auth.uid == "server-admin" || 
-        request.auth.token.email == "okbgmi611@gmail.com" ||
-        request.auth.token.email == "ujirpur.barnia6@gmail.com"
+        request.auth.token.email.lower() == "okbgmi611@gmail.com" ||
+        request.auth.token.email.lower() == "ujirpur.barnia6@gmail.com"
       );
     }
 
@@ -69,8 +69,8 @@ service cloud.firestore {
       return request.auth != null && (
         isServerAdmin() ||
         request.auth.token.admin == true ||
-        request.auth.token.email == "okbgmi611@gmail.com" ||
-        request.auth.token.email == "ujirpur.barnia6@gmail.com" ||
+        request.auth.token.email.lower() == "okbgmi611@gmail.com" ||
+        request.auth.token.email.lower() == "ujirpur.barnia6@gmail.com" ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -78,8 +78,8 @@ service cloud.firestore {
     // GLOBAL BYPASS FOR DEVELOPERS
     match /{allPaths=**} {
        allow read, write: if request.auth != null && (
-         request.auth.token.email == "okbgmi611@gmail.com" ||
-         request.auth.token.email == "ujirpur.barnia6@gmail.com"
+         request.auth.token.email.lower() == "okbgmi611@gmail.com" ||
+         request.auth.token.email.lower() == "ujirpur.barnia6@gmail.com"
        );
     }
 

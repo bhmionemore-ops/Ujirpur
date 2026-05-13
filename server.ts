@@ -1653,7 +1653,7 @@ async function startServer() {
   });
 
   // Update global mail variables
-  emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+  emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
   emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
   
   console.log(`[Server] Initializing email transporter...`);
@@ -1675,14 +1675,14 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to Gmail IPv4
+  // Force SMTP to Gmail Port 465 (SSL)
   const smtpHost = 'smtp.gmail.com';
-  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 587, IPv4 Forced)...`);
+  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 465, SSL, IPv4 Forced)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
-    port: 587,
-    secure: false, // Port 587 uses STARTTLS
+    port: 465,
+    secure: true, // Port 465 uses direct SSL
     pool: true, 
     family: 4, 
     auth: {
@@ -1693,18 +1693,18 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 50000, 
-    greetingTimeout: 50000,
-    socketTimeout: 60000
+    connectionTimeout: 60000, 
+    greetingTimeout: 60000,
+    socketTimeout: 90000
   } as any);
 
   // Verify transporter on startup
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Verify your App Password and check for network restrictions (Port 587).');
+      console.error('[Server] 💡 Tip: Using Port 465 (SSL). Verify App Password is 16 chars without spaces.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready (IPv4 STARTTLS).');
+      console.log('[Server] ✅ Email Transporter is ready (Port 465 SSL).');
     }
   });
 
@@ -2956,7 +2956,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V10-IPv4-STARTTLS-587</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V11-SSL-465-Stable</p>
             </div>
           </div>
         `
@@ -2973,10 +2973,10 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V10-IPv4-STARTTLS-587) ${error.message}`,
+        details: `(V11-Port465-SSL) ${error.message}`,
         diagnostic: {
           host: 'smtp.gmail.com',
-          port: 587,
+          port: 465,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
