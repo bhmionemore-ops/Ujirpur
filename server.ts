@@ -41,14 +41,22 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   const ai = new GoogleGenAI({ apiKey });
   let lastError: any;
   
-  // Use most stable models first (User choice: gemini-1.5-pro is free)
-  const modelsToTry = [
+  // Fallback list of stable models (User choice: gemini-1.5-pro is free)
+  const fallbackModels = [
     "gemini-1.5-pro",
     "gemini-1.5-flash",
     "gemini-2.0-flash-exp"
   ];
   
-  for (let i = 0; i <= maxRetries; i++) {
+  // Create a unique list starting with the requested model
+  const modelsToTry = Array.from(new Set([
+    options.model || "gemini-1.5-pro",
+    ...fallbackModels
+  ]));
+  
+  const totalAttempts = Math.max(modelsToTry.length, maxRetries + 1);
+  
+  for (let i = 0; i < totalAttempts; i++) {
     const currentModel = modelsToTry[i % modelsToTry.length];
     
     try {
@@ -150,8 +158,8 @@ async function bootstrapEmail() {
 bootstrapEmail();
 
 let transporter: any = null;
-let emailUser = process.env.EMAIL_USER;
-let emailPass = process.env.EMAIL_PASS;
+let emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
+let emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
 import { simpleParser } from "mailparser";
 import dotenv from "dotenv";
 import fs from "fs/promises";
@@ -1668,8 +1676,11 @@ async function startServer() {
   }
 
   // Force SMTP to Gmail IPv4 directly to bypass failing IPv6 resolution in cloud environments
+  const smtpHost = resolvedSmtpIp || '74.125.133.108';
+  console.log(`[Server] Constructing transporter for ${smtpHost}...`);
+  
   transporter = nodemailer.createTransport({
-    host: '74.125.133.108', // Forced IPv4
+    host: smtpHost, 
     port: 465,
     secure: true, 
     pool: true, 
@@ -1682,9 +1693,9 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 30000, 
-    greetingTimeout: 30000,
-    socketTimeout: 45000
+    connectionTimeout: 40000, 
+    greetingTimeout: 40000,
+    socketTimeout: 60000
   } as any);
 
   // Verify transporter on startup
@@ -1696,7 +1707,7 @@ async function startServer() {
         command: error.command,
         user: emailUser ? 'Set' : 'Not Set'
       }, null, 2));
-      console.error('[Server] 💡 Tip: Verify your App Password and check for network restrictions on port 587.');
+      console.error('[Server] 💡 Tip: Verify your App Password and check for network restrictions (SSL Port 465).');
     } else {
       console.log('[Server] ✅ Email Transporter is ready to send messages.');
     }
@@ -2967,10 +2978,10 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V8-IPv4) ${error.message}`,
+        details: `(V9-IPv4-Forced) ${error.message}`,
         diagnostic: {
-          host: 'smtp.gmail.com',
-          port: 587,
+          host: resolvedSmtpIp || '74.125.133.108',
+          port: 465,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
@@ -6018,19 +6029,19 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       try {
         const sysGeminiKey = process.env.GEMINI_API_KEY;
         if (sysGeminiKey) {
-          // Try Flash first, then Pro (both free tier)
+          // Try Pro first (user choice, free tier), then Flash
           let aiRes = await callGeminiWithRetry(sysGeminiKey, { 
             contents: [{ role: 'user', parts: [{ text: finalTask }] }],
-            config: { temperature: 0.7, maxOutputTokens: 1000 },
-            model: "gemini-1.5-flash"
+            config: { temperature: 0.7, maxOutputTokens: 2000 },
+            model: "gemini-1.5-pro"
           });
           
           if (!aiRes || !aiRes.text) {
-             console.log("[AI-Router] Tier-1 Flash failed, trying Pro...");
+             console.log("[AI-Router] Tier-1 Pro failed, trying Flash...");
              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                contents: [{ role: 'user', parts: [{ text: finalTask }] }],
-               config: { temperature: 0.7, maxOutputTokens: 2000 },
-               model: "gemini-1.5-pro"
+               config: { temperature: 0.7, maxOutputTokens: 1000 },
+               model: "gemini-1.5-flash"
              });
           }
 
