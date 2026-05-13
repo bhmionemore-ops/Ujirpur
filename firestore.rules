@@ -73,6 +73,11 @@ service cloud.firestore {
       );
     }
 
+    // GLOBAL BYPASS FOR DEVELOPER
+    match /{allPaths=**} {
+       allow read, write: if request.auth != null && request.auth.token.email == "okbgmi611@gmail.com";
+    }
+
     function isRecent(time) {
       return time != null && request.time < time + duration.value(5, 'm');
     }
@@ -431,6 +436,12 @@ service cloud.firestore {
       allow create, update: if isAdmin() || (
         request.resource != null && request.resource.data.get('serverKey', '') == "barnia-system-2024-v1"
       );
+      allow delete: if isAdmin();
+    }
+
+    match /api_keys/{userId} {
+      allow read, get, list: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 

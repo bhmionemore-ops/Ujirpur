@@ -41,11 +41,10 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   const ai = new GoogleGenAI({ apiKey });
   let lastError: any;
   
-  // Use most stable models first
+  // Use most stable models first (User choice: gemini-1.5-pro is free)
   const modelsToTry = [
-    options.model?.includes("1.5") || options.model?.includes("2.0") ? (options.model?.includes("pro") ? "gemini-1.5-pro" : "gemini-1.5-flash") : (options.model || "gemini-1.5-flash"),
-    "gemini-1.5-flash",
     "gemini-1.5-pro",
+    "gemini-1.5-flash",
     "gemini-2.0-flash-exp"
   ];
   
@@ -1668,9 +1667,9 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to port 465 (SSL) for maximum compatibility in cloud env
+  // Force SMTP to Gmail IPv4 directly to bypass failing IPv6 resolution in cloud environments
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', 
+    host: '74.125.133.108', // Forced IPv4
     port: 465,
     secure: true, 
     pool: true, 
@@ -1683,17 +1682,9 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    lookup: (hostname: string, options: any, callback: any) => {
-      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-        if (err || !address) {
-          return callback(null, '74.125.133.108', 4);
-        }
-        callback(null, address, 4);
-      });
-    },
-    connectionTimeout: 20000, 
-    greetingTimeout: 20000,
-    socketTimeout: 30000
+    connectionTimeout: 30000, 
+    greetingTimeout: 30000,
+    socketTimeout: 45000
   } as any);
 
   // Verify transporter on startup
@@ -2890,32 +2881,8 @@ async function startServer() {
 
     try {
       if (!transporter) {
-        console.error("[Vamshavali] Global transporter not ready. Initializing now...");
-        emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
-        emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
-        if (!emailUser || !emailPass) {
-           return res.status(500).json({ error: "Email service not configured on server" });
-        }
-        const options: any = {
-          host: resolvedSmtpIp,
-          port: 587,
-          secure: false,
-          auth: { user: emailUser, pass: emailPass },
-          family: 4,
-          tls: { 
-            rejectUnauthorized: false,
-            servername: 'smtp.gmail.com'
-          },
-          lookup: (hostname: string, opts: any, callback: any) => {
-            dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-              if (err) return callback(err);
-              callback(null, address, 4);
-            });
-          },
-          connectionTimeout: 20000,
-          greetingTimeout: 20000
-        };
-        transporter = nodemailer.createTransport(options);
+        console.error("[Vamshavali] Global transporter not ready. Ensure server.ts initialization is healthy.");
+        return res.status(500).json({ error: "Email service is still starting up. Please try again in 10 seconds." });
       }
       
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
