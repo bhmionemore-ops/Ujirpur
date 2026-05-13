@@ -45,7 +45,7 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   const modelsToTry = [
     options.model?.includes("1.5") || options.model?.includes("2.0") ? "gemini-1.5-flash" : (options.model || "gemini-1.5-flash"),
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
+    "gemini-1.5-flash",
     "gemini-2.0-flash-exp"
   ];
   
@@ -1668,12 +1668,12 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to port 465 (SSL) which is often more robust in these environments
+  // Force SMTP to port 587 (STARTTLS) with strict IPv4 forcing
   transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', 
-    port: 465,
-    secure: true, // Use SSL
-    pool: false, 
+    port: 587,
+    secure: false, // Use STARTTLS
+    pool: true, 
     family: 4, 
     auth: {
       user: emailUser,
@@ -1681,19 +1681,22 @@ async function startServer() {
     },
     tls: {
       rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
     lookup: (hostname: string, options: any, callback: any) => {
+      // Prioritize known stable IPv4 for Gmail SMTP if standard lookup behaves oddly
       dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-        if (err) return callback(err);
+        if (err || !address) {
+          console.warn(`[SMTP-DNS] Failed to resolve ${hostname}, using fallback IP...`);
+          return callback(null, '74.125.133.108', 4); // One of Google's SMTP IPs
+        }
         callback(null, address, 4);
       });
     },
-    connectionTimeout: 20000, 
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
-    debug: false,
-    logger: false
+    connectionTimeout: 10000, 
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   } as any);
 
   // Verify transporter on startup
@@ -6063,7 +6066,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                contents: [{ role: 'user', parts: [{ text: finalTask }] }],
                config: { temperature: 0.7, maxOutputTokens: 2000 },
-               model: "gemini-1.5-pro"
+               model: "gemini-1.5-flash"
              });
           }
 
@@ -6127,6 +6130,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!response) throw new Error("All AI infrastructure routes are overloaded.");
 
     // 3. Deduction & Logging
+    const firebaseAdmin = await import("firebase-admin");
     const logData = { 
       userId, 
       task, 
@@ -6134,8 +6138,8 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       cost, 
       modelUsed: response.modelUsed, 
       result: response.result, 
-      timestamp: serverTimestamp(), // Match frontend expectation
-      createdAt: serverTimestamp(),  // Legacy compatibility
+      timestamp: firebaseAdmin.firestore.FieldValue.serverTimestamp(), // Admin SDK timestamp
+      createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),  // Legacy compatibility
       serverKey: "barnia-system-2024-v1" 
     };
 

@@ -213,15 +213,13 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isOwner(userId) && 
-                    request.resource.data.get('role', 'user') == 'user';
-      allow update: if (isAuthenticated() && isOwner(userId) && 
-                    (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) ||
+      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow update: if (isAuthenticated() && (isOwner(userId) || isAdmin())) || 
                     (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
     }
 
     match /usage/{usageId} {
-      allow get, list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() && (resource == null || resource.data.get('userId', '') == request.auth.uid || isAdmin());
       allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
     }
 
@@ -427,19 +425,19 @@ service cloud.firestore {
     }
 
     match /pending_ai_requests/{requestId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() && (resource == null || resource.data.get('userId', '') == request.auth.uid || isAdmin());
       allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 
     match /ai_logs/{logId} {
-      allow read: if (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin()));
+      allow read: if isAuthenticated() && (resource == null || resource.data.get('userId', '') == request.auth.uid || isAdmin());
       allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 
     match /api_keys/{userId} {
-      allow get, list: if (isAuthenticated() && request.auth.uid == userId);
+      allow get, list: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
       allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
