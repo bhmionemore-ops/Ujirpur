@@ -1675,14 +1675,14 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to Gmail Port 587 (STARTTLS) - More robust for cloud egress
-  const smtpHost = 'smtp.gmail.com';
-  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 587, STARTTLS, IPv4 Forced)...`);
+  // Force SMTP to Gmail IPv4 directly to bypass failing IPv6 resolution in cloud environments
+  const smtpHost = '74.125.133.108'; // Hardcoded Google SMTP IPv4
+  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 465, SSL, IPv4 Forced)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
-    port: 587,
-    secure: false, // Port 587 uses STARTTLS
+    port: 465,
+    secure: true, // Port 465 uses direct SSL
     pool: true, 
     family: 4, 
     auth: {
@@ -1693,8 +1693,8 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 80000, 
-    greetingTimeout: 80000,
+    connectionTimeout: 90000, 
+    greetingTimeout: 90000,
     socketTimeout: 120000
   } as any);
 
@@ -1702,9 +1702,9 @@ async function startServer() {
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Using Port 587 (STARTTLS). Verify App Password is 16 chars without spaces.');
+      console.error('[Server] 💡 Tip: Using Port 465 (SSL) with forced IPv4. Verify App Password is 16 chars without spaces.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready (Port 587 STARTTLS).');
+      console.log('[Server] ✅ Email Transporter is ready (Port 465 SSL).');
     }
   });
 
@@ -2956,7 +2956,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V11-SSL-465-Stable</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V12-IPv4-Fixed-465</p>
             </div>
           </div>
         `
@@ -2973,9 +2973,9 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V11-Port465-SSL) ${error.message}`,
+        details: `(V12-IPv4-Fixed-465) ${error.message}`,
         diagnostic: {
-          host: 'smtp.gmail.com',
+          host: '74.125.133.108',
           port: 465,
           code: error.code,
           command: error.command,
