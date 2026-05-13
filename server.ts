@@ -43,9 +43,9 @@ async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3)
   
   // Use most stable models first
   const modelsToTry = [
-    options.model?.includes("1.5") || options.model?.includes("2.0") ? "gemini-1.5-flash" : (options.model || "gemini-1.5-flash"),
+    options.model?.includes("1.5") || options.model?.includes("2.0") ? (options.model?.includes("pro") ? "gemini-1.5-pro" : "gemini-1.5-flash") : (options.model || "gemini-1.5-flash"),
     "gemini-1.5-flash",
-    "gemini-1.5-flash",
+    "gemini-1.5-pro",
     "gemini-2.0-flash-exp"
   ];
   
@@ -1668,11 +1668,11 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to port 587 (STARTTLS) with strict IPv4 forcing
+  // Force SMTP to port 465 (SSL) for maximum compatibility in cloud env
   transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', 
-    port: 587,
-    secure: false, // Use STARTTLS
+    port: 465,
+    secure: true, 
     pool: true, 
     family: 4, 
     auth: {
@@ -1681,22 +1681,19 @@ async function startServer() {
     },
     tls: {
       rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
       servername: 'smtp.gmail.com'
     },
     lookup: (hostname: string, options: any, callback: any) => {
-      // Prioritize known stable IPv4 for Gmail SMTP if standard lookup behaves oddly
       dns.lookup(hostname, { family: 4 }, (err, address, family) => {
         if (err || !address) {
-          console.warn(`[SMTP-DNS] Failed to resolve ${hostname}, using fallback IP...`);
-          return callback(null, '74.125.133.108', 4); // One of Google's SMTP IPs
+          return callback(null, '74.125.133.108', 4);
         }
         callback(null, address, 4);
       });
     },
-    connectionTimeout: 10000, 
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    connectionTimeout: 20000, 
+    greetingTimeout: 20000,
+    socketTimeout: 30000
   } as any);
 
   // Verify transporter on startup
@@ -6066,7 +6063,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
              aiRes = await callGeminiWithRetry(sysGeminiKey, { 
                contents: [{ role: 'user', parts: [{ text: finalTask }] }],
                config: { temperature: 0.7, maxOutputTokens: 2000 },
-               model: "gemini-1.5-flash"
+               model: "gemini-1.5-pro"
              });
           }
 
