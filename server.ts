@@ -1675,37 +1675,48 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force Absolute IPv4 for SMTP host to bypass failing IPv6 DNS resolution in cloud containers
-  const smtpHost = '74.125.130.108'; // Direct Google SMTP IPv4
-  console.log(`[Server] Connecting to Absolute IPv4: ${smtpHost} (Port 465 SSL)...`);
+  // Force IPv4 specifically for the SMTP transporter to bypass failing IPv6 DNS resolution in cloud containers
+  const smtpHost = 'smtp.gmail.com'; 
+  console.log(`[Server] Initializing High-Reliability Transporter for ${smtpHost} (Port 587, STARTTLS)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
-    port: 465,
-    secure: true, 
-    pool: false, 
-    family: 4, 
+    port: 587,
+    secure: false, // Port 587 uses STARTTLS
+    pool: false,   // Disable pooling to ensure a fresh connection per attempt
+    family: 4,     // Request IPv4
+    lookup: (hostname: string, options: any, callback: any) => {
+      // Explicitly force DNS to return only IPv4 addresses
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        if (err) {
+          console.error(`[SMTP-DNS] Resolution failed for ${hostname}:`, err.message);
+          return callback(null, '74.125.130.108', 4);
+        }
+        console.log(`[SMTP-DNS] Resolved ${hostname} to ${address} (Forced IPv4)`);
+        callback(err, address, family);
+      });
+    },
     auth: {
       user: emailUser,
       pass: emailPass,
     },
     tls: {
       rejectUnauthorized: false,
-      servername: 'smtp.gmail.com' // CRITICAL: Still use hostname for certificate validation
+      servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 45000, 
-    greetingTimeout: 45000,
-    socketTimeout: 90000,
-    authTimeout: 45000
+    connectionTimeout: 60000, 
+    greetingTimeout: 60000,
+    socketTimeout: 120000,
+    authTimeout: 60000
   } as any);
 
   // Verify transporter on startup
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Using Port 465 (SSL) with forced IPv4. Verify App Password is 16 chars without spaces.');
+      console.error('[Server] 💡 Tip: Using Port 587 (STARTTLS) with Forced IPv4 Lookup.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready (Port 465 SSL).');
+      console.log('[Server] ✅ Email Transporter is ready (Port 587 STARTTLS + IPv4 Lookup).');
     }
   });
 
@@ -2957,7 +2968,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V15-IPv4-Absolute-SSL</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V16-Deep-Lookup-587-STARTTLS</p>
             </div>
           </div>
         `
@@ -2968,17 +2979,17 @@ async function startServer() {
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via Absolute IPv4 (74.125.130.108)...`);
+      console.log(`[Vamshavali] Sending OTP via forced IPv4 lookup (Port 587)...`);
       await transporter.sendMail(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V15-IPv4-Absolute-SSL) ${error.message}`,
+        details: `(V16-Deep-Lookup-587-STARTTLS) ${error.message}`,
         diagnostic: {
-          host: '74.125.130.108',
-          port: 465,
+          host: 'smtp.gmail.com',
+          port: 587,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
