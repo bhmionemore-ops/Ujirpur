@@ -4612,6 +4612,7 @@ async function updateVamshavaliLineage(profileId: string, action: string, target
         if (details.photo) member.photo = details.photo;
         if (details.birthYear) member.birthYear = details.birthYear;
         if (details.role) member.role = details.role;
+        if (details.name && action === "UPDATE") member.name = details.name; // Support renaming members
         
         if (useAdmin) {
           try {
@@ -4783,6 +4784,10 @@ async function fetchImageAsBase64(url: string) {
       return;
     }
 
+    // 🧠 INITIALIZE USER MEMORY
+    const memory = await getTelegramUserMemory(chatId);
+    console.log(`[Telegram] Loaded memory for ${chatId}:`, JSON.stringify(memory));
+
     const sendMsg = async (msg: string) => {
       console.log(`[Telegram] Sending message to ${chatId}: ${msg}`);
       // Basic escaping for common Telegram Markdown issues
@@ -4878,6 +4883,48 @@ async function fetchImageAsBase64(url: string) {
         console.error("[Telegram] Error fetching file URL:", e);
       }
       return null;
+    };
+
+    // --- HEADING: Telegram User Memory ---
+    const getTelegramUserMemory = async (cid: number) => {
+      let memory = { name: "", email: "", phone: "", loginId: "", credits: 0, lastChat: "" };
+      try {
+        if (adminDb) {
+           const snap = await adminDb.collection("telegram_users").doc(cid.toString()).get();
+           if (snap.exists) return { ...memory, ...snap.data() };
+        } else if (db) {
+           const ds = await getDoc(doc(db!, 'telegram_users', cid.toString()));
+           if (ds.exists()) return { ...memory, ...ds.data() };
+        }
+      } catch (e) {
+        console.warn("[Telegram] Memory lookup failed:", e);
+      }
+      return memory;
+    };
+
+    const saveTelegramUserMemory = async (cid: number, updates: any) => {
+      try {
+        const current = await getTelegramUserMemory(cid);
+        const newData = { 
+          ...current, 
+          ...updates, 
+          updatedAt: new Date().toISOString(),
+          // Ensure name, email, phone, loginId are prioritized
+          name: updates.name || current.name,
+          email: updates.email || current.email,
+          phone: updates.phone || current.phone,
+          loginId: updates.loginId || current.loginId || updates.profileId || current.profileId
+        };
+        if (adminDb) {
+           await adminDb.collection("telegram_users").doc(cid.toString()).set(newData, { merge: true });
+        } else if (db) {
+           await setDoc(doc(db!, 'telegram_users', cid.toString()), newData, { merge: true });
+        }
+        return newData;
+      } catch (e) {
+        console.error("[Telegram] Failed to save memory:", e);
+        return null;
+      }
     };
 
     let photoUrl = null;
@@ -5069,22 +5116,38 @@ _Use '/link <id>' if features are missing._`);
       const quickLeadMatch = lowText.includes("upgrade") || lowText.includes("premium") || lowText.includes("buy credits") || lowText.includes("contact");
       
       let command: any;
-      if (quickLeadMatch) {
-         console.log("[Telegram] FAST TRACK Lead Detected");
-         command = { action: "LEAD", details: { leadInfo: {} }, sentiment: "interested" };
-      } else {
-        // OPTIMIZATION: If no image, do Joint Routing and Reasoning to reduce AI latency
-        if (!photoUrl && text.length < 500) {
-           console.log("[Telegram] Executing Joint Routing & Reasoning...");
-           const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
-           const jointPrompt = `[Task: Family AI Assistant]. 
-           Analyze intent for: "${text}".
-           1. If user wants to ADD/UPDATE family members or link profile, return JSON: {"action":"ADD/UPDATE/LINK", "details":{...}}.
-           2. If this is a question, reply as Barnali (Warm, Short) and return JSON: {"action":"CHAT", "reply":"..."}.
+      if (quickLeadMatch)          if (memory.loginId && !existingProfileId) {
+             existingProfileId = memory.loginId;
+             console.log(`[Telegram] Using loginId from memory: ${existingProfileId}`);
+          }
+
+          const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
+          const jointPrompt = `[Task: Professional AI Assistant]. 
+          Analyze intent for: "${text}".
+          
+          PERSONA: You are Barnali, a professional salesperson and customer support executive for Barnia Digital Hub. You are polite, efficient, and focus strictly on our website services and the family tree.
+          STRICT RULES:
+          1. ONLY talk about Barnia Digital Hub, AI Router services, and the Vamshavali (Family Tree).
+          2. If a customer asks for a poem, joke, or unrelated task, you MUST state that it requires credits and ask if they want to use their premium balance.
+          3. CAPTURE LEADS: If missing, politely ask for their Name, Email, or Phone to better assist them.
+          4. ALWAYS mention the website: ${host}.
+          
+          USER MEMORY (Use this to avoid repetitive questions):
+          - Name: ${memory.name || "Unknown"}
+          - Email: ${memory.email || "Unknown"}
+          - Phone: ${memory.phone || "Unknown"}
+          - Linked Profile: ${existingProfileId || "Not Linked"}
+          
+          INTENT CLASSIFICATION:
+          1. FAMILY_TREE: "Add son", "Update photo", "Create profile", "Link me".
+          2. LEAD: "I want to buy", "How to pay", "Custom support", "Upgrade".
+          3. CHAT: General questions about our services.
+          4. SAVE_MEMORY: If user provides their personal info (name/email/phone/loginId).
+          5. OFF_TOPIC: Unrelated tasks (creative writing, general knowledge, etc).
+          
+          Output strictly JSON: {"action":"...", "reply":"...", "sentiment":"...", "extracted":{"name":"","email":"","phone":"","loginId":""}}`;Instructions: CAPTURE LEADS for premium upgrades at ${host}/upgrade. Only talk about our website, AI services, and family tree.
            
-            Barnali Instructions: CAPTURE LEADS for premium upgrades at ${host}/upgrade. If user is interested, ASK for Name/Email.
-           
-           Output strictly JSON: {"action":"...", "reply":"...", "taskType":"text", "sentiment":"..."}`;
+           Output strictly JSON: {"action":"...", "reply":"...", "taskType":"text", "sentiment":"...", "extracted":{}}`;
 
            try {
              const response = await callGeminiWithRetry(geminiKey, { 
@@ -5093,10 +5156,31 @@ _Use '/link <id>' if features are missing._`);
                config: { responseMimeType: "application/json", temperature: 0.7 }
              });
              command = JSON.parse(response.text || "{}");
+             
+             // Handle Memory Extraction immediately
+             if (command.action === "SAVE_MEMORY" && command.extracted) {
+                console.log("[Telegram] Extracting and saving user memory...");
+                await saveTelegramUserMemory(chatId, command.extracted);
+                await sendMsg(`✅ *Memory Updated:* I've saved your details so I won't ask again. How can I assist you professionally today?`);
+                return;
+             }
+
              if (command.action === "CHAT" && command.reply) {
                 console.log("[Telegram] Joint result: CHAT success.");
                 await sendMsg(`💌 *Barnali:* ${command.reply}`);
                 return; // Early exit for fast reply
+             }
+             
+             if (command.action === "OFF_TOPIC") {
+                // Check if user has enough credits to proceed or if they already agreed (simulated by follow up or just enforcing it here)
+                const currentCredits = memory.credits || 0;
+                if (currentCredits < 5) {
+                   await sendMsg(`${command.reply}\n\n*Your Balance:* ${currentCredits} CR.\n⚠️ *Insufficient Credits:* Please visit ${host}/upgrade to add more credits for advanced tasks.`);
+                   return;
+                }
+                // If they have credits, we proceed to handle it in the CHAT section but flag it to deduct
+                command.action = "CHAT";
+                command.isOffTopic = true;
              }
            } catch (e) {
              console.warn("[Telegram] Joint routing failed, falling back to legacy flow:", e);
@@ -5140,15 +5224,26 @@ _Use '/link <id>' if features are missing._`);
           try {
             console.log(`[Telegram] Starting Multi-Model Brain for: ${chatId}`);
             const host = process.env.APP_URL || process.env.VITE_APP_URL || "https://barnia.in";
+            
+            // Deduct credits for off-topic requests
+            if (command.isOffTopic) {
+               console.log("[Telegram] Charging for off-topic request...");
+               const newCredits = (memory.credits || 0) - 5;
+               await saveTelegramUserMemory(chatId, { credits: newCredits });
+               await sendMsg(`⚡ *Action Charged:* 5 Credits deducted for this premium task. (New Balance: ${newCredits} CR)`);
+            }
+
             // AGGRESSIVE LEAD CAPTURE INSTRUCTIONS
-            const chatPrompt = `[Persona: Barnali Assistant. Tone: Warm, Helpful, Short.]
+            const chatPrompt = `[Persona: Barnali Assistant. Tone: Professional, Sales-focused, Concise.]
+            SITUATION: You are a professional sales and customer support executive for Barnia Digital Hub. 
+            USER KNOWLEDGE: Name: ${memory.name}, Email: ${memory.email}, Phone: ${memory.phone}.
+            
             CORE MISSION:
-            1. Assist with Vamshavali (Family Tree).
-            2. CAPTURE LEADS for premium upgrades. 
-            3. If user expresses interest, ASK for their Name, Email, or Phone politely. 
-            4. If they give ANY info, say "I've noted that! I'll share it with my human colleagues to get you the best price."
-            5. NEVER say "I cannot store details" or "I am a bot". 
-            6. Suggest ${host}/upgrade for detailed forms.
+            1. ONLY talk about our website, AI services, and Family Tree features.
+            2. For OFF-TOPIC requests (like poems or unrelated help), be professional but firm that you are an AI hub assistant.
+            3. CAPTURE LEADS for premium upgrades. 
+            4. Suggest ${host}/upgrade for detailed forms.
+            
             User Message: ${command.userQuestion || text}`;
             
             let finalReply = "";
@@ -5803,7 +5898,8 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     image: 15,
     video: 50,
     image_to_image: 20,
-    image_to_video: 45
+    image_to_video: 45,
+    off_topic: 5 // Charge for non-website/service related requests
   };
 
   // Hierarchy for Text Models (Ordered by actual cost to developer: $0.00 -> High)
@@ -6021,12 +6117,13 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     }
 
     // 2. Protection Check
-    if (cost >= PREMIUM_THRESHOLD && !isApproved && !isAdmin) {
+    const isPremiumTask = finalType === "video" || finalType === "image_to_video" || finalType === "image_to_image";
+    if ((cost >= 15 || isPremiumTask) && !isApproved && !isAdmin) {
       const requestData = {
         userId,
         userEmail,
         task,
-        type,
+        type: finalType,
         inputImage,
         cost,
         status: 'pending',
@@ -6050,8 +6147,15 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     const currentCredits = userData.credits || 0;
     if (currentCredits < cost) throw new Error("Insufficient credits");
 
-    const finalTask = type === "text" || !type 
-      ? `[Barnali Guidelines: 1. Help with Family Tree (Vamshavali). 2. Promote AI Hub if credits exist. 3. Upgrade/Credits: AI Router page. 4. If user interested in premium, ask for Name, Email, and Phone. Reply CLEAR and SHORT. No fluff. No invented UI.] User: ${task}`
+    const finalTask = finalType === "text" || !finalType 
+      ? `[Barnali Guidelines] 
+      PERSONA: You are Barnali, a professional salesperson for Barnia Digital Hub. Reply with politeness and authority.
+      STRICT FOCUS: Only discuss our website, AI Router, and Genealogy (Family Tree) services.
+      LEAD CAPTURE: If the user is interested in upgrades or premium support, ALWAYS ask for their Name, Email, and Phone number if you don't have it.
+      MEMORY: You know the user is ${userData.name || 'valued customer'}.
+      WEBSITE: https://barnia.in.
+      
+      User Message: ${task}`
       : task;
 
     // 2. Routing Execution

@@ -369,19 +369,23 @@ export const AiRouterPage = () => {
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-[2.5rem] border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(24,24,27,1)] flex items-center gap-6">
-          <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center">
-            <CreditCard size={28} className="text-brand-600" />
+        <div className="bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(24,24,27,1)] flex flex-col sm:flex-row items-center gap-8 min-w-[320px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
+          <div className="relative z-10 w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/5">
+            <Zap size={32} className="text-brand-400" />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Available Credits</p>
-            <p className="text-3xl font-black text-zinc-900 tracking-tight">{credits}</p>
+          <div className="relative z-10 flex-1 text-center sm:text-left">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">Barnali Wallet Balance</p>
+            <div className="flex items-baseline justify-center sm:justify-start gap-2">
+              <span className="text-5xl font-black text-white tracking-tighter">{credits}</span>
+              <span className="text-sm font-black text-brand-400 uppercase tracking-widest">CR</span>
+            </div>
           </div>
           <button 
-            onClick={handleTopUp}
-            className="ml-4 p-3 bg-brand-600 rounded-xl hover:bg-brand-700 transition-all text-white font-black text-[10px] uppercase tracking-widest"
+            onClick={() => toast.info("Contact Barnali on Telegram to buy credits via GPay/PhonePe.")}
+            className="relative z-10 px-8 py-4 bg-brand-500 hover:bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 active:scale-95 whitespace-nowrap"
           >
-            Top Up
+            Add Credits
           </button>
         </div>
       </div>
@@ -655,33 +659,39 @@ export const AiRouterPage = () => {
             </h2>
             <p className="text-zinc-500 font-medium text-lg">Integrate Barnia AI into your own projects with a single key.</p>
           </div>
-          
-          {!apiKey ? (
-            <button 
-              onClick={generateApiKey}
-              disabled={isGeneratingKey}
-              className="px-10 py-5 bg-zinc-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-3 disabled:opacity-50 shadow-xl shadow-zinc-200"
-            >
-              {isGeneratingKey ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-              Generate v1 API Key
-            </button>
-          ) : (
-            <div className="flex flex-col items-end gap-3">
-              <div className="px-6 py-4 bg-brand-50 rounded-2xl border-2 border-brand-100 flex items-center gap-4 shadow-sm">
-                <code className="text-sm font-mono text-brand-700 font-black">{apiKey}</code>
-                <button 
-                  onClick={() => { navigator.clipboard.writeText(apiKey); toast.success("Copied to clipboard!"); }}
-                  className="p-2 hover:bg-brand-100 rounded-xl transition-colors text-brand-600"
-                >
-                  <Plus size={18} className="rotate-45" />
-                </button>
+                   {!apiKey ? (
+            <div className="flex items-center gap-6">
+              <div className="hidden md:block text-right">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Status</p>
+                <p className="text-sm font-black text-amber-500 uppercase">Inactive</p>
               </div>
               <button 
                 onClick={generateApiKey}
-                className="text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-zinc-600 transition-colors"
+                disabled={isGeneratingKey}
+                className="px-10 py-5 bg-zinc-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-3 disabled:opacity-50 shadow-2xl shadow-zinc-200 active:scale-95"
               >
-                Regenerate Key
+                {isGeneratingKey ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
+                Provision v1 API Key
               </button>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center gap-6">
+               <div className="text-right hidden md:block">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Infrastructure</p>
+                <p className="text-sm font-black text-emerald-500 uppercase">Scalable Ready</p>
+              </div>
+              <div className="px-8 py-5 bg-zinc-50 rounded-[2rem] border-2 border-zinc-900 flex items-center gap-6 shadow-[8px_8px_0px_rgba(24,24,27,0.05)] group">
+                <div className="flex flex-col">
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-1">X-BARNALI-KEY</p>
+                  <code className="text-sm font-mono text-zinc-900 font-bold">{apiKey}</code>
+                </div>
+                <button 
+                  onClick={() => { navigator.clipboard.writeText(apiKey); toast.success("Copied to clipboard!"); }}
+                  className="p-3 bg-white border border-zinc-200 hover:bg-zinc-900 hover:text-white rounded-xl transition-all shadow-sm active:scale-90"
+                >
+                  <Plus size={20} className="rotate-45" />
+                </button>
+              </div>
             </div>
           )}
         </div>

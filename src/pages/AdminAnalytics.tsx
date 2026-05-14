@@ -73,6 +73,16 @@ interface APIKey {
   createdAt?: any;
 }
 
+interface TelegramUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  loginId: string;
+  credits: number;
+  updatedAt: string;
+}
+
 export const AdminAnalytics = () => {
   const { isAdmin, user } = useFirebase();
   const { language, t: globalT } = useLanguage();
@@ -83,6 +93,7 @@ export const AdminAnalytics = () => {
   const [aiRequests, setAiRequests] = useState<AIRequest[]>([]);
   const [aiUsage, setAiUsage] = useState<AIUsageLog[]>([]);
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [telegramUsers, setTelegramUsers] = useState<TelegramUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [diagData, setDiagData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -91,7 +102,7 @@ export const AdminAnalytics = () => {
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'comms' | 'ai' | 'tools'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'comms' | 'ai' | 'telegram' | 'tools'>('overview');
   
   // Email Signature State
   const [adminName, setAdminName] = useState(user?.displayName || 'Your Name Here');
@@ -360,6 +371,13 @@ export const AdminAnalytics = () => {
       setApiKeys(docs);
     });
 
+    // Fetch Telegram Users
+    const qTg = collection(db, 'telegram_users');
+    const unsubTg = onSnapshot(qTg, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TelegramUser));
+      setTelegramUsers(docs);
+    });
+
     // Fetch diagnostic data
     const fetchDiag = async () => {
       try {
@@ -479,72 +497,405 @@ export const AdminAnalytics = () => {
     .sort((a, b) => a.timestamp - b.timestamp);
 
   return (
-    <div className="min-h-screen bg-zinc-50 pt-32 pb-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-2 uppercase">Visitor Analytics</h1>
-            <p className="text-zinc-500 font-medium">Real-time monitoring of website traffic and user behavior.</p>
+    <div className="min-h-screen bg-zinc-50 flex">
+      {/* Sidebar Navigation */}
+      <div className="hidden lg:flex w-72 flex-col fixed inset-y-0 bg-white border-r border-zinc-200 z-50">
+        <div className="p-8">
+          <Link to="/" className="flex items-center gap-3 mb-10 group">
+             <div className="w-10 h-10 bg-zinc-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-zinc-900/20 group-hover:scale-110 transition-transform">
+                <Users size={20} />
+             </div>
+             <span className="text-lg font-black text-zinc-900 tracking-tight uppercase">Admin Hub</span>
+          </Link>
+          
+          <nav className="space-y-1">
+            {(['overview', 'users', 'comms', 'ai', 'telegram', 'tools'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab 
+                    ? 'bg-zinc-900 text-white shadow-xl shadow-zinc-900/10' 
+                    : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50'
+                }`}
+              >
+                {tab === 'overview' && <Activity size={18} />}
+                {tab === 'users' && <Users size={18} />}
+                {tab === 'comms' && <Mail size={18} />}
+                {tab === 'ai' && <Zap size={18} />}
+                {tab === 'telegram' && <MessageSquare size={18} />}
+                {tab === 'tools' && <Database size={18} />}
+                <span className="capitalize">{tab}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        
+        <div className="mt-auto p-8 pt-0">
+          <div className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100">
+             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Logged in as</p>
+             <p className="text-xs font-bold text-zinc-900 truncate">{user?.email}</p>
+             <Link to="/" className="mt-4 flex items-center gap-2 text-brand-600 font-bold text-[10px] uppercase tracking-widest hover:underline">
+               <ArrowLeft size={14} /> Home Page
+             </Link>
           </div>
-          <div className="flex items-center gap-4">
-            {diagData && (
-              <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${diagData.emailConfigured ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <Mail size={20} className={diagData.emailConfigured ? 'text-green-600' : 'text-red-600'} />
+        </div>
+      </div>
+
+      <div className="flex-1 lg:ml-72 min-h-screen">
+        <div className="pt-32 pb-20 px-8">
+          <div className="max-w-6xl mx-auto">
+            {/* Mobile Header / Tab Pills */}
+            <div className="lg:hidden mb-10 overflow-x-auto no-scrollbar">
+               <div className="flex items-center gap-2 p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-sm w-fit">
+                  {(['overview', 'users', 'comms', 'ai', 'telegram', 'tools'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-6 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                        activeTab === tab 
+                          ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10' 
+                          : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50'
+                      }`}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+               </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+              <div>
+                <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-2 uppercase">
+                  {activeTab === 'overview' && 'Visitor Analytics'}
+                  {activeTab === 'users' && 'Member Management'}
+                  {activeTab === 'comms' && 'Communications'}
+                  {activeTab === 'ai' && 'AI Infrastructure'}
+                  {activeTab === 'telegram' && 'Telegram Memory'}
+                  {activeTab === 'tools' && 'System Tools'}
+                </h1>
+                <p className="text-zinc-500 font-medium">
+                  {activeTab === 'overview' && 'Real-time monitoring of website traffic and user behavior.'}
+                  {activeTab === 'users' && 'Manage verified profiles, credits, and community permissions.'}
+                  {activeTab === 'comms' && 'Inbox management for system webhooks and live chat logs.'}
+                  {activeTab === 'ai' && 'Monitor premium routing, approvals, and API cost protection.'}
+                  {activeTab === 'telegram' && 'Stored user details, credits, and AI memory from Barnali bot.'}
+                  {activeTab === 'tools' && 'Export records, seed database, and configure system assets.'}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {activeTab === 'overview' && diagData && (
+                  <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${diagData.emailConfigured ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <Activity size={20} className={diagData.emailConfigured ? 'text-green-600' : 'text-red-600'} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Active Now</p>
+                      <p className="text-xl font-bold text-zinc-900">{activeNowCount}</p>
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'tools' && (
+                  <button
+                    onClick={handleSeed}
+                    disabled={seeding}
+                    className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/10 disabled:opacity-50"
+                  >
+                    {seeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
+                    {seeding ? 'Seeding...' : 'Seed Data'}
+                  </button>
+                )}
+                {activeTab === 'tools' && (
+                   <Link
+                    to="/facebook-verification"
+                    className="px-6 py-3 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center gap-3 shadow-sm"
+                  >
+                    <Facebook size={18} className="text-brand-600" />
+                    Verification Guide
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* --- TAB CONTENT --- */}
+            
+            {activeTab === 'overview' && <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {/* Metrics Slides Box */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Total Visitors - Dark Bento */}
+                  <div className="p-8 bg-zinc-900 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <Users size={24} className="text-white" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Visitors</p>
+                      <h3 className="text-4xl font-black">{users?.length || 0}</h3>
+                      <div className="flex items-center gap-2 mt-4 text-green-400">
+                        <TrendingUp size={14} />
+                        <span className="text-[10px] font-bold">+12% vs last month</span>
+                      </div>
+                    </div>
+                    <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/5 rounded-full blur-3xl opacity-50" />
+                  </div>
+
+                  {/* Active Now - Clean Card */}
+                  <div className="p-8 bg-white border border-zinc-200 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center mb-6">
+                      <Activity size={24} className="text-brand-600" />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Users Online</p>
+                    <h3 className="text-4xl font-black text-zinc-900">{activeNowCount}</h3>
+                    <p className="text-[10px] font-medium text-zinc-500 mt-4 leading-relaxed">Live WebSocket sessions</p>
+                  </div>
+
+                  {/* Support Inquiries */}
+                  <div className="p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-200 shadow-sm relative group overflow-hidden">
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform">
+                        <MessageSquare size={24} className="text-zinc-600" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Inquiries</p>
+                      <h3 className="text-4xl font-black text-zinc-900">{messages?.length || 0}</h3>
+                      <p className="text-[10px] font-medium text-zinc-500 mt-4">Growth rate: <span className="text-brand-600 font-bold">Stable</span></p>
+                    </div>
+                  </div>
+
+                  {/* Regional Reach */}
+                  <div className="p-8 bg-brand-600 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                    <div className="relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
+                        <Globe size={24} className="text-white" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-brand-200 mb-1">Regional Scope</p>
+                      <h3 className="text-4xl font-black">{Object.keys(countries).length}</h3>
+                      <p className="text-[10px] font-bold mt-4 opacity-80">Countries interacting</p>
+                    </div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2 blur-2xl" />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">System Status</p>
-                  <p className="text-xs font-bold text-zinc-900">
-                    {diagData.isProduction ? 'Production' : 'AI Studio'} • {diagData.emailConfigured ? 'Email OK' : 'Email Missing'}
-                  </p>
-                  <p className="text-[8px] text-zinc-400 font-medium">Last Ping: {diagData.lastKeepAlivePing || 'Never'}</p>
+
+                {/* Traffic Chart */}
+                <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sortedChartData}>
+                      <defs>
+                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#FF6321" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#FF6321" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }} />
+                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
+                      <Area type="monotone" dataKey="count" stroke="#FF6321" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" name="Visitors" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                    <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                      <Activity size={20} className="text-brand-600" />
+                      Recent Visitors
+                    </h2>
+                    <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="bg-zinc-50 border-b border-zinc-100">
+                              <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Visitor</th>
+                              <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Location</th>
+                              <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Duration</th>
+                              <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Events</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-50">
+                            {sessions.map((session) => (
+                              <tr key={session.id} className="hover:bg-zinc-50/50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-zinc-900 truncate max-w-[150px] flex items-center gap-2">
+                                      {session.email || `Guest (${session.id.substring(0, 6)})`}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-400 font-mono">{session.ip}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <MapPin size={12} className="text-zinc-400" />
+                                    <span className="text-xs font-medium text-zinc-600">{session.city}, {session.country}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-xs font-bold text-zinc-900">{getDuration(session.startTime, session.lastSeen)}</td>
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-wrap gap-1">
+                                    {session.events?.slice(-2).map((e, i) => (
+                                      <span key={i} className="px-2 py-0.5 bg-zinc-100 text-[9px] font-black text-zinc-500 rounded-full uppercase tracking-wider">{e}</span>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                      <Globe size={20} className="text-brand-600" />
+                      Country Reach
+                    </h2>
+                    <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm space-y-4">
+                      {sortedCountries.slice(0, 5).map(([country, count]) => (
+                        <div key={country} className="space-y-2">
+                          <div className="flex justify-between text-xs font-bold"><span>{country}</span><span className="text-brand-600">{count}</span></div>
+                          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden"><div className="h-full bg-brand-500 transition-all duration-500" style={{ width: `${(count / sessions.length) * 100}%` }} /></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Paid AI Usage Activity (Consolidated) */}
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                      <Activity size={20} className="text-brand-600" />
+                      Paid AI Usage Audit
+                    </h2>
+                    <div className="px-4 py-2 bg-brand-50 rounded-xl border border-brand-100">
+                      <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">
+                        {aiUsage.reduce((acc, curr) => acc + (curr.cost || 0), 0)} Total Credits
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="bg-zinc-50 border-b border-zinc-100">
+                            <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">User</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Model</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cost</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Time</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-50">
+                          {aiUsage.slice(0, 10).map((log) => (
+                            <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                              <td className="px-6 py-4 text-xs font-bold text-zinc-900">{log.userId.includes('@') ? log.userId : `ID: ${log.userId.substring(0, 8)}`}</td>
+                              <td className="px-6 py-4 text-[10px] font-black text-brand-600 uppercase">{log.modelUsed || "Router"}</td>
+                              <td className="px-6 py-4 text-[10px] font-black">{log.cost} CR</td>
+                              <td className="px-6 py-4 text-right text-[10px] font-medium text-zinc-500">{log.timestamp?.toDate()?.toLocaleTimeString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Family Tree Portal Activity - NEW */}
+                <div className="space-y-6 mb-12">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                      <Landmark size={20} className="text-[#064e3b]" />
+                      Family Tree Portal Logs (Lineage System)
+                    </h2>
+                    <div className="px-4 py-2 bg-[#fdfbf7] rounded-xl border border-[#d4af37]/20">
+                      <p className="text-[10px] font-black text-[#064e3b] uppercase tracking-widest">
+                        {lineageLogins.length} Active Generations
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-[#fdfbf7] border-b border-[#d4af37]/10">
+                            <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Archivist (User)</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Login Type</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Profile ID</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Last Activity</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest text-right">Location</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-50">
+                          {lineageLogins.map((req) => {
+                            const loginEvent = req.events?.find(e => e.includes('vamshavali_') && e.includes('login')) || '';
+                            const isSocial = loginEvent.includes('social');
+                            let profileId = 'Pending';
+                            try {
+                              if (loginEvent.includes('{')) {
+                                const jsonStr = loginEvent.split(': ')[1];
+                                const data = JSON.parse(jsonStr);
+                                profileId = data.profileId || profileId;
+                              }
+                            } catch(e) {}
+
+                            return (
+                              <tr key={req.id} className="hover:bg-[#fdfbf7]/40 transition-colors group">
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#064e3b] flex items-center justify-center text-[#d4af37]">
+                                      <User size={14} />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-zinc-900">{req.email || 'Anonymous Keeper'}</p>
+                                      <p className="text-[10px] text-zinc-400 font-medium">Session: {req.id.substring(0, 8)}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                                    isSocial ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                                  }`}>
+                                    {isSocial ? 'Social OAuth' : 'OTP Verified'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <code className="text-[10px] bg-zinc-100 px-2 py-1 rounded font-mono text-zinc-600">
+                                     {profileId}
+                                   </code>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <p className="text-[10px] font-bold text-zinc-500">
+                                    {req.lastSeen?.toDate()?.toLocaleString() || 'Live'}
+                                  </p>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <div className="flex items-center justify-end gap-2 text-zinc-500 font-bold text-[10px]">
+                                     <MapPin size={10} />
+                                     {req.city}, {req.country}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {lineageLogins.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-20 text-center">
+                                <Landmark size={48} className="text-zinc-100 mx-auto mb-4" />
+                                <p className="text-zinc-400 font-medium text-sm">No lineage archives accessed recently.</p>
+                                <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Barnali Registry is waiting for genealogists.</p>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-            <Link
-              to="/facebook-verification"
-              className="px-6 py-3 bg-white border border-zinc-200 text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center gap-3 shadow-sm"
-            >
-              <Facebook size={18} className="text-brand-600" />
-              Verification Guide
-            </Link>
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-600 transition-all flex items-center gap-3 shadow-xl shadow-zinc-900/10 disabled:opacity-50"
-            >
-              {seeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
-              {seeding ? 'Seeding...' : 'Seed Data'}
-            </button>
-            <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                <Activity size={20} className="text-green-600" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Active Now</p>
-                <p className="text-xl font-bold text-zinc-900">{activeNowCount}</p>
-              </div>
-            </div>
-          </div>
-        <div className="flex items-center gap-2 mb-12 p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-sm w-fit overflow-x-auto max-w-full no-scrollbar">
-          {(['overview', 'users', 'comms', 'ai', 'tools'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                activeTab === tab 
-                  ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10' 
-                  : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
 
         {/* User Management Tab */}
-        {activeTab === 'users' && (
-          <div className="space-y-6 mb-12">
+        {activeTab === 'users' && <div className="space-y-6 mb-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
                 <Users size={20} className="text-brand-600" />
@@ -631,8 +982,7 @@ export const AdminAnalytics = () => {
         )}
 
         {/* App Inbox (Inbound Emails) - MOVED TO TOP */}
-        {activeTab === 'comms' && (
-          <div className="space-y-6 mb-12">
+        {activeTab === 'comms' && <div className="space-y-6 mb-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Mail size={20} className="text-brand-600" />
@@ -807,12 +1157,67 @@ export const AdminAnalytics = () => {
               </table>
             </div>
           </div>
-        )}
+
+          <div className="space-y-6 mb-20">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <MessageSquare size={20} className="text-brand-600" />
+              Web Live Chat Activity
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(Object.entries(chatSessions) as [string, ChatMessage[]][]).map(([sid, msgs]) => {
+                const session = sessions.find(s => s.id === sid);
+                return (
+                  <div key={sid} className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+                    <div className="p-5 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400">
+                          <User size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-zinc-900">
+                            {session?.email || `Guest (${sid.substring(0, 6)})`}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 font-medium">
+                            {session?.city || 'Unknown'}, {session?.country || 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-zinc-100">
+                        {msgs.length} MSG
+                      </span>
+                    </div>
+                    <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-zinc-50/20">
+                      {msgs.map((m) => (
+                        <div key={m.id} className={`flex ${m.isBot ? 'justify-start' : 'justify-end'}`}>
+                          <div className={`max-w-[85%] p-4 rounded-3xl text-xs leading-relaxed shadow-sm ${
+                            m.isBot 
+                              ? 'bg-white text-zinc-700 border border-zinc-100 rounded-tl-none' 
+                              : 'bg-zinc-900 text-white rounded-tr-none font-medium'
+                          }`}>
+                            {m.text}
+                            <p className={`text-[8px] mt-2 opacity-50 ${m.isBot ? 'text-zinc-400' : 'text-white'}`}>
+                              {m.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Just now'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {Object.keys(chatSessions).length === 0 && (
+                <div className="md:col-span-2 bg-white p-12 rounded-[2.5rem] border border-zinc-200 border-dashed text-center">
+                  <MessageSquare size={48} className="text-zinc-200 mx-auto mb-4" />
+                  <p className="text-zinc-500 font-bold">No active chat sessions.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        }
 
         {/* Pending AI Approvals - NEW */}
-        {activeTab === 'ai' && (
-          <>
-            <div className="space-y-6 mb-12">
+        {activeTab === 'ai' && <div className="space-y-12">
+            <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Zap size={20} className="text-brand-600" />
@@ -955,416 +1360,74 @@ export const AdminAnalytics = () => {
               )}
             </div>
           </div>
-            </div>
-          </>
-        )}
-
-        {/* Family Tree Portal Logs - NEW */}
-        {activeTab === 'overview' && (
-          <>
-            <div className="space-y-6 mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Activity size={20} className="text-brand-600" />
-              Paid AI Usage Activity (Live Audit)
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-brand-50 rounded-xl border border-brand-100">
-                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">
-                  {aiUsage.reduce((acc, curr) => acc + (curr.cost || 0), 0)} Total Credits Consumed
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-100">
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">User / ID</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Intent</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Infrastructure / Model</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cost</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50">
-                  {aiUsage.map((log) => (
-                    <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-bold text-zinc-900">{log.userId.includes('@') ? log.userId : `ID: ${log.userId.substring(0, 12)}`}</p>
-                        <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">Session ID: {log.id.substring(0, 8)}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-medium text-zinc-600 max-w-[300px] truncate" title={log.task}>
-                          {log.task || "Multimedia Generation"}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                           <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">
-                             {log.modelUsed || "System Router"}
-                           </span>
-                           <span className="text-[10px] text-zinc-400 font-medium">Type: {log.type || "Text"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-[10px] font-black px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded-full">
-                          {log.cost} CR
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <p className="text-[10px] font-bold text-zinc-500">
-                          {log.timestamp?.toDate()?.toLocaleString() || 'Just now'}
-                        </p>
-                      </td>
-                    </tr>
-                  ))}
-                  {aiUsage.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-20 text-center">
-                        <Database size={48} className="text-zinc-100 mx-auto mb-4" />
-                        <p className="text-zinc-400 font-medium text-sm">No paid AI activity recorded yet.</p>
-                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Usage logs are stored for security audits.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
+      </div>
+    )}
 
-        {/* Family Tree Portal Activity - NEW */}
-        <div className="space-y-6 mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Telegram Management Tab */}
+        {activeTab === 'telegram' && <div className="space-y-6 mb-12">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Landmark size={20} className="text-[#064e3b]" />
-              Family Tree Portal Logs (Lineage System)
+              <MessageSquare size={20} className="text-brand-600" />
+              Telegram AI Memory (Barnali Bot)
             </h2>
-            <div className="px-4 py-2 bg-[#fdfbf7] rounded-xl border border-[#d4af37]/20">
-              <p className="text-[10px] font-black text-[#064e3b] uppercase tracking-widest">
-                {lineageLogins.length} Active Generations
-              </p>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#fdfbf7] border-b border-[#d4af37]/10">
-                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Archivist (User)</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Login Type</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Profile ID</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest">Last Activity</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-[#064e3b] uppercase tracking-widest text-right">Location</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50">
-                  {lineageLogins.map((req) => {
-                    const loginEvent = req.events?.find(e => e.includes('vamshavali_') && e.includes('login')) || '';
-                    const isSocial = loginEvent.includes('social');
-                    let profileId = 'Pending';
-                    try {
-                      if (loginEvent.includes('{')) {
-                        const jsonStr = loginEvent.split(': ')[1];
-                        const data = JSON.parse(jsonStr);
-                        profileId = data.profileId || profileId;
-                      }
-                    } catch(e) {}
 
-                    return (
-                      <tr key={req.id} className="hover:bg-[#fdfbf7]/40 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#064e3b] flex items-center justify-center text-[#d4af37]">
-                              <User size={14} />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-zinc-900">{req.email || 'Anonymous Keeper'}</p>
-                              <p className="text-[10px] text-zinc-400 font-medium">Session: {req.id.substring(0, 8)}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
-                            isSocial ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
-                          }`}>
-                            {isSocial ? 'Social OAuth' : 'OTP Verified'}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {telegramUsers.map((tg) => (
+                 <motion.div 
+                   key={tg.id}
+                   whileHover={{ y: -5 }}
+                   className="bg-white p-6 rounded-[2rem] border border-zinc-200 shadow-sm hover:border-brand-500/20 transition-all group"
+                 >
+                    <div className="flex items-center gap-4 mb-6">
+                       <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-lg">
+                          <User size={20} />
+                       </div>
+                       <div>
+                          <p className="text-xs font-bold text-zinc-900 truncate max-w-[150px]">{tg.name || tg.id}</p>
+                          <p className="text-[10px] text-zinc-400 font-medium">Chat ID: {tg.id}</p>
+                       </div>
+                       <div className="ml-auto">
+                          <span className="px-2.5 py-1 bg-brand-50 text-brand-600 rounded-full text-[9px] font-black uppercase">
+                             {tg.credits || 0} CR
                           </span>
-                        </td>
-                        <td className="px-6 py-4">
-                           <code className="text-[10px] bg-zinc-100 px-2 py-1 rounded font-mono text-zinc-600">
-                             {profileId}
-                           </code>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-[10px] font-bold text-zinc-500">
-                            {req.lastSeen?.toDate()?.toLocaleString() || 'Live'}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 text-zinc-500 font-bold text-[10px]">
-                             <MapPin size={10} />
-                             {req.city}, {req.country}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {lineageLogins.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-20 text-center">
-                        <Landmark size={48} className="text-zinc-100 mx-auto mb-4" />
-                        <p className="text-zinc-400 font-medium text-sm">No lineage archives accessed recently.</p>
-                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Barnali Registry is waiting for genealogists.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center mb-6">
-              <Users size={24} className="text-brand-600" />
-            </div>
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Total Sessions</p>
-            <p className="text-3xl font-black text-zinc-900">{sessions.length}</p>
-          </div>
-          <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
-              <Globe size={24} className="text-blue-600" />
-            </div>
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Countries</p>
-            <p className="text-3xl font-black text-zinc-900">{Object.keys(countries).length}</p>
-          </div>
-          <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center mb-6">
-              <Clock size={24} className="text-purple-600" />
-            </div>
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Avg. Duration</p>
-            <p className="text-3xl font-black text-zinc-900">{avgDuration}</p>
-          </div>
-        </div>
-
-        {/* Traffic Chart */}
-        <div className="mb-12 space-y-6">
-          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-            <TrendingUp size={20} className="text-brand-600" />
-            Daily Traffic Report
-          </h2>
-          <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sortedChartData}>
-                <defs>
-                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6321" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#FF6321" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: '#a1a1aa' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '16px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="#FF6321" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorCount)" 
-                  name="Visitors"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {/* Recent Visitors */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Activity size={20} className="text-brand-600" />
-              Recent Visitors
-            </h2>
-            <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-zinc-50 border-b border-zinc-100">
-                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Visitor</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Location</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Duration</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Events</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-50">
-                    {sessions.map((session) => (
-                      <tr key={session.id} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-zinc-900 truncate max-w-[150px] flex items-center gap-2">
-                              {session.email || `Guest (${session.id.substring(0, 6)})`}
-                              {session.events?.some(e => e.includes('vamshavali_')) && (
-                                <span className="w-2 h-2 rounded-full bg-[#064e3b] shadow-[0_0_5px_#064e3b]" title="Lineage Archivist" />
-                              )}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 font-mono">{session.ip}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <MapPin size={12} className="text-zinc-400" />
-                            <span className="text-xs font-medium text-zinc-600">{session.city}, {session.country}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Clock size={12} className="text-zinc-400" />
-                            <span className="text-xs font-bold text-zinc-900">{getDuration(session.startTime, session.lastSeen)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {session.events && session.events.slice(-3).map((e, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-zinc-100 text-[9px] font-black text-zinc-500 rounded-full uppercase tracking-wider">
-                                {e}
-                              </span>
-                            ))}
-                            {session.events && session.events.length > 3 && (
-                              <span className="text-[9px] font-bold text-zinc-400">+{session.events.length - 3}</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Country Breakdown */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Globe size={20} className="text-brand-600" />
-              By Country
-            </h2>
-            <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
-              <div className="space-y-6">
-                {sortedCountries.map(([country, count]) => (
-                  <div key={country} className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-zinc-700">{country}</span>
-                      <span className="text-brand-600">{count}</span>
+                       </div>
                     </div>
-                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${((count as any) / (sessions.length as any)) * 100}%` }}
-                        className="h-full bg-brand-500"
-                      />
+
+                    <div className="space-y-3">
+                       <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-zinc-400 font-bold uppercase">Email</span>
+                          <span className="text-zinc-700 font-medium">{tg.email || '—'}</span>
+                       </div>
+                       <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-zinc-400 font-bold uppercase">Phone</span>
+                          <span className="text-zinc-700 font-medium">{tg.phone || '—'}</span>
+                       </div>
+                       <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-zinc-400 font-bold uppercase">Profile Link</span>
+                          <span className="text-zinc-700 font-bold text-brand-600">{tg.loginId || '—'}</span>
+                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
 
-            </div>
-          </>
-        )}
-
-        {/* Live Chat History */}
-        {activeTab === 'comms' && (
-          <div className="space-y-6 mb-20">
-          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-            <MessageSquare size={20} className="text-brand-600" />
-            Live Chat History
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {(Object.entries(chatSessions) as [string, ChatMessage[]][]).map(([sid, msgs]) => {
-              const session = sessions.find(s => s.id === sid);
-              return (
-                <div key={sid} className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
-                  <div className="p-4 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600">
-                        <User size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-zinc-900">
-                          {session?.email || `Guest (${sid.substring(0, 6)})`}
-                        </p>
-                        <p className="text-[10px] text-zinc-500 font-medium">
-                          {session?.city || 'Unknown'}, {session?.country || 'Unknown'}
-                        </p>
-                      </div>
+                    <div className="mt-6 pt-4 border-t border-zinc-50 flex items-center justify-between">
+                       <p className="text-[8px] text-zinc-300 font-medium uppercase">Last Synced: {new Date(tg.updatedAt).toLocaleDateString()}</p>
+                       <button className="text-zinc-400 hover:text-brand-600 transition-colors">
+                          <ExternalLink size={14} />
+                       </button>
                     </div>
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                      {msgs.length} Messages
-                    </span>
-                  </div>
-                  <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-zinc-50/30">
-                    {msgs.map((m) => (
-                      <div key={m.id} className={`flex ${m.isBot ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm border ${
-                          m.isBot 
-                            ? 'bg-white text-zinc-700 border-zinc-200/50 rounded-tl-none' 
-                            : 'bg-brand-600 text-white border-brand-400/30 rounded-tr-none font-medium'
-                        }`}>
-                          {m.text}
-                          <p className={`text-[8px] mt-1 opacity-60 ${m.isBot ? 'text-zinc-400' : 'text-white'}`}>
-                            {m.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Just now'}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            {Object.keys(chatSessions).length === 0 && (
-              <div className="md:col-span-2 bg-white p-12 rounded-3xl border border-zinc-200 border-dashed text-center">
-                <MessageSquare size={48} className="text-zinc-200 mx-auto mb-4" />
-                <p className="text-zinc-500 font-medium">No chat history found yet.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
+                 </motion.div>
+               ))}
+               {telegramUsers.length === 0 && (
+                 <div className="col-span-full py-20 text-center bg-white rounded-[2rem] border border-zinc-200 border-dashed">
+                    <MessageSquare size={48} className="text-zinc-100 mx-auto mb-4" />
+                    <p className="text-zinc-400 font-medium">No Telegram users in memory yet.</p>
+                 </div>
+               )}
+            </div>
           </div>
         )}
 
         {/* Project Assets & Resources */}
-        {activeTab === 'tools' && (
-          <>
+        {activeTab === 'tools' && <div className="animate-in fade-in duration-500">
             <div className="space-y-6 mb-12">
           <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
             <Database size={20} className="text-brand-600" />
@@ -1553,7 +1616,7 @@ export const AdminAnalytics = () => {
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {/* Email Modal */}
@@ -1740,5 +1803,9 @@ export const AdminAnalytics = () => {
         </AnimatePresence>
       </div>
     </div>
+  </div>
+</div>
   );
 };
+
+export default AdminAnalytics;
