@@ -1677,12 +1677,12 @@ async function startServer() {
 
   // Force SMTP to Gmail IPv4 directly to bypass failing IPv6 resolution in cloud environments
   const smtpHost = resolvedSmtpIp || '142.251.5.108'; 
-  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 465, SSL, IPv4 Forced)...`);
+  console.log(`[Server] Constructing transporter for ${smtpHost} (Port 587, STARTTLS, IPv4 Forced)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
-    port: 465,
-    secure: true, // Port 465 uses direct SSL
+    port: 587,
+    secure: false, // Port 587 uses STARTTLS
     pool: true, 
     family: 4, 
     auth: {
@@ -1702,9 +1702,9 @@ async function startServer() {
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Email Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Using Port 465 (SSL) with forced IPv4. Verify App Password is 16 chars without spaces.');
+      console.error('[Server] 💡 Tip: Using Port 587 (STARTTLS) with forced IPv4. Verify App Password is 16 chars without spaces.');
     } else {
-      console.log('[Server] ✅ Email Transporter is ready (Port 465 SSL).');
+      console.log('[Server] ✅ Email Transporter is ready (Port 587 STARTTLS).');
     }
   });
 
@@ -2956,7 +2956,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V13-IPv4-Fixed-465-SSL</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V13-IPv4-Fixed-587-STARTTLS</p>
             </div>
           </div>
         `
@@ -2973,10 +2973,10 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V13-IPv4-Fixed-465-SSL) ${error.message}`,
+        details: `(V13-IPv4-Fixed-587-STARTTLS) ${error.message}`,
         diagnostic: {
           host: resolvedSmtpIp || '142.251.5.108',
-          port: 465,
+          port: 587,
           code: error.code,
           command: error.command,
           timestamp: new Date().toISOString()
