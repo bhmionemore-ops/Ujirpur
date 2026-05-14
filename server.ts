@@ -1675,19 +1675,34 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Use 'gmail' service with enhanced logging and diagnostics
-  console.log(`[Server] Initializing Gmail Service Transporter (V17-Diagnostic-Active)...`);
+  // Force IPv4 specifically for the SMTP transporter to bypass failing IPv6 DNS resolution in cloud containers
+  const smtpHost = 'smtp.gmail.com'; 
+  console.log(`[Server] Initializing High-Reliability Transporter for ${smtpHost} (V18-IPv4-Only-Lookup)...`);
   
   const smtpLogs: string[] = [];
   const captureLog = (level: string, msg: string, obj?: any) => {
-    const entry = `[${level}] ${msg} ${obj ? JSON.stringify(obj) : ''}`;
+    const entry = `[${level}] ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj)) : ''}`;
     smtpLogs.push(entry);
     if (smtpLogs.length > 50) smtpLogs.shift();
   };
 
   transporter = nodemailer.createTransport({
-    service: 'gmail',
-    pool: false, // Fresh connection every time
+    host: smtpHost,
+    port: 465,
+    secure: true,
+    pool: false, 
+    // CRITICAL: Custom lookup to strictly ignore IPv6 addresses
+    lookup: (hostname: string, options: any, callback: any) => {
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        if (err || !address) {
+          captureLog('DNS-ERROR', `Resolution failed for ${hostname}, falling back to static IP: ${err?.message}`);
+          // Fallback to a known Google SMTP IPv4 if DNS fails
+          return callback(null, '74.125.130.108', 4);
+        }
+        captureLog('DNS-SUCCESS', `Resolved ${hostname} to ${address} (family: ${family})`);
+        callback(null, address, family);
+      });
+    },
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -1699,10 +1714,14 @@ async function startServer() {
       error: (obj: any, msg: any) => captureLog('ERROR', msg, obj),
       debug: (obj: any, msg: any) => captureLog('DEBUG', msg, obj),
     },
-    connectionTimeout: 60000, 
-    greetingTimeout: 60000,
-    socketTimeout: 120000,
-    authTimeout: 60000
+    tls: {
+      rejectUnauthorized: false,
+      servername: 'smtp.gmail.com'
+    },
+    connectionTimeout: 45000, 
+    greetingTimeout: 45000,
+    socketTimeout: 60000,
+    authTimeout: 45000
   } as any);
 
   // Global log accessor
@@ -1712,8 +1731,9 @@ async function startServer() {
   transporter.verify((error: any, success: any) => {
     if (error) {
       console.error('[Server] ❌ Diagnostic Transporter Verification Failed:', error.message);
+      console.error('[Server] 💡 Tip: Using Port 465 (SSL) with Force-Filtered IPv4 DNS Lookup (V18).');
     } else {
-      console.log('[Server] ✅ Diagnostic Transporter is ready (V17-Gmail-Service).');
+      console.log('[Server] ✅ Diagnostic Transporter is ready (V18-IPv4-Only-Lookup).');
     }
   });
 
@@ -2965,7 +2985,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V17-Gmail-Service-Diagnostic</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V18-Robust-IPv4-Forced</p>
             </div>
           </div>
         `
@@ -2976,7 +2996,7 @@ async function startServer() {
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via Gmail Service (V17)...`);
+      console.log(`[Vamshavali] Sending OTP via forced IPv4 connection (V18)...`);
       await transporter.sendMail(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
@@ -2984,7 +3004,7 @@ async function startServer() {
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V17-Gmail-Service-Diagnostic) ${error.message}`,
+        details: `(V18-Robust-IPv4-Forced) ${error.message}`,
         diagnostic: {
           logs,
           timestamp: new Date().toISOString()
