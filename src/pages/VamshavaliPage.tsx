@@ -741,6 +741,9 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         toast.success("OTP sent to your email");
       } else {
         const data = await res.json();
+        if (data.diagnostic) {
+          console.error("Vamshavali OTP Diagnostic Report:", data.diagnostic);
+        }
         toast.error(data.details || data.error || "Failed to send OTP");
       }
     } catch (error) {
