@@ -1675,15 +1675,15 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Use hostname for initial setup
-  const smtpHost = 'smtp.gmail.com'; 
-  console.log(`[Server] Initializing High-Reliability Transporter for ${smtpHost} (No Pooling)...`);
+  // Force Absolute IPv4 for SMTP host to bypass failing IPv6 DNS resolution in cloud containers
+  const smtpHost = '74.125.130.108'; // Direct Google SMTP IPv4
+  console.log(`[Server] Connecting to Absolute IPv4: ${smtpHost} (Port 465 SSL)...`);
   
   transporter = nodemailer.createTransport({
     host: smtpHost, 
     port: 465,
     secure: true, 
-    pool: false, // DISABLE pooling to prevent stale sockets in cloud environments
+    pool: false, 
     family: 4, 
     auth: {
       user: emailUser,
@@ -1691,7 +1691,7 @@ async function startServer() {
     },
     tls: {
       rejectUnauthorized: false,
-      servername: 'smtp.gmail.com'
+      servername: 'smtp.gmail.com' // CRITICAL: Still use hostname for certificate validation
     },
     connectionTimeout: 45000, 
     greetingTimeout: 45000,
@@ -2957,7 +2957,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V14-Robust-Cloud-Direct</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V15-IPv4-Absolute-SSL</p>
             </div>
           </div>
         `
@@ -2968,16 +2968,16 @@ async function startServer() {
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via Fresh Connection (Pool: False)...`);
+      console.log(`[Vamshavali] Sending OTP via Absolute IPv4 (74.125.130.108)...`);
       await transporter.sendMail(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V14-Robust-Cloud-Direct) ${error.message}`,
+        details: `(V15-IPv4-Absolute-SSL) ${error.message}`,
         diagnostic: {
-          host: 'smtp.gmail.com',
+          host: '74.125.130.108',
           port: 465,
           code: error.code,
           command: error.command,
