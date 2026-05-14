@@ -1692,14 +1692,14 @@ async function startServer() {
    */
   const robustSendMail = async (mailOptions: any) => {
     const attempts = [
-      // Attempt 1: Standard Hostname + Port 465 (SSL)
-      { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
-      // Attempt 2: Standard Hostname + Port 587 (STARTTLS)
-      { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
-      // Attempt 3: First Static IP + Port 465
+      // Attempt 1: First Static IP + Port 465 (Bypasses DNS/IPv6 issues)
       { host: smtpIps[0], port: 465, secure: true, label: 'IP1-SSL-465' },
-      // Attempt 4: Second Static IP + Port 587
+      // Attempt 2: Second Static IP + Port 587 (Bypasses DNS/IPv6 issues)
       { host: smtpIps[1], port: 587, secure: false, label: 'IP2-TLS-587' },
+      // Attempt 3: Standard Hostname + Port 465 (Fallback)
+      { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
+      // Attempt 4: Standard Hostname + Port 587 (Fallback)
+      { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
       // Attempt 5: Final fallback to Gmail Service (Let Node handle it)
       { service: 'gmail', label: 'SERVICE-GMAIL' }
     ];
@@ -1760,7 +1760,7 @@ async function startServer() {
     family: 4
   } as any);
 
-  console.log(`[Server] Email System Initialized (V21-Robust-Multiplex).`);
+  console.log(`[Server] Email System Initialized (V22-Static-First-Relay).`);
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "info@barnia.in";
 
@@ -3010,7 +3010,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V21-Ultimate-Relay-Multiplex</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V22-Static-First-Relay</p>
             </div>
           </div>
         `
@@ -3021,7 +3021,7 @@ async function startServer() {
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via V20 IP-Rotation Mechanism...`);
+      console.log(`[Vamshavali] Sending OTP via V22 Static-First Mechanism...`);
       await (global as any).sendMailWithRetry(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
@@ -3029,7 +3029,7 @@ async function startServer() {
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V20-Global-Relay-465) ${error.message}`,
+        details: `(V22-Static-First-Relay) ${error.message}`,
         diagnostic: {
           logs,
           timestamp: new Date().toISOString()

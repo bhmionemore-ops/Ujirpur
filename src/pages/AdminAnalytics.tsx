@@ -91,9 +91,81 @@ export const AdminAnalytics = () => {
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
   
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'comms' | 'ai' | 'tools'>('overview');
+  
   // Email Signature State
   const [adminName, setAdminName] = useState(user?.displayName || 'Your Name Here');
   const [adminTitle, setAdminTitle] = useState('Community Administrator');
+
+  // User Management Logic Integration
+  const [users, setUsers] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [userLoading, setUserLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setUserLoading(true);
+    const qUsers = query(collection(db, 'users'), orderBy('displayName', 'asc'));
+    const unsubUsers = onSnapshot(qUsers, (snap) => {
+      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setUserLoading(false);
+    });
+    return () => unsubUsers();
+  }, [isAdmin]);
+
+  const toggleVerification = async (userId: string, currentStatus: boolean) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      const { deleteField, updateDoc, getDocs, where } = await import('firebase/firestore');
+      const newFacebookId = currentStatus ? deleteField() : `manual_${Date.now()}`;
+      const newIsVerified = !currentStatus;
+
+      await updateDoc(userRef, { facebookId: newFacebookId });
+      const q = query(collection(db, 'influencers'), where('uid', '==', userId));
+      const influencerSnaps = await getDocs(q);
+      
+      if (!influencerSnaps.empty) {
+        for (const influencerDoc of influencerSnaps.docs) {
+          await updateDoc(doc(db, 'influencers', influencerDoc.id), {
+            facebookId: newFacebookId,
+            isVerified: newIsVerified
+          });
+        }
+      }
+      toast.success(currentStatus ? 'Verification removed' : 'User verified successfully');
+    } catch (err) {
+      toast.error('Operation failed');
+    }
+  };
+
+  const toggleRole = async (userId: string, currentRole: string) => {
+    if (userId === user?.uid) {
+      toast.error('You cannot change your own role');
+      return;
+    }
+    try {
+      const { updateDoc } = await import('firebase/firestore');
+      const userRef = doc(db, 'users', userId);
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
+      await updateDoc(userRef, { role: newRole });
+      toast.success(`Role updated to ${newRole}`);
+    } catch (err) {
+      toast.error('Operation failed');
+    }
+  };
+
+  const addCredits = async (userId: string, currentCredits: number = 0) => {
+    const amount = window.prompt('Enter amount of credits to add:', '50');
+    if (!amount || isNaN(parseInt(amount))) return;
+    try {
+      const { updateDoc } = await import('firebase/firestore');
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { credits: (currentCredits || 0) + parseInt(amount) });
+      toast.success(`Added ${amount} credits to user.`);
+    } catch (err) {
+      toast.error('Failed to add credits.');
+    }
+  };
 
   useEffect(() => {
     if (user?.displayName && adminName === 'Your Name Here') {
@@ -454,10 +526,113 @@ export const AdminAnalytics = () => {
               </div>
             </div>
           </div>
+        <div className="flex items-center gap-2 mb-12 p-1.5 bg-white rounded-2xl border border-zinc-200 shadow-sm w-fit overflow-x-auto max-w-full no-scrollbar">
+          {(['overview', 'users', 'comms', 'ai', 'tools'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === tab 
+                  ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10' 
+                  : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
+        {/* User Management Tab */}
+        {activeTab === 'users' && (
+          <div className="space-y-6 mb-12">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                <Users size={20} className="text-brand-600" />
+                Community Members
+              </h2>
+              <div className="relative w-full md:w-72">
+                <input 
+                  type="text"
+                  placeholder="Search members..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white border border-zinc-200 rounded-2xl px-10 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all shadow-sm"
+                />
+                <Activity size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left border-collapse">
+                   <thead>
+                     <tr className="bg-zinc-50 border-b border-zinc-100">
+                       <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Member</th>
+                       <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Credits</th>
+                       <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Role</th>
+                       <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Status</th>
+                       <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-zinc-50">
+                     {users.filter(u => 
+                       u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                       u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                     ).map((u) => (
+                       <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors">
+                         <td className="px-6 py-4">
+                           <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-400 overflow-hidden font-black text-xs">
+                               {u.photoURL ? <img src={u.photoURL} alt="" className="w-full h-full object-cover" /> : u.displayName?.charAt(0)}
+                             </div>
+                             <div>
+                               <p className="text-xs font-bold text-zinc-900">{u.displayName || 'Unnamed'}</p>
+                               <p className="text-[10px] text-zinc-400 font-medium">{u.email}</p>
+                             </div>
+                           </div>
+                         </td>
+                         <td className="px-6 py-4">
+                            <button 
+                              onClick={() => addCredits(u.id, u.credits)}
+                              className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-100 transition-all"
+                            >
+                              {u.credits || 0} CR +
+                            </button>
+                         </td>
+                         <td className="px-6 py-4">
+                           <button 
+                             onClick={() => toggleRole(u.id, u.role || 'user')}
+                             className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
+                               u.role === 'admin' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500'
+                             }`}
+                           >
+                             {u.role || 'user'}
+                           </button>
+                         </td>
+                         <td className="px-6 py-4">
+                            <span className={`w-2.5 h-2.5 rounded-full inline-block ${u.facebookId ? 'bg-brand-600' : 'bg-zinc-200'}`} title={u.facebookId ? 'Verified' : 'Unverified'} />
+                         </td>
+                         <td className="px-6 py-4 text-right">
+                            <button 
+                              onClick={() => toggleVerification(u.id, !!u.facebookId)}
+                              className={`p-2 rounded-xl transition-all ${u.facebookId ? 'text-brand-600 bg-brand-50' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'}`}
+                              title="Toggle Verification"
+                            >
+                              <CheckCircle size={16} />
+                            </button>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          </div>
+        )}
+
         {/* App Inbox (Inbound Emails) - MOVED TO TOP */}
-        <div className="space-y-6 mb-12">
+        {activeTab === 'comms' && (
+          <div className="space-y-6 mb-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Mail size={20} className="text-brand-600" />
@@ -632,10 +807,12 @@ export const AdminAnalytics = () => {
               </table>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Pending AI Approvals - NEW */}
-        <div className="space-y-6 mb-12">
+        {activeTab === 'ai' && (
+          <>
+            <div className="space-y-6 mb-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Zap size={20} className="text-brand-600" />
@@ -778,10 +955,14 @@ export const AdminAnalytics = () => {
               )}
             </div>
           </div>
-        </div>
+            </div>
+          </>
+        )}
 
-        {/* AI Usage Logs - NEW (Requested by User) */}
-        <div className="space-y-6 mb-12">
+        {/* Family Tree Portal Logs - NEW */}
+        {activeTab === 'overview' && (
+          <>
+            <div className="space-y-6 mb-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Activity size={20} className="text-brand-600" />
@@ -946,10 +1127,10 @@ export const AdminAnalytics = () => {
               </table>
             </div>
           </div>
-        </div>
+            </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
             <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center mb-6">
               <Users size={24} className="text-brand-600" />
@@ -1116,8 +1297,13 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
+            </div>
+          </>
+        )}
+
         {/* Live Chat History */}
-        <div className="space-y-6 mb-20">
+        {activeTab === 'comms' && (
+          <div className="space-y-6 mb-20">
           <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
             <MessageSquare size={20} className="text-brand-600" />
             Live Chat History
@@ -1173,8 +1359,13 @@ export const AdminAnalytics = () => {
           </div>
         </div>
 
+          </div>
+        )}
+
         {/* Project Assets & Resources */}
-        <div className="space-y-6 mb-12">
+        {activeTab === 'tools' && (
+          <>
+            <div className="space-y-6 mb-12">
           <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
             <Database size={20} className="text-brand-600" />
             Project Assets & Resources
@@ -1237,16 +1428,10 @@ export const AdminAnalytics = () => {
                 <ExternalLink size={18} />
               </Link>
             </div>
-          </div>
-        </div>
+            </div>
 
-        {/* Email Signature Section */}
-        <div className="space-y-6 mb-20">
-          <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-            <Mail size={20} className="text-brand-600" />
-            Professional Email Signature
-          </h2>
-          <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-200 shadow-sm">
+            {/* Email Signature Section */}
+            <div className="space-y-6 mb-20">
             <p className="text-xs text-zinc-500 font-medium mb-6">
               Copy this signature and paste it into your Gmail settings (Settings {'>'} See all settings {'>'} Signature). 
               Once saved, it will appear **automatically** on every email you send.
@@ -1368,8 +1553,8 @@ export const AdminAnalytics = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Email Modal */}
         <AnimatePresence>
