@@ -1676,10 +1676,10 @@ async function startServer() {
   }
 
   // Use a rotating pool of hard-coded IPv4 addresses to bypass failing DNS and IPv6 issues
-  const smtpIps = ['142.251.5.108', '74.125.130.108', '108.177.15.108'];
+  const smtpIps = ['173.194.77.108', '74.125.133.108', '142.250.150.108', '64.233.184.108'];
   const initialIp = smtpIps[0];
   
-  console.log(`[Server] Initializing V19-Circuit-Breaker Transporter (Target: ${initialIp})...`);
+  console.log(`[Server] Initializing V20-Global-Relay-465 (Target: ${initialIp})...`);
   
   const smtpLogs: string[] = [];
   const captureLog = (level: string, msg: string, obj?: any) => {
@@ -1692,8 +1692,8 @@ async function startServer() {
   const createSmtpTransporter = (ip: string) => {
     return nodemailer.createTransport({
       host: ip,
-      port: 587,
-      secure: false, // STARTTLS
+      port: 465,
+      secure: true, 
       pool: false,
       family: 4,
       auth: {
@@ -1711,10 +1711,10 @@ async function startServer() {
         rejectUnauthorized: false,
         servername: 'smtp.gmail.com'
       },
-      connectionTimeout: 15000, 
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
-      authTimeout: 15000
+      connectionTimeout: 45000, 
+      greetingTimeout: 45000,
+      socketTimeout: 90000,
+      authTimeout: 45000
     } as any);
   };
 
@@ -1726,7 +1726,7 @@ async function startServer() {
     let lastError: any = null;
     for (const ip of smtpIps) {
       try {
-        console.log(`[SMTP-Retry] Attempting send via ${ip}...`);
+        console.log(`[SMTP-Retry] Attempting send via ${ip} (Port 465)...`);
         captureLog('RETRY', `Attempting send via ${ip}`);
         const currentTransporter = createSmtpTransporter(ip);
         await currentTransporter.sendMail(mailOptions);
@@ -1745,9 +1745,9 @@ async function startServer() {
   // Verify initial connection on startup
   transporter.verify((error: any) => {
     if (error) {
-      console.error('[Server] ❌ V19 Transporter Initial Check Failed:', error.message);
+      console.error('[Server] ❌ V20 Transporter Initial Check Failed:', error.message);
     } else {
-      console.log('[Server] ✅ V19-Circuit-Breaker Ready.');
+      console.log('[Server] ✅ V20-Global-Relay Ready.');
     }
   });
 
@@ -2999,7 +2999,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V19-Circuit-Breaker-Static-IP</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V20-Global-Relay-465</p>
             </div>
           </div>
         `
@@ -3010,7 +3010,7 @@ async function startServer() {
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via V19 IP-Rotation Mechanism...`);
+      console.log(`[Vamshavali] Sending OTP via V20 IP-Rotation Mechanism...`);
       await (global as any).sendMailWithRetry(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
@@ -3018,7 +3018,7 @@ async function startServer() {
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V19-Circuit-Breaker-Static-IP) ${error.message}`,
+        details: `(V20-Global-Relay-465) ${error.message}`,
         diagnostic: {
           logs,
           timestamp: new Date().toISOString()
