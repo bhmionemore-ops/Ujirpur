@@ -1675,8 +1675,8 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force SMTP to Gmail IPv4 directly to bypass failing IPv6 resolution in cloud environments
-  const smtpHost = resolvedSmtpIp || '142.251.5.108'; 
+  // Use hostname with family: 4 to resolve to IPv4 and avoid connection issues
+  const smtpHost = 'smtp.gmail.com'; 
   console.log(`[Server] Constructing transporter for ${smtpHost} (Port 587, STARTTLS, IPv4 Forced)...`);
   
   transporter = nodemailer.createTransport({
@@ -1693,9 +1693,9 @@ async function startServer() {
       rejectUnauthorized: false,
       servername: 'smtp.gmail.com'
     },
-    connectionTimeout: 90000, 
-    greetingTimeout: 90000,
-    socketTimeout: 120000
+    connectionTimeout: 120000, 
+    greetingTimeout: 120000,
+    socketTimeout: 150000
   } as any);
 
   // Verify transporter on startup
@@ -2956,7 +2956,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V13-IPv4-Fixed-587-STARTTLS</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V13-IPv4-Host-587-STARTTLS</p>
             </div>
           </div>
         `
@@ -2973,9 +2973,9 @@ async function startServer() {
       console.error("[Vamshavali] Error sending OTP:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V13-IPv4-Fixed-587-STARTTLS) ${error.message}`,
+        details: `(V13-IPv4-Host-587-STARTTLS) ${error.message}`,
         diagnostic: {
-          host: resolvedSmtpIp || '142.251.5.108',
+          host: 'smtp.gmail.com',
           port: 587,
           code: error.code,
           command: error.command,
