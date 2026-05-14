@@ -1675,65 +1675,79 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Force IPv4 specifically for the SMTP transporter to bypass failing IPv6 DNS resolution in cloud containers
-  const smtpHost = 'smtp.gmail.com'; 
-  console.log(`[Server] Initializing High-Reliability Transporter for ${smtpHost} (V18-IPv4-Only-Lookup)...`);
+  // Use a rotating pool of hard-coded IPv4 addresses to bypass failing DNS and IPv6 issues
+  const smtpIps = ['142.251.5.108', '74.125.130.108', '108.177.15.108'];
+  const initialIp = smtpIps[0];
+  
+  console.log(`[Server] Initializing V19-Circuit-Breaker Transporter (Target: ${initialIp})...`);
   
   const smtpLogs: string[] = [];
   const captureLog = (level: string, msg: string, obj?: any) => {
-    const entry = `[${level}] ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj)) : ''}`;
+    const entry = `[${level}] ${new Date().toISOString().split('T')[1]} ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj).substring(0, 100)) : ''}`;
     smtpLogs.push(entry);
     if (smtpLogs.length > 50) smtpLogs.shift();
   };
 
-  transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: 465,
-    secure: true,
-    pool: false, 
-    // CRITICAL: Custom lookup to strictly ignore IPv6 addresses
-    lookup: (hostname: string, options: any, callback: any) => {
-      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-        if (err || !address) {
-          captureLog('DNS-ERROR', `Resolution failed for ${hostname}, falling back to static IP: ${err?.message}`);
-          // Fallback to a known Google SMTP IPv4 if DNS fails
-          return callback(null, '74.125.130.108', 4);
-        }
-        captureLog('DNS-SUCCESS', `Resolved ${hostname} to ${address} (family: ${family})`);
-        callback(null, address, family);
-      });
-    },
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
-    debug: true,
-    logger: {
-      info: (obj: any, msg: any) => captureLog('INFO', msg, obj),
-      warn: (obj: any, msg: any) => captureLog('WARN', msg, obj),
-      error: (obj: any, msg: any) => captureLog('ERROR', msg, obj),
-      debug: (obj: any, msg: any) => captureLog('DEBUG', msg, obj),
-    },
-    tls: {
-      rejectUnauthorized: false,
-      servername: 'smtp.gmail.com'
-    },
-    connectionTimeout: 45000, 
-    greetingTimeout: 45000,
-    socketTimeout: 60000,
-    authTimeout: 45000
-  } as any);
+  // Helper to create a dedicated transporter for an IP
+  const createSmtpTransporter = (ip: string) => {
+    return nodemailer.createTransport({
+      host: ip,
+      port: 587,
+      secure: false, // STARTTLS
+      pool: false,
+      family: 4,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+      debug: true,
+      logger: {
+        info: (obj: any, msg: any) => captureLog('INFO', msg, obj),
+        warn: (obj: any, msg: any) => captureLog('WARN', msg, obj),
+        error: (obj: any, msg: any) => captureLog('ERROR', msg, obj),
+        debug: (obj: any, msg: any) => captureLog('DEBUG', msg, obj),
+      },
+      tls: {
+        rejectUnauthorized: false,
+        servername: 'smtp.gmail.com'
+      },
+      connectionTimeout: 15000, 
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+      authTimeout: 15000
+    } as any);
+  };
 
-  // Global log accessor
+  transporter = createSmtpTransporter(initialIp);
+
+  // Global log accessor and Retry helper
   (global as any).getSmtpLogs = () => smtpLogs;
+  (global as any).sendMailWithRetry = async (mailOptions: any) => {
+    let lastError: any = null;
+    for (const ip of smtpIps) {
+      try {
+        console.log(`[SMTP-Retry] Attempting send via ${ip}...`);
+        captureLog('RETRY', `Attempting send via ${ip}`);
+        const currentTransporter = createSmtpTransporter(ip);
+        await currentTransporter.sendMail(mailOptions);
+        console.log(`[SMTP-Retry] ✅ Success via ${ip}`);
+        return true;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[SMTP-Retry] ❌ Failed via ${ip}: ${err.message}`);
+        captureLog('RETRY-FAIL', `Failed via ${ip}: ${err.message}`);
+        // Continue to next IP
+      }
+    }
+    throw lastError;
+  };
 
-  // Verify transporter on startup
-  transporter.verify((error: any, success: any) => {
+  // Verify initial connection on startup
+  transporter.verify((error: any) => {
     if (error) {
-      console.error('[Server] ❌ Diagnostic Transporter Verification Failed:', error.message);
-      console.error('[Server] 💡 Tip: Using Port 465 (SSL) with Force-Filtered IPv4 DNS Lookup (V18).');
+      console.error('[Server] ❌ V19 Transporter Initial Check Failed:', error.message);
     } else {
-      console.log('[Server] ✅ Diagnostic Transporter is ready (V18-IPv4-Only-Lookup).');
+      console.log('[Server] ✅ V19-Circuit-Breaker Ready.');
     }
   });
 
@@ -2985,26 +2999,26 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V18-Robust-IPv4-Forced</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V19-Circuit-Breaker-Static-IP</p>
             </div>
           </div>
         `
       };
 
-      if (!transporter) {
-        console.error("[Vamshavali] Global transporter not initialized.");
+      if (!(global as any).sendMailWithRetry) {
+        console.error("[Vamshavali] Retry helper not initialized.");
         throw new Error("Email service temporarily unavailable");
       }
 
-      console.log(`[Vamshavali] Sending OTP via forced IPv4 connection (V18)...`);
-      await transporter.sendMail(mailOptions);
+      console.log(`[Vamshavali] Sending OTP via V19 IP-Rotation Mechanism...`);
+      await (global as any).sendMailWithRetry(mailOptions);
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error: any) {
       const logs = (global as any).getSmtpLogs ? (global as any).getSmtpLogs() : ["No logs available"];
       console.error("[Vamshavali] CRITICAL SMTP ERROR:", error);
       res.status(500).json({ 
         error: "Failed to send OTP", 
-        details: `(V18-Robust-IPv4-Forced) ${error.message}`,
+        details: `(V19-Circuit-Breaker-Static-IP) ${error.message}`,
         diagnostic: {
           logs,
           timestamp: new Date().toISOString()
