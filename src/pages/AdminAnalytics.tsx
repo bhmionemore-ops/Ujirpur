@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap, Landmark } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap, Landmark, Key, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -56,6 +56,23 @@ interface AIRequest {
   createdAt: Timestamp;
 }
 
+interface AIUsageLog {
+  id: string;
+  userId: string;
+  task: string;
+  type: string;
+  cost: number;
+  modelUsed: string;
+  result: string;
+  timestamp: Timestamp;
+}
+
+interface APIKey {
+  id: string; // User ID
+  apiKey: string;
+  createdAt?: any;
+}
+
 export const AdminAnalytics = () => {
   const { isAdmin, user } = useFirebase();
   const { language, t: globalT } = useLanguage();
@@ -64,6 +81,8 @@ export const AdminAnalytics = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [aiRequests, setAiRequests] = useState<AIRequest[]>([]);
+  const [aiUsage, setAiUsage] = useState<AIUsageLog[]>([]);
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [diagData, setDiagData] = useState<any>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -253,6 +272,22 @@ export const AdminAnalytics = () => {
       console.error("Error fetching AI requests:", err);
     });
 
+    // Fetch AI Usage Logs
+    const qUsage = query(collection(db, 'usage'), orderBy('timestamp', 'desc'), limit(100));
+    const unsubUsage = onSnapshot(qUsage, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIUsageLog));
+      setAiUsage(docs);
+    }, (err) => {
+      console.error("Error fetching AI usage logs:", err);
+    });
+
+    // Fetch API Keys
+    const qKeys = collection(db, 'api_keys');
+    const unsubKeys = onSnapshot(qKeys, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as APIKey));
+      setApiKeys(docs);
+    });
+
     // Fetch diagnostic data
     const fetchDiag = async () => {
       try {
@@ -271,6 +306,9 @@ export const AdminAnalytics = () => {
       unsubSessions();
       unsubChats();
       unsubEmails();
+      unsubAi();
+      unsubUsage();
+      unsubKeys();
     };
   }, [isAdmin]);
 
@@ -686,6 +724,128 @@ export const AdminAnalytics = () => {
                         <Zap size={48} className="text-zinc-100 mx-auto mb-4" />
                         <p className="text-zinc-400 font-medium text-sm">No premium AI tasks waiting for approval.</p>
                         <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Router Protection system is active.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* API Key Management - NEW */}
+        <div className="space-y-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <Key size={20} className="text-brand-600" />
+              Active API Keys ({apiKeys.length})
+            </h2>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {apiKeys.map((k) => (
+                <div key={k.id} className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100 group hover:border-brand-500/30 transition-all">
+                  <div className="flex items-center gap-3 mb-4">
+                     <div className="w-10 h-10 bg-brand-50 rounded-2xl flex items-center justify-center">
+                       <User size={20} className="text-brand-600" />
+                     </div>
+                     <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">User ID</p>
+                        <p className="text-xs font-bold text-zinc-900 truncate" title={k.id}>{k.id}</p>
+                     </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-zinc-100 mb-3">
+                     <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Key Fragment</p>
+                     <code className="text-[10px] font-mono font-black text-brand-600">
+                        {k.apiKey.substring(0, 8)}••••••••{k.apiKey.substring(k.apiKey.length - 4)}
+                     </code>
+                  </div>
+                  <div className="flex items-center justify-between">
+                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
+                     {k.createdAt && (
+                        <span className="text-[10px] text-zinc-400 font-medium tracking-tight">
+                           Issued: {k.createdAt.toDate().toLocaleDateString()}
+                        </span>
+                     )}
+                  </div>
+                </div>
+              ))}
+              {apiKeys.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                   <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">No API keys have been issued yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* AI Usage Logs - NEW (Requested by User) */}
+        <div className="space-y-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+              <Activity size={20} className="text-brand-600" />
+              Paid AI Usage Activity (Live Audit)
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-brand-50 rounded-xl border border-brand-100">
+                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">
+                  {aiUsage.reduce((acc, curr) => acc + (curr.cost || 0), 0)} Total Credits Consumed
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50 border-b border-zinc-100">
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">User / ID</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Intent</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Infrastructure / Model</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cost</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {aiUsage.map((log) => (
+                    <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-bold text-zinc-900">{log.userId.includes('@') ? log.userId : `ID: ${log.userId.substring(0, 12)}`}</p>
+                        <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">Session ID: {log.id.substring(0, 8)}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-xs font-medium text-zinc-600 max-w-[300px] truncate" title={log.task}>
+                          {log.task || "Multimedia Generation"}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                           <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">
+                             {log.modelUsed || "System Router"}
+                           </span>
+                           <span className="text-[10px] text-zinc-400 font-medium">Type: {log.type || "Text"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-black px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded-full">
+                          {log.cost} CR
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <p className="text-[10px] font-bold text-zinc-500">
+                          {log.timestamp?.toDate()?.toLocaleString() || 'Just now'}
+                        </p>
+                      </td>
+                    </tr>
+                  ))}
+                  {aiUsage.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <Database size={48} className="text-zinc-100 mx-auto mb-4" />
+                        <p className="text-zinc-400 font-medium text-sm">No paid AI activity recorded yet.</p>
+                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Usage logs are stored for security audits.</p>
                       </td>
                     </tr>
                   )}

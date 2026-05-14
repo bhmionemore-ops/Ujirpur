@@ -1675,81 +1675,92 @@ async function startServer() {
     console.warn(`[Server] EMAIL_PASS is not set. Emails will fail to send.`);
   }
 
-  // Use a rotating pool of hard-coded IPv4 addresses to bypass failing DNS and IPv6 issues
+  // Use a rotating pool of hard-coded IPv4 addresses and diverse ports
   const smtpIps = ['173.194.77.108', '74.125.133.108', '142.250.150.108', '64.233.184.108'];
-  const initialIp = smtpIps[0];
-  
-  console.log(`[Server] Initializing V20-Global-Relay-465 (Target: ${initialIp})...`);
   
   const smtpLogs: string[] = [];
   const captureLog = (level: string, msg: string, obj?: any) => {
-    const entry = `[${level}] ${new Date().toISOString().split('T')[1]} ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj).substring(0, 100)) : ''}`;
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    const entry = `[${level}] ${timestamp} ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj).substring(0, 150)) : ''}`;
     smtpLogs.push(entry);
     if (smtpLogs.length > 50) smtpLogs.shift();
   };
 
-  // Helper to create a dedicated transporter for an IP
-  const createSmtpTransporter = (ip: string) => {
-    return nodemailer.createTransport({
-      host: ip,
-      port: 465,
-      secure: true, 
-      pool: false,
-      family: 4,
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-      debug: true,
-      logger: {
-        info: (obj: any, msg: any) => captureLog('INFO', msg, obj),
-        warn: (obj: any, msg: any) => captureLog('WARN', msg, obj),
-        error: (obj: any, msg: any) => captureLog('ERROR', msg, obj),
-        debug: (obj: any, msg: any) => captureLog('DEBUG', msg, obj),
-      },
-      tls: {
-        rejectUnauthorized: false,
-        servername: 'smtp.gmail.com'
-      },
-      connectionTimeout: 45000, 
-      greetingTimeout: 45000,
-      socketTimeout: 90000,
-      authTimeout: 45000
-    } as any);
-  };
+  /**
+   * Universal Robust Email Sender (V21 - The Ultimate Relay)
+   * Handles multi-port, multi-IP, and protocol fallbacks.
+   */
+  const robustSendMail = async (mailOptions: any) => {
+    const attempts = [
+      // Attempt 1: Standard Hostname + Port 465 (SSL)
+      { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
+      // Attempt 2: Standard Hostname + Port 587 (STARTTLS)
+      { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
+      // Attempt 3: First Static IP + Port 465
+      { host: smtpIps[0], port: 465, secure: true, label: 'IP1-SSL-465' },
+      // Attempt 4: Second Static IP + Port 587
+      { host: smtpIps[1], port: 587, secure: false, label: 'IP2-TLS-587' },
+      // Attempt 5: Final fallback to Gmail Service (Let Node handle it)
+      { service: 'gmail', label: 'SERVICE-GMAIL' }
+    ];
 
-  transporter = createSmtpTransporter(initialIp);
-
-  // Global log accessor and Retry helper
-  (global as any).getSmtpLogs = () => smtpLogs;
-  (global as any).sendMailWithRetry = async (mailOptions: any) => {
     let lastError: any = null;
-    for (const ip of smtpIps) {
+    
+    for (const config of attempts) {
       try {
-        console.log(`[SMTP-Retry] Attempting send via ${ip} (Port 465)...`);
-        captureLog('RETRY', `Attempting send via ${ip}`);
-        const currentTransporter = createSmtpTransporter(ip);
-        await currentTransporter.sendMail(mailOptions);
-        console.log(`[SMTP-Retry] ✅ Success via ${ip}`);
+        console.log(`[SMTP-Robust] Attempting ${config.label}...`);
+        captureLog('ROBUST-TRY', config.label);
+        
+        const transportConfig: any = {
+          ...config,
+          family: 4, // Strict IPv4 to avoid ENETUNREACH on IPv6
+          auth: { user: emailUser, pass: emailPass },
+          tls: { rejectUnauthorized: false, servername: 'smtp.gmail.com' },
+          connectionTimeout: 15000,
+          greetingTimeout: 10000,
+          socketTimeout: 20000
+        };
+
+        // Remove host/port if service is used
+        if (config.service) {
+           delete transportConfig.host;
+           delete transportConfig.port;
+           delete transportConfig.secure;
+        }
+
+        const tempTransporter = nodemailer.createTransport(transportConfig);
+        await tempTransporter.sendMail(mailOptions);
+        
+        console.log(`[SMTP-Robust] ✅ Success via ${config.label}`);
+        captureLog('ROBUST-SUCCESS', config.label);
         return true;
       } catch (err: any) {
         lastError = err;
-        console.warn(`[SMTP-Retry] ❌ Failed via ${ip}: ${err.message}`);
-        captureLog('RETRY-FAIL', `Failed via ${ip}: ${err.message}`);
-        // Continue to next IP
+        const msg = err.message || String(err);
+        console.warn(`[SMTP-Robust] ❌ Failed via ${config.label}: ${msg.substring(0, 50)}`);
+        captureLog('ROBUST-FAIL', `${config.label}: ${msg}`);
       }
     }
+    
+    console.error(`[SMTP-Robust] 🔥 ALL ATTEMPTS FAILED. Final error: ${lastError?.message}`);
     throw lastError;
   };
 
-  // Verify initial connection on startup
-  transporter.verify((error: any) => {
-    if (error) {
-      console.error('[Server] ❌ V20 Transporter Initial Check Failed:', error.message);
-    } else {
-      console.log('[Server] ✅ V20-Global-Relay Ready.');
-    }
-  });
+  // Legacy global compatibility
+  (global as any).sendMailWithRetry = robustSendMail;
+  (global as any).robustSendMail = robustSendMail;
+  (global as any).getSmtpLogs = () => smtpLogs;
+
+  // Initialize a default transporter for background tasks
+  transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: { user: emailUser, pass: emailPass },
+    family: 4
+  } as any);
+
+  console.log(`[Server] Email System Initialized (V21-Robust-Multiplex).`);
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "info@barnia.in";
 
@@ -2217,8 +2228,8 @@ async function startServer() {
               </div>
             `
           };
-          await transporter.sendMail(autoReplyOptions);
-          console.log(`[Webhook] Auto-reply sent to ${cleanFrom}`);
+          await robustSendMail(autoReplyOptions);
+          console.log(`[Webhook] Auto-reply sent to ${cleanFrom} via Robust Relay`);
         } catch (replyError) {
           console.error("[Webhook] Failed to send auto-reply:", replyError);
         }
@@ -2999,7 +3010,7 @@ async function startServer() {
             </div>
             <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">© 2026 Barnali AI. All rights reserved.</p>
-              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V20-Global-Relay-465</p>
+              <p style="color: #94a3b8; font-size: 10px; margin-top: 8px;">Mode: V21-Ultimate-Relay-Multiplex</p>
             </div>
           </div>
         `
@@ -4688,25 +4699,33 @@ async function fetchImageAsBase64(url: string) {
 
     console.log(`[LeadGen] PROCESSING: ${source} | User: ${leadInfo.email || chatId} | Mood: ${sentiment}`);
 
-    // 1. Send Email to Admin (Async)
-    if (transporter) {
-      const senderEmail = emailUser || process.env.EMAIL_USER || "no-reply@barnia.in";
-      console.log(`[LeadGen] Attempting specialized email from ${senderEmail} to ${adminEmail}`);
-      transporter.sendMail({
-        from: `"Barnali AI Bot" <${senderEmail}>`,
-        to: adminEmail,
-        subject: `🔥 [${source}] ${sentiment.toUpperCase()} LEAD: ${leadInfo.name || 'Anonymous'}`,
-        text: leadDisplay,
-        html: `<div style="font-family:sans-serif; padding:20px; border:2px solid #ef4444; border-radius:15px;">
-          <h2 style="color:#ef4444; margin-top:0;">🚀 New Premium Lead!</h2>
-          <pre style="background:#f4f4f5; padding:15px; border-radius:10px;">${leadDisplay}</pre>
-          <hr />
-          <p>Please follow up with this user immediately to close the deal!</p>
-        </div>`
-      }).then(() => console.log(`[LeadGen] ✅ Email Sent Successfully to ${adminEmail}`))
-        .catch(e => console.error(`[LeadGen] ❌ Email Sending Failed for ${adminEmail}:`, e.message));
+    // 1. Send Email to Admin (Async with Robust Relay & Dedup)
+    const dedupKey = `lead_${chatId}_${sentiment}`;
+    const now = Date.now();
+    const lastSent = (global as any).leadCache?.get(dedupKey) || 0;
+    
+    if (now - lastSent > 300000) { // 5 minute dedup
+       if (!(global as any).leadCache) (global as any).leadCache = new Map();
+       (global as any).leadCache.set(dedupKey, now);
+
+       const senderEmail = emailUser || process.env.EMAIL_USER || "no-reply@barnia.in";
+       console.log(`[LeadGen] Attempting ROBUST email from ${senderEmail} to ${adminEmail}`);
+       
+       robustSendMail({
+         from: `"Barnali AI Bot" <${senderEmail}>`,
+         to: adminEmail,
+         subject: `🔥 [${source}] ${sentiment.toUpperCase()} LEAD: ${leadInfo.name || leadInfo.email || 'Anonymous'}`,
+         text: leadDisplay,
+         html: `<div style="font-family:sans-serif; padding:30px; border:3px solid #6366f1; border-radius:20px; background:#f8fafc;">
+           <h2 style="color:#4f46e5; margin-top:0;">🚀 New Premium Lead Detected!</h2>
+           <div style="background:#ffffff; padding:20px; border-radius:12px; border:1px solid #e2e8f0; font-family:monospace; white-space:pre-wrap;">${leadDisplay}</div>
+           <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;" />
+           <p style="color:#64748b; font-size:14px;">System: V21-Robust-Relay | Source: ${source}</p>
+         </div>`
+       }).then(() => console.log(`[LeadGen] ✅ Robust Email Sent Successfully`))
+         .catch(e => console.error(`[LeadGen] ❌ Robust Email Failed:`, e.message));
     } else {
-       console.warn("[LeadGen] ⚠️ No email transporter available in scope.");
+       console.log(`[LeadGen] ⏭️ Skipping duplicate email for ${chatId} (Cooldown active)`);
     }
 
     // 2. Send Telegram Notification to Admin
@@ -5577,11 +5596,11 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     localDb.collabRequests.push(newRequest);
     await saveData(localDb);
 
-    // Also send an email notification
+    // Also send an email notification using Robust Relay
     try {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+      if (emailUser && emailPass) {
+        await robustSendMail({
+          from: `"Barnali System" <${emailUser}>`,
           to: RECIPIENT,
           subject: `New Collaboration Request for ${toInfluencerName}`,
           text: `
@@ -5626,14 +5645,14 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     }
 
     try {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+      if (emailUser && emailPass) {
+        await robustSendMail({
+          from: `"Barnali System" <${emailUser}>`,
           to: RECIPIENT,
           subject: subject,
           text: text,
         });
-        res.json({ success: true, message: "Notification sent" });
+        res.json({ success: true, message: "Notification sent (Robust)" });
       } else {
         console.log("Email credentials missing, logging to console instead:");
         console.log(`Subject: ${subject}`);
@@ -5642,11 +5661,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       }
     } catch (error: any) {
       console.error("Error sending email:", error.message);
-      let errorMessage = error.message;
-      if (error.message.includes('ETIMEDOUT') || error.message.includes('timeout')) {
-        errorMessage = "Connection timeout. Please check SMTP settings.";
-      }
-      res.status(500).json({ success: false, error: "Failed to send notification", details: errorMessage });
+      res.status(500).json({ success: false, error: "Failed to send notification via Robust Relay", details: error.message });
     }
   });
 
