@@ -716,7 +716,7 @@ export const AiRouterPage = () => {
               </div>
               <div className="flex gap-4">
                 <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
-                <p className="text-sm text-zinc-600 font-medium">Set URL to: <code className="bg-zinc-50 px-2 py-1 rounded text-brand-600 uppercase text-[10px]">https://barnia.in/api/v1/ai</code></p>
+                <p className="text-sm text-zinc-600 font-medium">Set URL to: <code className="bg-zinc-50 px-2 py-1 rounded text-brand-600 uppercase text-[10px]">{window.location.origin}/api/v1/ai</code></p>
               </div>
               <div className="flex gap-4">
                 <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
@@ -754,7 +754,7 @@ export const AiRouterPage = () => {
              <div className="relative z-10 space-y-6">
                <div className="bg-zinc-900 rounded-2xl p-6 border border-white/5 font-mono text-[11px] leading-relaxed text-zinc-400 overflow-x-auto">
                  <p className="text-brand-500 mb-2"># Image Generation Request</p>
-{`curl -X POST https://barnia.in/api/v1/ai \\
+{`curl -X POST ${window.location.origin}/api/v1/ai \\
   -H "x-api-key: ${apiKey || 'YOUR_KEY'}" \\
   -H "Content-Type: application/json" \\
   -d '{

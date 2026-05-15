@@ -4761,7 +4761,7 @@ async function fetchImageAsBase64(url: string) {
 
   // --- HEADING: Telegram User Memory ---
   const getTelegramUserMemory = async (cid: number) => {
-    let memory = { name: "", email: "", phone: "", loginId: "", credits: 0, lastChat: "" };
+    let memory = { name: "", email: "", phone: "", loginId: "", credits: 0, lastChat: "", profileId: "" };
     try {
       if (adminDb) {
          const snap = await adminDb.collection("telegram_users").doc(cid.toString()).get();
@@ -4801,8 +4801,41 @@ async function fetchImageAsBase64(url: string) {
       return;
     }
 
+    const saveTelegramUserMemory = async (cid: number, updates: any) => {
+      try {
+        const current = await getTelegramUserMemory(cid);
+        const newData = { 
+          ...current, 
+          ...updates, 
+          updatedAt: new Date().toISOString(),
+          // Ensure name, email, phone, loginId are prioritized
+          name: updates.name || current.name,
+          email: updates.email || current.email,
+          phone: updates.phone || current.phone,
+          loginId: updates.loginId || current.loginId || updates.profileId || current.profileId
+        };
+        if (adminDb) {
+           await adminDb.collection("telegram_users").doc(cid.toString()).set(newData, { merge: true });
+        } else if (db) {
+           await setDoc(doc(db!, 'telegram_users', cid.toString()), newData, { merge: true });
+        }
+        return newData;
+      } catch (e) {
+        console.error("[Telegram] Failed to save memory:", e);
+        return null;
+      }
+    };
+
     // 🧠 INITIALIZE USER MEMORY
-    const memory = await getTelegramUserMemory(chatId);
+    let memory = await getTelegramUserMemory(chatId);
+    
+    // Auto-save name from Telegram if memory is empty
+    if (!memory.name && message.from?.first_name) {
+      const telegramName = message.from.first_name + (message.from.last_name ? ` ${message.from.last_name}` : '');
+      memory = await saveTelegramUserMemory(chatId, { name: telegramName }) || memory;
+      console.log(`[Telegram] Auto-captured name for ${chatId}: ${memory.name}`);
+    }
+    
     console.log(`[Telegram] Loaded memory for ${chatId}:`, JSON.stringify(memory));
 
     const sendMsg = async (msg: string) => {
@@ -4900,32 +4933,6 @@ async function fetchImageAsBase64(url: string) {
         console.error("[Telegram] Error fetching file URL:", e);
       }
       return null;
-    };
-
-    // --- HEADING: Telegram User Memory ---
-    const saveTelegramUserMemory = async (cid: number, updates: any) => {
-      try {
-        const current = await getTelegramUserMemory(cid);
-        const newData = { 
-          ...current, 
-          ...updates, 
-          updatedAt: new Date().toISOString(),
-          // Ensure name, email, phone, loginId are prioritized
-          name: updates.name || current.name,
-          email: updates.email || current.email,
-          phone: updates.phone || current.phone,
-          loginId: updates.loginId || current.loginId || updates.profileId || current.profileId
-        };
-        if (adminDb) {
-           await adminDb.collection("telegram_users").doc(cid.toString()).set(newData, { merge: true });
-        } else if (db) {
-           await setDoc(doc(db!, 'telegram_users', cid.toString()), newData, { merge: true });
-        }
-        return newData;
-      } catch (e) {
-        console.error("[Telegram] Failed to save memory:", e);
-        return null;
-      }
     };
 
     let photoUrl = null;
@@ -5047,6 +5054,9 @@ async function fetchImageAsBase64(url: string) {
              console.log("[Telegram] Saving link via Admin SDK...");
              await adminDb.collection("telegram_links").doc(String(chatId)).set(linkData);
           }
+          
+          // Also save to user memory
+          await saveTelegramUserMemory(chatId, { profileId });
           
           console.log(`[Telegram] Successfully linked ChatID ${chatId} to ${profile.name}`);
           await sendMsg(`✅ *Connection Saved!* Your Telegram is now permanently linked to *${profile.name || 'your family records'}*.\n\nYou can now send me updates anytime without clicking links again! Just tell me what you want to do (e.g. 'Add Rahul as son of Kedar').`);
@@ -5186,9 +5196,35 @@ _Use '/link <id>' if features are missing._`);
       }
 
       if (!command) {
-            const routingPrompt = `[Task: Route user intent]. Analyze: "${text}". 
-            Options: ADD, UPDATE, DELETE, LINK, CHAT, LEAD. 
-            Output strictly JSON: { "action": "...", "taskType": "text"|"image", "sentiment": "...", "details": { "leadInfo": { "name":"", "email":"" } } }`;
+            const routingPrompt = `[Task: Route Family Tree / AI Intent]
+            Analyze the user message and any attached image: "${text}"
+            
+            AVAILABLE ACTIONS:
+            1. UPDATE: Change details of an existing person or the family's root info. 
+               - Root Fields: kuldevi (maps from kuldavi/kuldevi), kuldevta, gotra, nativePlace.
+               - Member Fields: photo, name, birthYear, role.
+            2. ADD: Create new members (child, partner, son, daughter).
+            3. LINK: If user provides a VAM-XXXXX code to connect their account.
+            4. LEAD: If user wants to upgrade, buy credits, or needs official support.
+            5. CHAT: General conversation, greetings, or questions about how this works.
+            
+            RULES for UPDATE/ADD:
+            - If user sends a photo with a caption like "Add this as Kuldevi", set action: UPDATE, details.field: "kuldevi", taskType: "image".
+            - If user sends "Update photo for Rahul", set action: UPDATE, targetMember: "Rahul", details.field: "photo", taskType: "image".
+            - "Kuldavi" or "Kul devi" should always map to "kuldevi".
+            
+            Output strictly JSON: 
+            { 
+              "action": "ADD"|"UPDATE"|"LINK"|"LEAD"|"CHAT", 
+              "taskType": "text"|"image", 
+              "targetMember": "name or 'me'",
+              "details": { 
+                "field": "kuldevi"|"kuldevta"|"gotra"|"photo"|"birthYear", 
+                "name": "new string value",
+                "relationship": "child"|"partner"
+              },
+              "clarificationMessage": "Ask if info is missing"
+            }`;
 
             let contents: any[] = [{ role: 'user', parts: [{ text: routingPrompt }] }];
             if (photoUrl) {
@@ -5232,14 +5268,15 @@ _Use '/link <id>' if features are missing._`);
 
             // AGGRESSIVE LEAD CAPTURE INSTRUCTIONS
             const chatPrompt = `[Persona: Barnali Assistant. Tone: Professional, Sales-focused, Concise.]
-            SITUATION: You are a professional sales and customer support executive for Barnia Digital Hub. 
-            USER KNOWLEDGE: Name: ${memory.name}, Email: ${memory.email}, Phone: ${memory.phone}.
+            SITUATION: You are Barnali, a professional archive manager for Barnia Digital Hub. 
+            USER KNOWLEDGE: Name: ${memory.name}, Email: ${memory.email}, Phone: ${memory.phone}, Linked Tree ID: ${memory.profileId || 'Not Linked'}.
             
             CORE MISSION:
             1. ONLY talk about our website, AI services, and Family Tree features.
-            2. For OFF-TOPIC requests (like poems or unrelated help), be professional but firm that you are an AI hub assistant.
+            2. You ARE capable of updating the Family Tree (Vamshavali) if the user provides clear instructions and photos. Do NOT tell them you cannot process images; instead, tell them to send the photo with a clear caption or link their profile first.
             3. CAPTURE LEADS for premium upgrades. 
-            4. Suggest ${host}/upgrade for detailed forms.
+            4. If a task requires complex tree editing beyond simple additions/photos, suggest ${host}/upgrade or logging into the dashboard.
+            5. If the user asks if you remember them or their tree, confirm that you do (if Linked Tree ID is present) and mention their name: ${memory.name}.
             
             User Message: ${command.userQuestion || text}`;
             
@@ -6116,6 +6153,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     // 2. Protection Check
     const isPremiumTask = finalType === "video" || finalType === "image_to_video" || finalType === "image_to_image";
     if ((cost >= 15 || isPremiumTask) && !isApproved && !isAdmin) {
+      const ts = adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
       const requestData = {
         userId,
         userEmail,
@@ -6124,7 +6162,7 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         inputImage,
         cost,
         status: 'pending',
-        createdAt: Timestamp.now(),
+        createdAt: ts,
         serverKey: "barnia-system-2024-v1"
       };
       
@@ -6306,7 +6344,8 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!userId) return res.status(400).json({ error: "userId required" });
     try {
       const apiKey = `bn_${crypto.randomBytes(24).toString('hex')}`;
-      const data = { userId, apiKey, createdAt: Timestamp.now(), serverKey: "barnia-system-2024-v1" };
+      const ts = adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
+      const data = { userId, apiKey, createdAt: ts, serverKey: "barnia-system-2024-v1" };
       if (adminDb) await adminDb.collection("api_keys").doc(userId).set(data);
       else await setDoc(doc(db!, "api_keys", userId), data as any);
       res.json({ apiKey });
@@ -6333,7 +6372,8 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
       const userId = keySnap.userId;
 
       let userDoc = adminDb ? await adminDb.collection("users").doc(userId).get() : await getDoc(doc(db!, "users", userId));
-      if (!userDoc.exists && (adminDb ? !userDoc.exists() : !userDoc.exists())) return res.status(404).json({ error: "User not found" });
+      const exists = adminDb ? (userDoc as any).exists : (userDoc as any).exists();
+      if (!exists) return res.status(404).json({ error: "User not found" });
       
       const userData = userDoc.data();
       const result = await executeAIRouting(userId, task, type, inputImage, approved, userData);
@@ -6352,19 +6392,24 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         ? adminDb.collection("users").doc(userId)
         : doc(db!, "users", userId);
       
-      const userDoc = adminDb ? await userRef.get() : await getDoc(userRef);
+      let userDoc = adminDb ? await userRef.get() : await getDoc(userRef as any);
+      const exists = adminDb ? (userDoc as any).exists : (userDoc as any).exists();
       
-      if (!userDoc.exists || (adminDb ? !userDoc.exists : !userDoc.exists())) {
+      if (!exists) {
         const initialData = {
           credits: 10,
           email: "user@barnia.in",
-          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
+          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+          serverKey: "barnia-system-2024-v1"
         };
         if (adminDb) await userRef.set(initialData);
         else await setDoc(userRef as any, initialData);
+        
+        // Re-fetch to get current state if needed, or just use initialData
+        userDoc = adminDb ? await userRef.get() : await getDoc(userRef as any);
       }
       
-      const userData = (adminDb ? userDoc.data() : userDoc.data()) || { credits: 10 };
+      const userData = userDoc.data() || { credits: 10 };
       
       // Execute consolidated routing logic
       const result = await executeAIRouting(userId, task, type, inputImage, approved, userData);
