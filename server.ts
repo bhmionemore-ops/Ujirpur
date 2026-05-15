@@ -210,6 +210,7 @@ dotenv.config();
 
 let db: Firestore | null = null;
 let adminDb: any = null;
+let isAdminUsable = true;
 let clientAuth: any = null;
 let firebaseConfig: any = null;
 
@@ -286,7 +287,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
     const decodedId = decodeURIComponent(idOrSlug);
     
     // Try Admin SDK first (bypasses rules)
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         // Try fetching by slug first
         let shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
@@ -318,8 +319,11 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
             console.log(`[MetaTags] Shop found via Admin SDK (ID): "${idOrSlug}"`);
           }
         }
-      } catch (adminError) {
-        console.warn(`[MetaTags] Admin SDK failed to fetch shop "${idOrSlug}":`, adminError);
+      } catch (adminError: any) {
+        if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+          isAdminUsable = false;
+        }
+        console.warn(`[MetaTags] Admin SDK skipped for shop "${idOrSlug}":`, adminError.message);
       }
     }
 
@@ -348,7 +352,7 @@ async function getShopItem(idOrSlug: string, projectId: string, databaseId: stri
           data.id = docSnap.id;
           console.log(`[MetaTags] Shop found via Client SDK (slug): "${idOrSlug}" (ID: ${docSnap.id})`);
         } else {
-          const shopById = await getDocFromServer(doc(db, "shops", idOrSlug));
+          const shopById = await getDoc(doc(db, "shops", idOrSlug));
           if (shopById.exists()) {
             data = shopById.data();
             data.id = shopById.id;
@@ -479,7 +483,7 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
     const decodedId = decodeURIComponent(idOrSlug);
     
     // Try Admin SDK first (bypasses rules)
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         // Try fetching by slug first
         let influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
@@ -509,8 +513,11 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
             data.id = influencerById.id;
           }
         }
-      } catch (adminError) {
-        console.warn(`[MetaTags] Admin SDK failed to fetch profile ${idOrSlug}, falling back to client SDK:`, adminError);
+      } catch (adminError: any) {
+        if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+          isAdminUsable = false;
+        }
+        console.warn(`[MetaTags] Admin SDK skipped for profile ${idOrSlug}:`, adminError.message);
       }
     }
 
@@ -538,7 +545,7 @@ async function getProfileItem(idOrSlug: string, projectId: string, databaseId: s
           data = docSnap.data();
           data.id = docSnap.id;
         } else {
-          const influencerById = await getDocFromServer(doc(db, "influencers", idOrSlug));
+          const influencerById = await getDoc(doc(db, "influencers", idOrSlug));
           if (influencerById.exists()) {
             data = influencerById.data();
             data.id = influencerById.id;
@@ -711,7 +718,7 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
     const docIdsToTry = [date, `${date}-en`, `${date}-bn`];
     
     // 1. Try Admin SDK (preferred on server)
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         for (const docId of docIdsToTry) {
           const docSnap = await adminDb.collection("news").doc(docId).get();
@@ -721,8 +728,9 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
             break;
           }
         }
-      } catch (e) {
-        console.warn(`[MetaTags] Admin SDK news fetch failed for date ${date}:`, e);
+      } catch (e: any) {
+        if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+        console.warn(`[MetaTags] Admin SDK news fetch failed for date ${date}:`, e.message);
       }
     }
 
@@ -731,7 +739,7 @@ async function getNewsItem(date: string, tab: string, index: string, projectId: 
       try {
         for (const docId of docIdsToTry) {
           const docRef = doc(db, "news", docId);
-          const docSnap = await getDocFromServer(docRef);
+          const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             data = docSnap.data();
             console.log(`[MetaTags] News found via Client SDK for docId: ${docId}`);
@@ -1066,7 +1074,7 @@ async function cleanupOldNews() {
 
     console.log(`[NewsAPI] Cleaning up news older than: ${dateStr}`);
 
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         const oldNews = await adminDb.collection("news").where("date", "<", dateStr).get();
         if (!oldNews.empty) {
@@ -1077,7 +1085,10 @@ async function cleanupOldNews() {
           return; // Success!
         }
       } catch (adminError: any) {
-        console.warn(`[NewsAPI] Admin cleanup failed, falling back to client SDK: ${adminError.message}`);
+        if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+           isAdminUsable = false;
+        }
+        console.log(`[NewsAPI] Admin cleanup skipped (falling back): ${adminError.message}`);
       }
     }
 
@@ -1112,13 +1123,16 @@ async function generateDailySanataniFacts() {
     
     let alreadyExists = false;
     let usedAdminForCheck = false;
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         const existing = await adminDb.collection("fact_checks").where("date", "==", today).limit(1).get();
         alreadyExists = !existing.empty;
         usedAdminForCheck = true;
       } catch (adminError: any) {
-        console.warn(`[FactCheckAPI] Admin SDK check failed: ${adminError.message}. Falling back to Client SDK.`);
+        if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+          isAdminUsable = false;
+        }
+        console.log(`[FactCheckAPI] Admin SDK check skipped (falling back): ${adminError.message}`);
       }
     }
     
@@ -1171,7 +1185,7 @@ async function generateDailySanataniFacts() {
     }
 
     let saved = false;
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         const batch = adminDb.batch();
         facts.forEach((fact: any) => {
@@ -1188,7 +1202,10 @@ async function generateDailySanataniFacts() {
         console.log(`[FactCheckAPI] Successfully saved ${facts.length} facts via Admin SDK for ${today}`);
         saved = true;
       } catch (adminError: any) {
-        console.warn("[FactCheckAPI] Admin SDK batch failed:", adminError.message);
+        if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+          isAdminUsable = false;
+        }
+        console.log(`[FactCheckAPI] Admin SDK batch skipped (falling back): ${adminError.message}`);
       }
     }
 
@@ -1239,14 +1256,17 @@ async function autoGenerateDailyNews() {
       
     // Check if exists in Firestore to avoid duplicate generation
     let newsAlreadyExists = false;
-    if (adminDb) {
+    if (adminDb && isAdminUsable) {
       try {
         const docSnap = await adminDb.collection("news").doc(docId).get();
         if (docSnap.exists) {
           newsAlreadyExists = true;
         }
       } catch (e: any) {
-        console.warn(`[NewsAPI] [Auto] Admin SDK exist-check failed for ${docId}:`, e.message);
+        if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+          isAdminUsable = false;
+        }
+        console.warn(`[NewsAPI] [Auto] Admin SDK exist-check skipped for ${docId}:`, e.message);
       }
     }
 
@@ -1304,13 +1324,16 @@ async function autoGenerateDailyNews() {
       };
 
       let saved = false;
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("news").doc(docId).set(processedData);
           console.log(`[NewsAPI] [Auto] Saved news to Firestore (Admin) for ${docId}`);
           saved = true;
         } catch (e: any) {
-          console.warn(`[NewsAPI] [Auto] Admin save failed for ${docId}:`, e.message);
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+             isAdminUsable = false;
+          }
+          console.log(`[NewsAPI] [Auto] Admin save skipped (falling back): ${e.message}`);
         }
       }
 
@@ -1561,21 +1584,21 @@ async function startServer() {
       
       console.log(`[Firebase] Client SDK initialized for DB: ${dbId}. Connectivity will be handled lazily.`);
       
-      // Async connectivity monitor (Non-blocking)
+      // Async connectivity monitor (Non-blocking logging)
       (async () => {
         try {
-          // We don't wait for this, just log it.
-          const checkPromise = getDoc(doc(db!, '_system_', 'health'));
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 30000));
-          
-          await Promise.race([checkPromise, timeout]);
-          console.log("[Firebase] Client SDK verified backend access.");
+          // We just try to get a doc to see if we are online. We don't reject on timeout to avoid blocking or crash.
+          getDoc(doc(db!, '_system_', 'health')).then(() => {
+             console.log("[Firebase] Client SDK verified backend access.");
+          }).catch((err: any) => {
+             if (err.message && (err.message.includes('permission') || err.message.includes('7'))) {
+                console.log("[Firebase] Client SDK connected (Permissions restricted doc).");
+             } else {
+                console.log(`[Firebase] Client SDK connectivity status: ${err.message}`);
+             }
+          });
         } catch (err: any) {
-          if (err.message && (err.message.includes('permission') || err.message.includes('7'))) {
-             console.log("[Firebase] Client SDK connected (Permissions restricted doc).");
-          } else {
-             console.warn(`[Firebase] Client SDK connectivity warning: ${err.message}. App will use offline mode if backend is unreachable.`);
-          }
+           // Ignore errors here
         }
       })();
 
@@ -1625,13 +1648,15 @@ async function startServer() {
                 new Promise((_, reject) => setTimeout(() => reject(new Error("Admin SDK verification timeout")), 8000))
               ]);
               console.log("[Firebase] Admin SDK verified successfully.");
+              isAdminUsable = true;
             } catch (verifyError: any) {
               const msg = verifyError.message || String(verifyError);
               if (msg.includes('7') || msg.includes('PERMISSION_DENIED')) {
-                console.warn("[Firebase] Admin SDK hit PERMISSION_DENIED. Background tasks will prefer Client SDK fallback.");
-                // We keep it assigned but note the limitation
+                console.warn("[Firebase] Admin SDK hit PERMISSION_DENIED. Background tasks will skip it and use Client SDK.");
+                isAdminUsable = false;
               } else {
                 console.log(`[Firebase] Admin SDK verification note: ${msg}`);
+                // Don't mark as unusable yet if it's just a timeout or missing doc
               }
             }
           })();
@@ -1788,9 +1813,9 @@ async function startServer() {
 
   const RECIPIENT = process.env.NOTIFICATION_EMAIL || "info@barnia.in";
 
-  // Body parser middleware - MUST be before routes
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Body parser middleware - MUST be before routes with increased limit for AI payloads
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
   // Trust proxy for correct protocol/host detection behind Render/AI Studio proxies
   app.set('trust proxy', true);
@@ -1971,12 +1996,13 @@ async function startServer() {
       const fetchCollection = async (collectionName: string) => {
         let docs: any[] = [];
         // 1. Try Admin SDK
-        if (adminDb) {
+        if (adminDb && isAdminUsable) {
           try {
             const snap = await adminDb.collection(collectionName).get();
             snap.forEach((doc: any) => docs.push({ id: doc.id, ...doc.data() }));
             return docs;
-          } catch (e) {
+          } catch (e: any) {
+            if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
             console.warn(`[Sitemap] Admin SDK failed for ${collectionName}, trying client SDK...`);
           }
         }
@@ -2081,9 +2107,7 @@ async function startServer() {
   });
 
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
+  // Logger & Ping middleware
   // Logging middleware for API requests
   app.use("/api", (req, res, next) => {
     console.log(`[${new Date().toISOString()}] API Request: ${req.method} ${req.originalUrl}`);
@@ -2189,7 +2213,7 @@ async function startServer() {
       let saved = false;
 
       // 1. Try Admin SDK first (bypasses rules)
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("inbound_emails").add({
             ...emailData,
@@ -2197,8 +2221,9 @@ async function startServer() {
           });
           console.log("[Webhook] Inbound email saved to Firestore using Admin SDK.");
           saved = true;
-        } catch (adminError) {
-          console.error("[Webhook] Admin SDK failed to save email:", adminError);
+        } catch (adminError: any) {
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          console.error("[Webhook] Admin SDK failed to save email:", adminError.message);
         }
       }
 
@@ -2493,13 +2518,16 @@ async function startServer() {
 
       // Save to Firestore
       let saved = false;
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("news").doc(docId).set(processedData);
           console.log(`[NewsAPI] Saved generated news to Firestore (Admin) for ${docId}`);
           saved = true;
         } catch (adminError: any) {
-          console.warn(`[NewsAPI] Admin SDK save failed for ${docId}:`, adminError.message);
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn(`[NewsAPI] Admin SDK save skipped for ${docId}:`, adminError.message);
         }
       }
 
@@ -2562,7 +2590,7 @@ async function startServer() {
       let data: any = null;
       
       // 1. Try fetching from Firestore (Admin SDK first, then Client SDK)
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           const docSnap = await adminDb.collection("news").doc(docId).get();
           if (docSnap.exists) {
@@ -2570,13 +2598,16 @@ async function startServer() {
             console.log(`[NewsAPI] Found news in Firestore (Admin) for ${docId}`);
           }
         } catch (adminError: any) {
-          console.warn(`[NewsAPI] Admin SDK fetch failed for ${docId}:`, adminError.message);
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn(`[NewsAPI] Admin SDK fetch skipped for ${docId}:`, adminError.message);
         }
       }
 
       if (!data && db) {
         try {
-          const docSnap = await getDocFromServer(doc(db, "news", docId));
+          const docSnap = await getDoc(doc(db, "news", docId));
           if (docSnap.exists()) {
             data = docSnap.data();
             console.log(`[NewsAPI] Found news in Firestore (Client) for ${docId}`);
@@ -2634,12 +2665,22 @@ async function startServer() {
     try {
       // Check if news already exists and is NOT a mock
       let existingData: any = null;
-      if (adminDb) {
-        const doc = await adminDb.collection("news").doc(docId).get();
-        if (doc.exists) existingData = doc.data();
-      } else if (db) {
-        const docSnap = await getDoc(doc(db, "news", docId));
-        if (docSnap.exists()) existingData = docSnap.data();
+      if (adminDb && isAdminUsable) {
+        try {
+          const doc = await adminDb.collection("news").doc(docId).get();
+          if (doc.exists) existingData = doc.data();
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+        }
+      }
+      
+      if (!existingData && db) {
+        try {
+          const docSnap = await getDoc(doc(db, "news", docId));
+          if (docSnap.exists()) existingData = docSnap.data();
+        } catch (e: any) {
+          console.warn("[NewsAPI] Client SDK fetch failed for existing news:", e.message);
+        }
       }
 
       if (existingData && !existingData.isMock && newsData.isMock) {
@@ -2668,12 +2709,13 @@ async function startServer() {
       console.log(`[NewsAPI] Attempting to cache news for ${docId}. Data keys: ${Object.keys(dataToSave).join(", ")}`);
 
       let saved = false;
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("news").doc(docId).set(dataToSave);
           console.log(`[NewsAPI] Successfully saved news for ${docId} via Admin SDK`);
           saved = true;
         } catch (adminSaveError: any) {
+          if (adminSaveError.message.includes('7') || adminSaveError.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
           console.warn(`[NewsAPI] Admin SDK save failed for ${docId}: ${adminSaveError.message}`);
         }
       }
@@ -2714,12 +2756,15 @@ async function startServer() {
     const { email } = req.params;
     try {
       let profile: any = null;
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           const snap = await adminDb.collection("vamshavali_profiles").where("email", "==", email).limit(1).get();
           if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
         } catch (adminError: any) {
-          console.warn(`[Vamshavali] Admin SDK read failed for ${email}:`, adminError.message);
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn(`[Vamshavali] Admin SDK read skipped for ${email}:`, adminError.message);
         }
       }
       if (!profile && db) {
@@ -2822,16 +2867,26 @@ async function startServer() {
             nativePlace: "Varanasi, Uttar Pradesh",
             additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
             members: demoMembers,
-            updatedAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
-            createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
+            updatedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+            createdAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
           };
 
-          if (adminDb) {
-            const docRef = await adminDb.collection("vamshavali_profiles").add(newProfileData);
-            profile = { id: docRef.id, ...newProfileData };
+          if (adminDb && isAdminUsable) {
+            try {
+              const docRef = await adminDb.collection("vamshavali_profiles").add(newProfileData);
+              profile = { id: docRef.id, ...newProfileData };
+            } catch (e: any) {
+              if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+                isAdminUsable = false;
+              }
+              console.warn("[Vamshavali] Admin profile bootstrap failed, falling back to Client SDK:", e.message);
+              newProfileData.serverKey = FIRESTORE_SERVER_KEY;
+              const docRef = await addDoc(collection(db!, "vamshavali_profiles"), newProfileData);
+              profile = { id: docRef.id, ...newProfileData };
+            }
           } else if (db) {
             newProfileData.serverKey = FIRESTORE_SERVER_KEY;
-            const docRef = await addDoc(collection(db, "vamshavali_profiles"), newProfileData);
+            const docRef = await addDoc(collection(db!, "vamshavali_profiles"), newProfileData);
             profile = { id: docRef.id, ...newProfileData };
           }
         } else {
@@ -2928,14 +2983,23 @@ async function startServer() {
                 nativePlace: "Varanasi, Uttar Pradesh",
                 additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
                 members: demoMembers,
-                updatedAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
+                updatedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
               };
               
-              if (adminDb) {
-                await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
+              if (adminDb && isAdminUsable) {
+                try {
+                  await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
+                } catch (e: any) {
+                  if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+                    isAdminUsable = false;
+                  }
+                  console.warn("[Vamshavali] Admin profile update skipped:", e.message);
+                  updates.serverKey = FIRESTORE_SERVER_KEY;
+                  await updateDoc(doc(db!, "vamshavali_profiles", profile.id), updates);
+                }
               } else if (db) {
                 updates.serverKey = FIRESTORE_SERVER_KEY;
-                await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);
+                await updateDoc(doc(db!, "vamshavali_profiles", profile.id), updates);
               }
               Object.assign(profile, updates);
       }
@@ -2973,7 +3037,7 @@ async function startServer() {
 
       // Try Admin SDK first (bypasses rules)
       let saved = false;
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("vamshavali_otps").doc(email).set({
             otp,
@@ -2983,7 +3047,10 @@ async function startServer() {
           console.log("[Vamshavali] OTP saved using Admin SDK");
           saved = true;
         } catch (adminError: any) {
-          console.warn("[Vamshavali] Admin SDK failed to save OTP:", adminError.message);
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn("[Vamshavali] Admin SDK OTP store skipped:", adminError.message);
         }
       }
       
@@ -3071,7 +3138,7 @@ async function startServer() {
       let usedAdmin = false;
 
       // 1. Try Admin SDK to get OTP
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           const snap = await adminDb.collection("vamshavali_otps").doc(email).get();
           if (snap.exists) {
@@ -3079,7 +3146,8 @@ async function startServer() {
             usedAdmin = true;
           }
         } catch (e: any) {
-          console.warn("[Vamshavali] Admin SDK OTP read failed:", e.message);
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          console.warn("[Vamshavali] Admin SDK OTP read skipped:", e.message);
         }
       }
 
@@ -3089,44 +3157,28 @@ async function startServer() {
           const snap = await getDoc(doc(db, "vamshavali_otps", email));
           if (snap.exists()) {
             otpDoc = snap.data();
-            console.log(`[Vamshavali] OTP found via Client SDK for ${email}`);
-          } else {
-             console.warn(`[Vamshavali] OTP not found in Client SDK for ${email}`);
           }
         } catch (e: any) {
           console.error(`[Vamshavali] Client SDK OTP read failed for ${email}:`, e.message);
-          if (e.message.includes("PERMISSION_DENIED")) {
-            console.error("[Vamshavali] READ PERMISSION_DENIED on vamshavali_otps. Check rules.");
-          }
         }
       }
 
       if (!otpDoc) {
-        console.warn(`[Vamshavali] OTP not found in any database for ${email}`);
-        return res.status(400).json({ 
-          error: "OTP not found", 
-          details: "The verification code might have expired or was never generated. Please request a new one." 
-        });
+        return res.status(400).json({ error: "OTP not found" });
       }
       
       if (otpDoc.otp !== otp) {
-        console.warn(`[Vamshavali] OTP mismatch for ${email}. Expected: ${otpDoc.otp}, Got: ${otp}`);
         return res.status(400).json({ error: "Invalid OTP code." });
       }
 
       const expiresAtDate = otpDoc.expiresAt?.toDate ? otpDoc.expiresAt.toDate() : new Date(otpDoc.expiresAt);
-      const now = new Date();
-      console.log(`[Vamshavali] Checking expiry for ${email}: ${expiresAtDate.toISOString()} vs now: ${now.toISOString()}`);
-      
-      if (expiresAtDate < now) {
-        console.warn(`[Vamshavali] OTP expired for ${email}`);
-        return res.status(400).json({ error: "OTP expired", details: "The verification code is older than 10 minutes." });
+      if (expiresAtDate < new Date()) {
+        return res.status(400).json({ error: "OTP expired" });
       }
 
-      // OTP is valid!
-      // Delete it
+      // OTP is valid! Delete it
       try {
-        if (usedAdmin && adminDb) {
+        if (usedAdmin && adminDb && isAdminUsable) {
           await adminDb.collection("vamshavali_otps").doc(email).delete();
         } else if (db) {
           await deleteDoc(doc(db, "vamshavali_otps", email));
@@ -3139,14 +3191,33 @@ async function startServer() {
       let profile: any = null;
       
       // Try Admin SDK first
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           const profileSnap = await adminDb.collection("vamshavali_profiles").where("email", "==", email).limit(1).get();
           if (!profileSnap.empty) {
             profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
-            
-            // If it's admin and outdated/empty, bootstrap it to the new expanded 3-gen tree
-            if ((email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com") && (!profile.members || !profile.members[0]?.children || (profile.members[0].children as any[]).length < 2)) {
+          }
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          console.warn("[Vamshavali] Admin SDK profile fetch failed:", e.message);
+        }
+      }
+      
+      if (!profile && db) {
+        try {
+          const q = query(collection(db, "vamshavali_profiles"), where("email", "==", email), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          }
+        } catch (e: any) {
+          console.error("[Vamshavali] Client profile fetch failed:", e.message);
+        }
+      }
+
+      if (profile) {
+        // If it's admin/key user and outdated, bootstrap it to the new expanded 3-gen tree
+        if ((email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com") && (!profile.members || !profile.members[0]?.children || (profile.members[0].children as any[]).length < 2)) {
                const demoMembers = [
                 {
                   id: "root-1",
@@ -3225,7 +3296,7 @@ async function startServer() {
                 }
               ];
               
-              const updates = {
+              const updates: any = {
                 name: "The Royal Lineage of Savitri Devi",
                 parents: "Traditional Ancestors",
                 grandparents: "Ancestral Roots",
@@ -3236,271 +3307,71 @@ async function startServer() {
                 nativePlace: "Varanasi, Uttar Pradesh",
                 additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
                 members: demoMembers,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                updatedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
               };
               
-              await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
-              Object.assign(profile, updates);
-            }
-          } else {
-            const shareId = Math.random().toString(36).substring(2, 10);
-            
-            // Demo data for admin
-            const isAdminEmail = email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com";
-            const demoMembers = isAdminEmail ? [
-              {
-                id: "root-1",
-                name: "Savitri Devi",
-                role: "Matriarch",
-                birthYear: "1945",
-                photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
-                  children: [
-                    {
-                      id: "child-1",
-                      name: "Meera Sharma",
-                      role: "Daughter (Gen 1)",
-                      birthYear: "1972",
-                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
-                      children: [
-                        {
-                          id: "grand-1",
-                          name: "Ananya Sharma",
-                          role: "Granddaughter (Gen 2)",
-                          birthYear: "1998",
-                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
-                          children: [
-                            {
-                              id: "great-1",
-                              name: "Ishani Sharma",
-                              role: "Great-Granddaughter (Gen 3)",
-                              birthYear: "2026",
-                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-                              children: []
-                            }
-                          ]
-                        },
-                        {
-                          id: "grand-2",
-                          name: "Rohan Sharma",
-                          role: "Grandson (Gen 2)",
-                          birthYear: "2002",
-                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
-                          children: []
-                        }
-                      ]
-                    },
-                    {
-                      id: "child-2",
-                      name: "Rajesh Sharma",
-                      role: "Son (Gen 1)",
-                      birthYear: "1975",
-                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
-                      children: [
-                        {
-                          id: "grand-3",
-                          name: "Kavita Sharma",
-                          role: "Granddaughter (Gen 2)",
-                          birthYear: "2005",
-                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
-                          children: []
-                        }
-                      ]
-                    }
-                  ]
+              let savedUpdate = false;
+              if (adminDb && isAdminUsable) {
+                try {
+                  await adminDb.collection("vamshavali_profiles").doc(profile.id).update(updates);
+                  savedUpdate = true;
+                } catch (e: any) {
+                  if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
                 }
-              ] : [];
-
-            const newProfile: any = {
-              email,
-              shareId,
-              name: isAdminEmail ? "The Royal Lineage of Savitri Devi" : "",
-              parents: isAdminEmail ? "Traditional Ancestors" : "",
-              grandparents: isAdminEmail ? "Ancestral Roots" : "",
-              gotra: isAdminEmail ? "Kashyap" : "",
-              kuldevi: isAdminEmail ? "Mata Rani" : "",
-              kuldevta: isAdminEmail ? "Lord Shiva" : "",
-              kuldeviPhoto: isAdminEmail ? "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop" : "",
-              nativePlace: isAdminEmail ? "Varanasi, Uttar Pradesh" : "",
-              additionalNotes: isAdminEmail ? "A legacy of strength, wisdom, and divine feminine energy spanning three generations." : "",
-              members: demoMembers,
-              createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
-              updatedAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
-              serverKey: FIRESTORE_SERVER_KEY
-            };
-
-            let saved = false;
-            if (adminDb) {
-              try {
-                const docRef = await adminDb.collection("vamshavali_profiles").add(newProfile);
-                profile = { id: docRef.id, ...newProfile };
-                saved = true;
-              } catch (e: any) {
-                console.warn("[Vamshavali] Admin SDK create failed:", e.message);
               }
-            }
-
-            if (!saved && db) {
-              try {
-                const docRef = await addDoc(collection(db, "vamshavali_profiles"), newProfile);
-                profile = { id: docRef.id, ...newProfile };
-                saved = true;
-              } catch (e: any) {
-                console.error("[Vamshavali] Client SDK create failed:", e.message);
+              
+              if (!savedUpdate && db) {
+                updates.serverKey = FIRESTORE_SERVER_KEY;
+                await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);
               }
-            }
-          }
-        } catch (adminError: any) {
-          console.warn("[Vamshavali] Admin SDK profile op failed:", adminError.message);
+              Object.assign(profile, updates);
         }
-      }
-
-      // Try Client SDK fallback
-      if (!profile && db) {
-        try {
-          const q = query(collection(db, "vamshavali_profiles"), where("email", "==", email), limit(1));
-          const profileSnap = await getDocs(q);
-          if (!profileSnap.empty) {
-            profile = { id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() };
-
-            // If it's admin and outdated/empty, bootstrap it
-            if ((email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com") && (!profile.members || !profile.members[0]?.children || (profile.members[0].children as any[]).length < 2)) {
-               const demoMembers = [
-                {
-                  id: "root-1",
-                  name: "Savitri Devi",
-                  role: "Matriarch",
-                  birthYear: "1945",
-                  photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
-                  children: [
-                    {
-                      id: "child-1",
-                      name: "Meera Sharma",
-                      role: "Daughter (Gen 1)",
-                      birthYear: "1972",
-                      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
-                      children: [
-                        {
-                          id: "grand-1",
-                          name: "Ananya Sharma",
-                          role: "Granddaughter (Gen 2)",
-                          birthYear: "1998",
-                          photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
-                          children: [
-                            {
-                              id: "great-1",
-                              name: "Ishani Sharma",
-                              role: "Great-Granddaughter (Gen 3)",
-                              birthYear: "2026",
-                              photo: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-                              children: []
-                            }
-                          ]
-                        },
-                        {
-                          id: "grand-2",
-                          name: "Rohan Sharma",
-                          role: "Grandson (Gen 2)",
-                          birthYear: "2002",
-                          photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop",
-                          children: []
-                        }
-                      ]
-                    },
-                    {
-                      id: "child-2",
-                      name: "Rajesh Sharma",
-                      role: "Son (Gen 1)",
-                      birthYear: "1975",
-                      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop",
-                      children: [
-                        {
-                          id: "grand-3",
-                          name: "Kavita Sharma",
-                          role: "Granddaughter (Gen 2)",
-                          birthYear: "2005",
-                          photo: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop",
-                          children: []
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ];
-              
-              const updates = {
-                name: "The Royal Lineage of Savitri Devi",
-                parents: "Traditional Ancestors",
-                grandparents: "Ancestral Roots",
-                gotra: "Kashyap",
-                kuldevi: "Mata Rani",
-                kuldevta: "Lord Shiva",
-                kuldeviPhoto: "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop",
-                nativePlace: "Varanasi, Uttar Pradesh",
-                additionalNotes: "A legacy of strength, wisdom, and divine feminine energy spanning three generations.",
-                members: demoMembers,
-                updatedAt: serverTimestamp(),
-                serverKey: FIRESTORE_SERVER_KEY
-              };
-              
-              await updateDoc(doc(db, "vamshavali_profiles", profile.id), updates);
-              Object.assign(profile, updates);
-            }
-          } else {
-            const shareId = Math.random().toString(36).substring(2, 10);
-            
-            // Demo data for admin
-            const isAdminEmail = email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com";
-            const demoMembers = isAdminEmail ? [
-              {
-                id: "root-1",
-                name: "Savitri Devi",
-                role: "Matriarch",
-                birthYear: "1945",
-                photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
-                children: [
-                  {
-                    id: "child-1",
-                    name: "Meera Sharma",
-                    role: "Daughter",
-                    birthYear: "1972",
-                    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&auto=format&fit=crop",
-                    children: [
-                      {
-                        id: "grand-1",
-                        name: "Ananya Sharma",
-                        role: "Granddaughter",
-                        birthYear: "1998",
-                        photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop",
-                        children: []
-                      }
-                    ]
-                  }
-                ]
-              }
-            ] : [];
-
-            const newProfile = {
-              email,
-              shareId,
-              name: isAdminEmail ? "The Royal Lineage of Savitri Devi" : "",
-              parents: isAdminEmail ? "Traditional Ancestors" : "",
-              grandparents: isAdminEmail ? "Ancestral Roots" : "",
-              gotra: isAdminEmail ? "Kashyap" : "",
-              kuldevi: isAdminEmail ? "Mata Rani" : "",
-              kuldevta: isAdminEmail ? "Lord Shiva" : "",
-              kuldeviPhoto: isAdminEmail ? "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop" : "",
-              nativePlace: isAdminEmail ? "Varanasi, Uttar Pradesh" : "",
-              additionalNotes: isAdminEmail ? "A legacy of strength, wisdom, and divine feminine energy spanning three generations." : "",
-              members: demoMembers,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              serverKey: FIRESTORE_SERVER_KEY
-            };
-            const docRef = await addDoc(collection(db, "vamshavali_profiles"), newProfile);
-            profile = { id: docRef.id, ...newProfile };
+      } else {
+        const shareId = Math.random().toString(36).substring(2, 10);
+        const isAdminEmail = email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com";
+        const demoMembers = isAdminEmail ? [
+          {
+            id: "root-1",
+            name: "Savitri Devi",
+            role: "Matriarch",
+            birthYear: "1945",
+            photo: "https://images.unsplash.com/photo-1544120190-27583f2335a2?w=800&auto=format&fit=crop",
+            children: []
           }
-        } catch (clientError: any) {
-          console.error("[Vamshavali] Client SDK also failed profile op:", clientError.message);
+        ] : [];
+
+        const newProfile: any = {
+          email,
+          shareId,
+          name: isAdminEmail ? "The Royal Lineage of Savitri Devi" : "",
+          parents: isAdminEmail ? "Traditional Ancestors" : "",
+          grandparents: isAdminEmail ? "Ancestral Roots" : "",
+          gotra: isAdminEmail ? "Kashyap" : "",
+          kuldevi: isAdminEmail ? "Mata Rani" : "",
+          kuldevta: isAdminEmail ? "Lord Shiva" : "",
+          kuldeviPhoto: isAdminEmail ? "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop" : "",
+          nativePlace: isAdminEmail ? "Varanasi, Uttar Pradesh" : "",
+          additionalNotes: isAdminEmail ? "A legacy of strength, wisdom, and divine feminine energy spanning three generations." : "",
+          members: demoMembers,
+          createdAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+          updatedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+          serverKey: FIRESTORE_SERVER_KEY
+        };
+
+        let saved = false;
+        if (adminDb && isAdminUsable) {
+          try {
+            const docRef = await adminDb.collection("vamshavali_profiles").add(newProfile);
+            profile = { id: docRef.id, ...newProfile };
+            saved = true;
+          } catch (e: any) {
+            if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          }
+        }
+
+        if (!saved && db) {
+          const docRef = await addDoc(collection(db, "vamshavali_profiles"), newProfile);
+          profile = { id: docRef.id, ...newProfile };
         }
       }
 
@@ -3522,11 +3393,12 @@ async function startServer() {
       let profile;
       
       // 1. Try Admin SDK
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", shareId).limit(1).get();
           if (!snap.empty) profile = { id: snap.docs[0].id, ...snap.docs[0].data() };
         } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
           console.warn("[Vamshavali] Admin SDK public profile lookup failed:", e.message);
         }
       }
@@ -3588,7 +3460,7 @@ async function startServer() {
       };
 
       // 1. Try Admin SDK
-      if (adminDb) {
+      if (adminDb && isAdminUsable) {
         try {
           await adminDb.collection("vamshavali_profiles").doc(id).set({
             ...updateData,
@@ -3597,6 +3469,7 @@ async function startServer() {
           console.log("[Vamshavali] Profile updated/set using Admin SDK");
           saved = true;
         } catch (adminError: any) {
+          if (adminError.message.includes('7') || adminError.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
           console.warn("[Vamshavali] Admin SDK profile update failed:", adminError.message);
           lastError = adminError.message;
         }
@@ -3713,11 +3586,19 @@ async function startServer() {
 
       let request: any = null;
       let pendingRef: any = null;
-      if (adminDb) {
-         pendingRef = adminDb.collection("pending_ai_requests").doc(requestId);
-         const snap = await pendingRef.get();
-         if (!snap.exists) return res.status(404).json({ error: "Request not found" });
-         request = snap.data();
+      if (adminDb && isAdminUsable) {
+         try {
+           pendingRef = adminDb.collection("pending_ai_requests").doc(requestId);
+           const snap = await pendingRef.get();
+           if (!snap.exists) return res.status(404).json({ error: "Request not found" });
+           request = snap.data();
+         } catch (e: any) {
+           if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+           pendingRef = doc(db!, "pending_ai_requests", requestId);
+           const snap = await getDoc(pendingRef);
+           if (!snap.exists()) return res.status(404).json({ error: "Request not found" });
+           request = snap.data();
+         }
       } else {
          pendingRef = doc(db!, "pending_ai_requests", requestId);
          const snap = await getDoc(pendingRef);
@@ -3735,33 +3616,107 @@ async function startServer() {
 
       if (!aiResponse) throw new Error("AI Execution failed");
 
-      const userRef = adminDb ? adminDb.collection("users").doc(request.userId) : doc(db!, "users", request.userId);
-      const userSnap = adminDb ? await (userRef as any).get() : await getDoc(userRef as any);
-      if (userSnap.exists || (userSnap as any).exists()) {
-        const uData = adminDb ? (userSnap as any).data() : (userSnap as any).data();
+      const userRef = (adminDb && isAdminUsable) ? adminDb.collection("users").doc(request.userId) : doc(db!, "users", request.userId);
+      let userSnap: any;
+      if (adminDb && isAdminUsable) {
+        try {
+          userSnap = await (userRef as any).get();
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          userSnap = await getDoc(doc(db!, "users", request.userId));
+        }
+      } else {
+        userSnap = await getDoc(doc(db!, "users", request.userId));
+      }
+
+      const snapExists = typeof userSnap.exists === 'function' ? userSnap.exists() : userSnap.exists;
+      if (snapExists) {
+        const uData = userSnap.data();
         const currentCredits = uData.credits || 0;
-        const upData = {
+        const upData: any = {
           credits: Math.max(0, currentCredits - (request.cost || 1)),
           totalAiTasks: (uData.totalAiTasks || 0) + 1
         };
-        if (adminDb) await (userRef as any).update(upData); else await updateDoc(userRef as any, upData);
+        
+        if (adminDb && isAdminUsable) {
+          try {
+            await (userRef as any).update(upData);
+          } catch (e: any) {
+             upData.serverKey = FIRESTORE_SERVER_KEY;
+             await updateDoc(doc(db!, "users", request.userId), upData);
+          }
+        } else {
+          upData.serverKey = FIRESTORE_SERVER_KEY;
+          await updateDoc(doc(db!, "users", request.userId), upData);
+        }
       }
 
-      const finalUpdate = { status: 'completed', result: aiResponse.result, modelUsed: aiResponse.modelUsed, processedAt: Timestamp.now() };
-      if (adminDb) await pendingRef.update(finalUpdate); else await updateDoc(pendingRef, finalUpdate);
+      const finalUpdate: any = { 
+        status: 'completed', 
+        result: aiResponse.result, 
+        modelUsed: aiResponse.modelUsed, 
+        processedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp() 
+      };
+      
+      if (adminDb && isAdminUsable) {
+        try {
+          await adminDb.collection("pending_ai_requests").doc(requestId).update(finalUpdate);
+        } catch (e: any) {
+          finalUpdate.serverKey = FIRESTORE_SERVER_KEY;
+          await updateDoc(doc(db!, "pending_ai_requests", requestId), finalUpdate);
+        }
+      } else {
+        finalUpdate.serverKey = FIRESTORE_SERVER_KEY;
+        await updateDoc(doc(db!, "pending_ai_requests", requestId), finalUpdate);
+      }
 
-      const logData = { userId: request.userId, success: true, type: request.type, result: aiResponse.result, modelUsed: aiResponse.modelUsed, cost: request.cost, task: request.task, createdAt: Timestamp.now() };
-      if (adminDb) await adminDb.collection("ai_logs").add(logData); else await addDoc(collection(db!, "ai_logs"), logData);
+      const logData: any = { 
+        userId: request.userId, 
+        success: true, 
+        type: request.type, 
+        result: aiResponse.result, 
+        modelUsed: aiResponse.modelUsed, 
+        cost: request.cost, 
+        task: request.task, 
+        createdAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp()
+      };
+      
+      if (adminDb && isAdminUsable) {
+        try {
+          await adminDb.collection("ai_logs").add(logData);
+        } catch (e: any) {
+          logData.serverKey = FIRESTORE_SERVER_KEY;
+          await addDoc(collection(db!, "ai_logs"), logData);
+        }
+      } else {
+        logData.serverKey = FIRESTORE_SERVER_KEY;
+        await addDoc(collection(db!, "ai_logs"), logData);
+      }
 
       res.json({ success: true, result: aiResponse.result });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
   app.post("/api/admin/deny-ai", async (req, res) => {
-    const { requestId, adminId } = req.body;
+    const { requestId } = req.body;
     try {
-      if (adminDb) await adminDb.collection("pending_ai_requests").doc(requestId).update({ status: 'denied', processedAt: Timestamp.now() });
-      else await updateDoc(doc(db!, "pending_ai_requests", requestId), { status: 'denied', processedAt: Timestamp.now() });
+      const updateData: any = { 
+        status: 'denied', 
+        processedAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp() 
+      };
+      
+      if (adminDb && isAdminUsable) {
+        try {
+          await adminDb.collection("pending_ai_requests").doc(requestId).update(updateData);
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) isAdminUsable = false;
+          updateData.serverKey = FIRESTORE_SERVER_KEY;
+          await updateDoc(doc(db!, "pending_ai_requests", requestId), updateData);
+        }
+      } else {
+        updateData.serverKey = FIRESTORE_SERVER_KEY;
+        await updateDoc(doc(db!, "pending_ai_requests", requestId), updateData);
+      }
       res.json({ success: true });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
@@ -4786,10 +4741,19 @@ async function fetchImageAsBase64(url: string) {
   const getTelegramUserMemory = async (cid: number) => {
     let memory = { name: "", email: "", phone: "", loginId: "", credits: 0, lastChat: "", profileId: "" };
     try {
-      if (adminDb) {
-         const snap = await adminDb.collection("telegram_users").doc(cid.toString()).get();
-         if (snap.exists) return { ...memory, ...snap.data() };
-      } else if (db) {
+      if (adminDb && isAdminUsable) {
+        try {
+          const snap = await adminDb.collection("telegram_users").doc(cid.toString()).get();
+          if (snap.exists) return { ...memory, ...snap.data() };
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn("[Telegram] Admin memory lookup skipped:", e.message);
+        }
+      }
+      
+      if (db) {
          const ds = await getDoc(doc(db!, 'telegram_users', cid.toString()));
          if (ds.exists()) return { ...memory, ...ds.data() };
       }
@@ -4835,11 +4799,24 @@ async function fetchImageAsBase64(url: string) {
           name: updates.name || current.name,
           email: updates.email || current.email,
           phone: updates.phone || current.phone,
-          loginId: updates.loginId || current.loginId || updates.profileId || current.profileId
+          loginId: updates.loginId || current.loginId || updates.profileId || current.profileId,
+          serverKey: FIRESTORE_SERVER_KEY
         };
-        if (adminDb) {
-           await adminDb.collection("telegram_users").doc(cid.toString()).set(newData, { merge: true });
-        } else if (db) {
+        
+        let saved = false;
+        if (adminDb && isAdminUsable) {
+          try {
+            await adminDb.collection("telegram_users").doc(cid.toString()).set(newData, { merge: true });
+            saved = true;
+          } catch (e: any) {
+            if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+              isAdminUsable = false;
+            }
+            console.warn("[Telegram] Admin memory save skipped:", e.message);
+          }
+        }
+        
+        if (!saved && db) {
            await setDoc(doc(db!, 'telegram_users', cid.toString()), newData, { merge: true });
         }
         return newData;
@@ -4906,20 +4883,27 @@ async function fetchImageAsBase64(url: string) {
       }
 
       let profileId = null;
-      if (db) {
+      
+      // Try Admin SDK first
+      if (adminDb && isAdminUsable) {
+        try {
+          const snap = await adminDb.collection('telegram_links').doc(cid.toString()).get();
+          if (snap.exists) profileId = snap.data()?.profileId;
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn("[Telegram] Admin link lookup skipped:", e.message);
+        }
+      }
+
+      // Fallback to Client SDK
+      if (!profileId && db) {
         try {
           const ds = await getDoc(doc(db!, 'telegram_links', cid.toString()));
           if (ds.exists()) profileId = ds.data()?.profileId;
         } catch (e: any) {
           console.warn("[Telegram] Client SDK link lookup failed:", e.message);
-        }
-      }
-      if (!profileId && adminDb) {
-        try {
-          const snap = await adminDb.collection('telegram_links').doc(cid.toString()).get();
-          profileId = snap.exists ? snap.data()?.profileId : null;
-        } catch (e: any) {
-          console.warn("[Telegram] Admin SDK link lookup failed:", e.message);
         }
       }
 
@@ -6185,13 +6169,22 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         cost,
         status: 'pending',
         createdAt: ts,
-        serverKey: "barnia-system-2024-v1"
+        serverKey: FIRESTORE_SERVER_KEY
       };
       
       let pendingId = "";
-      if (adminDb) {
-         const ref = await adminDb.collection("pending_ai_requests").add(requestData);
-         pendingId = ref.id;
+      if (adminDb && isAdminUsable) {
+         try {
+           const ref = await adminDb.collection("pending_ai_requests").add(requestData);
+           pendingId = ref.id;
+         } catch (e: any) {
+           if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+             isAdminUsable = false;
+           }
+           console.log("[AI-Router] Admin pending write skipped (falling back):", e.message);
+           const ref = await addDoc(collection(db!, "pending_ai_requests"), requestData as any);
+           pendingId = ref.id;
+         }
       } else {
          // Using client SDK with serverKey bypass as defined in firestore.rules
          const ref = await addDoc(collection(db!, "pending_ai_requests"), requestData as any);
@@ -6319,17 +6312,17 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
 
     // 3. Deduction & Logging
     const firebaseAdmin = await import("firebase-admin");
-    const logData = { 
-      userId, 
-      task, 
-      type: finalType, 
-      cost, 
-      modelUsed: response.modelUsed, 
-      result: response.result, 
-      timestamp: firebaseAdmin.firestore.FieldValue.serverTimestamp(), // Admin SDK timestamp
-      createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),  // Legacy compatibility
-      serverKey: "barnia-system-2024-v1" 
-    };
+      const logData = { 
+        userId, 
+        task, 
+        type: finalType, 
+        cost, 
+        modelUsed: response.modelUsed, 
+        result: response.result, 
+        timestamp: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+        createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+        serverKey: FIRESTORE_SERVER_KEY 
+      };
 
     if (userId !== "telegram_guest" && userId !== "guest") {
       const newCredits = currentCredits - cost;
@@ -6338,19 +6331,40 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
         total: dailyUsage + cost
       };
 
-      if (adminDb) {
-        await adminDb.collection("users").doc(userId).update({ 
-          credits: newCredits,
-          dailyUsage: newDailyUsage
-        });
-        await adminDb.collection("usage").add(logData);
+      if (adminDb && isAdminUsable) {
+        try {
+          await adminDb.collection("users").doc(userId).update({ 
+            credits: newCredits,
+            dailyUsage: newDailyUsage
+          });
+          await adminDb.collection("usage").add(logData);
+        } catch (adminErr: any) {
+          if (adminErr.message.includes('7') || adminErr.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn("[AI-Router] Admin SDK update skipped (falling back):", adminErr.message);
+          await updateDoc(doc(db!, "users", userId), { 
+            credits: newCredits, 
+            dailyUsage: newDailyUsage,
+            serverKey: FIRESTORE_SERVER_KEY 
+          } as any);
+          await addDoc(collection(db!, "usage"), {
+            ...logData,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp()
+          } as any);
+        }
       } else {
         await updateDoc(doc(db!, "users", userId), { 
           credits: newCredits, 
           dailyUsage: newDailyUsage,
-          serverKey: "barnia-system-2024-v1" 
+          serverKey: FIRESTORE_SERVER_KEY 
         } as any);
-        await addDoc(collection(db!, "usage"), logData as any);
+        await addDoc(collection(db!, "usage"), {
+          ...logData,
+          timestamp: serverTimestamp(),
+          createdAt: serverTimestamp()
+        } as any);
       }
       return { success: true, result: response.result, modelUsed: response.modelUsed, cost, remainingCredits: newCredits, type: finalType };
     } else {
@@ -6367,9 +6381,23 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     try {
       const apiKey = `bn_${crypto.randomBytes(24).toString('hex')}`;
       const ts = adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
-      const data = { userId, apiKey, createdAt: ts, serverKey: "barnia-system-2024-v1" };
-      if (adminDb) await adminDb.collection("api_keys").doc(userId).set(data);
-      else await setDoc(doc(db!, "api_keys", userId), data as any);
+      const data = { userId, apiKey, createdAt: ts, serverKey: FIRESTORE_SERVER_KEY };
+      
+      let saved = false;
+      if (adminDb && isAdminUsable) {
+        try {
+          await adminDb.collection("api_keys").doc(userId).set(data);
+          saved = true;
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+        }
+      }
+      
+      if (!saved && db) {
+        await setDoc(doc(db!, "api_keys", userId), data as any);
+      }
       res.json({ apiKey });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
@@ -6379,22 +6407,49 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!apiKey) return res.status(401).json({ error: "Missing x-api-key header" });
     try {
       let keySnap: any;
-      if (adminDb) {
-        const q = await adminDb.collection("api_keys").where("apiKey", "==", apiKey).limit(1).get();
-        if (q.empty) return res.status(401).json({ error: "Invalid API Key" });
-        keySnap = q.docs[0].data();
-      } else {
-        const q = query(collection(db!, "api_keys"), where("apiKey", "==", apiKey), limit(1));
-        const s = await getDocs(q);
-        if (s.empty) return res.status(401).json({ error: "Invalid API Key" });
-        keySnap = s.docs[0].data();
+      if (adminDb && isAdminUsable) {
+        try {
+          const q = await adminDb.collection("api_keys").where("apiKey", "==", apiKey).limit(1).get();
+          if (!q.empty) keySnap = q.docs[0].data();
+        } catch (e: any) {
+          if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+        }
       }
+      
+      if (!keySnap && db) {
+        const q = query(
+          collection(db!, "api_keys"), 
+          where("apiKey", "==", apiKey), 
+          where("serverKey", "==", FIRESTORE_SERVER_KEY),
+          limit(1)
+        );
+        const s = await getDocs(q);
+        if (!s.empty) keySnap = s.docs[0].data();
+      }
+
+      if (!keySnap) return res.status(401).json({ error: "Invalid API Key" });
 
       const { task, type = "text", inputImage = null, approved = false } = req.body;
       const userId = keySnap.userId;
 
-      let userDoc = adminDb ? await adminDb.collection("users").doc(userId).get() : await getDoc(doc(db!, "users", userId));
-      const exists = adminDb ? (userDoc as any).exists : (userDoc as any).exists();
+      let userDoc;
+      if (adminDb && isAdminUsable) {
+        try {
+          userDoc = await adminDb.collection("users").doc(userId).get();
+        } catch (adminErr: any) {
+          if (adminErr.message.includes('7') || adminErr.message.includes('PERMISSION_DENIED')) {
+            isAdminUsable = false;
+          }
+          console.warn("[AI-Router] Admin SDK fetch skipped (falling back):", adminErr.message);
+          userDoc = await getDoc(doc(db!, "users", userId));
+        }
+      } else {
+        userDoc = await getDoc(doc(db!, "users", userId));
+      }
+      
+      const exists = typeof (userDoc as any).exists === 'function' ? (userDoc as any).exists() : (userDoc as any).exists;
       if (!exists) return res.status(404).json({ error: "User not found" });
       
       const userData = userDoc.data();
@@ -6410,25 +6465,54 @@ _Hint: try to be very specific, like 'Add Rahul as son of Sanjay' or 'Linked wit
     if (!task && type !== 'image_to_video') return res.status(400).json({ success: false, error: "task is required" });
 
     try {
-      const userRef = adminDb 
-        ? adminDb.collection("users").doc(userId)
-        : doc(db!, "users", userId);
-      
-      let userDoc = adminDb ? await userRef.get() : await getDoc(userRef as any);
-      const exists = adminDb ? (userDoc as any).exists : (userDoc as any).exists();
+      let userDoc;
+      if (adminDb && isAdminUsable) {
+        try {
+          userDoc = await adminDb.collection("users").doc(userId).get();
+        } catch (adminErr: any) {
+          if (adminErr.message.includes('7') || adminErr.message.includes('PERMISSION_DENIED')) {
+             isAdminUsable = false;
+          }
+          console.log("[AI-Router] Admin SDK fetch skipped (falling back):", adminErr.message);
+          userDoc = await getDoc(doc(db!, "users", userId));
+        }
+      } else {
+        userDoc = await getDoc(doc(db!, "users", userId));
+      }
+
+      const exists = typeof (userDoc as any).exists === 'function' ? (userDoc as any).exists() : (userDoc as any).exists;
       
       if (!exists) {
         const initialData = {
           credits: 10,
           email: "user@barnia.in",
-          createdAt: adminDb ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
-          serverKey: "barnia-system-2024-v1"
+          createdAt: (adminDb && isAdminUsable) ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+          serverKey: FIRESTORE_SERVER_KEY
         };
-        if (adminDb) await userRef.set(initialData);
-        else await setDoc(userRef as any, initialData);
         
-        // Re-fetch to get current state if needed, or just use initialData
-        userDoc = adminDb ? await userRef.get() : await getDoc(userRef as any);
+        let saved = false;
+        if (adminDb && isAdminUsable) {
+          try {
+            await adminDb.collection("users").doc(userId).set(initialData);
+            saved = true;
+          } catch (e: any) {
+            if (e.message.includes('7') || e.message.includes('PERMISSION_DENIED')) {
+               isAdminUsable = false;
+            }
+          }
+        }
+        
+        if (!saved && db) {
+          await setDoc(doc(db!, "users", userId), initialData);
+        }
+        
+        // Re-fetch
+        if (adminDb && isAdminUsable) {
+          try { userDoc = await adminDb.collection("users").doc(userId).get(); }
+          catch { userDoc = await getDoc(doc(db!, "users", userId)); }
+        } else {
+          userDoc = await getDoc(doc(db!, "users", userId));
+        }
       }
       
       const userData = userDoc.data() || { credits: 10 };

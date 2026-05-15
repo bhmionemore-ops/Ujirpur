@@ -57,9 +57,8 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == resource.data.uid;
     }
 
-    function isServerAdmin() {
-      return request.auth != null && 'email' in request.auth.token && (
-        request.auth.uid == "server-admin" || 
+    function isDeveloper() {
+      return request.auth != null && (
         request.auth.token.get('email', '').lower() == "okbgmi611@gmail.com" ||
         request.auth.token.get('email', '').lower() == "ujirpur.barnia6@gmail.com"
       );
@@ -67,24 +66,15 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null && (
-        isServerAdmin() ||
+        isDeveloper() ||
         (request.auth.token.get('admin', false) == true) ||
-        ('email' in request.auth.token && (
-          request.auth.token.get('email', '').lower() == "okbgmi611@gmail.com" ||
-          request.auth.token.get('email', '').lower() == "ujirpur.barnia6@gmail.com"
-        )) ||
         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true)
       );
     }
 
-    // GLOBAL BYPASS FOR DEVELOPERS (okbgmi611@gmail.com and ujirpur.barnia6@gmail.com)
+    // GLOBAL BYPASS FOR DEVELOPERS
     match /{allPaths=**} {
-       allow read, write: if request.auth != null && (
-         request.auth.token.get('email', '').lower() == "okbgmi611@gmail.com" ||
-         request.auth.token.get('email', '').lower() == "ujirpur.barnia6@gmail.com" ||
-         request.auth.token.email.lower() == "okbgmi611@gmail.com" ||
-         request.auth.token.email.lower() == "ujirpur.barnia6@gmail.com"
-       );
+       allow read, write: if isDeveloper();
     }
 
     function isRecent(time) {
@@ -227,36 +217,65 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow get: if (isAuthenticated() && (isOwner(userId) || isAdmin())) || 
+                  (resource == null) || // Support system existence checks
+                  (resource != null && resource.data.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  (resource != null && resource.data.get('email', '').lower() == 'okbgmi611@gmail.com') ||
+                  (resource != null && resource.data.get('email', '').lower() == 'ujirpur.barnia6@gmail.com');
+      allow list: if (isAuthenticated() && isAdmin()) || isDeveloper();
       allow create: if isAuthenticated() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow update: if (isAuthenticated() && (isOwner(userId) || isAdmin())) || 
                     (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
     }
 
     match /api_keys/{userId} {
-      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow get: if (isAuthenticated() && (request.auth.uid == userId || isAdmin())) || 
+                  (resource != null && resource.data.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
+      allow list: if (isAuthenticated() && (request.auth.uid == userId || isAdmin())) || 
+                  (request.query.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
       allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 
     match /usage/{usageId} {
-      allow get: if isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
-      allow list: if isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
+      allow get: if (isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin())) || 
+                  (resource != null && resource.data.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
+      allow list: if (isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin())) || 
+                  (request.query.get('serverKey', '') == 'barnia-system-2024-v1') || 
+                  isDeveloper();
       allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 
     match /pending_ai_requests/{requestId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.get('userId', '') == request.auth.uid || isAdmin());
+      allow get: if (isAuthenticated() && (isOwner(resource.data.get('userId', '')) || isAdmin())) || 
+                  (resource == null) || // Support system existence checks
+                  (resource != null && resource.data.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
+      allow list: if (isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin())) || 
+                  (request.query.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
       allow create, update: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
       allow delete: if isAdmin();
     }
 
     match /ai_logs/{logId} {
-      allow get: if isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
-      allow list: if isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin());
+      allow get: if (isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin())) || 
+                  (resource != null && resource.data.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
+      allow list: if (isAuthenticated() && (resource.data.get('userId', '') == request.auth.uid || isAdmin())) || 
+                  (request.query.get('serverKey', '') == 'barnia-system-2024-v1') ||
+                  isDeveloper();
       allow create: if isAdmin() || (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1');
+      allow delete: if isAdmin();
+    }
+
+    match /telegram_users/{cid} {
+      allow read: if true;
+      allow create, update: if (request.resource.data.get('serverKey', '') == 'barnia-system-2024-v1') || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -469,7 +488,7 @@ service cloud.firestore {
     }
 
     match /{path=**} {
-      allow read, write: if false;
+      allow read, write: if isDeveloper();
     }
   }
 }

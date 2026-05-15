@@ -16,6 +16,7 @@ import { AdminUserManagement } from './pages/AdminUserManagement';
 import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { VamshavaliPage } from './pages/VamshavaliPage';
 import { AiRouterPage } from './pages/AiRouterPage';
+import { AIBotPage } from './pages/AIBotPage';
 import UpgradeLeadPage from './pages/UpgradeLeadPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
@@ -194,6 +195,7 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
+                  { to: '/bot', label: t.nav.aiBot },
                   { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
                 ].map((link) => (
@@ -331,6 +333,7 @@ function AppContent() {
               { to: '/vamshavali', label: t.nav.vamshavali },
               { to: '/influencers', label: t.nav.influencers },
               { to: '/fact-check', label: t.nav.factCheck },
+              { to: '/bot', label: t.nav.aiBot },
               { to: '/ai-router', label: t.nav.aiRouter },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
@@ -385,6 +388,7 @@ function AppContent() {
           <Route path="/news/:date/:tab/:index" element={<Home />} />
           <Route path="/vamshavali" element={<VamshavaliPage />} />
           <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
+          <Route path="/bot" element={<AIBotPage />} />
           <Route path="/ai-router" element={<AiRouterPage />} />
           <Route path="/upgrade" element={<UpgradeLeadPage />} />
         </Routes>
@@ -461,6 +465,7 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
+                  { to: '/bot', label: t.nav.aiBot },
                   { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (
