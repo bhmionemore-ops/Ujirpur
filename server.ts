@@ -1564,6 +1564,50 @@ async function startServer() {
     }
   });
 
+  // AI Chat Bot endpoint for BotPage component
+  app.post("/api/chat", express.json(), async (req, res) => {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ error: "Message is required" });
+
+    try {
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "Gemini API key not configured" });
+      }
+
+      // Using the new @google/genai SDK as requested
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+      
+      const result = await model.generateContent(message);
+      const aiResponse = result.response.text();
+
+      // Send log to n8n Webhook
+      const n8nWebhookUrl = "https://barniabot.duckdns.org/webhook/nexus-bot";
+      try {
+        // Fire and forget webhook
+        fetch(n8nWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            response: aiResponse,
+            timestamp: new Date().toISOString(),
+            source: 'Barnia Bot Page'
+          }),
+          family: 4
+        }).catch(err => console.error("[Chat API] n8n Fetch async error:", err.message));
+      } catch (n8nError) {
+        console.error("[n8n] Webhook failed:", n8nError);
+      }
+
+      res.json({ response: aiResponse });
+    } catch (error: any) {
+      console.error("[Chat API] Error:", error.message);
+      res.status(500).json({ error: "Failed to generate response", details: error.message });
+    }
+  });
+
   // Initialize Firebase FIRST and FAST
   const initFirebase = async () => {
     try {
