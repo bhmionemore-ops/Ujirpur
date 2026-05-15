@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, Timestamp, updateDoc, deleteDoc, doc, getDoc, where, getDocs } from 'firebase/firestore';
 import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap, Landmark, Key, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -620,7 +620,8 @@ export const AdminAnalytics = () => {
 
             {/* --- TAB CONTENT --- */}
             
-            {activeTab === 'overview' && <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {activeTab === 'overview' && (
+              <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 {/* Metrics Slides Box */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Total Visitors - Dark Bento */}
@@ -656,7 +657,7 @@ export const AdminAnalytics = () => {
                         <MessageSquare size={24} className="text-zinc-600" />
                       </div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Inquiries</p>
-                      <h3 className="text-4xl font-black text-zinc-900">{messages?.length || 0}</h3>
+                      <h3 className="text-4xl font-black text-zinc-900">{chatMessages?.length || 0}</h3>
                       <p className="text-[10px] font-medium text-zinc-500 mt-4">Growth rate: <span className="text-brand-600 font-bold">Stable</span></p>
                     </div>
                   </div>
@@ -895,7 +896,8 @@ export const AdminAnalytics = () => {
             )}
 
         {/* User Management Tab */}
-        {activeTab === 'users' && <div className="space-y-6 mb-12">
+        {activeTab === 'users' && (
+          <div className="space-y-6 mb-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
                 <Users size={20} className="text-brand-600" />
@@ -982,7 +984,8 @@ export const AdminAnalytics = () => {
         )}
 
         {/* App Inbox (Inbound Emails) - MOVED TO TOP */}
-        {activeTab === 'comms' && <div className="space-y-6 mb-12">
+        {activeTab === 'comms' && (
+          <div className="space-y-6 mb-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <Mail size={20} className="text-brand-600" />
@@ -1213,159 +1216,162 @@ export const AdminAnalytics = () => {
               )}
             </div>
           </div>
-        }
+        </div>
+        )}
 
         {/* Pending AI Approvals - NEW */}
-        {activeTab === 'ai' && <div className="space-y-12">
+        {activeTab === 'ai' && (
+          <div className="space-y-12">
             <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Zap size={20} className="text-brand-600" />
-              Pending AI Approvals (Developer Protection)
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-amber-50 rounded-xl border border-amber-100">
-                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
-                  {aiRequests.filter(r => r.status === 'pending').length} Requests Waiting
-                </p>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                  <Zap size={20} className="text-brand-600" />
+                  Pending AI Approvals (Developer Protection)
+                </h2>
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-2 bg-amber-50 rounded-xl border border-amber-100">
+                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                      {aiRequests.filter(r => r.status === 'pending').length} Requests Waiting
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-100">
+                        <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Customer</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Details</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pricing</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Protection Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {aiRequests.map((req) => (
+                        <tr key={req.id} className="hover:bg-zinc-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <p className="text-xs font-bold text-zinc-900">{req.userEmail}</p>
+                            <p className="text-[10px] text-zinc-400 font-medium">Type: {req.type.toUpperCase()}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="text-xs font-medium text-zinc-600 line-clamp-1 italic">"{req.task || 'Media Animation'}"</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                               <span className="text-[10px] font-black px-2 py-0.5 bg-brand-50 text-brand-600 rounded-full">
+                                 {req.cost} CREDITS
+                               </span>
+                               {req.cost >= 20 && (
+                                 <span className="text-[8px] font-black px-2 py-0.5 bg-red-50 text-red-600 rounded-full animate-pulse">
+                                    HIGH VALUE
+                                 </span>
+                               )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="text-[10px] font-bold text-zinc-500">
+                              {req.createdAt?.toDate()?.toLocaleString() || 'Just now'}
+                            </p>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {req.status === 'pending' ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={() => handleApproveAI(req.id)}
+                                  disabled={approving === req.id}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  {approving === req.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                                  Approve
+                                </button>
+                                <button 
+                                  onClick={() => handleDenyAI(req.id)}
+                                  className="px-4 py-2 border border-red-200 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all flex items-center gap-2"
+                                >
+                                  <Trash2 size={12} />
+                                  Deny
+                                </button>
+                              </div>
+                            ) : (
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                req.status === 'completed' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {req.status}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {aiRequests.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-20 text-center">
+                            <Zap size={48} className="text-zinc-100 mx-auto mb-4" />
+                            <p className="text-zinc-400 font-medium text-sm">No premium AI tasks waiting for approval.</p>
+                            <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Router Protection system is active.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* API Key Management - NEW */}
+            <div className="space-y-6 mb-12">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
+                  <Key size={20} className="text-brand-600" />
+                  Active API Keys ({apiKeys.length})
+                </h2>
+              </div>
+              
+              <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {apiKeys.map((k) => (
+                    <div key={k.id} className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100 group hover:border-brand-500/30 transition-all">
+                      <div className="flex items-center gap-3 mb-4">
+                         <div className="w-10 h-10 bg-brand-50 rounded-2xl flex items-center justify-center">
+                           <User size={20} className="text-brand-600" />
+                         </div>
+                         <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">User ID</p>
+                            <p className="text-xs font-bold text-zinc-900 truncate" title={k.id}>{k.id}</p>
+                         </div>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-zinc-100 mb-3">
+                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Key Fragment</p>
+                         <code className="text-[10px] font-mono font-black text-brand-600">
+                            {k.apiKey.substring(0, 8)}••••••••{k.apiKey.substring(k.apiKey.length - 4)}
+                         </code>
+                      </div>
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
+                         {k.createdAt && (
+                            <span className="text-[10px] text-zinc-400 font-medium tracking-tight">
+                               Issued: {k.createdAt.toDate().toLocaleDateString()}
+                            </span>
+                         )}
+                      </div>
+                    </div>
+                  ))}
+                  {apiKeys.length === 0 && (
+                    <div className="col-span-full text-center py-12">
+                       <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">No API keys have been issued yet.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-          
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-100">
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Customer</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Details</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pricing</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Time</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Protection Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50">
-                  {aiRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-zinc-50/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-bold text-zinc-900">{req.userEmail}</p>
-                        <p className="text-[10px] text-zinc-400 font-medium">Type: {req.type.toUpperCase()}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs font-medium text-zinc-600 line-clamp-1 italic">"{req.task || 'Media Animation'}"</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                           <span className="text-[10px] font-black px-2 py-0.5 bg-brand-50 text-brand-600 rounded-full">
-                             {req.cost} CREDITS
-                           </span>
-                           {req.cost >= 20 && (
-                             <span className="text-[8px] font-black px-2 py-0.5 bg-red-50 text-red-600 rounded-full animate-pulse">
-                                HIGH VALUE
-                             </span>
-                           )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-[10px] font-bold text-zinc-500">
-                          {req.createdAt?.toDate()?.toLocaleString() || 'Just now'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {req.status === 'pending' ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <button 
-                              onClick={() => handleApproveAI(req.id)}
-                              disabled={approving === req.id}
-                              className="px-4 py-2 bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                            >
-                              {approving === req.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                              Approve
-                            </button>
-                            <button 
-                              onClick={() => handleDenyAI(req.id)}
-                              className="px-4 py-2 border border-red-200 text-red-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all flex items-center gap-2"
-                            >
-                              <Trash2 size={12} />
-                              Deny
-                            </button>
-                          </div>
-                        ) : (
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${
-                            req.status === 'completed' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {req.status}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {aiRequests.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-20 text-center">
-                        <Zap size={48} className="text-zinc-100 mx-auto mb-4" />
-                        <p className="text-zinc-400 font-medium text-sm">No premium AI tasks waiting for approval.</p>
-                        <p className="text-[10px] text-zinc-300 mt-1 uppercase tracking-widest">Router Protection system is active.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* API Key Management - NEW */}
-        <div className="space-y-6 mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
-              <Key size={20} className="text-brand-600" />
-              Active API Keys ({apiKeys.length})
-            </h2>
-          </div>
-          
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {apiKeys.map((k) => (
-                <div key={k.id} className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100 group hover:border-brand-500/30 transition-all">
-                  <div className="flex items-center gap-3 mb-4">
-                     <div className="w-10 h-10 bg-brand-50 rounded-2xl flex items-center justify-center">
-                       <User size={20} className="text-brand-600" />
-                     </div>
-                     <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">User ID</p>
-                        <p className="text-xs font-bold text-zinc-900 truncate" title={k.id}>{k.id}</p>
-                     </div>
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-zinc-100 mb-3">
-                     <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Key Fragment</p>
-                     <code className="text-[10px] font-mono font-black text-brand-600">
-                        {k.apiKey.substring(0, 8)}••••••••{k.apiKey.substring(k.apiKey.length - 4)}
-                     </code>
-                  </div>
-                  <div className="flex items-center justify-between">
-                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
-                     {k.createdAt && (
-                        <span className="text-[10px] text-zinc-400 font-medium tracking-tight">
-                           Issued: {k.createdAt.toDate().toLocaleDateString()}
-                        </span>
-                     )}
-                  </div>
-                </div>
-              ))}
-              {apiKeys.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                   <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">No API keys have been issued yet.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
+        )}
 
         {/* Telegram Management Tab */}
-        {activeTab === 'telegram' && <div className="space-y-6 mb-12">
+        {activeTab === 'telegram' && (
+          <div className="space-y-6 mb-12">
             <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
               <MessageSquare size={20} className="text-brand-600" />
               Telegram AI Memory (Barnali Bot)
@@ -1427,7 +1433,8 @@ export const AdminAnalytics = () => {
         )}
 
         {/* Project Assets & Resources */}
-        {activeTab === 'tools' && <div className="animate-in fade-in duration-500">
+        {activeTab === 'tools' && (
+          <div className="animate-in fade-in duration-500">
             <div className="space-y-6 mb-12">
           <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tight flex items-center gap-3">
             <Database size={20} className="text-brand-600" />
@@ -1617,6 +1624,8 @@ export const AdminAnalytics = () => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
         )}
 
         {/* Email Modal */}
