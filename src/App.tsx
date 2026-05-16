@@ -396,7 +396,7 @@ function AppContent() {
       </main>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
-      {!isVamshavali && <LiveChatWidget />}
+      {!isVamshavali && !isBotPage && <LiveChatWidget />}
       <InstallPrompt />
       <GlobalBookingAlert />
       <Toaster position="top-center" richColors />
