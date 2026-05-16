@@ -183,9 +183,6 @@ export const BotPage: React.FC = () => {
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </form>
-          <p className="text-[10px] text-center mt-3 text-zinc-400 font-bold uppercase tracking-widest">
-            Always verify important information with a human expert
-          </p>
         </div>
       </footer>
     </div>
