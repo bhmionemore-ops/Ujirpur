@@ -1564,57 +1564,124 @@ async function startServer() {
     }
   });
 
-  // AI Chat Bot endpoint for BotPage component
+  // AI Chat Bot endpoint for Nexus Intelligence
   app.post("/api/chat", express.json(), async (req, res) => {
-    const { message } = req.body;
+    const { message, history } = req.body;
     if (!message) return res.status(400).json({ error: "Message is required" });
 
     try {
-      // Use the project's existing robust key discovery logic
-      const geminiApiKey = await getGeminiApiKey();
-      if (!geminiApiKey) {
-        return res.status(500).json({ error: "Gemini API key not configured. Please check your Secrets in Settings." });
-      }
-
-      // Using the new @google/genai SDK as requested
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const openRouterKey = process.env.OPENROUTER_API_KEY;
+      const geminiKey = await getGeminiApiKey();
       
-      // Use standard models. gemini-3 does not exist in API.
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: message
-      });
-      const aiResponse = result.text || "I'm sorry, I couldn't generate a response at this time.";
-
-      // Send log to n8n Webhook
-      const n8nWebhookUrl = "https://barniabot.duckdns.org/webhook/nexus-bot";
+      let productsJson = "";
       try {
-        // Fire and forget webhook
-        fetch(n8nWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message,
-            response: aiResponse,
-            timestamp: new Date().toISOString(),
-            source: 'Barnia Bot Page'
-          }),
-          family: 4
-        }).catch(err => console.error("[Chat API] n8n Fetch async error:", err.message));
-      } catch (n8nError) {
-        console.error("[n8n] Webhook failed:", n8nError);
+        productsJson = await fs.readFile(path.resolve("products.json"), "utf-8");
+      } catch (err) {
+        console.warn("[Nexus] Could not load products.json, using empty catalog");
       }
 
-      res.json({ response: aiResponse });
-    } catch (error: any) {
-      console.error("[Chat API] Error:", error.message);
-      // If it's a specific API error, give a more helpful message
-      if (error.message?.includes("API key not valid")) {
-        return res.status(400).json({ 
-          error: "Invalid API Key", 
-          details: "The detected Gemini API key is invalid. Please ensure it is correctly set in Settings > Secrets." 
-        });
+      const systemPrompt = `Identity: "Nexus", the specialized hardware intelligence for barnia.in.
+Strict Rule: Never identify as Gemini, Google, or DeepSeek. You are an employee of barnia.in.
+Capability: Consult on TVs, collect customer leads, and process orders.
+Catalog: ${productsJson}
+Action Protocol: If the user wants to order, collect a lead, or cancel, YOU MUST append a specific JSON block at the end of your response:
+ACTION: {"name": "order|lead|cancel", "args": {"product_id": "...", "customer_name": "...", "contact": "..."}}
+Always remain professional, helpful, and maintain a futuristic tech persona.`;
+
+      const chatHistory = history || [];
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...chatHistory,
+        { role: "user", content: message }
+      ];
+
+      let aiResponse = "";
+      let modelUsed = "DeepSeek (OpenRouter)";
+
+      if (openRouterKey) {
+        try {
+          console.log("[Nexus] Attempting OpenRouter (DeepSeek)...");
+          const orRes = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+            model: "deepseek/deepseek-chat",
+            messages: messages.map(m => ({
+              role: m.role === "system" ? "system" : m.role === "assistant" ? "assistant" : "user",
+              content: m.content
+            })),
+            temperature: 0.7,
+            max_tokens: 1000
+          }, {
+            headers: {
+              "Authorization": `Bearer ${openRouterKey}`,
+              "HTTP-Referer": "https://barnia.in",
+              "X-Title": "Nexus Intelligence Bot",
+            },
+            timeout: 15000
+          });
+          aiResponse = orRes.data.choices[0].message.content;
+        } catch (orError: any) {
+          console.error("[Nexus] OpenRouter Error:", orError.message);
+          modelUsed = "Gemini 1.5 Flash (Fallback)";
+        }
+      } else {
+        console.warn("[Nexus] OPENROUTER_API_KEY missing, using Gemini fallback directly.");
+        modelUsed = "Gemini 1.5 Flash (Fallback)";
       }
+
+      // Fallback to Gemini if OpenRouter failed or was missing
+      if (!aiResponse && geminiKey) {
+        try {
+          console.log("[Nexus] Attempting Gemini Fallback...");
+          const genAI = new GoogleGenerativeAI(geminiKey);
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          
+          // Gemini expects a different format
+          const prompt = `${systemPrompt}\n\nUser Message: ${message}`;
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
+          aiResponse = response.text();
+        } catch (gemError: any) {
+          console.error("[Nexus] Gemini Fallback Error:", gemError.message);
+          aiResponse = "I'm having trouble processing your request right now. Please try again later.";
+        }
+      }
+
+      // Intercept Action Protocol
+      const actionMatch = aiResponse.match(/ACTION:\s*({.*})/);
+      if (actionMatch) {
+        try {
+          const actionData = JSON.parse(actionMatch[1]);
+          console.log("[Nexus] Intercepted Action:", actionData);
+          
+          // Proxy to n8n
+          const n8nUrl = "https://barniabot.duckdns.org/webhook/nexus-bot";
+          axios.post(n8nUrl, {
+            intent: actionData.name,
+            action: actionData.name,
+            data: actionData.args,
+            timestamp: new Date().toISOString(),
+            raw_message: message,
+            ai_response: aiResponse
+          }).catch(err => console.error("[Nexus] n8n Proxy Error:", err.message));
+        } catch (parseError) {
+          console.error("[Nexus] Action Parse Error:", parseError);
+        }
+      }
+
+      // Always log to n8n as a backup/audit
+      try {
+        const n8nLogUrl = "https://barniabot.duckdns.org/webhook/nexus-bot";
+        axios.post(n8nLogUrl, {
+          message,
+          response: aiResponse,
+          model: modelUsed,
+          timestamp: new Date().toISOString(),
+          source: 'Barnia Bot Page'
+        }).catch(err => {});
+      } catch (err) {}
+
+      res.json({ response: aiResponse, model: modelUsed });
+    } catch (error: any) {
+      console.error("[Chat API] Critical Error:", error.message);
       res.status(500).json({ error: "Failed to generate response", details: error.message });
     }
   });

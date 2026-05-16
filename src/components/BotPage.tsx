@@ -16,7 +16,7 @@ export const BotPage: React.FC = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I am Barnali AI, your smart assistant. How can I help you today?',
+      content: 'System Initialized. I am Nexus, your autonomous sales intelligence. How may I assist you with our hardware catalog today?',
       timestamp: new Date(),
     },
   ]);
@@ -45,14 +45,24 @@ export const BotPage: React.FC = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
+      // Prepare history for context
+      const history = messages.map(m => ({
+        role: m.role,
+        content: m.content
+      })).slice(-10); // Last 10 messages for context
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ 
+          message: currentInput,
+          history: history 
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to get response');
@@ -62,7 +72,7 @@ export const BotPage: React.FC = () => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || 'Sorry, I encountered an error.',
+        content: data.response || 'System Error: Unable to process request.',
         timestamp: new Date(),
       };
 
@@ -72,7 +82,7 @@ export const BotPage: React.FC = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I am sorry, but I am having trouble connecting right now. Please try again later.',
+        content: 'Connection interrupted. Please verify your network and retry initialization.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -82,64 +92,66 @@ export const BotPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0A0A0C] flex flex-col font-sans text-zinc-300">
       {/* Header */}
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
+      <header className="bg-zinc-950 border-b border-indigo-500/20 px-4 py-4 sticky top-0 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate('/')}
-              className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600"
+              className="p-2 hover:bg-zinc-900 rounded-full transition-colors text-indigo-400 border border-indigo-500/10"
             >
               <ChevronLeft size={24} />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
-                <Bot size={22} />
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-xl flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/30">
+                <Bot size={26} className="animate-pulse" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-zinc-900 leading-tight">Barnali AI</h1>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Online</span>
+                <h1 className="text-xl font-black text-white tracking-tight leading-tight uppercase font-mono">Nexus <span className="text-indigo-500">v2.0</span></h1>
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+                  <span className="text-[10px] font-black text-indigo-400/80 uppercase tracking-[0.2em]">Online • Intelligent Mode</span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-100 rounded-lg">
-            <Sparkles size={14} className="text-brand-600" />
-            <span className="text-xs font-bold text-zinc-600 uppercase tracking-tight">AI Engine Active</span>
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+            <Sparkles size={14} className="text-indigo-400" />
+            <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Neural Link Active</span>
           </div>
         </div>
       </header>
 
       {/* Messages */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] bg-fixed">
+        <div className="max-w-3xl mx-auto space-y-8">
           <AnimatePresence initial={false}>
             {messages.map((message) => (
               <motion.div
                 key={message.id}
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-sm ${
-                    message.role === 'user' ? 'bg-zinc-800 text-white' : 'bg-white border border-zinc-200 text-brand-600'
-                  }`}>
-                    {message.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                  </div>
-                  <div className={`relative px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
+                <div className={`flex gap-4 max-w-[90%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg transition-transform hover:scale-110 ${
                     message.role === 'user' 
-                      ? 'bg-brand-600 text-white rounded-tr-none' 
-                      : 'bg-white border border-zinc-200 text-zinc-800 rounded-tl-none'
+                      ? 'bg-zinc-800 text-indigo-400 border border-zinc-700' 
+                      : 'bg-indigo-950 border border-indigo-500/30 text-indigo-400'
                   }`}>
-                    <div className="markdown-body">
+                    {message.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+                  </div>
+                  <div className={`relative px-5 py-4 rounded-3xl shadow-xl text-sm leading-relaxed backdrop-blur-sm ${
+                    message.role === 'user' 
+                      ? 'bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-tr-none border border-indigo-400/20 shadow-indigo-500/10' 
+                      : 'bg-zinc-900/80 border border-indigo-500/10 text-zinc-200 rounded-tl-none shadow-black/50'
+                  }`}>
+                    <div className="markdown-body prose prose-invert prose-sm max-w-none">
                       <ReactMarkdown>{message.content}</ReactMarkdown>
                     </div>
-                    <span className={`text-[10px] mt-2 block opacity-50 font-medium ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <span className={`text-[10px] mt-3 block opacity-40 font-black uppercase tracking-tighter ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {message.role === 'user' ? 'USER_ID_SECURE' : 'SYSTEM_GEN_001'}
                     </span>
                   </div>
                 </div>
@@ -148,13 +160,17 @@ export const BotPage: React.FC = () => {
           </AnimatePresence>
           {isLoading && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
               className="flex justify-start"
             >
-              <div className="flex gap-3 items-center bg-white px-4 py-3 rounded-2xl border border-zinc-200 shadow-sm">
-                <Loader2 size={16} className="animate-spin text-brand-600" />
-                <span className="text-xs font-medium text-zinc-500 italic">Barnali is thinking...</span>
+              <div className="flex gap-4 items-center bg-zinc-900/90 px-5 py-3 rounded-2xl border border-indigo-500/20 shadow-2xl">
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
+                </div>
+                <span className="text-[10px] font-black text-indigo-400/80 uppercase tracking-widest">Processing Data...</span>
               </div>
             </motion.div>
           )}
@@ -163,26 +179,34 @@ export const BotPage: React.FC = () => {
       </main>
 
       {/* Input Area */}
-      <footer className="bg-white border-t border-zinc-200 p-4 md:p-6 sticky bottom-0">
+      <footer className="bg-zinc-950 border-t border-indigo-500/20 p-4 md:p-8 sticky bottom-0 z-10 shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
         <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSubmit} className="relative group">
+            <div className="absolute inset-x-0 -bottom-1 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity" />
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything..."
+              placeholder="Inject command or query catalog..."
               disabled={isLoading}
-              className="w-full bg-zinc-50 border border-zinc-200 text-zinc-900 rounded-2xl pl-12 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium disabled:opacity-50"
+              className="w-full bg-zinc-900 border-2 border-indigo-500/10 text-white rounded-3xl pl-14 pr-16 py-5 focus:outline-none focus:border-indigo-500/40 focus:bg-zinc-900 transition-all font-mono text-sm disabled:opacity-50 shadow-inner"
             />
-            <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={20} />
+            <MessageSquare className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/50 group-focus-within:text-indigo-400 transition-colors" size={22} />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center hover:bg-brand-700 disabled:bg-zinc-200 disabled:text-zinc-400 transition-all active:scale-95 shadow-lg shadow-brand-500/20"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-2xl flex items-center justify-center hover:from-indigo-500 hover:to-indigo-700 disabled:from-zinc-800 disabled:to-zinc-900 disabled:text-zinc-600 transition-all active:scale-95 shadow-lg shadow-indigo-500/20 group/btn"
             >
-              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {isLoading ? (
+                <Loader2 size={24} className="animate-spin text-indigo-300" />
+              ) : (
+                <Send size={24} className="group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
+              )}
             </button>
           </form>
+          <div className="flex justify-center mt-4">
+            <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em]">Hardware Intelligence Matrix • v2.0.42</p>
+          </div>
         </div>
       </footer>
     </div>

@@ -157,7 +157,7 @@ function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isVamshavali = location.pathname.startsWith('/vamshavali');
-  const isBotPage = location.pathname === '/bot';
+  const isBotPage = location.pathname === '/bot' || location.pathname === '/chat';
 
   return (
     <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
@@ -390,6 +390,7 @@ function AppContent() {
           <Route path="/vamshavali" element={<VamshavaliPage />} />
           <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
           <Route path="/bot" element={<BotPage />} />
+          <Route path="/chat" element={<BotPage />} />
           <Route path="/ai-router" element={<AiRouterPage />} />
           <Route path="/upgrade" element={<UpgradeLeadPage />} />
         </Routes>
