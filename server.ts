@@ -1570,17 +1570,21 @@ async function startServer() {
     if (!message) return res.status(400).json({ error: "Message is required" });
 
     try {
-      const geminiApiKey = process.env.GEMINI_API_KEY;
+      // Use the project's existing robust key discovery logic
+      const geminiApiKey = await getGeminiApiKey();
       if (!geminiApiKey) {
-        return res.status(500).json({ error: "Gemini API key not configured" });
+        return res.status(500).json({ error: "Gemini API key not configured. Please check your Secrets in Settings." });
       }
 
       // Using the new @google/genai SDK as requested
       const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
       
-      const result = await model.generateContent(message);
-      const aiResponse = result.response.text();
+      // Use the model recommended by the skill for general Q&A
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: message
+      });
+      const aiResponse = result.text || "I'm sorry, I couldn't generate a response at this time.";
 
       // Send log to n8n Webhook
       const n8nWebhookUrl = "https://barniabot.duckdns.org/webhook/nexus-bot";
@@ -1604,6 +1608,13 @@ async function startServer() {
       res.json({ response: aiResponse });
     } catch (error: any) {
       console.error("[Chat API] Error:", error.message);
+      // If it's a specific API error, give a more helpful message
+      if (error.message?.includes("API key not valid")) {
+        return res.status(400).json({ 
+          error: "Invalid API Key", 
+          details: "The detected Gemini API key is invalid. Please ensure it is correctly set in Settings > Secrets." 
+        });
+      }
       res.status(500).json({ error: "Failed to generate response", details: error.message });
     }
   });
