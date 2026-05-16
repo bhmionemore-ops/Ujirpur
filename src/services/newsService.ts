@@ -86,8 +86,9 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
 
   const models = [
     { name: "gemini-3-flash-preview", useTools: true },
-    { name: "gemini-flash-latest", useTools: true },
-    { name: "gemini-3.1-flash-lite-preview", useTools: true }
+    { name: "gemini-2.0-flash", useTools: true },
+    { name: "gemini-3.1-pro-preview", useTools: true },
+    { name: "gemini-1.5-flash", useTools: true }
   ];
 
   for (let i = 0; i < models.length; i++) {
