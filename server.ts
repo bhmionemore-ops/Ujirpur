@@ -27,6 +27,7 @@ import { db, adminDb, firebaseConfig } from "./server/db";
 import { initSDKs } from "./server/init";
 import { setupRoutes } from "./server/routes";
 import { setupVamshavaliRoutes } from "./server/vamshavali-api";
+import { setupAuthRoutes } from "./server/auth-api";
 import { setupNewsRoutes } from "./server/news-api";
 import { setupAIRouter } from "./server/ai-router";
 import { setupNumerologyRoutes } from "./server/numerology-api";
@@ -60,6 +61,7 @@ async function startServer() {
 
   // Setup Routes
   setupRoutes(app, db, adminDb, firebaseConfig, newsLocks);
+  setupAuthRoutes(app, db, adminDb, admin);
   setupVamshavaliRoutes(app, db, adminDb, admin);
   setupNewsRoutes(app, db, adminDb, newsLocks, getCurrentNewsDate);
   setupAIRouter(app, db, adminDb, admin);
