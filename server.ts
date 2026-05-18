@@ -26,6 +26,7 @@ if (dns && (dns as any).setDefaultResultOrder) {
 import { db, adminDb, firebaseConfig } from "./server/db";
 import { initSDKs } from "./server/init";
 import { setupRoutes } from "./server/routes";
+import { setupGeminiRoute } from "./server/gemini";
 import { setupVamshavaliRoutes } from "./server/vamshavali-api";
 import { setupAuthRoutes } from "./server/auth-api";
 import { setupNewsRoutes } from "./server/news-api";
@@ -61,6 +62,7 @@ async function startServer() {
 
   // Setup Routes
   setupRoutes(app, db, adminDb, firebaseConfig, newsLocks);
+  setupGeminiRoute(app);
   setupAuthRoutes(app, db, adminDb, admin);
   setupVamshavaliRoutes(app, db, adminDb, admin);
   setupNewsRoutes(app, db, adminDb, newsLocks, getCurrentNewsDate);

@@ -1,46 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Bot, Sparkles, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Info, RefreshCw, ExternalLink, Share2 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useLanguage } from '../LanguageContext';
 import { toast } from 'sonner';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 /**
- * Helper to call Gemini with exponential backoff for 503 (Unavailable) errors
+ * Helper to call Gemini via server proxy
  */
-async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3) {
-  let lastError: any;
-  const modelName = options.model || "gemini-3-flash-preview";
+async function callGeminiWithRetry(options: any) {
+  const response = await fetch('/api/gemini/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options)
+  });
   
-  for (let i = 0; i <= maxRetries; i++) {
-    const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
-    try {
-      console.log(`[Gemini-Frontend] Requesting ${currentModel}... (Attempt ${i+1})`);
-      return await ai.models.generateContent({
-        ...options,
-        model: currentModel
-      });
-    } catch (error: any) {
-      lastError = error;
-      const errorStr = error?.message || String(error);
-      const isUnavailable = errorStr.includes("503") || errorStr.includes("UNAVAILABLE") || errorStr.includes("overloaded");
-      const isQuota = errorStr.includes("429") || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("quota");
-      
-      if ((isUnavailable || isQuota) && i < maxRetries) {
-        const factor = isQuota ? 8000 : 2000;
-        const delay = Math.pow(2, i) * factor + Math.random() * 1000;
-        console.warn(`[Gemini-Frontend] Retry in ${Math.round(delay)}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      throw error;
-    }
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `Server error: ${response.status}`);
   }
-  throw lastError;
+  
+  return await response.json();
 }
 
 interface BotFactCheck {
@@ -204,8 +185,8 @@ export const SanataniBot = () => {
     setIsLoading(true);
     setResult(null);
     try {
-      const response = await callGeminiWithRetry(ai, {
-        model: "gemini-3-flash-preview",
+      const response = await callGeminiWithRetry({
+        model: "gemini-1.5-flash",
         contents: `Fact check this claim: "${input}"`,
         config: {
           systemInstruction,

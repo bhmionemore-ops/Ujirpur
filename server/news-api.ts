@@ -104,7 +104,7 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
           saved = true;
           console.log(`[NewsAPI] Generated news saved via Admin SDK for ${docId}`);
         } catch (e: any) {
-          console.warn(`[NewsAPI] Admin SDK save failed for ${docId}:`, e.message);
+          console.error(`[NewsAPI] Admin SDK save CRITICAL FAILURE for ${docId}:`, e);
         }
       }
       
@@ -114,7 +114,7 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
           saved = true;
           console.log(`[NewsAPI] Generated news saved via Client SDK for ${docId}`);
         } catch (e: any) {
-          console.error(`[NewsAPI] Client SDK save failed for ${docId}:`, e.message);
+          console.error(`[NewsAPI] Client SDK save CRITICAL FAILURE for ${docId}:`, e);
         }
       }
 
@@ -146,7 +146,7 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
           await adminDb.collection("news").doc(docId).set(dataToSave);
           saved = true;
         } catch (e: any) {
-          console.warn(`[NewsAPI] Admin SDK cache save failed:`, e.message);
+          console.error(`[NewsAPI] Admin SDK cache save CRITICAL FAILURE:`, e);
         }
       }
       
@@ -155,7 +155,7 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
           await setDoc(doc(db, "news", docId), dataToSave);
           saved = true;
         } catch (e: any) {
-          console.error(`[NewsAPI] Client SDK cache save failed:`, e.message);
+          console.error(`[NewsAPI] Client SDK cache save CRITICAL FAILURE:`, e);
         }
       }
       

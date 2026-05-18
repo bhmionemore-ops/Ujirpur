@@ -1,6 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export async function generateChatReply(message: string, history: { text: string; isBot: boolean }[], language: 'bn' | 'en' = 'en'): Promise<string> {
   const langName = language === 'bn' ? 'Bengali' : 'English';
@@ -25,18 +22,28 @@ export async function generateChatReply(message: string, history: { text: string
   }));
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        ...chatHistory,
-        { role: 'user', parts: [{ text: message }] }
-      ],
-      config: {
-        systemInstruction,
-      },
+    const response = await fetch('/api/gemini/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: "gemini-1.5-flash",
+        contents: [
+          ...chatHistory,
+          { role: 'user', parts: [{ text: message }] }
+        ],
+        config: {
+          systemInstruction,
+        }
+      })
     });
 
-    return response.text || (language === 'bn' ? 'দুঃখিত, আমি এখন উত্তর দিতে পারছি না।' : 'Sorry, I cannot reply right now.');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.text || (language === 'bn' ? 'দুঃখিত, আমি এখন উত্তর দিতে পারছি না।' : 'Sorry, I cannot reply right now.');
   } catch (error) {
     console.error("Chat generation failed:", error);
     return language === 'bn' ? 'দুঃখিত, একটি ত্রুটি ঘটেছে।' : 'Sorry, an error occurred.';

@@ -2,7 +2,6 @@ import express from "express";
 import fetch from "node-fetch";
 import { getTelegramBotToken } from "./telegram-bot";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { generateSitemapXml } from "./sitemap";
 import { robustSendMail, getSmtpLogs } from "./email";
 import { FIRESTORE_SERVER_KEY } from "./constants";

@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 /**
  * Mock news data as a last resort fallback
  */
@@ -54,14 +52,6 @@ function getMockNews(language: 'bn' | 'en', date: string) {
 }
 
 export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: string): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY is missing in the frontend environment.");
-    // Fallback to mock data immediately if no API key
-    return getMockNews(language, targetDate || new Date().toISOString().split('T')[0]);
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
   const langName = language === 'bn' ? 'Bengali' : 'English';
   const displayDate = targetDate || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   
@@ -84,80 +74,64 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
   IMPORTANT: All text must be in ${langName}.
   Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
 
-  const models = [
-    { name: "gemini-3-flash-preview", useTools: true },
-    { name: "gemini-flash-latest", useTools: true },
-    { name: "gemini-2.0-flash-exp", useTools: true },
-    { name: "gemini-1.5-flash", useTools: true },
-    { name: "gemini-1.5-pro", useTools: true }
-  ];
-
-  for (let i = 0; i < models.length; i++) {
-    const modelInfo = models[i];
-    console.log(`[NewsService] Attempt ${i + 1}: Using model ${modelInfo.name}`);
+  try {
+    const config: any = {
+      responseMimeType: "application/json",
+      maxOutputTokens: 8192,
+    };
     
-    try {
-      const config: any = {
-        responseMimeType: "application/json",
-        maxOutputTokens: 8192,
-      };
-      
-      if (modelInfo.useTools) {
-        config.tools = [{ googleSearch: {} }];
-      }
-
-      const response = await ai.models.generateContent({
-        model: modelInfo.name,
+    // Call server proxy
+    const response = await fetch('/api/gemini/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: "gemini-1.5-flash",
         contents: prompt,
-        config: config,
-      });
+        config: config
+      })
+    });
 
-      if (!response || !response.text) {
-        throw new Error(`Empty response from ${modelInfo.name}`);
-      }
-
-      const text = response.text || "{}";
-      // Robustly clean JSON: remove markdown and escape literal control characters in strings
-      let cleaned = text.trim();
-      if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
-      }
-      
-      const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
-        m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
-      );
-
-      const parsed = JSON.parse(sanitized);
-      
-      console.log(`[NewsService] Successfully generated news with ${modelInfo.name}`);
-      
-      const result = {
-        local: parsed.local || [],
-        fbTrends: parsed.fbTrends || [],
-        igTrends: parsed.igTrends || [],
-        updatedAt: new Date().toISOString(),
-        modelUsed: modelInfo.name,
-        date: targetDate || new Date().toISOString().split('T')[0]
-      };
-
-      // Try to save to backend cache (fire and forget)
-      saveNewsToCache(result, language).catch(err => console.error("[NewsService] Failed to cache news:", err));
-
-      return result;
-    } catch (error: any) {
-      console.warn(`[NewsService] Attempt ${i + 1} (${modelInfo.name}) failed:`, error.message);
-      
-      if (i < models.length - 1) {
-        const isQuotaError = error.message?.includes("429") || error.message?.toLowerCase().includes("quota");
-        const delay = isQuotaError ? 3000 : 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Server error: ${response.status}`);
     }
-  }
 
-  // If all models failed, return mock data
-  console.error("[NewsService] All Gemini models failed. Returning mock news data.");
-  return getMockNews(language, targetDate || new Date().toISOString().split('T')[0]);
+    const data = await response.json();
+    const text = data.text || "{}";
+    
+    // Robustly clean JSON: remove markdown and escape literal control characters in strings
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+    }
+    
+    const sanitized = cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (m) => 
+      m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+    );
+
+    const parsed = JSON.parse(sanitized);
+    
+    console.log(`[NewsService] Successfully generated news via server proxy`);
+    
+    const result = {
+      local: parsed.local || [],
+      fbTrends: parsed.fbTrends || [],
+      igTrends: parsed.igTrends || [],
+      updatedAt: new Date().toISOString(),
+      modelUsed: data.modelUsed || "gemini-1.5-flash",
+      date: targetDate || new Date().toISOString().split('T')[0]
+    };
+
+    // Try to save to backend cache (fire and forget)
+    saveNewsToCache(result, language).catch(err => console.error("[NewsService] Failed to cache news:", err));
+
+    return result;
+  } catch (error: any) {
+    console.error(`[NewsService] Failed:`, error.message);
+    // If all models failed, return mock data
+    console.warn("[NewsService] Returning mock news data as fallback.");
+    return getMockNews(language, targetDate || new Date().toISOString().split('T')[0]);
+  }
 }
 
 async function saveNewsToCache(newsData: any, lang: string) {

@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import path from "path";
 import fs from "fs/promises";
+import express from "express";
 
 export async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3) {
   if (!apiKey) throw new Error("Gemini API Key is missing");
   
-  // Use the modern @google/genai SDK
+  // Use the modern @google/genai SDK as per the gemini-api skill
   const ai = new GoogleGenAI({ 
     apiKey,
     httpOptions: {
@@ -17,16 +18,19 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
 
   let lastError: any;
   
+  // Recommended model aliases from the gemini-api skill
   const fallbackModels = [
     "gemini-3-flash-preview",
     "gemini-flash-latest",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-1.5-flash-8b",
+    "gemini-3.1-flash-lite",
+    "gemini-1.5-pro-latest",
+    "gemini-3.1-pro-preview"
   ];
   
+  const requestedModel = options.model || "gemini-3-flash-preview";
   const modelsToTry = Array.from(new Set([
-    options.model || "gemini-3-flash-preview",
+    requestedModel,
     ...fallbackModels
   ]));
   
@@ -41,7 +45,7 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
       const response = await ai.models.generateContent({
         model: currentModel,
         contents: options.contents,
-        config: options.config || options.generationConfig || {
+        config: options.config || options.generationConfig || { 
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
@@ -66,9 +70,10 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
-      if (i < maxRetries) {
+      // For 429 errors with gemini-3 series, we might need a longer backoff or to switch models immediately
+      if (i < maxRetries || (isQuotaExceeded && i < totalAttempts)) {
         const baseDelay = isQuotaExceeded ? 5000 : (isUnavailable ? 2000 : (isNotFoundError ? 0 : 1000));
-        const delay = isNotFoundError ? 0 : ((Math.pow(2, i) * baseDelay) + Math.random() * 1000);
+        const delay = isNotFoundError ? 0 : ((Math.pow(2, i % 3) * baseDelay) + Math.random() * 1000);
         if (delay > 0) {
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -78,6 +83,20 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
     }
   }
   throw lastError;
+}
+
+export function setupGeminiRoute(app: express.Application) {
+  app.post("/api/gemini/generate", async (req, res) => {
+    try {
+      const apiKey = await getGeminiApiKey();
+      const { model, contents, config } = req.body;
+      const result = await callGeminiWithRetry(apiKey, { model, contents, config });
+      res.json(result);
+    } catch (e: any) {
+      console.error("[GeminiAPI] Error:", e);
+      res.status(500).json({ error: e.message || "Failed to generate content" });
+    }
+  });
 }
 
 export async function getGeminiApiKey(firebaseConfig?: any): Promise<string> {
