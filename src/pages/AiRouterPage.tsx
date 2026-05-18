@@ -53,7 +53,7 @@ export const AiRouterPage = () => {
   const [type, setType] = useState<'auto' | 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video'>('auto');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
-  const [credits, setCredits] = useState<number>(0);
+  const [credits, setCredits] = useState<number>(999999);
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<any>(null);
   const [inputImage, setInputImage] = useState<string | null>(null);
@@ -234,11 +234,7 @@ export const AiRouterPage = () => {
     }
 
     const estimatedCost = calculateCost();
-    if (credits < estimatedCost && !isApproved) {
-      setRequiredCredits(estimatedCost);
-      setShowNoCredits(true);
-      return;
-    }
+    // No cost restrictions in this version
 
     setLoading(true);
     setResult(null);
@@ -300,72 +296,14 @@ export const AiRouterPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 md:py-20 lg:px-8">
-      {/* Insufficient Credits Modal */}
-      <AnimatePresence>
-        {showNoCredits && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-2 bg-brand-500" />
-              <button 
-                onClick={() => setShowNoCredits(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-zinc-100 rounded-full transition-colors"
-              >
-                <X size={20} className="text-zinc-400" />
-              </button>
-
-              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CreditCard size={40} className="text-amber-500" />
-              </div>
-
-              <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight mb-4">
-                Insufficient Credits
-              </h3>
-              
-              <p className="text-zinc-500 font-bold mb-8">
-                This task requires <span className="text-brand-600">{requiredCredits} credits</span>, but you only have <span className="text-zinc-900">{credits}</span>. Please top up to continue.
-              </p>
-
-              <div className="space-y-4">
-                <button
-                  onClick={handleTopUp}
-                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-brand-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-brand-500/20"
-                >
-                  <MessageSquare size={18} />
-                  Top Up via Barnali Bot
-                </button>
-                <button
-                  onClick={() => setShowNoCredits(false)}
-                  className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-zinc-200 transition-all"
-                >
-                  Maybe Later
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100">
-            <div className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
-            <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Router Protection Active</span>
-          </div>
           <h1 className="text-4xl md:text-6xl font-black text-zinc-900 uppercase tracking-tighter leading-none">
             Intelligent <br /> <span className="text-brand-600">Assistant</span>
           </h1>
-          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-lg w-fit">
-            <CheckCircle2 size={12} className="text-emerald-600" />
-            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight">Protecting Developer API Budget</span>
-          </div>
           <p className="text-zinc-500 font-bold max-w-xl">
-            Access world-class AI models. We prioritize free and economy models to save you real-world costs. Premium models require your manual approval.
+            Access world-class AI models. High-performance models are available for free to all verified community members.
           </p>
         </div>
 
@@ -375,18 +313,11 @@ export const AiRouterPage = () => {
             <Zap size={32} className="text-brand-400" />
           </div>
           <div className="relative z-10 flex-1 text-center sm:text-left">
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">Barnali Wallet Balance</p>
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">Access Status</p>
             <div className="flex items-baseline justify-center sm:justify-start gap-2">
-              <span className="text-5xl font-black text-white tracking-tighter">{credits}</span>
-              <span className="text-sm font-black text-brand-400 uppercase tracking-widest">CR</span>
+              <span className="text-4xl font-black text-white tracking-tighter uppercase font-mono">Unlimited</span>
             </div>
           </div>
-          <button 
-            onClick={() => toast.info("Contact Barnali on Telegram to buy credits via GPay/PhonePe.")}
-            className="relative z-10 px-8 py-4 bg-brand-500 hover:bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 active:scale-95 whitespace-nowrap"
-          >
-            Add Credits
-          </button>
         </div>
       </div>
 

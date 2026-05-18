@@ -10,14 +10,10 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ShopProfilePage } from './pages/ShopProfilePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
-import { LogoFixerPage } from './pages/LogoFixerPage';
 import { AdminAnalytics } from './pages/AdminAnalytics';
 import { AdminUserManagement } from './pages/AdminUserManagement';
-import { FacebookVerificationPage } from './pages/FacebookVerificationPage';
 import { VamshavaliPage } from './pages/VamshavaliPage';
 import { AiRouterPage } from './pages/AiRouterPage';
-import { BotPage } from './components/BotPage';
-import UpgradeLeadPage from './pages/UpgradeLeadPage';
 import { AuthModal } from './components/AuthModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { VisitorCounter } from './components/VisitorCounter';
@@ -157,7 +153,6 @@ function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isVamshavali = location.pathname.startsWith('/vamshavali');
-  const isBotPage = location.pathname === '/bot' || location.pathname === '/chat';
 
   return (
     <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
@@ -169,7 +164,7 @@ function AppContent() {
       </div>
 
       {/* Navigation */}
-      {!isVamshavali && !isBotPage && (
+      {!isVamshavali && (
         <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-4 group cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>
@@ -196,7 +191,6 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
-                  { to: '/bot', label: t.nav.aiBot },
                   { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
                 ].map((link) => (
@@ -334,7 +328,6 @@ function AppContent() {
               { to: '/vamshavali', label: t.nav.vamshavali },
               { to: '/influencers', label: t.nav.influencers },
               { to: '/fact-check', label: t.nav.factCheck },
-              { to: '/bot', label: t.nav.aiBot },
               { to: '/ai-router', label: t.nav.aiRouter },
               { to: '/ponjika', label: t.nav.ponjika, isPonjika: true },
             ].map((link) => (
@@ -381,29 +374,24 @@ function AppContent() {
           <Route path="/ponjika" element={<PonjikaPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
-          <Route path="/logo-fixer" element={<LogoFixerPage />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/users" element={<AdminUserManagement />} />
-          <Route path="/facebook-verification" element={<FacebookVerificationPage />} />
           {/* Deep linking for news handled within components or via routes if needed */}
           <Route path="/news/:date/:tab/:index" element={<Home />} />
           <Route path="/vamshavali" element={<VamshavaliPage />} />
           <Route path="/vamshavali/v/:shareId" element={<VamshavaliPage isPublic />} />
-          <Route path="/bot" element={<BotPage />} />
-          <Route path="/chat" element={<BotPage />} />
           <Route path="/ai-router" element={<AiRouterPage />} />
-          <Route path="/upgrade" element={<UpgradeLeadPage />} />
         </Routes>
       </main>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setAuthModalOpen(false)} />
-      {!isVamshavali && !isBotPage && <LiveChatWidget />}
+      {!isVamshavali && <LiveChatWidget />}
       <InstallPrompt />
       <GlobalBookingAlert />
       <Toaster position="top-center" richColors />
 
       {/* Footer */}
-      {!isVamshavali && !isBotPage && (
+      {!isVamshavali && (
         <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
@@ -467,7 +455,6 @@ function AppContent() {
                   { to: '/vamshavali', label: t.nav.vamshavali },
                   { to: '/influencers', label: t.nav.influencers },
                   { to: '/fact-check', label: t.nav.factCheck },
-                  { to: '/bot', label: t.nav.aiBot },
                   { to: '/ai-router', label: t.nav.aiRouter },
                   { to: '/ponjika', label: t.nav.ponjika },
                 ].map((link) => (

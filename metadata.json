@@ -1,5 +1,6 @@
 {
   "name": "Barnia Digital Hub",
   "description": "The official community platform for Barnia, Ujirpur, and Nadia. Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156. Featuring Digital Vamshavali (Lineage Records), daily market prices at Barnia Bazar, village vehicle services, local influencers, and Bengali Ponjika.",
-  "requestFramePermissions": ["geolocation", "microphone"]
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

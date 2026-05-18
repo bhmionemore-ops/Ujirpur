@@ -107,7 +107,6 @@ export const translations = {
       factCheck: 'সনাতনী ফ্যাক্ট-চেক',
       vamshavali: 'বংশাবলী',
       aiRouter: 'এআই রাউটার হাব',
-      aiBot: 'এআই বট',
     },
     transport: {
       title: 'গ্রাম্য পরিবহন সেবা',
@@ -485,7 +484,6 @@ export const translations = {
       factCheck: 'Sanatani Fact Check',
       vamshavali: 'Family Tree',
       aiRouter: 'AI Router Hub',
-      aiBot: 'AI Bot',
     },
     transport: {
       title: 'Village Transport Service',
@@ -819,7 +817,6 @@ export const translations = {
       factCheck: 'सनातनी फैक्ट चेक',
       vamshavali: 'वंशावली',
       aiRouter: 'एआई राउटर हब',
-      aiBot: 'एआई बॉट',
     },
     transport: {
       title: 'ग्रामीण परिवहन सेवा',

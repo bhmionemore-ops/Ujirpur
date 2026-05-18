@@ -10,15 +10,17 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail, sendPasswordReset } = useFirebase();
+  const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail, sendPasswordReset, sendOTP, verifyOTP } = useFirebase();
   const { language } = useLanguage();
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'otp'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +46,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         await sendPasswordReset(email);
         setSuccess(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিঙ্ক আপনার ইমেইলে পাঠানো হয়েছে' : 'Password reset link sent to your email');
         setTimeout(() => setMode('login'), 3000);
+      } else if (mode === 'otp') {
+        if (!isOtpSent) {
+          const result = await sendOTP(email);
+          if (result.success) {
+            setIsOtpSent(true);
+            setSuccess(language === 'bn' ? 'ওটিপি পাঠানো হয়েছে!' : 'OTP Sent successfully!');
+          } else {
+            setError(result.error || 'Failed to send OTP');
+          }
+        } else {
+          await verifyOTP(email, otp);
+          onClose();
+        }
       }
     } catch (err: any) {
       console.error("Auth error:", err);
@@ -205,14 +220,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 ? (language === 'bn' ? 'স্বাগতম' : 'Welcome Back') 
                 : mode === 'signup' 
                   ? (language === 'bn' ? 'অ্যাকাউন্ট তৈরি করুন' : 'Create Account')
-                  : (language === 'bn' ? 'পাসওয়ার্ড রিসেট' : 'Reset Password')}
+                  : mode === 'otp'
+                    ? (language === 'bn' ? 'ওটিপি লগইন' : 'OTP Login')
+                    : (language === 'bn' ? 'পাসওয়ার্ড রিসেট' : 'Reset Password')}
             </h2>
             <p className="text-zinc-500 text-sm mt-3 font-medium">
               {mode === 'login'
                 ? (language === 'bn' ? 'আপনার অ্যাকাউন্টে লগইন করুন' : 'Sign in to your account to continue')
                 : mode === 'signup'
                   ? (language === 'bn' ? 'বর্নিয়া বাজার কমিউনিটিতে যোগ দিন' : 'Join the Barnia Bazar community today')
-                  : (language === 'bn' ? 'আপনার ইমেইল দিন রিসেট লিঙ্কের জন্য' : 'Enter your email to receive a reset link')}
+                  : mode === 'otp'
+                    ? (isOtpSent 
+                        ? (language === 'bn' ? 'ওটিপি কোডটি দিন' : 'Enter the code sent to your email')
+                        : (language === 'bn' ? 'আপনার ইমেইল দিন ওটিপি-র জন্য' : 'Enter your email to receive an OTP'))
+                    : (language === 'bn' ? 'আপনার ইমেইল দিন রিসেট লিঙ্কের জন্য' : 'Enter your email to receive a reset link')}
             </p>
           </div>
 
@@ -239,11 +260,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
+                disabled={isOtpSent && mode === 'otp'}
+                className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium disabled:opacity-50"
               />
             </div>
 
-            {mode !== 'forgot' && (
+            {mode === 'otp' && isOtpSent && (
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
+                <input
+                  type="text"
+                  placeholder={language === 'bn' ? 'ওটিপি কোড' : 'OTP Code'}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  maxLength={6}
+                  className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOtpSent(false);
+                      setOtp('');
+                    }}
+                    className="text-[10px] text-brand-600 hover:text-brand-700 font-bold uppercase tracking-wider"
+                  >
+                    {language === 'bn' ? 'ইমেইল পরিবর্তন করুন' : 'Change Email'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {mode !== 'forgot' && mode !== 'otp' && (
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
                 <input
@@ -308,7 +357,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     ? (language === 'bn' ? 'লগইন' : 'Sign In') 
                     : mode === 'signup' 
                       ? (language === 'bn' ? 'সাইন আপ' : 'Sign Up')
-                      : (language === 'bn' ? 'রিসেট লিঙ্ক পাঠান' : 'Send Reset Link')}
+                      : mode === 'otp'
+                        ? (isOtpSent ? (language === 'bn' ? 'ফিনিশ' : 'Verify & Login') : (language === 'bn' ? 'ওটিপি পাঠান' : 'Send OTP'))
+                        : (language === 'bn' ? 'রিসেট লিঙ্ক পাঠান' : 'Send Reset Link')}
                   <ArrowRight size={20} />
                 </>
               )}
@@ -359,6 +410,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   {language === 'bn' ? 'টেলিগ্রাম বটের সাথে কথা বলুন' : 'Chat with Telegram Bot'}
                 </a>
                 
+                <button
+                  onClick={() => {
+                    setError('');
+                    setSuccess('');
+                    setIsOtpSent(false);
+                    setMode(mode === 'otp' ? 'login' : 'otp');
+                  }}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-zinc-900 hover:bg-black rounded-2xl transition-all text-sm font-bold text-white active:scale-[0.98] shadow-lg shadow-zinc-900/20"
+                >
+                  <Mail size={20} />
+                  {mode === 'otp' 
+                    ? (language === 'bn' ? 'পাসওয়ার্ড দিয়ে লগইন করুন' : 'Sign in with Password')
+                    : (language === 'bn' ? 'ওটিপি দিয়ে লগইন করুন' : 'Sign in with OTP')}
+                </button>
+
                 <p className="text-[10px] text-zinc-400 font-medium text-center px-4">
                   {language === 'bn' 
                     ? 'ফেসবুক লগইন বর্তমানে মেটা (ফেসবুক) দ্বারা রিভিউ করা হচ্ছে। এটি কাজ না করলে অনুগ্রহ করে গুগল বা ইমেইল ব্যবহার করুন।' 
@@ -373,6 +440,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               onClick={() => {
                 setError('');
                 setSuccess('');
+                setIsOtpSent(false);
+                setOtp('');
                 if (mode === 'forgot') {
                   setMode('login');
                 } else {
@@ -381,7 +450,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               }}
               className="text-sm font-bold text-zinc-500 hover:text-brand-600 transition-colors block w-full"
             >
-              {mode === 'login'
+              {mode === 'login' || mode === 'otp'
                 ? (language === 'bn' ? 'অ্যাকাউন্ট নেই? সাইন আপ করুন' : "Don't have an account? Sign up")
                 : mode === 'signup'
                   ? (language === 'bn' ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'Already have an account? Sign in')

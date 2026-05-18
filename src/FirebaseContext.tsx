@@ -15,6 +15,8 @@ interface FirebaseContextType {
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOTP: (email: string, otp: string) => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -268,6 +270,45 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await firebaseReset(email);
   };
 
+  const sendOTP = async (email: string) => {
+    try {
+      const response = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error("[FirebaseContext] Error sending OTP:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const verifyOTP = async (email: string, otp: string) => {
+    try {
+      const response = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'Verification failed');
+
+      if (!data.customToken) {
+        throw new Error('Server returned success but no token was provided');
+      }
+
+      console.log(`[FirebaseContext] Received custom token (starts with ${data.customToken.substring(0, 10)}...)`);
+      const { signInWithCustomToken } = await import('firebase/auth');
+      await signInWithCustomToken(auth, data.customToken);
+      console.log("[FirebaseContext] OTP login successful");
+    } catch (error: any) {
+      console.error("[FirebaseContext] Error verifying OTP:", error);
+      throw error;
+    }
+  };
+
   return (
     <FirebaseContext.Provider value={{ 
       user, 
@@ -280,7 +321,9 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       signOut, 
       signInWithEmail, 
       signUpWithEmail,
-      sendPasswordReset
+      sendPasswordReset,
+      sendOTP,
+      verifyOTP
     }}>
       {children}
     </FirebaseContext.Provider>

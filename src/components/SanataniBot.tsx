@@ -17,7 +17,7 @@ async function callGeminiWithRetry(ai: GoogleGenAI, options: any, maxRetries = 3
   const modelName = options.model || "gemini-3-flash-preview";
   
   for (let i = 0; i <= maxRetries; i++) {
-    const currentModel = (i === 0) ? modelName : (i === 1) ? "gemini-2.0-flash" : "gemini-3.1-pro-preview";
+    const currentModel = (i > 1) ? "gemini-flash-latest" : modelName;
     try {
       console.log(`[Gemini-Frontend] Requesting ${currentModel}... (Attempt ${i+1})`);
       return await ai.models.generateContent({
