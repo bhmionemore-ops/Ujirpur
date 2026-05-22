@@ -45,24 +45,48 @@ export async function initSDKs() {
               credential: admin.credential.cert(serviceAccount),
               databaseURL: config.databaseURL
             });
-            setAdminDb(dbId ? admin.firestore(dbId) : admin.firestore());
-            console.log(`[Firebase] Admin SDK initialized via Service Account Key (DB: ${dbId || 'default'})`);
+            console.log(`[Firebase] Admin SDK initialized via Service Account Key`);
           } catch (e) {
             console.warn("[Firebase] Failed to parse service account key, initializing with default credentials...");
             admin.initializeApp({ projectId: config.projectId });
-            setAdminDb(dbId ? admin.firestore(dbId) : admin.firestore());
           }
         } else {
           admin.initializeApp({ projectId: config.projectId });
-          setAdminDb(dbId ? admin.firestore(dbId) : admin.firestore());
-          console.log(`[Firebase] Admin SDK initialized via Project ID (DB: ${dbId || 'default'})`);
+          console.log(`[Firebase] Admin SDK initialized via Project ID`);
         }
+      } else {
+        console.log(`[Firebase] Admin SDK already initialized. Apps: ${admin.apps.length}`);
+      }
+
+      // Always set the adminDb reference, even if already initialized
+      try {
+        const adb = dbId ? admin.firestore(dbId) : admin.firestore();
+        setAdminDb(adb);
+        console.log(`[Firebase] Admin DB reference set (DB: ${dbId || 'default'}). Valid: ${!!adb && typeof adb.collection === 'function'}`);
+      } catch (adminErr: any) {
+        console.warn("[Firebase] Failed to set Admin DB reference:", adminErr.message);
       }
 
       // Client SDK initialization
-      const clientApp = initializeClientApp(config);
-      setDb(dbId ? initializeFirestore(clientApp, dbId) : initializeFirestore(clientApp));
-      setClientAuth(getAuth(clientApp));
+      console.log(`[Firebase] Initializing/Checking Client SDK...`);
+      try {
+        const { getApp, getApps } = await import("firebase/app");
+        let clientApp;
+        if (!getApps().length) {
+          clientApp = initializeClientApp(config);
+          console.log("[Firebase] Client App newly initialized");
+        } else {
+          clientApp = getApp();
+          console.log("[Firebase] Using existing Client App");
+        }
+        
+        const firestore = dbId ? initializeFirestore(clientApp, dbId) : initializeFirestore(clientApp);
+        setDb(firestore);
+        setClientAuth(getAuth(clientApp));
+        console.log(`[Firebase] Client SDK reference set. Valid db: ${!!firestore}`);
+      } catch (clientErr: any) {
+        console.error("[Firebase] Client SDK initialization failed:", clientErr.message);
+      }
     }
 
     // Email

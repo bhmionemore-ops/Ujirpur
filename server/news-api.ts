@@ -4,8 +4,9 @@ import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { parseGeminiJson } from "./utils";
 import { FIRESTORE_SERVER_KEY } from "./constants";
 import { cleanupOldNews } from "./background-tasks";
+import * as DB from "./db";
 
-export function setupNewsRoutes(app: express.Application, db: any, adminDb: any, newsLocks: Map<string, number>, getCurrentNewsDate: () => string) {
+export function setupNewsRoutes(app: express.Application, _db: any, _adminDb: any, newsLocks: Map<string, number>, getCurrentNewsDate: () => string) {
   app.get("/api/news", async (req, res) => {
     const { date, lang, force } = req.query;
     if (!date) return res.status(400).json({ error: "Date is required" });
@@ -25,20 +26,18 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
 
     try {
       let data: any = null;
-      if (!force && adminDb) {
+      if (!force && DB.state.adminDb) {
         try {
-          const snap = await adminDb.collection("news").doc(docId).get();
+          const snap = await DB.state.adminDb.collection("news").doc(docId).get();
           if (snap.exists) data = snap.data();
         } catch (adminErr: any) {
           console.warn(`[NewsAPI] Admin SDK fetch failed (doc: ${docId}):`, adminErr.message);
-          // If it's a NOT_FOUND error for the database, we should probably set adminDb to null to stop future attempts?
-          // No, just log and continue to client fallback.
         }
       }
 
-      if (!data && !force && db) {
+      if (!data && !force && DB.state.db) {
         try {
-          const snap = await getDocFromServer(doc(db, "news", docId));
+          const snap = await getDocFromServer(doc(DB.state.db, "news", docId));
           if (snap.exists()) data = snap.data();
         } catch (clientErr: any) {
           console.warn(`[NewsAPI] Client SDK fetch failed (doc: ${docId}):`, clientErr.message);
@@ -87,9 +86,12 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
       }`;
 
       const response = await callGeminiWithRetry(apiKey, {
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: { 
+          temperature: 0.7,
+          responseMimeType: "application/json" 
+        }
       });
 
       const newsData = parseGeminiJson(response.text || '{}');
@@ -98,9 +100,9 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
       newsData.serverKey = FIRESTORE_SERVER_KEY;
 
       let saved = false;
-      if (adminDb) {
+      if (DB.state.adminDb) {
         try {
-          await adminDb.collection("news").doc(docId).set(newsData);
+          await DB.state.adminDb.collection("news").doc(docId).set(newsData);
           saved = true;
           console.log(`[NewsAPI] Generated news saved via Admin SDK for ${docId}`);
         } catch (e: any) {
@@ -108,9 +110,9 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
         }
       }
       
-      if (!saved && db) {
+      if (!saved && DB.state.db) {
         try {
-          await setDoc(doc(db, "news", docId), newsData);
+          await setDoc(doc(DB.state.db, "news", docId), newsData);
           saved = true;
           console.log(`[NewsAPI] Generated news saved via Client SDK for ${docId}`);
         } catch (e: any) {
@@ -141,18 +143,18 @@ export function setupNewsRoutes(app: express.Application, db: any, adminDb: any,
       };
 
       let saved = false;
-      if (adminDb) {
+      if (DB.state.adminDb) {
         try {
-          await adminDb.collection("news").doc(docId).set(dataToSave);
+          await DB.state.adminDb.collection("news").doc(docId).set(dataToSave);
           saved = true;
         } catch (e: any) {
           console.error(`[NewsAPI] Admin SDK cache save CRITICAL FAILURE:`, e);
         }
       }
       
-      if (!saved && db) {
+      if (!saved && DB.state.db) {
         try {
-          await setDoc(doc(db, "news", docId), dataToSave);
+          await setDoc(doc(DB.state.db, "news", docId), dataToSave);
           saved = true;
         } catch (e: any) {
           console.error(`[NewsAPI] Client SDK cache save CRITICAL FAILURE:`, e);

@@ -186,7 +186,7 @@ export const SanataniBot = () => {
     setResult(null);
     try {
       const response = await callGeminiWithRetry({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: `Fact check this claim: "${input}"`,
         config: {
           systemInstruction,

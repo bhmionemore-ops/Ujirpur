@@ -23,7 +23,7 @@ if (dns && (dns as any).setDefaultResultOrder) {
 }
 
 // Modular Imports
-import { db, adminDb, firebaseConfig } from "./server/db";
+import * as DB from "./server/db";
 import { initSDKs } from "./server/init";
 import { setupRoutes } from "./server/routes";
 import { setupGeminiRoute } from "./server/gemini";
@@ -54,19 +54,20 @@ async function startServer() {
 
   // Initialize SDKs
   await initSDKs();
+  console.log(`[Server] SDKs initialized. AdminDB: ${!!DB.state.adminDb}, ClientDB: ${!!DB.state.db}, Config: ${!!DB.state.firebaseConfig}`);
 
   // Telegram Webhook
   app.post("/api/webhooks/telegram", (req, res) => {
-    handleTelegramWebhook(req, res, lastPhotos, telegramLinkCache, db, adminDb);
+    handleTelegramWebhook(req, res, lastPhotos, telegramLinkCache, DB.db, DB.adminDb);
   });
 
   // Setup Routes
-  setupRoutes(app, db, adminDb, firebaseConfig, newsLocks);
+  setupRoutes(app, DB.db, DB.adminDb, DB.firebaseConfig, newsLocks);
   setupGeminiRoute(app);
-  setupAuthRoutes(app, db, adminDb, admin);
-  setupVamshavaliRoutes(app, db, adminDb, admin);
-  setupNewsRoutes(app, db, adminDb, newsLocks, getCurrentNewsDate);
-  setupAIRouter(app, db, adminDb, admin);
+  setupAuthRoutes(app, DB.db, DB.adminDb, admin);
+  setupVamshavaliRoutes(app, DB.db, DB.adminDb, admin);
+  setupNewsRoutes(app, DB.db, DB.adminDb, newsLocks, getCurrentNewsDate);
+  setupAIRouter(app, DB.db, DB.adminDb, admin);
   setupNumerologyRoutes(app);
   setupAdminRoutes(app, newsLocks);
 

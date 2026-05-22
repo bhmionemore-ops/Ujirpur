@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import path from "path";
 import fs from "fs/promises";
 import express from "express";
@@ -6,9 +6,10 @@ import express from "express";
 export async function callGeminiWithRetry(apiKey: string, options: any, maxRetries = 3) {
   if (!apiKey) throw new Error("Gemini API Key is missing");
   
-  // Use the modern @google/genai SDK as per the gemini-api skill
-  const ai = new GoogleGenAI({ 
+  // Use the modern @google/genai SDK
+  const ai = new GoogleGenAI({
     apiKey,
+    apiVersion: 'v1beta',
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
@@ -20,12 +21,14 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
   
   // Recommended model aliases from the gemini-api skill
   const fallbackModels = [
-    "gemini-3-flash-preview",
-    "gemini-flash-latest",
-    "gemini-1.5-flash-8b",
-    "gemini-3.1-flash-lite",
-    "gemini-1.5-pro-latest",
-    "gemini-3.1-pro-preview"
+    "gemini-2.0-flash-exp",     // Experimental fallback (Higher quota usually)
+    "gemini-2.0-flash",         // Newer stable if available
+    "gemini-1.5-flash",         // Solid 15RPM fallback
+    "gemini-1.5-flash-8b",      // High throughput
+    "gemini-3.1-flash-lite",    // Lightweight fallback
+    "gemini-flash-latest",      // Alias
+    "gemini-3-flash-preview",   // Low quota (20/day) - move to end
+    "gemini-exp-1206",          // Experimental fallback
   ];
   
   const requestedModel = options.model || "gemini-3-flash-preview";
@@ -34,22 +37,25 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
     ...fallbackModels
   ]));
   
-  const totalAttempts = Math.max(modelsToTry.length, maxRetries + 1);
+  // Try models in rotation up to (maxRetries + 1) cycles or until exhausted
+  const totalAttempts = modelsToTry.length * (maxRetries + 1);
+  const backoffDelays = [1000, 2000, 4000, 8000];
   
   for (let i = 0; i < totalAttempts; i++) {
     const currentModel = modelsToTry[i % modelsToTry.length];
+    const cycle = Math.floor(i / modelsToTry.length);
     
     try {
-      console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${maxRetries+1})`);
+      console.log(`[Gemini] Requesting ${currentModel}... (Attempt ${i+1}/${totalAttempts}, Cycle ${cycle+1})`);
       
-      const response = await ai.models.generateContent({
+      const response: GenerateContentResponse = await ai.models.generateContent({
         model: currentModel,
         contents: options.contents,
-        config: options.config || options.generationConfig || { 
+        config: options.config || options.generationConfig || {
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
-        }
+        },
       });
       
       const textValue = response.text;
@@ -60,7 +66,6 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
       }
       
       console.warn(`[Gemini] ${currentModel} returned empty response.`);
-      continue;
     } catch (error: any) {
       lastError = error;
       const errorStr = (error?.message || String(error)).toLowerCase();
@@ -70,16 +75,39 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
-      // For 429 errors with gemini-3 series, we might need a longer backoff or to switch models immediately
-      if (i < maxRetries || (isQuotaExceeded && i < totalAttempts)) {
-        const baseDelay = isQuotaExceeded ? 5000 : (isUnavailable ? 2000 : (isNotFoundError ? 0 : 1000));
-        const delay = isNotFoundError ? 0 : ((Math.pow(2, i % 3) * baseDelay) + Math.random() * 1000);
+      if (i < totalAttempts - 1) {
+        let delay = 0;
+        if (isQuotaExceeded) {
+          // Check for retryDelay in the error details if available
+          let retryAfter = 0;
+          try {
+            // Some versions of the SDK or direct API responses include structured error data
+            const match = errorStr.match(/retrydelay["\s:]+["'](\d+)s/);
+            if (match && match[1]) {
+              retryAfter = parseInt(match[1]) * 1000;
+              console.log(`[Gemini] Detected retrydelay of ${retryAfter}ms from error message.`);
+            }
+          } catch (e) {}
+
+          // Robust backoff for quota
+          // If we have a retryAfter, we use it, otherwise use cycle-based backoff
+          const cycleDelay = cycle === 0 ? 500 : backoffDelays[Math.min(cycle - 1, backoffDelays.length - 1)];
+          delay = Math.max(cycleDelay, retryAfter > 0 && retryAfter < 10000 ? retryAfter : 0);
+          
+          if (delay > 0) {
+            console.log(`[Gemini] Quota exceeded. Waiting ${delay}ms before trying ${modelsToTry[(i + 1) % modelsToTry.length]}.`);
+          }
+        } else if (isUnavailable || isNotFoundError) {
+          delay = isNotFoundError ? 0 : 1000;
+        } else {
+          delay = 1000;
+        }
+
         if (delay > 0) {
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         continue;
       }
-      throw error;
     }
   }
   throw lastError;

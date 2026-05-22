@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import * as DB from "./db";
 
 export async function executeAIRouting(userId: string, task: string, type: string, inputImage: string | null, approved: boolean, userData: any) {
   const credits = userData.credits || 0;
@@ -25,7 +26,7 @@ export async function executeAIRouting(userId: string, task: string, type: strin
   };
 }
 
-export function setupAIRouter(app: any, db: any, adminDb: any, admin: any) {
+export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
   app.post("/api/ai-router", async (req: any, res: any) => {
     try {
       const { userId, task, type, approved } = req.body;

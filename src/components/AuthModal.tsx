@@ -29,26 +29,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
+      const emailTrimmed = email.toLowerCase().trim();
       if (mode === 'login') {
-        await signInWithEmail(email, password);
+        await signInWithEmail(emailTrimmed, password);
         onClose();
       } else if (mode === 'signup') {
         if (password.length < 6) {
           throw new Error(language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters');
         }
-        await signUpWithEmail(email, password, name);
+        await signUpWithEmail(emailTrimmed, password, name);
         setSuccess(language === 'bn' 
           ? 'অ্যাকাউন্ট তৈরি হয়েছে! আপনার ইমেইল যাচাই করতে একটি লিঙ্ক পাঠানো হয়েছে।' 
           : 'Account created! A verification link has been sent to your email.');
         // Don't close immediately so they can see the success message
         setTimeout(() => onClose(), 3000);
       } else if (mode === 'forgot') {
-        await sendPasswordReset(email);
+        await sendPasswordReset(emailTrimmed);
         setSuccess(language === 'bn' ? 'পাসওয়ার্ড রিসেট লিঙ্ক আপনার ইমেইলে পাঠানো হয়েছে' : 'Password reset link sent to your email');
         setTimeout(() => setMode('login'), 3000);
       } else if (mode === 'otp') {
         if (!isOtpSent) {
-          const result = await sendOTP(email);
+          const result = await sendOTP(emailTrimmed);
           if (result.success) {
             setIsOtpSent(true);
             setSuccess(language === 'bn' ? 'ওটিপি পাঠানো হয়েছে!' : 'OTP Sent successfully!');
@@ -56,7 +57,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             setError(result.error || 'Failed to send OTP');
           }
         } else {
-          await verifyOTP(email, otp);
+          await verifyOTP(emailTrimmed, otp.trim());
           onClose();
         }
       }
@@ -169,11 +170,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const handleAuthError = (e: any) => {
-      setError(e.detail || 'Authentication failed');
+      const msg = e.detail || 'Authentication failed';
+      setError(msg);
       setLoading(false);
     };
+    
+    const handleAuthWarning = (e: any) => {
+      const msg = e.detail;
+      setError(msg);
+      // We don't set loading to false here because the process might still be finishing
+    };
+
     window.addEventListener('auth-error', handleAuthError);
-    return () => window.removeEventListener('auth-error', handleAuthError);
+    window.addEventListener('auth-warning', handleAuthWarning);
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+      window.removeEventListener('auth-warning', handleAuthWarning);
+    };
   }, []);
 
   const handleFacebookSignIn = async () => {
@@ -266,18 +279,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
 
             {mode === 'otp' && isOtpSent && (
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder={language === 'bn' ? 'ওটিপি কোড' : 'OTP Code'}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                  maxLength={6}
-                  className="w-full pl-12 pr-4 py-4 bg-zinc-50/50 border border-zinc-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm font-medium"
-                />
-                <div className="flex justify-end mt-2">
+              <div className="space-y-6">
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-500 transition-colors" size={18} />
+                  <input
+                    type="text"
+                    placeholder="0 0 0 0 0 0"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    required
+                    maxLength={6}
+                    className="w-full pl-12 pr-4 py-6 bg-zinc-50 border-2 border-zinc-200 rounded-3xl focus:outline-none focus:border-brand-500 transition-all text-4xl text-center font-black tracking-[0.2em] text-brand-600 shadow-inner"
+                  />
+                </div>
+                <div className="flex justify-between items-center px-2">
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Enter 6-digit code</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -326,10 +342,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 text-red-500 text-xs bg-red-50 p-4 rounded-2xl border border-red-100"
+                className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3"
               >
-                <AlertCircle size={16} />
-                <span className="font-medium leading-tight">{error}</span>
+                <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={16} />
+                <div className="flex-1">
+                  <span className="text-xs text-red-600 font-medium leading-tight block">{error}</span>
+                  {(error.includes('identitytoolkit.googleapis.com') || error.includes('Identity Toolkit API')) && (
+                    <a 
+                      href="https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 text-[10px] font-bold text-red-700 underline hover:text-red-800"
+                    >
+                      Enable API in GCP Console →
+                    </a>
+                  )}
+                </div>
               </motion.div>
             )}
 

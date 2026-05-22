@@ -359,7 +359,7 @@ service cloud.firestore {
     }
 
     match /vehicles/{vehicleId} {
-      allow read: if isAuthenticated();
+      allow read: if true; // Publicly viewable for booking search
       allow create: if isAuthenticated() && isValidVehicle(request.resource.data);
       allow update: if isAuthenticated() && (resource.data.driverUid == request.auth.uid || isAdmin()) && isValidVehicle(request.resource.data);
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.driverUid == request.auth.uid);

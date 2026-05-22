@@ -17,8 +17,16 @@ export function captureLog(level: string, msg: string, obj?: any) {
 
 export async function robustSendMail(mailOptions: any) {
   // Update credentials just in case env changed
-  emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
-  emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+  emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
+  emailPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").trim();
+
+  if (!emailPass) {
+    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS is empty. Sending will likely fail.");
+    captureLog('WARN', 'EMAIL_PASS is empty');
+  } else if (emailPass.includes('@')) {
+    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS contains '@'. It looks like an email address instead of an App Password.");
+    captureLog('WARN', 'EMAIL_PASS looks like an email address');
+  }
 
   const attempts = [
     { host: smtpIps[0], port: 465, secure: true, label: 'IP1-SSL-465' },

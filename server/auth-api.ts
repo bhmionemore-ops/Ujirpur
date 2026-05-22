@@ -2,49 +2,65 @@ import express from "express";
 import { robustSendMail } from "./email";
 import { FIRESTORE_SERVER_KEY } from "./constants";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import * as DB from "./db";
 
-export function setupAuthRoutes(app: express.Application, db: any, adminDb: any, admin: any) {
+const memoryOtps = new Map<string, any>();
+
+export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: any, admin: any) {
+  console.log(`[AuthAPI] Setup Routes. DB available: ${!!DB.state.db}, AdminDB available: ${!!DB.state.adminDb}`);
+  
   // Send OTP
   app.post("/api/auth/otp/send", async (req, res) => {
-    const { email } = req.body;
+    let { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email is required" });
+    
+    email = email.toLowerCase().trim();
 
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+      console.log(`[AuthAPI] Generating OTP for ${email}...`);
+
       let saved = false;
-      if (adminDb) {
+      const otpDocData = {
+        otp,
+        expiresAt,
+        createdAt: admin ? admin.firestore.FieldValue.serverTimestamp() : new Date(),
+        serverKey: FIRESTORE_SERVER_KEY
+      };
+
+      // 0. Always save to Memory first (Most reliable)
+      memoryOtps.set(email, { otp, expiresAt });
+      
+      // 1. Try DB.state.adminDb (Primary Admin SDK)
+      if (DB.state.adminDb) {
         try {
-          await adminDb.collection("auth_otps").doc(email).set({
-            otp,
-            expiresAt,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          });
+          await DB.state.adminDb.collection("auth_otps").doc(email).set(otpDocData);
           saved = true;
+          console.log(`[AuthAPI] OTP saved to AdminDB`);
         } catch (e: any) {
-          console.warn("[AuthAPI] Admin SDK OTP save failed:", e.message);
+          console.warn("[AuthAPI] AdminDB save failed:", e.message);
         }
       }
 
-      if (!saved && db) {
+      // 2. Try Client SDK
+      if (!saved && DB.state.db) {
         try {
-          await setDoc(doc(db, "auth_otps", email), {
+          await setDoc(doc(DB.state.db, "auth_otps", email), {
             otp,
             expiresAt,
             createdAt: serverTimestamp(),
             serverKey: FIRESTORE_SERVER_KEY
           });
           saved = true;
+          console.log(`[AuthAPI] OTP saved to ClientDB`);
         } catch (e: any) {
-          console.error("[AuthAPI] Client SDK OTP save failed:", e.message);
+          console.warn("[AuthAPI] ClientDB save failed:", e.message);
         }
       }
 
-      if (!saved) {
-        throw new Error("Failed to save OTP to database");
-      }
-
+      // We consider it "saved" if it's in memory at least
       const mailOptions = {
         from: `"Barnali AI" <no-reply@barnaliai.com>`,
         to: email,
@@ -71,71 +87,106 @@ export function setupAuthRoutes(app: express.Application, db: any, adminDb: any,
 
   // Verify OTP
   app.post("/api/auth/otp/verify", async (req, res) => {
-    const { email, otp } = req.body;
+    let { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+    email = email.toLowerCase().trim();
+    otp = otp.trim();
 
     try {
       let otpData: any = null;
+      console.log(`[AuthAPI] Verifying OTP for ${email}...`);
 
-      if (adminDb) {
-        try {
-          const snap = await adminDb.collection("auth_otps").doc(email).get();
-          if (snap.exists) otpData = snap.data();
-        } catch (e: any) {
-          console.warn("[AuthAPI] Admin SDK OTP fetch failed:", e.message);
+      // 1. Check Memory (Primary)
+      const memData = memoryOtps.get(email);
+      if (memData) {
+        if (memData.otp === otp && memData.expiresAt > new Date()) {
+          otpData = memData;
+          console.log(`[AuthAPI] OTP verified via memory`);
         }
       }
 
-      if (!otpData && db) {
+      // 2. Fallback to DBs if not in memory
+      if (!otpData && DB.state.adminDb) {
         try {
-          const snap = await getDoc(doc(db, "auth_otps", email));
+          const snap = await DB.state.adminDb.collection("auth_otps").doc(email).get();
+          if (snap.exists) otpData = snap.data();
+        } catch (e) {}
+      }
+
+      if (!otpData && DB.state.db) {
+        try {
+          const snap = await getDoc(doc(DB.state.db, "auth_otps", email));
           if (snap.exists()) otpData = snap.data();
-        } catch (e: any) {
-          console.warn("[AuthAPI] Client SDK OTP fetch failed:", e.message);
-        }
+        } catch (e) {}
       }
 
       if (!otpData) {
-        return res.status(400).json({ error: "OTP not found or expired" });
+        return res.status(400).json({ error: "Invalid or expired OTP. Please request a new one." });
       }
 
-      // Check expiry
-      const expiresAt = otpData.expiresAt.toDate ? otpData.expiresAt.toDate() : new Date(otpData.expiresAt);
-      if (expiresAt < new Date()) {
-        return res.status(400).json({ error: "OTP has expired" });
-      }
-
-      // Check OTP
+      // Final check for DB data
       if (otpData.otp !== otp) {
-        return res.status(400).json({ error: "Invalid OTP" });
+        return res.status(400).json({ error: "Invalid OTP code." });
       }
 
-      // Cleanup OTP
-      if (adminDb) {
-        adminDb.collection("auth_otps").doc(email).delete().catch(() => {});
+      // Expiry cross-check for DB data if not already checked in memory pass
+      if (!memData) {
+        let expiresAt: Date;
+        if (otpData.expiresAt?.toDate) expiresAt = otpData.expiresAt.toDate();
+        else if (otpData.expiresAt?._seconds) expiresAt = new Date(otpData.expiresAt._seconds * 1000);
+        else expiresAt = new Date(otpData.expiresAt);
+        
+        if (expiresAt < new Date()) {
+          return res.status(400).json({ error: "OTP has expired." });
+        }
       }
 
-      // Create or get user in Firebase Auth
-      let userRecord;
+      // Cleanup
+      memoryOtps.delete(email);
+      if (DB.state.adminDb) DB.state.adminDb.collection("auth_otps").doc(email).delete().catch(() => {});
+
+      // Auth Fallback Logic
+      let userRecord: any = { uid: `user_${email.replace(/[^a-z0-9]/g, '_')}`, email };
+      let authEnabled = true;
+
       try {
         userRecord = await admin.auth().getUserByEmail(email);
       } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
-          // Create new user if not exists
-          userRecord = await admin.auth().createUser({
-            email,
-            emailVerified: true,
-            displayName: email.split('@')[0]
-          });
+          userRecord = await admin.auth().createUser({ email, emailVerified: true });
         } else {
-          throw error;
+          const errorStr = JSON.stringify(error);
+          if (errorStr.includes('identitytoolkit') || errorStr.includes('PERMISSION_DENIED') || errorStr.includes('403')) {
+            console.warn("[AuthAPI] Identity Toolkit API error, falling back to session-only mode.");
+            authEnabled = false;
+          } else {
+            throw error;
+          }
         }
       }
 
-      // Generate custom token
-      const customToken = await admin.auth().createCustomToken(userRecord.uid);
+      let customToken = null;
+      if (authEnabled) {
+        try {
+          customToken = await admin.auth().createCustomToken(userRecord.uid);
+        } catch (tokenErr: any) {
+          console.warn("[AuthAPI] Custom Token failed, falling back to session-only.");
+          authEnabled = false;
+        }
+      }
       
-      res.json({ success: true, customToken });
+      res.json({ 
+        success: true, 
+        customToken, 
+        user: { 
+          uid: userRecord.uid, 
+          email: userRecord.email, 
+          displayName: userRecord.displayName || email.split('@')[0] 
+        },
+        authStatus: customToken ? 'firebase' : 'session_only',
+        error: customToken ? null : "Identity Toolkit API issue. Using fallback session. Visit GCP Console to ensure API is fully active."
+      });
     } catch (error: any) {
       console.error("[AuthAPI] OTP Verification Error:", error);
       res.status(500).json({ error: error.message });

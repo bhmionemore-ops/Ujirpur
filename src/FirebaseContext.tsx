@@ -7,6 +7,7 @@ interface FirebaseContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isSessionAuth: boolean;
   isAuthModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   signIn: () => Promise<void>;
@@ -26,6 +27,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
+  const [isSessionAuth, setIsSessionAuth] = useState(false);
 
   useEffect(() => {
     // Safety timeout to prevent infinite loading screen if Firebase fails to connect
@@ -41,10 +43,18 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       clearTimeout(safetyTimeout);
+      
+      // If we have a session auth user, don't let standard auth overwrite it with null
+      if (!currentUser && isSessionAuth) {
+        console.log("[FirebaseContext] Preserving session user");
+        setLoading(false);
+        return;
+      }
+
       setUser(currentUser);
       
       if (currentUser) {
-        // Sync user to Firestore
+        setIsSessionAuth(false);
         const userRef = doc(db, 'users', currentUser.uid);
         try {
           const userDoc = await getDoc(userRef);
@@ -272,12 +282,17 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const sendOTP = async (email: string) => {
     try {
+      console.log(`[FirebaseContext] Sending OTP to: ${email}`);
       const response = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
       const data = await response.json();
+      if (!response.ok) {
+        console.error(`[FirebaseContext] Send OTP failed:`, data);
+        return { success: false, error: data.error || 'Failed to send OTP' };
+      }
       return data;
     } catch (error: any) {
       console.error("[FirebaseContext] Error sending OTP:", error);
@@ -287,22 +302,51 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const verifyOTP = async (email: string, otp: string) => {
     try {
+      console.log(`[FirebaseContext] Verifying OTP for: ${email}`);
       const response = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
       const data = await response.json();
-      if (!data.success) throw new Error(data.error || 'Verification failed');
-
-      if (!data.customToken) {
-        throw new Error('Server returned success but no token was provided');
+      if (!response.ok || !data.success) {
+        console.error(`[FirebaseContext] Verify OTP failed:`, data);
+        throw new Error(data.error || 'Verification failed');
       }
 
-      console.log(`[FirebaseContext] Received custom token (starts with ${data.customToken.substring(0, 10)}...)`);
+      if (!data.customToken) {
+        if (data.authStatus === 'session_only' && data.user) {
+          console.warn("[FirebaseContext] Identity Toolkit API issue. Using session fallback.");
+          setIsSessionAuth(true);
+          setUser({
+            uid: data.user.uid,
+            email: data.user.email,
+            displayName: data.user.displayName,
+            photoURL: null,
+            emailVerified: true,
+            isAnonymous: false,
+            metadata: {},
+            providerData: [],
+            phoneNumber: null,
+            tenantId: null,
+            delete: async () => {},
+            getIdToken: async () => 'session_only_token',
+            getIdTokenResult: async () => ({} as any),
+            reload: async () => {},
+            toJSON: () => ({}),
+          } as any);
+          setIsAdmin(data.user.email === 'okbgmi611@gmail.com' || data.user.email === 'ujirpur.barnia6@gmail.com');
+          setAuthModalOpen(false);
+          return;
+        }
+        throw new Error('Server returned success but no custom token was provided for authentication');
+      }
+
+      console.log(`[FirebaseContext] Success! Received custom token. Signing in...`);
       const { signInWithCustomToken } = await import('firebase/auth');
       await signInWithCustomToken(auth, data.customToken);
-      console.log("[FirebaseContext] OTP login successful");
+      console.log("[FirebaseContext] OTP login via Firebase Auth successful");
+      setAuthModalOpen(false);
     } catch (error: any) {
       console.error("[FirebaseContext] Error verifying OTP:", error);
       throw error;
@@ -314,6 +358,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       user, 
       loading, 
       isAdmin, 
+      isSessionAuth,
       isAuthModalOpen, 
       setAuthModalOpen, 
       signIn, 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp, updateDoc, deleteDoc, doc, getDoc, where, getDocs } from 'firebase/firestore';
-import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap, Landmark, Key, Share2 } from 'lucide-react';
+import { Users, Globe, Clock, Activity, MapPin, Calendar, ArrowLeft, ExternalLink, MessageSquare, User, Database, Loader2, TrendingUp, Facebook, Mail, Trash2, Eye, CheckCircle, FileText, Download, Zap, Landmark, Key, Share2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { useFirebase } from '../FirebaseContext';
@@ -84,7 +84,7 @@ interface TelegramUser {
 }
 
 export const AdminAnalytics = () => {
-  const { isAdmin, user } = useFirebase();
+  const { isAdmin, user, isSessionAuth } = useFirebase();
   const { language, t: globalT } = useLanguage();
   const vt = globalT.vamshavali;
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
@@ -112,17 +112,6 @@ export const AdminAnalytics = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [userLoading, setUserLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    setUserLoading(true);
-    const qUsers = query(collection(db, 'users'), orderBy('displayName', 'asc'));
-    const unsubUsers = onSnapshot(qUsers, (snap) => {
-      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setUserLoading(false);
-    });
-    return () => unsubUsers();
-  }, [isAdmin]);
 
   const toggleVerification = async (userId: string, currentStatus: boolean) => {
     try {
@@ -309,98 +298,134 @@ export const AdminAnalytics = () => {
   useEffect(() => {
     if (!isAdmin) return;
 
-    // Fetch visitor sessions
-    const qSessions = query(collection(db, 'visitor_sessions'), orderBy('lastSeen', 'desc'), limit(100));
-    const unsubSessions = onSnapshot(qSessions, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VisitorSession));
-      setSessions(docs);
-      setLoading(false);
-    }, (err) => {
+    const fetchCol = async (name: string) => {
       try {
-        handleFirestoreError(err, OperationType.GET, 'visitor_sessions');
-      } catch (e) {
-        setError(e as Error);
+        const res = await fetch(`/api/admin/data/${name}`);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (err) {
+        return null;
       }
+    };
+
+    const loadAllData = async () => {
+      setLoading(true);
+      const [emailData, aiReqData, usageData, sessionData, chatData, userData, keyData, tgData] = await Promise.all([
+        fetchCol('inbound_emails'),
+        fetchCol('pending_ai_requests'),
+        fetchCol('usage'),
+        fetchCol('visitor_sessions'),
+        fetchCol('support_messages'),
+        fetchCol('users'),
+        fetchCol('api_keys'),
+        fetchCol('telegram_users')
+      ]);
+
+      if (emailData) setInboundEmails(emailData);
+      if (aiReqData) setAiRequests(aiReqData);
+      if (usageData) setAiUsage(usageData);
+      if (sessionData) setSessions(sessionData);
+      if (chatData) setChatMessages(chatData);
+      if (userData) setUsers(userData);
+      if (keyData) setApiKeys(keyData);
+      if (tgData) setTelegramUsers(tgData);
+      
       setLoading(false);
-    });
+    };
 
-    // Fetch chat messages
-    const qChats = query(collection(db, 'support_messages'), orderBy('createdAt', 'desc'), limit(500));
-    const unsubChats = onSnapshot(qChats, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-      setChatMessages(docs);
-    }, (err) => {
-      console.error("Error fetching chats:", err);
-    });
+    // If we are in session auth, ONLY use API (Firestore will definitely fail)
+    if (isSessionAuth) {
+      console.log("[AdminAnalytics] Session-only mode detected. Fetching via API proxy.");
+      loadAllData();
+    } else {
+      // Standard flow: try Firestore first, but attach error handlers that fallback to API
+      
+      // Visitor sessions
+      const qSessions = query(collection(db, 'visitor_sessions'), orderBy('lastSeen', 'desc'), limit(100));
+      const unsubSessions = onSnapshot(qSessions, (snapshot) => {
+        setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VisitorSession)));
+        setLoading(false);
+      }, async (err) => {
+        console.warn("Firestore sessions fail, retrying via API:", err.message);
+        const data = await fetchCol('visitor_sessions');
+        if (data) setSessions(data);
+        setLoading(false);
+      });
 
-    // Fetch inbound emails
-    const qEmails = query(collection(db, 'inbound_emails'), orderBy('timestamp', 'desc'), limit(100));
-    const unsubEmails = onSnapshot(qEmails, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InboundEmail));
-      setInboundEmails(docs);
-    }, (err) => {
-      try {
-        handleFirestoreError(err, OperationType.GET, 'inbound_emails');
-      } catch (e) {
-        setError(e as Error);
-      }
-    });
+      // Chat Messages
+      const qChats = query(collection(db, 'support_messages'), orderBy('createdAt', 'desc'), limit(500));
+      const unsubChats = onSnapshot(qChats, (snapshot) => {
+        setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage)));
+      }, async () => {
+        const data = await fetchCol('support_messages');
+        if (data) setChatMessages(data);
+      });
 
-    // Fetch AI Requests
-    const qAi = query(collection(db, 'pending_ai_requests'), orderBy('createdAt', 'desc'), limit(50));
-    const unsubAi = onSnapshot(qAi, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIRequest));
-      setAiRequests(docs);
-    }, (err) => {
-      console.error("Error fetching AI requests:", err);
-    });
+      // Emails
+      const qEmails = query(collection(db, 'inbound_emails'), orderBy('timestamp', 'desc'), limit(100));
+      const unsubEmails = onSnapshot(qEmails, (snapshot) => {
+        setInboundEmails(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InboundEmail)));
+      }, async () => {
+        const data = await fetchCol('inbound_emails');
+        if (data) setInboundEmails(data);
+      });
 
-    // Fetch AI Usage Logs
-    const qUsage = query(collection(db, 'usage'), orderBy('timestamp', 'desc'), limit(100));
-    const unsubUsage = onSnapshot(qUsage, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIUsageLog));
-      setAiUsage(docs);
-    }, (err) => {
-      console.error("Error fetching AI usage logs:", err);
-    });
+      // AI Requests
+      const qAi = query(collection(db, 'pending_ai_requests'), orderBy('createdAt', 'desc'), limit(50));
+      const unsubAi = onSnapshot(qAi, (snapshot) => {
+        setAiRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIRequest)));
+      }, async () => {
+        const data = await fetchCol('pending_ai_requests');
+        if (data) setAiRequests(data);
+      });
 
-    // Fetch API Keys
-    const qKeys = collection(db, 'api_keys');
-    const unsubKeys = onSnapshot(qKeys, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as APIKey));
-      setApiKeys(docs);
-    });
+      // API Keys
+      const qKeys = collection(db, 'api_keys');
+      const unsubKeys = onSnapshot(qKeys, (snapshot) => {
+        setApiKeys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as APIKey)));
+      }, async () => {
+        const data = await fetchCol('api_keys');
+        if (data) setApiKeys(data);
+      });
 
-    // Fetch Telegram Users
-    const qTg = collection(db, 'telegram_users');
-    const unsubTg = onSnapshot(qTg, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TelegramUser));
-      setTelegramUsers(docs);
-    });
+      // Telegram Users
+      const qTg = collection(db, 'telegram_users');
+      const unsubTg = onSnapshot(qTg, (snapshot) => {
+        setTelegramUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TelegramUser)));
+      }, async () => {
+        const data = await fetchCol('telegram_users');
+        if (data) setTelegramUsers(data);
+      });
 
-    // Fetch diagnostic data
+      // AI Usage
+      const qUsage = query(collection(db, 'usage'), orderBy('timestamp', 'desc'), limit(100));
+      const unsubUsage = onSnapshot(qUsage, (snapshot) => {
+        setAiUsage(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIUsageLog)));
+      }, async () => {
+        const data = await fetchCol('usage');
+        if (data) setAiUsage(data);
+      });
+
+      return () => {
+        unsubSessions();
+        unsubChats();
+        unsubEmails();
+        unsubAi();
+        unsubKeys();
+        unsubTg();
+        unsubUsage();
+      };
+    }
+
+    // Diagnostic fetch always needed
     const fetchDiag = async () => {
       try {
         const res = await fetch('/api/admin/diag');
-        if (res.ok) {
-          const data = await res.json();
-          setDiagData(data);
-        }
-      } catch (err) {
-        console.error("Error fetching diagnostic data:", err);
-      }
+        if (res.ok) setDiagData(await res.json());
+      } catch (err) {}
     };
     fetchDiag();
-
-    return () => {
-      unsubSessions();
-      unsubChats();
-      unsubEmails();
-      unsubAi();
-      unsubUsage();
-      unsubKeys();
-    };
-  }, [isAdmin]);
+  }, [isAdmin, isSessionAuth]);
 
   const handleDeleteEmail = async (id: string) => {
     if (!confirm("Are you sure you want to delete this email?")) return;
@@ -586,13 +611,41 @@ export const AdminAnalytics = () => {
               
               <div className="flex items-center gap-4">
                 {activeTab === 'overview' && diagData && (
-                  <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${diagData.emailConfigured ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <Activity size={20} className={diagData.emailConfigured ? 'text-green-600' : 'text-red-600'} />
+                  <div className="flex items-center gap-4">
+                    {diagData.identityToolkitStatus === 'disabled' && (
+                      <div className="px-6 py-3 bg-red-50 border-2 border-red-200 rounded-2xl flex items-center gap-3 animate-pulse">
+                        <AlertCircle className="text-red-500" size={20} />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">CRITICAL ERROR</span>
+                          <span className="text-xs font-bold text-red-700">Identity Toolkit API is Disabled</span>
+                          <a 
+                            href="https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[9px] text-red-800 underline uppercase font-black mt-0.5"
+                          >
+                            Enable API in GCP Console →
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${diagData.emailPassConfigured ? 'bg-green-50' : 'bg-amber-50'}`}>
+                        <Mail size={20} className={diagData.emailPassConfigured ? 'text-green-600' : 'text-amber-600'} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Email Status</p>
+                        <p className="text-xl font-bold text-zinc-900">{diagData.emailPassConfigured ? 'Active' : 'Pending'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Active Now</p>
-                      <p className="text-xl font-bold text-zinc-900">{activeNowCount}</p>
+                    <div className="px-6 py-3 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-50`}>
+                        <Activity size={20} className="text-zinc-600" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Active Now</p>
+                        <p className="text-xl font-bold text-zinc-900">{activeNowCount}</p>
+                      </div>
                     </div>
                   </div>
                 )}

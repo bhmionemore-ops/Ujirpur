@@ -74,22 +74,30 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
   IMPORTANT: All text must be in ${langName}.
   Return exactly 5 items per category. Ensure the news is relevant to ${displayDate}.`;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for AI generation
+
   try {
     const config: any = {
       responseMimeType: "application/json",
       maxOutputTokens: 8192,
     };
     
+    console.log(`[NewsService] Fetching news for ${displayDate}...`);
+    
     // Call server proxy
     const response = await fetch('/api/gemini/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.0-flash", // Use a more reliable model by default
         contents: prompt,
         config: config
-      })
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
@@ -118,7 +126,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
       fbTrends: parsed.fbTrends || [],
       igTrends: parsed.igTrends || [],
       updatedAt: new Date().toISOString(),
-      modelUsed: data.modelUsed || "gemini-1.5-flash",
+      modelUsed: data.modelUsed || "gemini-2.0-flash",
       date: targetDate || new Date().toISOString().split('T')[0]
     };
 
@@ -127,7 +135,8 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
 
     return result;
   } catch (error: any) {
-    console.error(`[NewsService] Failed:`, error.message);
+    clearTimeout(timeoutId);
+    console.error(`[NewsService] Error:`, error.name === 'AbortError' ? 'Timeout' : error.message);
     // If all models failed, return mock data
     console.warn("[NewsService] Returning mock news data as fallback.");
     return getMockNews(language, targetDate || new Date().toISOString().split('T')[0]);
