@@ -87,14 +87,15 @@ export const LiveNews = () => {
           return fetchDayNews(offset, retries - 1);
         }
         // If it's a persistent network error, we can try to generate it locally as a fallback
+        // If it's a persistent network error, we can try to generate it locally as a fallback
         // instead of giving up, assuming it's a backend connectivity issue
         console.warn(`[LiveNews] Persistent network error for ${date}. Attempting local generation fallback...`);
         const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
         setGenerating(false);
         return { 
-          local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
-          fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
-          igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+          local: (Array.isArray(generatedData.local) ? generatedData.local : []).map((item: any) => ({ ...item, date })),
+          fbTrends: (Array.isArray(generatedData.fbTrends) ? generatedData.fbTrends : []).map((item: any) => ({ ...item, date })),
+          igTrends: (Array.isArray(generatedData.igTrends) ? generatedData.igTrends : []).map((item: any) => ({ ...item, date })),
           updatedAt: generatedData.updatedAt || new Date().toISOString(),
           isMock: generatedData.isMock,
           date 
@@ -118,9 +119,9 @@ export const LiveNews = () => {
         
         // Add date to each item for consistency
         const processedData = {
-          local: (data.local || []).map((item: any) => ({ ...item, date })),
-          fbTrends: (data.fbTrends || []).map((item: any) => ({ ...item, date })),
-          igTrends: (data.igTrends || []).map((item: any) => ({ ...item, date })),
+          local: (Array.isArray(data.local) ? data.local : []).map((item: any) => ({ ...item, date })),
+          fbTrends: (Array.isArray(data.fbTrends) ? data.fbTrends : []).map((item: any) => ({ ...item, date })),
+          igTrends: (Array.isArray(data.igTrends) ? data.igTrends : []).map((item: any) => ({ ...item, date })),
           updatedAt: data.updatedAt || new Date().toISOString()
         };
         
@@ -151,9 +152,9 @@ export const LiveNews = () => {
             setGenerating(false);
             
             const processedData = {
-              local: (generatedData.local || []).map((item: any) => ({ ...item, date })),
-              fbTrends: (generatedData.fbTrends || []).map((item: any) => ({ ...item, date })),
-              igTrends: (generatedData.igTrends || []).map((item: any) => ({ ...item, date })),
+              local: (Array.isArray(generatedData.local) ? generatedData.local : []).map((item: any) => ({ ...item, date })),
+              fbTrends: (Array.isArray(generatedData.fbTrends) ? generatedData.fbTrends : []).map((item: any) => ({ ...item, date })),
+              igTrends: (Array.isArray(generatedData.igTrends) ? generatedData.igTrends : []).map((item: any) => ({ ...item, date })),
               updatedAt: generatedData.updatedAt || new Date().toISOString(),
               isMock: generatedData.isMock
             };
@@ -172,9 +173,9 @@ export const LiveNews = () => {
           const frontendGenData = await fetchLiveNews(language as 'bn' | 'en', date);
           setGenerating(false);
           return {
-            local: (frontendGenData.local || []).map((item: any) => ({ ...item, date })),
-            fbTrends: (frontendGenData.fbTrends || []).map((item: any) => ({ ...item, date })),
-            igTrends: (frontendGenData.igTrends || []).map((item: any) => ({ ...item, date })),
+            local: (Array.isArray(frontendGenData.local) ? frontendGenData.local : []).map((item: any) => ({ ...item, date })),
+            fbTrends: (Array.isArray(frontendGenData.fbTrends) ? frontendGenData.fbTrends : []).map((item: any) => ({ ...item, date })),
+            igTrends: (Array.isArray(frontendGenData.igTrends) ? frontendGenData.igTrends : []).map((item: any) => ({ ...item, date })),
             updatedAt: frontendGenData.updatedAt || new Date().toISOString(),
             isMock: frontendGenData.isMock,
             date

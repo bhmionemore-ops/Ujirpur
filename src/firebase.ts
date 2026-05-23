@@ -46,6 +46,7 @@ console.log(`[Firebase] Initializing Firestore with Database: ${databaseId}`);
 
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  ignoreUndefinedProperties: true,
 }, databaseId);
 
 export const googleProvider = new GoogleAuthProvider();

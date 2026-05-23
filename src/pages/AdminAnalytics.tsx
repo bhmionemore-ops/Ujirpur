@@ -102,6 +102,18 @@ export const AdminAnalytics = () => {
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
   
+  // Credit Adjustment Modal States
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditTarget, setCreditTarget] = useState<{
+    id: string;
+    name: string;
+    credits: number;
+    collection: 'users' | 'telegram_users';
+  } | null>(null);
+  const [creditAmount, setCreditAmount] = useState<string>('50');
+  const [creditType, setCreditType] = useState<'add' | 'deduct' | 'set'>('add');
+  const [submittingCredits, setSubmittingCredits] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'comms' | 'ai' | 'telegram' | 'tools'>('overview');
   
   // Email Signature State
@@ -154,16 +166,57 @@ export const AdminAnalytics = () => {
     }
   };
 
-  const addCredits = async (userId: string, currentCredits: number = 0) => {
-    const amount = window.prompt('Enter amount of credits to add:', '50');
-    if (!amount || isNaN(parseInt(amount))) return;
+  const openCreditModal = (id: string, name: string, currentCredits: number, colName: 'users' | 'telegram_users') => {
+    setCreditTarget({
+      id,
+      name,
+      credits: currentCredits || 0,
+      collection: colName
+    });
+    setCreditAmount('50');
+    setCreditType('add');
+    setCreditModalOpen(true);
+  };
+
+  const handleAdjustCredits = async () => {
+    if (!creditTarget || !creditAmount || isNaN(parseInt(creditAmount)) || parseInt(creditAmount) < 0) {
+      toast.error('Please enter a valid amount.');
+      return;
+    }
+    setSubmittingCredits(true);
     try {
-      const { updateDoc } = await import('firebase/firestore');
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, { credits: (currentCredits || 0) + parseInt(amount) });
-      toast.success(`Added ${amount} credits to user.`);
-    } catch (err) {
-      toast.error('Failed to add credits.');
+      const response = await fetch('/api/admin/adjust-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetId: creditTarget.id,
+          amount: parseInt(creditAmount),
+          type: creditType,
+          collection: creditTarget.collection
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Server returned error');
+      }
+
+      const result = await response.json();
+      toast.success(`Credits successfully updated to ${result.newCredits}!`);
+      
+      // Update local state smoothly & optimistically depending on the collection
+      if (creditTarget.collection === 'users') {
+        setUsers(prev => prev.map(u => u.id === creditTarget.id ? { ...u, credits: result.newCredits } : u));
+      } else {
+        setTelegramUsers(prev => prev.map(u => u.id === creditTarget.id ? { ...u, credits: result.newCredits } : u));
+      }
+
+      setCreditModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to adjust credits: ${err.message}`);
+    } finally {
+      setSubmittingCredits(false);
     }
   };
 
@@ -999,10 +1052,10 @@ export const AdminAnalytics = () => {
                          </td>
                          <td className="px-6 py-4">
                             <button 
-                              onClick={() => addCredits(u.id, u.credits)}
+                              onClick={() => openCreditModal(u.id, u.displayName || u.email || 'Unnamed', u.credits || 0, 'users')}
                               className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-brand-100 transition-all"
                             >
-                              {u.credits || 0} CR +
+                              {u.credits || 0} CR (Adjust)
                             </button>
                          </td>
                          <td className="px-6 py-4">
@@ -1446,9 +1499,13 @@ export const AdminAnalytics = () => {
                           <p className="text-[10px] text-zinc-400 font-medium">Chat ID: {tg.id}</p>
                        </div>
                        <div className="ml-auto">
-                          <span className="px-2.5 py-1 bg-brand-50 text-brand-600 rounded-full text-[9px] font-black uppercase">
-                             {tg.credits || 0} CR
-                          </span>
+                          <button 
+                             onClick={() => openCreditModal(tg.id, tg.name || `Chat ${tg.id}`, tg.credits || 0, 'telegram_users')}
+                             className="px-2.5 py-1 bg-cyan-50 text-cyan-600 hover:bg-cyan-100 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
+                             title="Adjust Telegram User Credits"
+                          >
+                             {tg.credits || 0} CR / Adjust
+                          </button>
                        </div>
                     </div>
 
@@ -1680,6 +1737,154 @@ export const AdminAnalytics = () => {
         </div>
       </div>
         )}
+
+        {/* Credit Adjustment Modal */}
+        <AnimatePresence>
+          {creditModalOpen && creditTarget && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setCreditModalOpen(false)}
+                className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
+                  <div>
+                    <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight mb-1">Adjust AI Credits</h3>
+                    <p className="text-xs text-zinc-500 font-medium">
+                      Target: {creditTarget.collection === 'users' ? 'Web Customer' : 'Telegram Bot User'}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setCreditModalOpen(false)}
+                    className="p-3 hover:bg-white rounded-2xl transition-all text-zinc-400 hover:text-zinc-900 shadow-sm border border-zinc-100"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                </div>
+                
+                <div className="p-8 space-y-6">
+                  {/* Target Identity Information */}
+                  <div className="p-5 bg-zinc-50 rounded-3xl border border-zinc-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full inline-block mb-1">
+                        Active Account
+                      </p>
+                      <p className="text-sm font-bold text-zinc-900 truncate max-w-[200px]">{creditTarget.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Current Balance</p>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-200 text-zinc-800 rounded-full text-xs font-black">
+                        {creditTarget.credits} CR
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Operational Mode Selection */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Adjustment Action</label>
+                    <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-100 rounded-2xl border border-zinc-200">
+                      {(['add', 'deduct', 'set'] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setCreditType(type)}
+                          className={`py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                            creditType === type 
+                              ? 'bg-zinc-900 text-white shadow-md' 
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+                          }`}
+                        >
+                          {type === 'add' && 'Add (+)'}
+                          {type === 'deduct' && 'Deduct (-)'}
+                          {type === 'set' && 'Set (=)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Input Box and Preset Quick Chips */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Credit Amount</label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={creditAmount}
+                          onChange={(e) => setCreditAmount(e.target.value)}
+                          placeholder="Amount"
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-5 py-4 text-sm font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                        />
+                        <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                          Credits
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {['10', '50', '100', '500', '1000'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setCreditAmount(preset)}
+                          className={`px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            creditAmount === preset ? 'ring-2 ring-zinc-900/50 bg-zinc-200' : ''
+                          }`}
+                        >
+                          {preset} CR
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Simulation summary */}
+                  <div className="p-4 bg-brand-50 rounded-2xl border border-brand-100 text-xs font-bold text-brand-900 flex justify-between items-center">
+                    <span>Forecast Balance:</span>
+                    <span className="text-sm font-black text-brand-600">
+                      {creditTarget.credits} → {(() => {
+                        const amt = parseInt(creditAmount) || 0;
+                        if (creditType === 'add') return creditTarget.credits + amt;
+                        if (creditType === 'deduct') return Math.max(0, creditTarget.credits - amt);
+                        if (creditType === 'set') return amt;
+                        return creditTarget.credits;
+                      })()} CR
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-zinc-50 border-t border-zinc-100 flex gap-4">
+                  <button 
+                    onClick={handleAdjustCredits}
+                    disabled={submittingCredits}
+                    className="flex-1 py-4 bg-zinc-900 hover:bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-zinc-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {submittingCredits ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <CheckCircle size={16} />
+                    )}
+                    Apply Changes
+                  </button>
+                  <button 
+                    onClick={() => setCreditModalOpen(false)}
+                    className="px-6 py-4 bg-zinc-200 hover:bg-zinc-300 text-zinc-600 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Email Modal */}
         <AnimatePresence>

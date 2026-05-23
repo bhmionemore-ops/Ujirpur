@@ -41,6 +41,7 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
           console.log(`[AuthAPI] OTP saved to AdminDB`);
         } catch (e: any) {
           console.warn("[AuthAPI] AdminDB save failed:", e.message);
+          DB.handleAdminError(e, "AuthAPI OTP send");
         }
       }
 
@@ -111,7 +112,9 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
         try {
           const snap = await DB.state.adminDb.collection("auth_otps").doc(email).get();
           if (snap.exists) otpData = snap.data();
-        } catch (e) {}
+        } catch (eOnAdmin: any) {
+          DB.handleAdminError(eOnAdmin, "AuthAPI OTP verify");
+        }
       }
 
       if (!otpData && DB.state.db) {
@@ -144,7 +147,11 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
 
       // Cleanup
       memoryOtps.delete(email);
-      if (DB.state.adminDb) DB.state.adminDb.collection("auth_otps").doc(email).delete().catch(() => {});
+      if (DB.state.adminDb) {
+        DB.state.adminDb.collection("auth_otps").doc(email).delete().catch((e: any) => {
+          DB.handleAdminError(e, "AuthAPI OTP delete");
+        });
+      }
 
       // Auth Fallback Logic
       let userRecord: any = { uid: `user_${email.replace(/[^a-z0-9]/g, '_')}`, email };

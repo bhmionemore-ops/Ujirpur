@@ -32,6 +32,7 @@ export function setupNewsRoutes(app: express.Application, _db: any, _adminDb: an
           if (snap.exists) data = snap.data();
         } catch (adminErr: any) {
           console.warn(`[NewsAPI] Admin SDK fetch failed (doc: ${docId}):`, adminErr.message);
+          DB.handleAdminError(adminErr, `NewsAPI GET doc ${docId}`);
         }
       }
 
@@ -107,6 +108,7 @@ export function setupNewsRoutes(app: express.Application, _db: any, _adminDb: an
           console.log(`[NewsAPI] Generated news saved via Admin SDK for ${docId}`);
         } catch (e: any) {
           console.error(`[NewsAPI] Admin SDK save CRITICAL FAILURE for ${docId}:`, e);
+          DB.handleAdminError(e, `NewsAPI generate save ${docId}`);
         }
       }
       
@@ -149,6 +151,7 @@ export function setupNewsRoutes(app: express.Application, _db: any, _adminDb: an
           saved = true;
         } catch (e: any) {
           console.error(`[NewsAPI] Admin SDK cache save CRITICAL FAILURE:`, e);
+          DB.handleAdminError(e, `NewsAPI cache save ${docId}`);
         }
       }
       

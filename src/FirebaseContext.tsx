@@ -55,7 +55,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (currentUser) {
         setIsSessionAuth(false);
-        const userRef = doc(db, 'users', currentUser.uid);
+        const userDocId = currentUser.email ? currentUser.email.toLowerCase().trim() : currentUser.uid;
+        const userRef = doc(db, 'users', userDocId);
         try {
           const userDoc = await getDoc(userRef);
           if (!userDoc.exists()) {
@@ -65,6 +66,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               email: currentUser.email,
               photoURL: currentUser.photoURL,
               role: 'user',
+              credits: 20,
               createdAt: serverTimestamp()
             });
             
@@ -179,7 +181,9 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
 
           if (currentUser) {
-            console.log('[FirebaseContext] Syncing user data to Firestore...', currentUser.uid);
+            const userEmail = fbUser.email || currentUser.email;
+            const userDocId = userEmail ? userEmail.toLowerCase().trim() : currentUser.uid;
+            console.log('[FirebaseContext] Syncing user data to Firestore with ID...', userDocId);
             
             // Update the Firebase Auth profile so onAuthStateChanged gets the right data
             const { updateProfile } = await import('firebase/auth');
@@ -188,15 +192,20 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               photoURL: fbUser.picture || null
             });
 
-            const userRef = doc(db, 'users', currentUser.uid);
-            await setDoc(userRef, {
+            const userRef = doc(db, 'users', userDocId);
+            const userSnap = await getDoc(userRef);
+            const dataToSet: any = {
               displayName: fbUser.name,
-              email: fbUser.email || null,
+              email: userEmail || null,
               photoURL: fbUser.picture || null,
               facebookId: fbUser.id,
-              role: 'user',
+              role: userSnap.exists() ? (userSnap.data()?.role || 'user') : 'user',
               lastLogin: serverTimestamp()
-            }, { merge: true });
+            };
+            if (!userSnap.exists() || userSnap.data()?.credits === undefined) {
+              dataToSet.credits = 20;
+            }
+            await setDoc(userRef, dataToSet, { merge: true });
             
             console.log('[FirebaseContext] User synced successfully. Closing modal.');
             setAuthModalOpen(false);
@@ -244,14 +253,25 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     console.log(`[FirebaseContext] New user signed up: ${email}. Syncing to Firestore...`);
     
     // Sync to Firestore immediately
-    const userRef = doc(db, 'users', userCredential.user.uid);
-    await setDoc(userRef, {
-      displayName: name,
-      email: email,
-      photoURL: null,
-      role: 'user',
-      createdAt: serverTimestamp()
-    });
+    const userDocId = email.toLowerCase().trim();
+    const userRef = doc(db, 'users', userDocId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        displayName: name,
+        email: email,
+        photoURL: null,
+        role: 'user',
+        credits: 20,
+        createdAt: serverTimestamp()
+      });
+    } else {
+      await setDoc(userRef, {
+        displayName: name || userSnap.data()?.displayName,
+        email: email,
+        lastLogin: serverTimestamp()
+      }, { merge: true });
+    }
 
     // Explicitly trigger welcome email for manual sign-up
     console.log(`[FirebaseContext] Triggering welcome email for manual sign-up: ${email}`);

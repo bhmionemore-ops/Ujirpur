@@ -56,6 +56,15 @@ export function setupRoutes(app: express.Application, _db: any, _adminDb: any, f
           body: text || html || "",
           timestamp: new Date()
         });
+      } else if (DB.state.db) {
+        await addDoc(collection(DB.state.db, "inbound_emails"), {
+          from: from || "unknown",
+          to: to || "system",
+          subject: subject || "No Subject",
+          body: text || html || "",
+          timestamp: serverTimestamp(),
+          serverKey: FIRESTORE_SERVER_KEY
+        });
       }
       res.json({ status: "success" });
     } catch (e) {

@@ -21,7 +21,7 @@ import {
   Plus,
   Play
 } from 'lucide-react';
-import { doc, onSnapshot, collection, query, where, orderBy, limit, addDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, orderBy, limit, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
 
@@ -53,7 +53,7 @@ export const AiRouterPage = () => {
   const [type, setType] = useState<'auto' | 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video'>('auto');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
-  const [credits, setCredits] = useState<number>(999999);
+  const [credits, setCredits] = useState<number>(0);
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<any>(null);
   const [inputImage, setInputImage] = useState<string | null>(null);
@@ -64,6 +64,89 @@ export const AiRouterPage = () => {
 
   const [showNoCredits, setShowNoCredits] = useState(false);
   const [requiredCredits, setRequiredCredits] = useState(0);
+
+  // Billing & Payment States
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; credits: number; price: string } | null>(null);
+  const [paymentStep, setPaymentStep] = useState<'details' | 'processing' | 'success'>('details');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCVC, setCardCVC] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [billingEmail, setBillingEmail] = useState('');
+  const [paymentProcessingMsg, setPaymentProcessingMsg] = useState('Initiating secure payment gateway...');
+
+  const handleOpenCheckout = (pkg: { id: string; name: string; credits: number; price: string }) => {
+    setSelectedPackage(pkg);
+    setPaymentStep('details');
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCVC('');
+    setCardName('');
+    setBillingEmail(user?.email || '');
+    setBillingModalOpen(true);
+  };
+
+  const handleSimulatePayment = async () => {
+    if (!selectedPackage || !user) return;
+    if (!cardNumber || cardNumber.replace(/\s+/g, '').length < 16) {
+      toast.error('Please enter a valid 16-digit card number.');
+      return;
+    }
+    if (!cardExpiry || !cardExpiry.includes('/')) {
+      toast.error('Please enter a valid card expiry date (MM/YY).');
+      return;
+    }
+    if (!cardCVC || cardCVC.length < 3) {
+      toast.error('Please enter a valid CVC/CVV.');
+      return;
+    }
+    if (!cardName.trim()) {
+      toast.error('Please enter the name on the card.');
+      return;
+    }
+
+    setPaymentStep('processing');
+    
+    const pipeline = [
+      'Establishing TLS tunnel with payment acquirer...',
+      'Encrypting card parameters using AES-256-GCM...',
+      'Querying secure 3D-Secure level-2 authorization servers...',
+      'Authorizing credit disbursement to local sandbox ledger...',
+      'Generating receipt and writing token ledger...'
+    ];
+
+    for (let i = 0; i < pipeline.length; i++) {
+      setPaymentProcessingMsg(pipeline[i]);
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
+
+    try {
+      const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
+      const userRef = doc(db, 'users', userDocId);
+      await updateDoc(userRef, {
+        credits: (credits || 0) + selectedPackage.credits,
+        updatedAt: new Date()
+      });
+      
+      const logsRef = collection(db, 'usage');
+      await addDoc(logsRef, {
+        userId: userDocId,
+        task: `Credit Purchased: ${selectedPackage.name}`,
+        type: 'billing',
+        cost: -selectedPackage.credits,
+        modelUsed: 'Stripe Sandbox Engine',
+        timestamp: new Date()
+      });
+
+      setPaymentStep('success');
+      toast.success(`Successfully added ${selectedPackage.credits} credits to your account!`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Ledger credit update failed: ${err.message}`);
+      setPaymentStep('details');
+    }
+  };
 
   useEffect(() => {
     if (!user || !db) return;
@@ -132,10 +215,12 @@ export const AiRouterPage = () => {
 
     // Real-time credits listener - Check both 'users' and possibly a dedicated 'ai_credits' if exists
     // The previous implementation used 'users' collection
-    const userRef = doc(db, 'users', user.uid);
+    const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
+    const userRef = doc(db, 'users', userDocId);
     const unsubCredits = onSnapshot(userRef, (doc) => {
       if (doc.exists()) {
-        setCredits(doc.data().credits || 0);
+        const cVal = doc.data().credits;
+        setCredits(cVal !== undefined ? cVal : 0);
       } else {
         console.log("[Firebase] User profile not found for credits, defaulting to 0");
         setCredits(0);
@@ -148,7 +233,7 @@ export const AiRouterPage = () => {
     const usageRef = collection(db, 'usage');
     const q = query(
       usageRef, 
-      where('userId', '==', user.uid), 
+      where('userId', '==', userDocId), 
       orderBy('timestamp', 'desc'), 
       limit(10)
     );
@@ -195,10 +280,10 @@ export const AiRouterPage = () => {
 
   const calculateCost = () => {
     if (type === 'text') return 1;
-    if (type === 'image') return 15;
-    if (type === 'image_to_image') return 20;
-    if (type === 'video') return 50;
-    if (type === 'image_to_video') return 45;
+    if (type === 'image') return 10;
+    if (type === 'image_to_image') return 10;
+    if (type === 'video') return 65;
+    if (type === 'image_to_video') return 65;
     return 1; // Default
   };
 
@@ -242,11 +327,12 @@ export const AiRouterPage = () => {
     setShowNoCredits(false);
 
     try {
+      const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.uid,
+          userId: userDocId,
           task,
           type,
           inputImage,
@@ -307,16 +393,19 @@ export const AiRouterPage = () => {
           </p>
         </div>
 
-        <div className="bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(24,24,27,1)] flex flex-col sm:flex-row items-center gap-8 min-w-[320px] relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-          <div className="relative z-10 w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/5">
-            <Zap size={32} className="text-brand-400" />
+        <div className="bg-zinc-950 p-8 rounded-[2.5rem] border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(24,24,27,1)] flex flex-col sm:flex-row items-center gap-8 min-w-[320px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/15 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
+          <div className="relative z-10 w-16 h-16 bg-brand-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-brand-500/30">
+            <CreditCard size={32} className="text-brand-400 animate-pulse" />
           </div>
           <div className="relative z-10 flex-1 text-center sm:text-left">
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">Access Status</p>
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">Available Credits</p>
             <div className="flex items-baseline justify-center sm:justify-start gap-2">
-              <span className="text-4xl font-black text-white tracking-tighter uppercase font-mono">Unlimited</span>
+              <span className="text-4xl font-black text-white tracking-tighter uppercase font-mono">{credits} CR</span>
             </div>
+            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1.5 flex items-center justify-center sm:justify-start gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Real-time Sync
+            </p>
           </div>
         </div>
       </div>
@@ -560,21 +649,73 @@ export const AiRouterPage = () => {
             </div>
           </div>
 
-          <div className="bg-zinc-950 rounded-[3rem] p-8 text-white relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 group-hover:rotate-12 transition-all duration-700">
-               <Zap size={120} />
+          {/* AI Credits Billing Central */}
+          <div className="bg-white rounded-[3rem] p-8 border border-zinc-200 shadow-xl shadow-zinc-200/50 space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+                <CreditCard size={20} className="text-brand-600 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">AI Credits Billing</h3>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Instant Top-Up Ledger</p>
+              </div>
             </div>
-            <div className="relative z-10 space-y-6">
-               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                 <AlertCircle size={24} className="text-brand-500" />
-               </div>
-               <h3 className="text-xl font-black uppercase tracking-tight">Need More Credits?</h3>
-               <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                 AI Router uses pay-as-you-go credits. 1 text request costs 1 credit. Images and video cost more due to high GPU usage.
-               </p>
-               <button className="w-full py-4 bg-white text-zinc-950 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-brand-500 hover:text-white transition-all">
-                 View Pricing Plans
-               </button>
+
+            <div className="space-y-3">
+              {[
+                { id: 'starter', name: 'Starter Pack', credits: 100, price: '₹100 ($1.20)', desc: '100 queries or 10 images' },
+                { id: 'pro', name: 'Standard Booster', credits: 500, price: '₹450 ($5.40)', desc: '50 videos or 500 queries', popular: true },
+                { id: 'enterprise', name: 'Power Pack', credits: 2000, price: '₹1,500 ($18.00)', desc: 'Bulk credit balance with 25% extra' },
+              ].map((pkg) => (
+                <div 
+                  key={pkg.id} 
+                  className={`p-4 rounded-3xl border-2 transition-all relative ${
+                    pkg.popular 
+                    ? 'border-zinc-900 bg-zinc-50/50 hover:shadow-lg' 
+                    : 'border-zinc-100 hover:border-zinc-200 hover:shadow-md bg-white'
+                  }`}
+                >
+                  {pkg.popular && (
+                    <span className="absolute -top-2.5 right-6 px-2.5 py-0.5 bg-zinc-900 text-white text-[8px] font-black uppercase tracking-widest rounded-full">
+                      Most Popular
+                    </span>
+                  )}
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">{pkg.name}</p>
+                      <p className="text-[10px] text-zinc-400 font-medium">{pkg.desc}</p>
+                    </div>
+                    <p className="text-xs font-black text-brand-600 font-mono text-right">{pkg.price}</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs font-black text-zinc-800 bg-zinc-100 px-2.5 py-1 rounded-full">
+                      +{pkg.credits} CR
+                    </span>
+                    <button 
+                      onClick={() => handleOpenCheckout(pkg)}
+                      className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        pkg.popular
+                        ? 'bg-zinc-900 hover:bg-brand-600 text-white shadow-md shadow-zinc-900/10'
+                        : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-950 border border-zinc-200'
+                      }`}
+                    >
+                      Buy Package
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 text-center">
+              <p className="text-[10px] text-zinc-500 font-bold leading-relaxed">
+                Need more custom enterprise credits or telegram bot payments?
+              </p>
+              <button 
+                onClick={handleTopUp}
+                className="mt-2 text-[10px] text-brand-600 hover:text-brand-700 font-black uppercase tracking-wider flex items-center justify-center gap-1 mx-auto"
+              >
+                Connect with Telegram Support <ChevronRight size={12} />
+              </button>
             </div>
           </div>
         </div>
@@ -626,6 +767,202 @@ export const AiRouterPage = () => {
             </div>
           )}
         </div>
+
+        {/* Secure Billing & Checkout Portal Modal */}
+        <AnimatePresence>
+          {billingModalOpen && selectedPackage && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setBillingModalOpen(false)}
+                className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                className="relative w-full max-w-xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-100 flex flex-col md:flex-row"
+              >
+                {/* Visual Accent/Card Side Panel */}
+                <div className="md:w-[45%] bg-zinc-950 p-8 text-white flex flex-col justify-between relative overflow-hidden shrink-0 border-r border-zinc-900">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-brand-500/10 blur-[60px] -mr-24 -mt-24" />
+                  
+                  <div className="relative z-10 space-y-4">
+                    <span className="px-3 py-1 bg-white/10 backdrop-blur text-[8px] font-black uppercase tracking-widest rounded-full text-brand-400 border border-white/5">
+                      Secure Ledger
+                    </span>
+                    <h4 className="text-xl font-black uppercase tracking-tight leading-none">
+                      Checkout <br />Portal
+                    </h4>
+                    <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                      Simulated secure banking terminal utilizing AES-256 ledger records.
+                    </p>
+                  </div>
+
+                  {/* Virtual Dynamic Credit Card Preview */}
+                  <div className="my-6 p-5 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-2xl border border-zinc-700 shadow-xl space-y-4 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-brand-300/5 blur-xl" />
+                    <div className="flex justify-between items-center">
+                      <div className="w-8 h-6 bg-amber-400/80 rounded-md shrink-0" />
+                      <span className="text-[10px] tracking-widest font-mono text-zinc-400">Sandbox</span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] text-zinc-500 uppercase font-bold tracking-widest">Card Number</p>
+                      <p className="font-mono text-xs text-white font-bold tracking-widest">
+                        {cardNumber ? cardNumber.replace(/(\d{4})/g, '$1 ').trim() : '•••• •••• •••• ••••'}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-zinc-700/50 pt-2">
+                      <div>
+                        <p className="text-[6px] text-zinc-500 uppercase font-bold">Holder</p>
+                        <p className="font-mono text-[9px] text-zinc-300 font-bold uppercase truncate max-w-[90px]">
+                          {cardName || 'MEMBER NAME'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[6px] text-zinc-500 uppercase font-bold">Expiry</p>
+                        <p className="font-mono text-[9px] text-zinc-300 font-bold">
+                          {cardExpiry || 'MM/YY'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none">
+                    © Barnia System Corp v1
+                  </div>
+                </div>
+
+                {/* Form Elements & States */}
+                <div className="flex-1 p-8 flex flex-col justify-between max-h-[500px] overflow-y-auto">
+                  {paymentStep === 'details' && (
+                    <div className="space-y-6">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-brand-600 tracking-widest">Pricing Package</span>
+                        <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight">{selectedPackage.name}</h3>
+                        <p className="text-sm font-bold text-zinc-500 font-mono mt-1">{selectedPackage.price}</p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Name on Card</label>
+                          <input 
+                            type="text"
+                            placeholder="John Doe"
+                            value={cardName}
+                            onChange={(e) => setCardName(e.target.value)}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-all font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Card Number (16 Digits)</label>
+                          <input 
+                            type="text"
+                            maxLength={16}
+                            placeholder="4111 2222 3333 4444"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-all font-mono"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Expiry Date</label>
+                            <input 
+                              type="text"
+                              maxLength={5}
+                              placeholder="MM/YY"
+                              value={cardExpiry}
+                              onChange={(e) => setCardExpiry(e.target.value)}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-all font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">CVC Code</label>
+                            <input 
+                              type="password"
+                              maxLength={3}
+                              placeholder="•••"
+                              value={cardCVC}
+                              onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, ''))}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-all font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 flex border-t border-zinc-100 gap-3">
+                        <button 
+                          onClick={handleSimulatePayment}
+                          className="flex-1 py-3.5 bg-zinc-950 hover:bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-zinc-950/10 flex items-center justify-center gap-2"
+                        >
+                          <CreditCard size={14} /> Pay & Authorize
+                        </button>
+                        <button 
+                          onClick={() => setBillingModalOpen(false)}
+                          className="px-5 py-3.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentStep === 'processing' && (
+                    <div className="min-h-[300px] flex flex-col items-center justify-center text-center p-4 space-y-6">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-zinc-100 border-t-zinc-900 animate-spin" />
+                        <Zap size={20} className="text-zinc-900 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Gateway Cryptography Pipeline</p>
+                        <h4 className="text-xs font-bold text-zinc-500 font-mono italic max-w-xs">{paymentProcessingMsg}</h4>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentStep === 'success' && (
+                    <div className="min-h-[300px] flex flex-col items-center justify-center text-center p-4 space-y-6">
+                      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 text-emerald-500">
+                        <CheckCircle2 size={32} className="animate-bounce" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-black text-zinc-900 uppercase">Payment Authorized</h4>
+                        <p className="text-xs text-zinc-400 font-medium">Your bank ledger has synchronized successfully.</p>
+                      </div>
+
+                      <div className="p-4 bg-zinc-50 rounded-2xl w-full border border-zinc-100 space-y-2 text-left font-mono">
+                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
+                          <span>Transaction Ref</span>
+                          <span className="text-zinc-900">TXN-{Math.floor(100000 + Math.random() * 900000)}</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
+                          <span>Credits Added</span>
+                          <span className="text-brand-600 font-black">+{selectedPackage.credits} CR</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
+                          <span>Settlement Code</span>
+                          <span className="text-emerald-600 font-black">SUCCESS</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => setBillingModalOpen(false)}
+                        className="w-full py-4 bg-zinc-950 hover:bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                      >
+                        Return To Hub
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* n8n Documentation */}

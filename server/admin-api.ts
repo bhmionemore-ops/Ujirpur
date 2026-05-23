@@ -1,6 +1,8 @@
 import express from "express";
+import * as DB from "./db";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { robustSendMail } from "./email";
+import { generateAIResult } from "./ai-router-logic";
 
 export function setupAdminRoutes(app: express.Application, newsLocks: Map<string, number>) {
   app.get("/api/admin/test-firestore", async (req, res) => {
@@ -12,7 +14,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       // Try Admin SDK
       const admin = await import("firebase-admin");
       try {
-        const { adminDb } = await import("./db");
+        const adminDb = DB.state.adminDb;
         if (adminDb) {
           await adminDb.collection("_health_check").doc("admin_test").set(testDoc);
           results.admin = "success";
@@ -79,7 +81,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
   app.get("/api/admin/data/:collection", async (req, res) => {
     try {
       const { collection: colName } = req.params;
-      const { adminDb } = await import("./db");
+      const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
       const limit = parseInt(req.query.limit as string) || 50;
@@ -114,7 +116,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
         identityToolkitStatus: "unknown"
       };
 
-      const { adminDb } = await import("./db");
+      const adminDb = DB.state.adminDb;
       results.adminDbInitialized = !!adminDb;
 
       // Check Identity Toolkit status if possible
@@ -139,7 +141,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
   app.post("/api/admin/approve-ai", async (req, res) => {
     try {
       const { requestId, adminId } = req.body;
-      const { adminDb } = await import("./db");
+      const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
       const requestRef = adminDb.collection("pending_ai_requests").doc(requestId);
@@ -148,18 +150,49 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       if (!snap.exists) return res.status(404).json({ error: "Request not found" });
       
       const requestData = snap.data()!;
+      if (requestData.status !== 'pending') {
+         return res.status(400).json({ error: "Request is already processed" });
+      }
+
+      console.log(`[AdminAPI] Approved AI request ${requestId} for user ${requestData.userId}. Executing generation...`);
       
-      // Mark as approved in DB
+      // Execute the actual AI generation run
+      const aiResponse = await generateAIResult(requestData.task, requestData.type, requestData.inputImage || null);
+      
+      // 1. Deduct user credits
+      const userRef = adminDb.collection("users").doc(requestData.userId);
+      const userSnap = await userRef.get();
+      let remainingCredits = 0;
+      if (userSnap.exists) {
+        const uData = userSnap.data()!;
+        const currentCredits = uData.credits !== undefined ? uData.credits : 20;
+        remainingCredits = Math.max(0, currentCredits - requestData.cost);
+        await userRef.update({ credits: remainingCredits });
+      }
+
+      // 2. Add to actual usage collection for billing & logs
+      await adminDb.collection("usage").add({
+        userId: requestData.userId,
+        task: requestData.task,
+        type: requestData.type,
+        cost: requestData.cost,
+        modelUsed: aiResponse.modelUsed,
+        result: aiResponse.result,
+        timestamp: new Date()
+      });
+
+      // 3. Mark the pending request doc as completed and store the output
       await requestRef.update({ 
         status: 'completed',
+        result: aiResponse.result,
+        modelUsed: aiResponse.modelUsed,
         approvedBy: adminId,
         approvedAt: new Date()
       });
 
-      // Here we would normally trigger the actual AI worker
-      // For now we just return success
-      res.json({ success: true, message: "AI Request approved and processed" });
+      res.json({ success: true, message: "AI Request approved and processed successfully", result: aiResponse.result });
     } catch (e: any) {
+      console.error("[AdminAPI] Error during AI approval task:", e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -167,7 +200,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
   app.post("/api/admin/deny-ai", async (req, res) => {
     try {
       const { requestId, adminId } = req.body;
-      const { adminDb } = await import("./db");
+      const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
       await adminDb.collection("pending_ai_requests").doc(requestId).update({ 
@@ -178,6 +211,52 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
 
       res.json({ success: true });
     } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/admin/adjust-credits", async (req, res) => {
+    try {
+      const { targetId, amount, type, collection: colName } = req.body;
+      const adminDb = DB.state.adminDb;
+      if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
+
+      if (!targetId || amount === undefined || !colName) {
+        return res.status(400).json({ error: "Missing required fields: targetId, amount, and collection are required." });
+      }
+
+      const allowedCollections = ['users', 'telegram_users'];
+      if (!allowedCollections.includes(colName)) {
+        return res.status(400).json({ error: "Invalid target collection." });
+      }
+
+      const docRef = adminDb.collection(colName).doc(targetId);
+      const snap = await docRef.get();
+      if (!snap.exists) {
+        return res.status(404).json({ error: `User not found in ${colName}` });
+      }
+
+      const currentData = snap.data()!;
+      const currentCredits = currentData.credits !== undefined ? Number(currentData.credits) : 0;
+      const changeAmount = Number(amount);
+      
+      let newCredits = currentCredits;
+      if (type === 'add') {
+        newCredits = currentCredits + changeAmount;
+      } else if (type === 'set') {
+        newCredits = changeAmount;
+      } else if (type === 'deduct') {
+        newCredits = Math.max(0, currentCredits - changeAmount);
+      }
+
+      await docRef.update({ 
+        credits: newCredits, 
+        updatedAt: colName === 'telegram_users' ? new Date().toISOString() : new Date()
+      });
+
+      res.json({ success: true, newCredits });
+    } catch (e: any) {
+      console.error("[AdminAPI] Error adjusting credits:", e);
       res.status(500).json({ error: e.message });
     }
   });

@@ -1,10 +1,11 @@
 import path from "path";
 import fs from "fs/promises";
 import admin from "firebase-admin";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
-import { getFirestore as initializeFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { setDb, setAdminDb, setClientAuth, setFirebaseConfig } from "./db";
+import { setDb, setAdminDb, setClientAuth, setFirebaseConfig, handleAdminError } from "./db";
 import { initEmail } from "./email";
 
 export async function initSDKs() {
@@ -58,14 +59,20 @@ export async function initSDKs() {
         console.log(`[Firebase] Admin SDK already initialized. Apps: ${admin.apps.length}`);
       }
 
-      // Always set the adminDb reference, even if already initialized
-      try {
-        const adb = dbId ? admin.firestore(dbId) : admin.firestore();
+        // Always set the adminDb reference, even if already initialized
+        const appInstance = admin.apps[0];
+        const adb = dbId ? getAdminFirestore(appInstance, dbId) : getAdminFirestore(appInstance);
         setAdminDb(adb);
-        console.log(`[Firebase] Admin DB reference set (DB: ${dbId || 'default'}). Valid: ${!!adb && typeof adb.collection === 'function'}`);
-      } catch (adminErr: any) {
-        console.warn("[Firebase] Failed to set Admin DB reference:", adminErr.message);
-      }
+        
+        // Non-blocking verification of connection and permissions
+        console.log(`[Firebase] Checking Admin DB connection capability...`);
+        try {
+          await adb.collection("_health_check").limit(1).get();
+          console.log(`[Firebase] Admin DB verification passed (DB: ${dbId || 'default'}).`);
+        } catch (authErr: any) {
+          console.warn(`[Firebase] Admin DB connection verification failed:`, authErr.message);
+          handleAdminError(authErr, "Startup verification");
+        }
 
       // Client SDK initialization
       console.log(`[Firebase] Initializing/Checking Client SDK...`);
@@ -80,7 +87,7 @@ export async function initSDKs() {
           console.log("[Firebase] Using existing Client App");
         }
         
-        const firestore = dbId ? initializeFirestore(clientApp, dbId) : initializeFirestore(clientApp);
+        const firestore = dbId ? getFirestore(clientApp, dbId) : getFirestore(clientApp);
         setDb(firestore);
         setClientAuth(getAuth(clientApp));
         console.log(`[Firebase] Client SDK reference set. Valid db: ${!!firestore}`);
