@@ -55,7 +55,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
           uid: userId,
           email: userId.includes('@') ? userId : "explorer@sanatani.dharm",
           displayName: userId.includes('@') ? userId.split('@')[0] : "AI Explorer",
-          credits: 20,
+          credits: 10,
           role: "user",
           createdAt: new Date().toISOString()
         });
@@ -63,7 +63,11 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       }
 
       const userData = userSnap.data()!;
-      const credits = userData.credits !== undefined ? userData.credits : 20;
+      const credits = userData.credits !== undefined ? userData.credits : 10;
+
+      if (credits <= 0) {
+        return res.status(403).json({ error: "Your credit balance is 0. Please recharge your credits to use AI Router services." });
+      }
 
       // Classify type if it's 'auto'
       let resolvedType = type;
@@ -175,7 +179,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
           uid: userId,
           email: userId.includes('@') ? userId : "api_key_explorer@sanatani.dharm",
           displayName: userId.includes('@') ? userId.split('@')[0] : "API Core Builder",
-          credits: 20,
+          credits: 10,
           role: "user",
           createdAt: new Date().toISOString()
         });
@@ -183,7 +187,11 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       }
 
       const userData = userSnap.data()!;
-      const credits = userData.credits !== undefined ? userData.credits : 20;
+      const credits = userData.credits !== undefined ? userData.credits : 10;
+
+      if (credits <= 0) {
+        return res.status(403).json({ error: "Your credit balance is 0. Please recharge your credits to continue." });
+      }
 
       const { task, type = 'text', inputImage = null } = req.body;
       if (!task) {

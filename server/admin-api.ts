@@ -165,7 +165,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       let remainingCredits = 0;
       if (userSnap.exists) {
         const uData = userSnap.data()!;
-        const currentCredits = uData.credits !== undefined ? uData.credits : 20;
+        const currentCredits = uData.credits !== undefined ? uData.credits : 10;
         remainingCredits = Math.max(0, currentCredits - requestData.cost);
         await userRef.update({ credits: remainingCredits });
       }

@@ -114,7 +114,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   // 1. Fetch Telegram state database & bootstrap if missing
   let linkedProfileId: string | null = null;
   let linkedEmail: string | null = null;
-  let currentCredits = 20;
+  let currentCredits = 10;
 
   if (adminDb) {
     try {
@@ -122,7 +122,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       const userSnap = await userRef.get();
       if (userSnap.exists) {
         const udata = userSnap.data();
-        currentCredits = udata.credits !== undefined ? udata.credits : 20;
+        currentCredits = udata.credits !== undefined ? udata.credits : 10;
         linkedProfileId = udata.linkedProfileId || null;
         linkedEmail = udata.linkedEmail || null;
       } else {
@@ -130,7 +130,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           id: chatId.toString(),
           name: `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || `Chat ${chatId}`,
           username: from.username || null,
-          credits: 20,
+          credits: 10,
           role: "user",
           createdAt: new Date().toISOString()
         });
@@ -145,6 +145,16 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   const emailMatch = text.match(emailRegex);
   const isLinkCmd = textLower.startsWith("/link");
   const isLinkMention = textLower.includes("link") && (emailMatch || textLower.match(/\b([A-Z0-9]{8})\b/i));
+
+  // If customer credit is 0, they should not be able to do anything except start, link, or unlink commands.
+  if (currentCredits <= 0 && textLower !== "/start" && !isLinkCmd && !isLinkMention && textLower !== "/unlink") {
+    await sendMessage(
+      "⚠️ *No Credits Remaining*\n\n" +
+      "Your credit balance is 0. You cannot use Barnali AI assistant features. Please recharge your credits on [barnia.in/ai-router](https://barnia.in/ai-router) to continue using our services.",
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
 
   if (isLinkCmd || isLinkMention) {
     let linkArg = "";

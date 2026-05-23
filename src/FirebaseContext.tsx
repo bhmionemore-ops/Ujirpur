@@ -66,7 +66,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               email: currentUser.email,
               photoURL: currentUser.photoURL,
               role: 'user',
-              credits: 20,
+              credits: 10,
               createdAt: serverTimestamp()
             });
             
@@ -203,7 +203,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               lastLogin: serverTimestamp()
             };
             if (!userSnap.exists() || userSnap.data()?.credits === undefined) {
-              dataToSet.credits = 20;
+              dataToSet.credits = 10;
             }
             await setDoc(userRef, dataToSet, { merge: true });
             
@@ -262,7 +262,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         email: email,
         photoURL: null,
         role: 'user',
-        credits: 20,
+        credits: 10,
         createdAt: serverTimestamp()
       });
     } else {
