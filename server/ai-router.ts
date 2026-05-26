@@ -2,13 +2,64 @@ import * as DB from "./db";
 import crypto from "crypto";
 import { generateAIResult } from "./ai-router-logic";
 
-function getEstimatedCost(type: string): number {
+function getEstimatedCost(type: string, model?: string): number {
   if (type === 'text') return 1;
-  if (type === 'image') return 10;
-  if (type === 'image_to_image') return 10;
-  if (type === 'video') return 65;
-  if (type === 'image_to_video') return 65;
+  if (type === 'image' || type === 'image_to_image') {
+    if (model && (model === 'image-01' || model.includes('minimax'))) {
+      return 15;
+    }
+    return 10;
+  }
+  if (type === 'video' || type === 'image_to_video') {
+    if (model && (model === 'minimax-hailuo-02-10s' || model.includes('10s'))) {
+      return 85;
+    }
+    return 65;
+  }
   return 1;
+}
+
+async function resolveUserRefAndData(adminDb: any, admin: any, userId: string) {
+  let finalDocId = userId;
+
+  // If it's a UID (doesn't contain @)
+  if (!userId.includes('@')) {
+    // Try resolving via Firebase Auth Admin SDK
+    if (admin) {
+      try {
+        const authUser = await admin.auth().getUser(userId);
+        if (authUser.email) {
+          finalDocId = authUser.email.toLowerCase().trim();
+        }
+      } catch (err: any) {
+        console.warn(`[ResolveUser] Admin Auth lookup failed for UID ${userId}:`, err.message);
+      }
+    }
+
+    // If still not resolved to email, try checking Firestore users collection for a matching uid
+    if (finalDocId === userId && adminDb) {
+      try {
+        const usersSnap = await adminDb.collection("users").where("uid", "==", userId).limit(1).get();
+        if (!usersSnap.empty) {
+          const matchedUser = usersSnap.docs[0];
+          const emailField = matchedUser.data().email;
+          if (emailField) {
+            finalDocId = emailField.toLowerCase().trim();
+          } else {
+            finalDocId = matchedUser.id;
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[ResolveUser] Firestore users query failed for UID ${userId}:`, err.message);
+      }
+    }
+  } else {
+    // It is an email
+    finalDocId = userId.toLowerCase().trim();
+  }
+
+  const userRef = adminDb.collection("users").doc(finalDocId);
+  return { userRef, finalDocId };
 }
 
 export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
@@ -21,11 +72,13 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
+      const { finalDocId } = await resolveUserRefAndData(adminDb, admin, userId);
+
       // Generate a highly secure random API key prefix with x-bar
       const apiKey = "x-bar-" + crypto.randomBytes(16).toString("hex");
 
-      await adminDb.collection("api_keys").doc(userId).set({
-        userId,
+      await adminDb.collection("api_keys").doc(finalDocId).set({
+        userId: finalDocId,
         apiKey,
         createdAt: new Date()
       });
@@ -40,29 +93,37 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
   // Main UI router handler (runs fast on budget tasks, queues premium tasks)
   app.post("/api/ai", async (req: any, res: any) => {
     try {
-      const { userId, task, type, inputImage, approved } = req.body;
+      const { userId, task, type, inputImage, approved, model } = req.body;
       if (!userId) return res.status(400).json({ error: "userId is required" });
 
       const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
-      // Grab user credit balance
-      const userRef = adminDb.collection("users").doc(userId);
+      // Grab resolved user context & reference
+      const { userRef, finalDocId } = await resolveUserRefAndData(adminDb, admin, userId);
       let userSnap = await userRef.get();
       if (!userSnap.exists) {
-        console.log(`[AIRouter] User profile ${userId} not found in adminDb. Auto-bootstrapping default profile.`);
+        console.log(`[AIRouter] User profile ${finalDocId} not found in adminDb. Auto-bootstrapping default profile.`);
+        const isDeveloper = finalDocId === "okbgmi611@gmail.com" || finalDocId === "ujirpur.barnia6@gmail.com" || finalDocId.includes("admin") || finalDocId.includes("developer");
         await userRef.set({
-          uid: userId,
-          email: userId.includes('@') ? userId : "explorer@sanatani.dharm",
-          displayName: userId.includes('@') ? userId.split('@')[0] : "AI Explorer",
-          credits: 10,
-          role: "user",
+          uid: finalDocId.includes('@') ? userId : finalDocId,
+          email: finalDocId.includes('@') ? finalDocId : "explorer@sanatani.dharm",
+          displayName: finalDocId.includes('@') ? finalDocId.split('@')[0] : "AI Explorer",
+          credits: isDeveloper ? 1000 : 10,
+          role: isDeveloper ? "admin" : "user",
           createdAt: new Date().toISOString()
         });
         userSnap = await userRef.get();
       }
 
-      const userData = userSnap.data()!;
+      let userData = userSnap.data()!;
+      const isDev = finalDocId === "okbgmi611@gmail.com" || finalDocId === "ujirpur.barnia6@gmail.com";
+      if (isDev && (userData.credits !== 1000 || userData.role !== "admin")) {
+        await userRef.update({ credits: 1000, role: "admin" });
+        userSnap = await userRef.get();
+        userData = userSnap.data()!;
+      }
+
       const credits = userData.credits !== undefined ? userData.credits : 10;
 
       if (credits <= 0) {
@@ -82,7 +143,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         }
       }
 
-      const estimatedCost = getEstimatedCost(resolvedType);
+      const estimatedCost = getEstimatedCost(resolvedType, model);
       if (credits < estimatedCost) {
         return res.status(400).json({ error: `Insufficient credit balance. This task requires ${estimatedCost} credits but you only have ${credits}.` });
       }
@@ -98,8 +159,8 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
 
       // Standard budget tasks are executed instantly (credits < 15)
       if (estimatedCost < 15) {
-        console.log(`[AIRouter] Running budget task (${resolvedType}) instantly for user ${userId}`);
-        const aiResponse = await generateAIResult(task, resolvedType, inputImage || null);
+        console.log(`[AIRouter] Running budget task (${resolvedType}) instantly for user ${finalDocId}`);
+        const aiResponse = await generateAIResult(task, resolvedType, inputImage || null, model);
         
         // Deduct credit
         const newCredits = Math.max(0, credits - estimatedCost);
@@ -107,7 +168,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
 
         // Save log to usage collection
         await adminDb.collection("usage").add({
-          userId,
+          userId: finalDocId,
           task,
           type: resolvedType,
           cost: estimatedCost,
@@ -127,16 +188,18 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       }
 
       // Premium tasks (cost >= 15, e.g. image/video generation) are queued for Developer Approval to protect APIs from abuse
-      console.log(`[AIRouter] Queuing premium task (${resolvedType}) for developer approval`);
+      console.log(`[AIRouter] Queuing premium task (${resolvedType}) with model ${model || "default"} for developer approval`);
       const docRef = await adminDb.collection("pending_ai_requests").add({
-        userId,
+        userId: finalDocId,
+        userEmail: finalDocId,
         task,
         type: resolvedType,
         inputImage: inputImage || null,
         cost: estimatedCost,
         status: 'pending',
         createdAt: new Date(),
-        modelUsed: resolvedType === 'video' || resolvedType === 'image_to_video' ? 'MiniMax Video-01' : 'Flux Schnell'
+        modelUsed: model || (resolvedType === 'video' || resolvedType === 'image_to_video' ? 'MiniMax Video-01' : 'Flux Schnell'),
+        model: model || null
       });
 
       return res.json({ 
@@ -171,14 +234,15 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       const keyData = keySnap.docs[0].data();
       const userId = keyData.userId;
 
-      const userRef = adminDb.collection("users").doc(userId);
+      // Unify the userId
+      const { userRef, finalDocId } = await resolveUserRefAndData(adminDb, admin, userId);
       let userSnap = await userRef.get();
       if (!userSnap.exists) {
-        console.log(`[AIRouter API V1] User profile ${userId} linked to API Key not found in adminDb. Auto-bootstrapping profile...`);
+        console.log(`[AIRouter API V1] User profile ${finalDocId} linked to API Key not found in adminDb. Auto-bootstrapping profile...`);
         await userRef.set({
-          uid: userId,
-          email: userId.includes('@') ? userId : "api_key_explorer@sanatani.dharm",
-          displayName: userId.includes('@') ? userId.split('@')[0] : "API Core Builder",
+          uid: finalDocId.includes('@') ? userId : finalDocId,
+          email: finalDocId.includes('@') ? finalDocId : "api_key_explorer@sanatani.dharm",
+          displayName: finalDocId.includes('@') ? finalDocId.split('@')[0] : "API Core Builder",
           credits: 10,
           role: "user",
           createdAt: new Date().toISOString()
@@ -214,7 +278,8 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       // Premium tasks are queued similarly to protect developer from rapid drains
       if (estimatedCost >= 15) {
         const docRef = await adminDb.collection("pending_ai_requests").add({
-          userId,
+          userId: finalDocId,
+          userEmail: finalDocId,
           task,
           type: resolvedType,
           inputImage: inputImage || null,
@@ -238,7 +303,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       await userRef.update({ credits: newCredits });
 
       await adminDb.collection("usage").add({
-        userId,
+        userId: finalDocId,
         task,
         type: resolvedType,
         cost: estimatedCost,

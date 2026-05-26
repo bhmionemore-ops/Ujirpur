@@ -51,6 +51,25 @@ export const AiRouterPage = () => {
   const { t, language } = useLanguage();
   const [task, setTask] = useState('');
   const [type, setType] = useState<'auto' | 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video'>('auto');
+  const [selectedModel, setSelectedModel] = useState<string>('default');
+
+  const getModelsForType = (currentType: 'auto' | 'text' | 'image' | 'video' | 'image_to_image' | 'image_to_video') => {
+    if (currentType === 'image' || currentType === 'image_to_image') {
+      return [
+        { id: 'flux-schnell', name: 'Flux Schnell (OpenRouter)', cost: 10, description: 'Default budget image model, fast and beautiful.' },
+        { id: 'image-01', name: 'MiniMax image-01', cost: 15, description: 'Super premium highly artistic detail image model.' },
+      ];
+    }
+    if (currentType === 'video' || currentType === 'image_to_video') {
+      return [
+        { id: 'minimax-video-01', name: 'MiniMax Video-01 (OpenRouter)', cost: 65, description: 'Standard high-definition video generation model.' },
+        { id: 'minimax-hailuo-02-6s', name: 'MiniMax-Hailuo-02 6s', cost: 65, description: 'Next-generation hyper-realistic motion video (6s, 512P).' },
+        { id: 'minimax-hailuo-02-10s', name: 'MiniMax-Hailuo-02 10s', cost: 85, description: 'Next-generation hyper-realistic motion video (10s, 512P).' },
+      ];
+    }
+    return [];
+  };
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
   const [credits, setCredits] = useState<number>(0);
@@ -150,7 +169,8 @@ export const AiRouterPage = () => {
 
   useEffect(() => {
     if (!user || !db) return;
-    const keyRef = doc(db, 'api_keys', user.uid);
+    const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
+    const keyRef = doc(db, 'api_keys', userDocId);
     const unsubKey = onSnapshot(keyRef, (snap) => {
       if (snap.exists()) setApiKey(snap.data().apiKey);
     }, (err) => {
@@ -163,10 +183,11 @@ export const AiRouterPage = () => {
     if (!user) return;
     setIsGeneratingKey(true);
     try {
+      const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
       const res = await fetch('/api/ai/key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid })
+        body: JSON.stringify({ userId: userDocId })
       });
       if (res.ok) {
         const data = await res.json();
@@ -280,10 +301,18 @@ export const AiRouterPage = () => {
 
   const calculateCost = () => {
     if (type === 'text') return 1;
-    if (type === 'image') return 10;
-    if (type === 'image_to_image') return 10;
-    if (type === 'video') return 65;
-    if (type === 'image_to_video') return 65;
+    if (type === 'image' || type === 'image_to_image') {
+      if (selectedModel === 'image-01' || selectedModel.includes('minimax')) {
+        return 15;
+      }
+      return 10;
+    }
+    if (type === 'video' || type === 'image_to_video') {
+      if (selectedModel === 'minimax-hailuo-02-10s') {
+        return 85;
+      }
+      return 65;
+    }
     return 1; // Default
   };
 
@@ -336,14 +365,26 @@ export const AiRouterPage = () => {
           task,
           type,
           inputImage,
-          approved: isApproved
+          approved: isApproved,
+          model: selectedModel
         })
       });
 
-      const data = await response.json();
+      let data: any = null;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        console.warn("[AIRouterPage] Response is not JSON:", textResponse.slice(0, 300));
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Request failed');
+        throw new Error(data?.error || `Request failed with status ${response.status}`);
+      }
+
+      if (!data) {
+        throw new Error("Invalid response description received from AI Router.");
       }
 
       if (data.needsApproval) {
@@ -425,7 +466,16 @@ export const AiRouterPage = () => {
               ].map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setType(t.id as any)}
+                  onClick={() => {
+                    const newType = t.id as any;
+                    setType(newType);
+                    const models = getModelsForType(newType);
+                    if (models.length > 0) {
+                      setSelectedModel(models[0].id);
+                    } else {
+                      setSelectedModel('default');
+                    }
+                  }}
                   className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
                     type === t.id 
                     ? 'bg-zinc-900 text-white shadow-lg' 
@@ -437,6 +487,38 @@ export const AiRouterPage = () => {
                 </button>
               ))}
             </div>
+
+            {/* Model Selection Option Grid */}
+            {getModelsForType(type).length > 0 && (
+              <div className="mb-8 border border-zinc-150 rounded-[2.5rem] p-6 bg-zinc-50/50">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Target Generation Model</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {getModelsForType(type).map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedModel(m.id)}
+                      className={`flex flex-col text-left p-5 rounded-3xl border-2 transition-all cursor-pointer ${
+                        selectedModel === m.id
+                          ? 'border-brand-500 bg-white shadow-lg shadow-brand-500/5'
+                          : 'border-transparent bg-white/70 hover:bg-white hover:border-zinc-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1.5 gap-2">
+                        <span className="font-extrabold text-xs text-zinc-900">{m.name}</span>
+                        <span className={`font-mono font-black text-[8px] uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${
+                          selectedModel === m.id
+                            ? 'bg-brand-50 text-brand-500'
+                            : 'bg-zinc-100 text-zinc-400'
+                        }`}>
+                          {m.cost} Cr
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 font-bold leading-relaxed">{m.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {(type === 'image_to_image' || type === 'image_to_video') && (
               <div className="mb-8">

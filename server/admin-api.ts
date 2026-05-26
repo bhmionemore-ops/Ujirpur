@@ -157,10 +157,33 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       console.log(`[AdminAPI] Approved AI request ${requestId} for user ${requestData.userId}. Executing generation...`);
       
       // Execute the actual AI generation run
-      const aiResponse = await generateAIResult(requestData.task, requestData.type, requestData.inputImage || null);
+      const aiResponse = await generateAIResult(
+        requestData.task, 
+        requestData.type, 
+        requestData.inputImage || null,
+        requestData.model || requestData.modelUsed || null
+      );
       
       // 1. Deduct user credits
-      const userRef = adminDb.collection("users").doc(requestData.userId);
+      let resolvedUserId = requestData.userId;
+      if (!resolvedUserId.includes('@')) {
+        try {
+          const adminSDK = await import("firebase-admin");
+          const authUser = await adminSDK.auth().getUser(resolvedUserId);
+          if (authUser.email) resolvedUserId = authUser.email.toLowerCase().trim();
+        } catch (e) {
+          try {
+            const usersSnap = await adminDb.collection("users").where("uid", "==", resolvedUserId).limit(1).get();
+            if (!usersSnap.empty) {
+              const matchedUser = usersSnap.docs[0];
+              const emailField = matchedUser.data().email;
+              if (emailField) resolvedUserId = emailField.toLowerCase().trim();
+            }
+          } catch (e2) {}
+        }
+      }
+
+      const userRef = adminDb.collection("users").doc(resolvedUserId);
       const userSnap = await userRef.get();
       let remainingCredits = 0;
       if (userSnap.exists) {
@@ -172,7 +195,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
 
       // 2. Add to actual usage collection for billing & logs
       await adminDb.collection("usage").add({
-        userId: requestData.userId,
+        userId: resolvedUserId,
         task: requestData.task,
         type: requestData.type,
         cost: requestData.cost,
@@ -230,7 +253,25 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
         return res.status(400).json({ error: "Invalid target collection." });
       }
 
-      const docRef = adminDb.collection(colName).doc(targetId);
+      let resolvedTargetId = targetId;
+      if (colName === 'users' && !resolvedTargetId.includes('@')) {
+        try {
+          const adminSDK = await import("firebase-admin");
+          const authUser = await adminSDK.auth().getUser(resolvedTargetId);
+          if (authUser.email) resolvedTargetId = authUser.email.toLowerCase().trim();
+        } catch (err) {
+          try {
+            const usersSnap = await adminDb.collection("users").where("uid", "==", resolvedTargetId).limit(1).get();
+            if (!usersSnap.empty) {
+              const matchedUser = usersSnap.docs[0];
+              const emailField = matchedUser.data().email;
+              if (emailField) resolvedTargetId = emailField.toLowerCase().trim();
+            }
+          } catch (err2) {}
+        }
+      }
+
+      const docRef = adminDb.collection(colName).doc(resolvedTargetId);
       const snap = await docRef.get();
       if (!snap.exists) {
         return res.status(404).json({ error: `User not found in ${colName}` });

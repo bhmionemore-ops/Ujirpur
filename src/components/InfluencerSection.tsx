@@ -106,7 +106,8 @@ export const InfluencerSection = () => {
         }
         
         try {
-          const userRef = doc(db, 'users', user!.uid);
+          const userDocId = user!.email ? user!.email.toLowerCase().trim() : user!.uid;
+          const userRef = doc(db, 'users', userDocId);
           const userDoc = await getDoc(userRef);
           if (userDoc.exists() && userDoc.data().facebookId) {
             setFacebookId(userDoc.data().facebookId);
@@ -178,7 +179,8 @@ export const InfluencerSection = () => {
           
           // Check if user has facebookId in their user document
           try {
-            const userRef = doc(db, 'users', user.uid);
+            const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
+            const userRef = doc(db, 'users', userDocId);
             const userDoc = await getDoc(userRef);
             if (userDoc.exists() && userDoc.data().facebookId) {
               setFacebookId(userDoc.data().facebookId);

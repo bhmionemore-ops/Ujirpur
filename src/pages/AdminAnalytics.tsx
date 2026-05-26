@@ -12,6 +12,38 @@ import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import { useLanguage } from '../LanguageContext';
 
+export const safeToDate = (ts: any): Date => {
+  if (!ts) return new Date();
+  if (ts instanceof Date) return ts;
+  if (typeof ts.toDate === 'function') return ts.toDate();
+  if (typeof ts.toMillis === 'function') return new Date(ts.toMillis());
+  if (typeof ts === 'object') {
+    const sec = ts.seconds ?? ts._seconds;
+    if (typeof sec === 'number') {
+      return new Date(sec * 1000 + Math.floor((ts.nanoseconds ?? ts._nanoseconds ?? 0) / 1000000));
+    }
+  }
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return new Date();
+};
+
+export const safeToMillis = (ts: any): number => {
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'object') {
+    const sec = ts.seconds ?? ts._seconds;
+    if (typeof sec === 'number') {
+      return sec * 1000 + Math.floor((ts.nanoseconds ?? ts._nanoseconds ?? 0) / 1000000);
+    }
+  }
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed.getTime();
+  return 0;
+};
+
 interface VisitorSession {
   id: string;
   startTime: Timestamp;
@@ -386,16 +418,29 @@ export const AdminAnalytics = () => {
       setLoading(false);
     };
 
-    // If we are in session auth, ONLY use API (Firestore will definitely fail)
-    if (isSessionAuth) {
-      console.log("[AdminAnalytics] Session-only mode detected. Fetching via API proxy.");
+    // Baseline fetch for all configurations ensuring our local data is loaded on mount
+    loadAllData();
+
+    // Periodic sync fallback to pull updates from fallback DB
+    const syncInterval = setInterval(() => {
       loadAllData();
-    } else {
-      // Standard flow: try Firestore first, but attach error handlers that fallback to API
+    }, 5000);
+
+    let unsubSessions: () => void = () => {};
+    let unsubChats: () => void = () => {};
+    let unsubEmails: () => void = () => {};
+    let unsubAi: () => void = () => {};
+    let unsubKeys: () => void = () => {};
+    let unsubTg: () => void = () => {};
+    let unsubUsage: () => void = () => {};
+
+    if (!isSessionAuth) {
+      // Standard flow: register Firestore listeners, but ignore empty cache snapshots to prevent overwriting api data
       
       // Visitor sessions
       const qSessions = query(collection(db, 'visitor_sessions'), orderBy('lastSeen', 'desc'), limit(100));
-      const unsubSessions = onSnapshot(qSessions, (snapshot) => {
+      unsubSessions = onSnapshot(qSessions, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VisitorSession)));
         setLoading(false);
       }, async (err) => {
@@ -407,7 +452,8 @@ export const AdminAnalytics = () => {
 
       // Chat Messages
       const qChats = query(collection(db, 'support_messages'), orderBy('createdAt', 'desc'), limit(500));
-      const unsubChats = onSnapshot(qChats, (snapshot) => {
+      unsubChats = onSnapshot(qChats, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage)));
       }, async () => {
         const data = await fetchCol('support_messages');
@@ -416,7 +462,8 @@ export const AdminAnalytics = () => {
 
       // Emails
       const qEmails = query(collection(db, 'inbound_emails'), orderBy('timestamp', 'desc'), limit(100));
-      const unsubEmails = onSnapshot(qEmails, (snapshot) => {
+      unsubEmails = onSnapshot(qEmails, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setInboundEmails(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InboundEmail)));
       }, async () => {
         const data = await fetchCol('inbound_emails');
@@ -425,7 +472,8 @@ export const AdminAnalytics = () => {
 
       // AI Requests
       const qAi = query(collection(db, 'pending_ai_requests'), orderBy('createdAt', 'desc'), limit(50));
-      const unsubAi = onSnapshot(qAi, (snapshot) => {
+      unsubAi = onSnapshot(qAi, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setAiRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIRequest)));
       }, async () => {
         const data = await fetchCol('pending_ai_requests');
@@ -434,7 +482,8 @@ export const AdminAnalytics = () => {
 
       // API Keys
       const qKeys = collection(db, 'api_keys');
-      const unsubKeys = onSnapshot(qKeys, (snapshot) => {
+      unsubKeys = onSnapshot(qKeys, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setApiKeys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as APIKey)));
       }, async () => {
         const data = await fetchCol('api_keys');
@@ -443,7 +492,8 @@ export const AdminAnalytics = () => {
 
       // Telegram Users
       const qTg = collection(db, 'telegram_users');
-      const unsubTg = onSnapshot(qTg, (snapshot) => {
+      unsubTg = onSnapshot(qTg, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setTelegramUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TelegramUser)));
       }, async () => {
         const data = await fetchCol('telegram_users');
@@ -452,22 +502,13 @@ export const AdminAnalytics = () => {
 
       // AI Usage
       const qUsage = query(collection(db, 'usage'), orderBy('timestamp', 'desc'), limit(100));
-      const unsubUsage = onSnapshot(qUsage, (snapshot) => {
+      unsubUsage = onSnapshot(qUsage, (snapshot) => {
+        if (snapshot.metadata.fromCache && snapshot.docs.length === 0) return;
         setAiUsage(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AIUsageLog)));
       }, async () => {
         const data = await fetchCol('usage');
         if (data) setAiUsage(data);
       });
-
-      return () => {
-        unsubSessions();
-        unsubChats();
-        unsubEmails();
-        unsubAi();
-        unsubKeys();
-        unsubTg();
-        unsubUsage();
-      };
     }
 
     // Diagnostic fetch always needed
@@ -478,6 +519,19 @@ export const AdminAnalytics = () => {
       } catch (err) {}
     };
     fetchDiag();
+
+    return () => {
+      clearInterval(syncInterval);
+      if (!isSessionAuth) {
+        unsubSessions();
+        unsubChats();
+        unsubEmails();
+        unsubAi();
+        unsubKeys();
+        unsubTg();
+        unsubUsage();
+      }
+    };
   }, [isAdmin, isSessionAuth]);
 
   const handleDeleteEmail = async (id: string) => {
@@ -506,9 +560,9 @@ export const AdminAnalytics = () => {
     );
   }
 
-  const getDuration = (start: Timestamp | null, end: Timestamp | null) => {
+  const getDuration = (start: any, end: any) => {
     if (!start || !end) return '0s';
-    const diff = end.toMillis() - start.toMillis();
+    const diff = safeToMillis(end) - safeToMillis(start);
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
@@ -526,14 +580,19 @@ export const AdminAnalytics = () => {
 
   const activeNowCount = sessions.filter(s => {
     if (!s.lastSeen) return false;
-    return Date.now() - (s.lastSeen?.toMillis() || 0) < 60000;
+    return Date.now() - safeToMillis(s.lastSeen) < 60000;
   }).length;
 
   const avgDuration = sessions.length > 0 
-    ? getDuration(
-        Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.startTime?.toMillis() || 0), 0) / sessions.length),
-        Timestamp.fromMillis(sessions.reduce((acc, s) => acc + (s.lastSeen?.toMillis() || 0), 0) / sessions.length)
-      )
+    ? (() => {
+        const startAverage = sessions.reduce((acc, s) => acc + safeToMillis(s.startTime), 0) / sessions.length;
+        const seenAverage = sessions.reduce((acc, s) => acc + safeToMillis(s.lastSeen), 0) / sessions.length;
+        const diff = seenAverage - startAverage;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+        return `${seconds}s`;
+      })()
     : '0s';
 
   // Group chat messages by session
@@ -547,14 +606,14 @@ export const AdminAnalytics = () => {
 
   // Sort messages within each session by time (asc)
   Object.keys(chatSessions).forEach(sid => {
-    chatSessions[sid].sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+    chatSessions[sid].sort((a, b) => safeToMillis(a.createdAt) - safeToMillis(b.createdAt));
   });
 
   // Daily Traffic Data
   const dailyTraffic = sessions.reduce((acc, s) => {
     if (!s.startTime) return acc;
     try {
-      const date = format(s.startTime.toDate(), 'MMM dd');
+      const date = format(safeToDate(s.startTime), 'MMM dd');
       acc[date] = (acc[date] || 0) + 1;
     } catch (e) {
       console.warn("Error formatting date for session:", s.id, e);
@@ -564,14 +623,17 @@ export const AdminAnalytics = () => {
 
   const lineageLogins = sessions.filter(s => 
     s.events?.some(e => e.includes('vamshavali_') && e.includes('login'))
-  ).sort((a, b) => (b.lastSeen?.toMillis() || 0) - (a.lastSeen?.toMillis() || 0));
+  ).sort((a, b) => safeToMillis(b.lastSeen) - safeToMillis(a.lastSeen));
 
   const sortedChartData = Object.entries(dailyTraffic)
-    .map(([date, count]) => ({ 
-      date, 
-      count,
-      timestamp: sessions.find(s => s.startTime && format(s.startTime.toDate(), 'MMM dd') === date)?.startTime?.toMillis() || 0
-    }))
+    .map(([date, count]) => {
+      const matchingSession = sessions.find(s => s.startTime && format(safeToDate(s.startTime), 'MMM dd') === date);
+      return { 
+        date, 
+        count,
+        timestamp: matchingSession ? safeToMillis(matchingSession.startTime) : 0
+      };
+    })
     .sort((a, b) => a.timestamp - b.timestamp);
 
   return (
@@ -897,7 +959,7 @@ export const AdminAnalytics = () => {
                               <td className="px-6 py-4 text-xs font-bold text-zinc-900">{log.userId.includes('@') ? log.userId : `ID: ${log.userId.substring(0, 8)}`}</td>
                               <td className="px-6 py-4 text-[10px] font-black text-brand-600 uppercase">{log.modelUsed || "Router"}</td>
                               <td className="px-6 py-4 text-[10px] font-black">{log.cost} CR</td>
-                              <td className="px-6 py-4 text-right text-[10px] font-medium text-zinc-500">{log.timestamp?.toDate()?.toLocaleTimeString()}</td>
+                              <td className="px-6 py-4 text-right text-[10px] font-medium text-zinc-500">{log.timestamp ? safeToDate(log.timestamp).toLocaleTimeString() : 'Just now'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -972,7 +1034,7 @@ export const AdminAnalytics = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <p className="text-[10px] font-bold text-zinc-500">
-                                    {req.lastSeen?.toDate()?.toLocaleString() || 'Live'}
+                                    {req.lastSeen ? safeToDate(req.lastSeen).toLocaleString() : 'Live'}
                                   </p>
                                 </td>
                                 <td className="px-6 py-4 text-right">
@@ -1230,7 +1292,7 @@ export const AdminAnalytics = () => {
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-[10px] font-bold text-zinc-500">
-                          {email.timestamp?.toDate()?.toLocaleString() || 'Just now'}
+                          {email.timestamp ? safeToDate(email.timestamp).toLocaleString() : 'Just now'}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -1305,7 +1367,7 @@ export const AdminAnalytics = () => {
                           }`}>
                             {m.text}
                             <p className={`text-[8px] mt-2 opacity-50 ${m.isBot ? 'text-zinc-400' : 'text-white'}`}>
-                              {m.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Just now'}
+                              {m.createdAt ? safeToDate(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                             </p>
                           </div>
                         </div>
@@ -1359,7 +1421,7 @@ export const AdminAnalytics = () => {
                       {aiRequests.map((req) => (
                         <tr key={req.id} className="hover:bg-zinc-50/50 transition-colors group">
                           <td className="px-6 py-4">
-                            <p className="text-xs font-bold text-zinc-900">{req.userEmail}</p>
+                            <p className="text-xs font-bold text-zinc-900">{req.userEmail || req.userId}</p>
                             <p className="text-[10px] text-zinc-400 font-medium">Type: {req.type.toUpperCase()}</p>
                           </td>
                           <td className="px-6 py-4">
@@ -1379,7 +1441,7 @@ export const AdminAnalytics = () => {
                           </td>
                           <td className="px-6 py-4">
                             <p className="text-[10px] font-bold text-zinc-500">
-                              {req.createdAt?.toDate()?.toLocaleString() || 'Just now'}
+                              {req.createdAt ? safeToDate(req.createdAt).toLocaleString() : 'Just now'}
                             </p>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -1458,7 +1520,7 @@ export const AdminAnalytics = () => {
                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
                          {k.createdAt && (
                             <span className="text-[10px] text-zinc-400 font-medium tracking-tight">
-                               Issued: {k.createdAt.toDate().toLocaleDateString()}
+                               Issued: {safeToDate(k.createdAt).toLocaleDateString()}
                             </span>
                          )}
                       </div>

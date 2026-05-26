@@ -1,0 +1,353 @@
+{
+  "users": {
+    "default-user": {
+      "uid": "default-user",
+      "email": "okbgmi611@gmail.com",
+      "displayName": "Developer Admin",
+      "credits": 1000,
+      "role": "admin",
+      "createdAt": "2026-05-26T17:51:06.954Z"
+    },
+    "okbgmi611@gmail.com": {
+      "uid": "okbgmi611@gmail.com",
+      "email": "okbgmi611@gmail.com",
+      "displayName": "Developer Admin",
+      "credits": 999,
+      "role": "admin",
+      "createdAt": "2026-05-26T17:51:06.954Z",
+      "updatedAt": "2026-05-26T19:36:42.836Z"
+    },
+    "ujirpur.barnia6@gmail.com": {
+      "uid": "ujirpur.barnia6@gmail.com",
+      "email": "ujirpur.barnia6@gmail.com",
+      "displayName": "ujirpur.barnia6",
+      "credits": 999,
+      "role": "admin",
+      "createdAt": "2026-05-26T19:03:20.437Z",
+      "id": "ujirpur.barnia6@gmail.com",
+      "updatedAt": "2026-05-26T19:37:08.732Z"
+    },
+    "test@test.com": {
+      "uid": "test@test.com",
+      "email": "test@test.com",
+      "displayName": "test",
+      "credits": 9,
+      "role": "user",
+      "createdAt": "2026-05-26T19:26:47.495Z",
+      "id": "test@test.com",
+      "updatedAt": "2026-05-26T19:27:00.003Z"
+    }
+  },
+  "api_keys": {},
+  "news": {
+    "2026-05-26-bn": {
+      "local": {
+        "0": {
+          "title": "বার্নপুর স্টিল প্ল্যান্টে আধুনিকীকরণ প্রকল্পের উদ্বোধন",
+          "content": "বার্নপুর ইস্পাত কারখানায় নতুন প্রযুক্তি ব্যবহারের মাধ্যমে উৎপাদন ক্ষমতা বাড়ানোর লক্ষ্যমাত্রা নির্ধারণ করা হয়েছে।",
+          "source": "পশ্চিমবঙ্গ সংবাদ",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "নদীয়ায় কৃষি মেলায় কৃষকদের ভিড়",
+          "content": "নদীয়ার কৃষ্ণনগরে আয়োজিত বার্ষিক কৃষি মেলায় আধুনিক চাষাবাদের যন্ত্রপাতির প্রদর্শনী চলছে।",
+          "source": "নদীয়া বার্তা",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "পশ্চিমবঙ্গে বর্ষার আগমনের পূর্বাভাস",
+          "content": "আবহাওয়া দপ্তরের তথ্য অনুযায়ী, দক্ষিণবঙ্গে আগামী কয়েকদিনের মধ্যেই বর্ষা প্রবেশের অনুকূল পরিস্থিতি তৈরি হয়েছে।",
+          "source": "আবহাওয়া আপডেট",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "শান্তিপুরের তাঁত শিল্পে নতুন ডিজাইনের সমাহার",
+          "content": "শান্তিপুরের তাঁতিরা এবার গ্লোবাল মার্কেটের কথা মাথায় রেখে নতুন ধরনের সুতির শাড়ির কালেকশন এনেছেন।",
+          "source": "নদীয়া লাইভ",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "আসানসোল-দুর্গাপুর শিল্পাঞ্চলে পরিবেশ সচেতনতা কর্মসূচি",
+          "content": "শিল্পাঞ্চলে দূষণ কমাতে স্থানীয় প্রশাসন বৃক্ষরোপণ কর্মসূচি এবং সচেতনতা শিবিরের আয়োজন করেছে।",
+          "source": "পশ্চিমবঙ্গ দৈনিক",
+          "date": "2026-05-26"
+        }
+      },
+      "fbTrends": {
+        "0": {
+          "title": "ভ্রমণ পিপাসুদের জন্য অফবিট লোকেশন",
+          "content": "উত্তরবঙ্গের নতুন পর্যটন কেন্দ্রগুলো নিয়ে ফেসবুকে ভ্রমণ গ্রুপগুলোতে ব্যাপক আলোচনা চলছে।",
+          "source": "ফেসবুক ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "বাঙালি রান্নার নতুন রেসিপি",
+          "content": "গরমের দুপুরে হালকা ও স্বাস্থ্যকর বাঙালি খাবারের রেসিপিগুলো ফেসবুক ফিডে ভাইরাল হচ্ছে।",
+          "source": "ফেসবুক ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "স্মার্টফোন ফটোগ্রাফি টিপস",
+          "content": "মোবাইলে সেরা ছবি তোলার কৌশল নিয়ে তরুণ প্রজন্মের মধ্যে ব্যাপক আগ্রহ দেখা যাচ্ছে।",
+          "source": "ফেসবুক ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "অনলাইন শিক্ষার গুরুত্ব",
+          "content": "স্কিল ডেভেলপমেন্ট কোর্সের বিজ্ঞাপন ও আলোচনা ফেসবুকের মূলধারায় রয়েছে।",
+          "source": "ফেসবুক ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "স্বাস্থ্য সচেতনতা ও যোগব্যায়াম",
+          "content": "সুস্থ জীবনযাপনের জন্য যোগব্যায়ামের ভিডিওগুলো ব্যাপক শেয়ার হচ্ছে।",
+          "source": "ফেসবুক ট্রেন্ডস",
+          "date": "2026-05-26"
+        }
+      },
+      "igTrends": {
+        "0": {
+          "title": "সামার ফ্যাশন কালেকশন",
+          "content": "ইনস্টাগ্রামে হালকা সুতির পোশাক এবং প্যাস্টেল শেডের পোশাকের নতুন ট্রেন্ড চলছে।",
+          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "ইন্টেরিয়র ডিজাইন হ্যাকস",
+          "content": "ছোট ফ্ল্যাট বা ঘর সাজানোর নান্দনিক আইডিয়া রিলস আকারে জনপ্রিয় হচ্ছে।",
+          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "ফুড ভ্লগিং",
+          "content": "কলকাতার স্ট্রিট ফুড ও ক্যাফে কালচারের ভিডিওগুলো ইনস্টাগ্রামে ট্রেন্ডিং।",
+          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "ফিটনেস চ্যালেঞ্জ",
+          "content": "৩০ দিনের ফিটনেস চ্যালেঞ্জ নিয়ে তরুণদের মধ্যে ইনস্টাগ্রাম রিলস বেশ সাড়া ফেলেছে।",
+          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "মিনিমালিস্ট লাইফস্টাইল",
+          "content": "কিভাবে কম জিনিসপত্র ব্যবহার করে জীবনকে সহজ করা যায়, তা নিয়ে ইনফ্লুয়েন্সারদের পোস্ট বাড়ছে।",
+          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
+          "date": "2026-05-26"
+        }
+      },
+      "date": "2026-05-26",
+      "updatedAt": "2026-05-26T17:51:23.662Z",
+      "serverKey": "barnia-system-2024-v1",
+      "id": "2026-05-26-bn",
+      "createdAt": "2026-05-26T17:51:23.662Z"
+    },
+    "2026-05-26-en": {
+      "local": {
+        "0": {
+          "title": "Nadia District Health Department Launches Monsoon Preparedness Drive",
+          "content": "Health officials in Nadia have initiated a district-wide campaign to prevent water-borne diseases ahead of the monsoon season, focusing on sanitation in rural Barnia.",
+          "source": "Nadia Daily News",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "Agricultural Fair Concludes in Barnia",
+          "content": "A three-day agricultural fair focused on modern irrigation techniques for jute farmers concluded in Barnia, drawing hundreds of local participants.",
+          "source": "West Bengal Regional Post",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "New Infrastructure Project Approved for Nadia Connectivity",
+          "content": "The West Bengal government has sanctioned funds for a new bridge project connecting the outskirts of Barnia to the main Nadia commercial hub.",
+          "source": "State Development Bulletin",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "Educational Seminar Held for Nadia Youth",
+          "content": "A career guidance seminar for high school graduates was organized in the Nadia district headquarters, emphasizing vocational training opportunities.",
+          "source": "Nadia Educational Times",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "Barnia Local Market Sees Rise in Organic Produce Demand",
+          "content": "Local farmers in Barnia report a significant surge in demand for organic seasonal vegetables, leading to a boost in the local weekly market economy.",
+          "source": "West Bengal Business Review",
+          "date": "2026-05-26"
+        }
+      },
+      "fbTrends": {
+        "0": {
+          "title": "Global Climate Summit 2026 Highlights",
+          "content": "Discussions on the latest carbon-neutral policies are dominating Facebook feeds as the Global Climate Summit concludes.",
+          "source": "Facebook Trends Tracker",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "AI Integration in Home Appliances",
+          "content": "Viral discussions about the new generation of smart home AI assistants that simplify daily household management.",
+          "source": "Tech News Daily",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "Summer Travel Planning Tips",
+          "content": "Travel enthusiasts are sharing top budget-friendly summer vacation destinations for the upcoming season.",
+          "source": "Travel Community Hub",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "Health and Wellness Morning Routines",
+          "content": "Influencers are trending with the '5-minute morning mobility' challenge to improve posture and energy levels.",
+          "source": "Wellness Trends Daily",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "Retro Gaming Nostalgia Resurgence",
+          "content": "Community groups are actively sharing collections of 90s gaming consoles, sparking widespread nostalgia.",
+          "source": "Gaming Culture Weekly",
+          "date": "2026-05-26"
+        }
+      },
+      "igTrends": {
+        "0": {
+          "title": "Minimalist Summer Fashion Aesthetic",
+          "content": "The 'Clean Girl' aesthetic evolves into 'Summer Minimalism' with breathable fabrics and neutral tones trending on Instagram.",
+          "source": "Fashion Pulse",
+          "date": "2026-05-26"
+        },
+        "1": {
+          "title": "Sustainable Urban Gardening",
+          "content": "Reels showcasing balcony vegetable gardens in small urban apartments are gaining massive traction.",
+          "source": "Green Living Daily",
+          "date": "2026-05-26"
+        },
+        "2": {
+          "title": "Cinematic Travel Vlogging Styles",
+          "content": "New editing techniques using AI-assisted color grading are the top trend for travel creators this week.",
+          "source": "Creator Insights",
+          "date": "2026-05-26"
+        },
+        "3": {
+          "title": "Plant-Based Fusion Cuisine",
+          "content": "Instagram chefs are trending with 'Fusion Vegan' recipes, combining traditional spices with modern plant-based proteins.",
+          "source": "Foodie Trends",
+          "date": "2026-05-26"
+        },
+        "4": {
+          "title": "Digital Art Portraits",
+          "content": "Creators are using new augmented reality filters to turn self-portraits into digital impressionist art pieces.",
+          "source": "Digital Arts Weekly",
+          "date": "2026-05-26"
+        }
+      },
+      "date": "2026-05-26",
+      "updatedAt": "2026-05-26T17:51:29.451Z",
+      "serverKey": "barnia-system-2024-v1",
+      "id": "2026-05-26-en",
+      "createdAt": "2026-05-26T17:51:29.451Z"
+    }
+  },
+  "fact_checks": {
+    "sanatana-dharma-is-a-relatively-new-religion-start-4q1o8": {
+      "claim": "Sanatana Dharma is a relatively new religion started by external influences or historical developments in the last few centuries.",
+      "status": "false",
+      "explanation": "Sanatana Dharma is 'Anadi' (beginningless). It is not a religion founded by an individual, but a set of eternal laws (Dharma) governing the universe. It traces its roots to the Vedas, which are considered 'Apaurusheya' (not of human composition), predating recorded history.",
+      "source": "Rig Veda and Puranic Chronology",
+      "guidance": "Understand that you are a practitioner of the oldest living tradition; carry this identity with dignity and study the Vedas to understand the timeless nature of the Truth.",
+      "date": "2026-05-26",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-26T17:51:23.714Z",
+      "id": "sanatana-dharma-is-a-relatively-new-religion-start-4q1o8"
+    },
+    "the-caste-system-varna-vyavastha-in-sanatana-dharm-916n2": {
+      "claim": "The caste system (Varna Vyavastha) in Sanatana Dharma is based on birth and justifies discrimination.",
+      "status": "misleading",
+      "explanation": "The Bhagavad Gita (4.13) states 'Catur-varnyam maya srstam guna-karma-vibhagasah'—the division is based on 'Guna' (aptitude/nature) and 'Karma' (action), not birth. The current social stratification is a perversion of the original meritocratic and functional framework designed for social harmony.",
+      "source": "Bhagavad Gita, Chapter 4, Verse 13",
+      "guidance": "Treat every human being with respect, recognizing the presence of the same Atman in all, regardless of social labels.",
+      "date": "2026-05-26",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-26T17:51:23.715Z",
+      "id": "the-caste-system-varna-vyavastha-in-sanatana-dharm-916n2"
+    },
+    "sanatana-dharma-promotes-polytheism-the-belief-in--sjty5": {
+      "claim": "Sanatana Dharma promotes polytheism (the belief in many gods).",
+      "status": "false",
+      "explanation": "Sanatana Dharma is monistic. 'Ekam Sat Vipra Bahudha Vadanti' (Truth is one, the wise speak of it in many ways). Deities are different manifestations or aspects of the one Supreme Brahman.",
+      "source": "Rig Veda 1.164.46",
+      "guidance": "Worship the form that inspires your devotion, but always maintain the awareness that the ultimate reality is one non-dual Supreme Consciousness.",
+      "date": "2026-05-26",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-26T17:51:23.715Z",
+      "id": "sanatana-dharma-promotes-polytheism-the-belief-in--sjty5"
+    },
+    "idol-worship-murti-puja-is-an-act-of-superstitious-x9v38": {
+      "claim": "Idol worship (Murti Puja) is an act of superstitious paganism.",
+      "status": "false",
+      "explanation": "Murti Puja is not worshiping stone or metal, but using a consecrated form (Murti) as a focal point to invoke the Divine. It is a psychological and spiritual aid to concentrate the mind on the formless Brahman through a tangible medium.",
+      "source": "Agama Shastras",
+      "guidance": "Approach the deity in the temple not as an object, but as a living presence (Prana Pratishtha) that facilitates your connection with the Divine.",
+      "date": "2026-05-26",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-26T17:51:23.715Z",
+      "id": "idol-worship-murti-puja-is-an-act-of-superstitious-x9v38"
+    },
+    "sanatana-dharma-is-opposed-to-modern-science-and-l-0mbqg": {
+      "claim": "Sanatana Dharma is opposed to modern science and logical inquiry.",
+      "status": "false",
+      "explanation": "Sanatana Dharma encourages 'Tarka' (logic) and 'Anubhava' (personal experience). Ancient texts documented complex mathematics, astronomy, and medicine (Ayurveda) long before the modern era. The Upanishads emphasize self-inquiry as the highest form of scientific investigation.",
+      "source": "Upanishadic philosophical dialogues and Sushruta Samhita",
+      "guidance": "Do not accept dogmas blindly. Use your intellect to question, verify, and realize the truths of Dharma through both study and practice.",
+      "date": "2026-05-26",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-26T17:51:23.715Z",
+      "id": "sanatana-dharma-is-opposed-to-modern-science-and-l-0mbqg"
+    }
+  },
+  "usage": {
+    "i2edijioase": {
+      "userId": "ujirpur.barnia6@gmail.com",
+      "task": "make a image if sree ram",
+      "type": "image",
+      "cost": 10,
+      "modelUsed": "Flux Schnell (Aesthetic Fallback)",
+      "result": "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1200&q=80",
+      "timestamp": {},
+      "id": "i2edijioase",
+      "createdAt": "2026-05-26T19:03:20.753Z"
+    },
+    "jw5np7q06hg": {
+      "userId": "test@test.com",
+      "task": "hi",
+      "type": "text",
+      "cost": 1,
+      "modelUsed": "Gemini (gemini-3-flash-preview)",
+      "result": "Hello! How can I help you today?",
+      "timestamp": {},
+      "id": "jw5np7q06hg",
+      "createdAt": "2026-05-26T19:27:00.004Z"
+    },
+    "htfymh7l5jh": {
+      "userId": "okbgmi611@gmail.com",
+      "task": "Hello! You are up and running.",
+      "type": "text",
+      "cost": 1,
+      "modelUsed": "Gemini (gemini-3.1-flash-lite)",
+      "result": "Hello! I am indeed up and running and ready to help. How can I assist you today?",
+      "timestamp": {},
+      "id": "htfymh7l5jh",
+      "createdAt": "2026-05-26T19:36:42.837Z"
+    },
+    "njf0bcsgc5i": {
+      "userId": "ujirpur.barnia6@gmail.com",
+      "task": "Ready for AI generation",
+      "type": "text",
+      "cost": 1,
+      "modelUsed": "Gemini (gemini-3-flash-preview)",
+      "result": "I’m standing by! Please provide your instructions, topic, or the specific prompt you’d like me to work on.\n\nTo give you the best result, feel free to include:\n1.  **The Goal:** (e.g., write a story, code a function, summarize a text, or brainstorm ideas)\n2.  **The Tone:** (e.g., professional, creative, humorous, or academic)\n3.  **The Format:** (e.g., a list, a long-form essay, a script, or a table)\n\n**What are we creating?**",
+      "timestamp": {},
+      "id": "njf0bcsgc5i",
+      "createdAt": "2026-05-26T19:37:08.732Z"
+    }
+  }
+}

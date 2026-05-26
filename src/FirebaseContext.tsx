@@ -55,17 +55,56 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (currentUser) {
         setIsSessionAuth(false);
-        const userDocId = currentUser.email ? currentUser.email.toLowerCase().trim() : currentUser.uid;
+        const emailKey = currentUser.email ? currentUser.email.toLowerCase().trim() : null;
+        const userDocId = emailKey || currentUser.uid;
         const userRef = doc(db, 'users', userDocId);
         try {
+          // Clean up and merge legacy duplicate UID folder if our identifier is email-based
+          if (emailKey && currentUser.uid !== emailKey) {
+            const legacyUidRef = doc(db, 'users', currentUser.uid);
+            try {
+              const legacyDoc = await getDoc(legacyUidRef);
+              if (legacyDoc.exists()) {
+                console.log(`[FirebaseContext] Migrating legacy profile from UID ${currentUser.uid} to email-based profile ${emailKey}`);
+                const legacyData = legacyDoc.data();
+                const emailDoc = await getDoc(userRef);
+                const emailData = emailDoc.exists() ? emailDoc.data() : null;
+
+                // Accumulate/Merge credits (keeping the maximum to be safe and fair to user)
+                const mergedCredits = Math.max(
+                  emailData?.credits !== undefined ? Number(emailData.credits) : 10,
+                  legacyData?.credits !== undefined ? Number(legacyData.credits) : 0
+                );
+
+                await setDoc(userRef, {
+                  displayName: emailData?.displayName || legacyData?.displayName || currentUser.displayName || emailKey.split('@')[0],
+                  email: currentUser.email,
+                  photoURL: emailData?.photoURL || legacyData?.photoURL || currentUser.photoURL,
+                  facebookId: emailData?.facebookId || legacyData?.facebookId || null,
+                  role: emailData?.role || legacyData?.role || 'user',
+                  credits: mergedCredits,
+                  createdAt: emailData?.createdAt || legacyData?.createdAt || serverTimestamp(),
+                  lastLogin: serverTimestamp()
+                }, { merge: true });
+
+                // Remove legacy UID document
+                const { deleteDoc } = await import('firebase/firestore');
+                await deleteDoc(legacyUidRef);
+                console.log(`[FirebaseContext] Migration from UID ${currentUser.uid} completed successfully and legacy doc removed.`);
+              }
+            } catch (migErr: any) {
+              console.error("[FirebaseContext] Failed to merge duplicate profiles:", migErr.message);
+            }
+          }
+
           const userDoc = await getDoc(userRef);
           if (!userDoc.exists()) {
             console.log(`[FirebaseContext] New user detected via auth state change: ${currentUser.email}. Creating Firestore doc...`);
             await setDoc(userRef, {
-              displayName: currentUser.displayName,
+              displayName: currentUser.displayName || (emailKey ? emailKey.split('@')[0] : 'User'),
               email: currentUser.email,
               photoURL: currentUser.photoURL,
-              role: 'user',
+              role: (currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com') ? 'admin' : 'user',
               credits: 10,
               createdAt: serverTimestamp()
             });
@@ -89,7 +128,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
             }
             
-            setIsAdmin(false);
+            setIsAdmin((currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com'));
           } else {
             console.log(`[FirebaseContext] User already exists in Firestore: ${currentUser.email}`);
             setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com');

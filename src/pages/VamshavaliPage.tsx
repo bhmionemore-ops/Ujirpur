@@ -510,8 +510,20 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
           profileContext: profile?.name
         })
       });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      let data: any = null;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        console.warn("[VamshavaliPage] Numerology response is not JSON:", textResponse.slice(0, 300));
+      }
+      if (!response.ok) {
+        throw new Error(data?.error || `Request failed with status ${response.status}`);
+      }
+      if (!data || !data.reading) {
+        throw new Error("Invalid or empty reading returned.");
+      }
       setNumerologyReading({ name: member.name, reading: data.reading });
       toast.success("Divine insights revealed.");
     } catch (error: any) {
