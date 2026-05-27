@@ -12,6 +12,7 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { signIn, signInWithFacebook, signInWithEmail, signUpWithEmail, sendPasswordReset, sendOTP, verifyOTP } = useFirebase();
   const { language } = useLanguage();
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'otp'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -356,6 +357,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     >
                       Enable API in GCP Console →
                     </a>
+                  )}
+                  {isIframe && (error.includes('closed') || error.includes('popup') || error.includes('cancelled') || error.includes('cancel')) && (
+                    <div className="mt-3 p-3 bg-zinc-900 text-white rounded-xl text-[10px] font-medium leading-normal space-y-1.5 shadow-md">
+                      <p className="font-bold text-brand-400">⚡ AI Studio Preview Notice:</p>
+                      <p>Sign-in popups can fail inside the embedded preview frame.</p>
+                      <p>Please open the app in a new tab to complete login securely:</p>
+                      <button 
+                        type="button" 
+                        onClick={() => window.open(window.location.href, '_blank')}
+                        className="inline-flex items-center gap-1.5 mt-1 bg-brand-500 text-white px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider hover:bg-brand-650 active:scale-95 transition-all"
+                      >
+                        Open in New Tab ↗
+                      </button>
+                    </div>
                   )}
                 </div>
               </motion.div>

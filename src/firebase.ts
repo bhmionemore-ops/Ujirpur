@@ -49,6 +49,22 @@ export const db = initializeFirestore(app, {
   ignoreUndefinedProperties: true,
 }, databaseId);
 
+// Enable Firestore multi-tab offline persistence for cleaner offline operations
+import { enableMultiTabIndexedDbPersistence, enableIndexedDbPersistence } from 'firebase/firestore';
+if (typeof window !== 'undefined') {
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.log('[Firebase] Multi-tab persistence disabled (multiple tabs are active).');
+    } else if (err.code === 'unimplemented') {
+      enableIndexedDbPersistence(db).catch((singleTabErr) => {
+        console.log('[Firebase] Single-tab persistence fallback disabled:', singleTabErr);
+      });
+    } else {
+      console.log('[Firebase] Offline persistence not available:', err.message);
+    }
+  });
+}
+
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
@@ -111,7 +127,7 @@ async function testConnection(retries = 3, delay = 2000) {
       
       // Use a promise with timeout for the connection test
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Firebase connection timed out")), 15000)
+        setTimeout(() => reject(new Error("Firebase connection timed out")), 10000)
       );
       
       // We try to get a non-existent doc just to check network reachability
@@ -130,18 +146,17 @@ async function testConnection(retries = 3, delay = 2000) {
       const isOffline = errorMsg.includes('the client is offline') || errorMsg.includes('unavailable');
       const isTimeout = errorMsg.includes('timed out');
       
-      console.warn(`[Firebase] Attempt ${i + 1} failed: ${errorMsg}`);
+      console.log(`[Firebase] Connection attempt ${i + 1} info: ${errorMsg}`);
 
       if (isOffline || isTimeout) {
         if (isLastRetry) {
-          console.error(`Firebase connection failed permanently: ${errorMsg}. Check Firebase Console and configuration.`);
+          console.warn(`[Firebase] Client is currently operating in offline/cached mode: ${errorMsg}`);
         } else {
-          console.warn(`[Firebase] Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       } else {
-        // Permission errors actually mean the connection IS working
-        console.log("[Firebase] Connection check: Backend is reachable (Response received):", errorMsg);
+        // Permission errors or other Firestore responses mean the connection IS working
+        console.log("[Firebase] Backend is reachable (Response received):", errorMsg);
         return;
       }
     }
