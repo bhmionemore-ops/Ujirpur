@@ -5,7 +5,7 @@ import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { setDb, setAdminDb, setClientAuth, setFirebaseConfig, handleAdminError } from "./db";
+import { setDb, setAdminDb, setClientAuth, setFirebaseConfig, handleAdminError, setIsAdminSDKActive } from "./db";
 import { initEmail } from "./email";
 
 export async function initSDKs() {
@@ -69,8 +69,21 @@ export async function initSDKs() {
         try {
           await adb.collection("_health_check").limit(1).get();
           console.log(`[Firebase] Admin DB verification passed (DB: ${dbId || 'default'}).`);
+          setIsAdminSDKActive(true);
         } catch (authErr: any) {
-          console.warn(`[Firebase] Admin DB connection verification failed:`, authErr.message);
+          const errMsg = authErr.message || "";
+          const isCredErr = errMsg.toLowerCase().includes("credential") || 
+                            errMsg.toLowerCase().includes("could not load default") ||
+                            errMsg.toLowerCase().includes("permission") ||
+                            errMsg.toLowerCase().includes("unauthenticated") ||
+                            errMsg.toLowerCase().includes("unauthorized") ||
+                            errMsg.toLowerCase().includes("google-auth");
+          
+          if (isCredErr) {
+            console.log(`[Firebase] Admin SDK disabled (will operate in clean local fallback mode): Default credentials absent`);
+          } else {
+            console.warn(`[Firebase] Admin DB connection verification info:`, errMsg);
+          }
           handleAdminError(authErr, "Startup verification");
         }
 

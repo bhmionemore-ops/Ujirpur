@@ -120,16 +120,20 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       results.adminDbInitialized = !!adminDb;
 
       // Check Identity Toolkit status if possible
-      const admin = await import("firebase-admin");
-      try {
-        await admin.auth().getUserByEmail("test@example.com");
-        results.identityToolkitStatus = "enabled";
-      } catch (e: any) {
-        if (e.code === 'auth/project-not-found' || e.message.includes('identitytoolkit.googleapis.com')) {
-          results.identityToolkitStatus = "disabled";
-        } else {
-          results.identityToolkitStatus = "error: " + e.code;
+      if (DB.state.isAdminSDKActive) {
+        try {
+          const admin = await import("firebase-admin");
+          await admin.auth().getUserByEmail("test@example.com");
+          results.identityToolkitStatus = "enabled";
+        } catch (e: any) {
+          if (e.code === 'auth/project-not-found' || e.message.includes('identitytoolkit.googleapis.com')) {
+            results.identityToolkitStatus = "disabled";
+          } else {
+            results.identityToolkitStatus = "error: " + e.code;
+          }
         }
+      } else {
+        results.identityToolkitStatus = "disabled (Admin credentials inactive)";
       }
 
       res.json(results);

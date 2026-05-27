@@ -25,7 +25,7 @@ async function resolveUserRefAndData(adminDb: any, admin: any, userId: string) {
   // If it's a UID (doesn't contain @)
   if (!userId.includes('@')) {
     // Try resolving via Firebase Auth Admin SDK
-    if (admin) {
+    if (admin && DB.state.isAdminSDKActive) {
       try {
         const authUser = await admin.auth().getUser(userId);
         if (authUser.email) {

@@ -155,20 +155,32 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
 
       // Auth Fallback Logic
       let userRecord: any = { uid: `user_${email.replace(/[^a-z0-9]/g, '_')}`, email };
-      let authEnabled = true;
+      let authEnabled = DB.state.isAdminSDKActive;
 
-      try {
-        userRecord = await admin.auth().getUserByEmail(email);
-      } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
-          userRecord = await admin.auth().createUser({ email, emailVerified: true });
-        } else {
-          const errorStr = JSON.stringify(error);
-          if (errorStr.includes('identitytoolkit') || errorStr.includes('PERMISSION_DENIED') || errorStr.includes('403')) {
-            console.warn("[AuthAPI] Identity Toolkit API error, falling back to session-only mode.");
-            authEnabled = false;
+      if (authEnabled) {
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error: any) {
+          if (error.code === 'auth/user-not-found') {
+            try {
+              userRecord = await admin.auth().createUser({ email, emailVerified: true });
+            } catch (createErr) {
+              console.warn("[AuthAPI] Failed to create user via Admin SDK, setting authEnabled false:", createErr);
+              authEnabled = false;
+            }
           } else {
-            throw error;
+            const errorStr = JSON.stringify(error) || String(error);
+            const isCredOrPermErr = errorStr.includes('identitytoolkit') || 
+                                    errorStr.includes('PERMISSION_DENIED') || 
+                                    errorStr.includes('403') ||
+                                    errorStr.toLowerCase().includes('credential') ||
+                                    errorStr.toLowerCase().includes('could not load default');
+            if (isCredOrPermErr) {
+              console.warn("[AuthAPI] Admin Auth permission/credential issue, falling back to session-only mode.");
+              authEnabled = false;
+            } else {
+              throw error;
+            }
           }
         }
       }
