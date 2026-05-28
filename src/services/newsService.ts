@@ -90,7 +90,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: "gemini-2.0-flash", // Use a more reliable model by default
+        model: "gemini-3.5-flash", // Use a more reliable model by default
         contents: prompt,
         config: config
       }),
@@ -126,7 +126,7 @@ export async function fetchLiveNews(language: 'bn' | 'en' = 'en', targetDate?: s
       fbTrends: parsed.fbTrends || [],
       igTrends: parsed.igTrends || [],
       updatedAt: new Date().toISOString(),
-      modelUsed: data.modelUsed || "gemini-2.0-flash",
+      modelUsed: data.modelUsed || "gemini-3.5-flash",
       date: targetDate || new Date().toISOString().split('T')[0]
     };
 

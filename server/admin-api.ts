@@ -205,46 +205,35 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       const userRef = adminDb.collection("users").doc(resolvedUserId);
       const userSnap = await userRef.get();
       let remainingCredits = 0;
-      let creditsDeducted = false;
 
       if (userSnap.exists) {
         const uData = userSnap.data()!;
         const currentCredits = uData.credits !== undefined ? uData.credits : 10;
         remainingCredits = Math.max(0, currentCredits - requestData.cost);
         await userRef.update({ credits: remainingCredits });
-        creditsDeducted = true;
+      } else {
+        const isDeveloper = resolvedUserId === "okbgmi611@gmail.com" || resolvedUserId === "ujirpur.barnia6@gmail.com";
+        remainingCredits = Math.max(0, (isDeveloper ? 1000 : 10) - requestData.cost);
+        await userRef.set({
+          uid: resolvedUserId,
+          email: resolvedUserId,
+          displayName: resolvedUserId.split('@')[0],
+          credits: remainingCredits,
+          role: isDeveloper ? "admin" : "user",
+          createdAt: new Date()
+        });
       }
 
-      // Sync credits & sync verification into client-side JS Firestore SDK
+      // Sync and mirror reduced credits directly to standard client-side DB via blind write
       if (DB.state.db) {
         try {
-          const { doc, getDoc, updateDoc } = await import("firebase/firestore");
+          const { doc, setDoc } = await import("firebase/firestore");
           const clientUserRef = doc(DB.state.db, "users", resolvedUserId);
-          const clientUserSnap = await getDoc(clientUserRef);
-          if (clientUserSnap.exists()) {
-            const uData = clientUserSnap.data();
-            const currentCredits = uData.credits !== undefined ? uData.credits : 10;
-            remainingCredits = Math.max(0, currentCredits - requestData.cost);
-            await updateDoc(clientUserRef, { 
-              credits: remainingCredits,
-              serverKey: 'barnia-system-2024-v1'
-            });
-            creditsDeducted = true;
-          } else if (!creditsDeducted) {
-            // Bootstrap user document in client db
-            const { setDoc, serverTimestamp } = await import("firebase/firestore");
-            remainingCredits = Math.max(0, 10 - requestData.cost);
-            await setDoc(clientUserRef, {
-              uid: resolvedUserId,
-              email: resolvedUserId,
-              displayName: resolvedUserId.split('@')[0],
-              credits: remainingCredits,
-              role: "user",
-              serverKey: 'barnia-system-2024-v1',
-              createdAt: serverTimestamp()
-            });
-            creditsDeducted = true;
-          }
+          await setDoc(clientUserRef, { 
+            credits: remainingCredits,
+            serverKey: 'barnia-system-2024-v1'
+          }, { merge: true });
+          console.log(`[AdminAPI] Mirrored remaining credits (${remainingCredits}) to client user document`);
         } catch (e: any) {
           console.warn("[AdminAPI] Client DB credits synchronization failed:", e.message);
         }

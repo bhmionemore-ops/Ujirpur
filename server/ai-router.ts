@@ -169,7 +169,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
 
       let userData = userSnap.data()!;
       const isDev = finalDocId === "okbgmi611@gmail.com" || finalDocId === "ujirpur.barnia6@gmail.com";
-      if (isDev && (userData.credits !== 1000 || userData.role !== "admin")) {
+      if (isDev && (userData.credits === undefined || userData.credits < 10 || userData.role !== "admin")) {
         await userRef.update({ credits: 1000, role: "admin" });
         if (DB.state.db) {
           try {

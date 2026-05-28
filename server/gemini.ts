@@ -21,17 +21,12 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
   
   // Recommended model aliases from the gemini-api skill
   const fallbackModels = [
-    "gemini-2.0-flash-exp",     // Experimental fallback (Higher quota usually)
-    "gemini-2.0-flash",         // Newer stable if available
-    "gemini-1.5-flash",         // Solid 15RPM fallback
-    "gemini-1.5-flash-8b",      // High throughput
+    "gemini-3.5-flash",         // Recommended primary standard model (v1beta supported)
     "gemini-3.1-flash-lite",    // Lightweight fallback
     "gemini-flash-latest",      // Alias
-    "gemini-3-flash-preview",   // Low quota (20/day) - move to end
-    "gemini-exp-1206",          // Experimental fallback
   ];
   
-  const requestedModel = options.model || "gemini-3-flash-preview";
+  const requestedModel = options.model || "gemini-3.5-flash";
   const modelsToTry = Array.from(new Set([
     requestedModel,
     ...fallbackModels
