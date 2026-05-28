@@ -225,7 +225,10 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
             const uData = clientUserSnap.data();
             const currentCredits = uData.credits !== undefined ? uData.credits : 10;
             remainingCredits = Math.max(0, currentCredits - requestData.cost);
-            await updateDoc(clientUserRef, { credits: remainingCredits });
+            await updateDoc(clientUserRef, { 
+              credits: remainingCredits,
+              serverKey: 'barnia-system-2024-v1'
+            });
             creditsDeducted = true;
           } else if (!creditsDeducted) {
             // Bootstrap user document in client db
@@ -237,6 +240,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
               displayName: resolvedUserId.split('@')[0],
               credits: remainingCredits,
               role: "user",
+              serverKey: 'barnia-system-2024-v1',
               createdAt: serverTimestamp()
             });
             creditsDeducted = true;
@@ -267,6 +271,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
             cost: requestData.cost,
             modelUsed: aiResponse.modelUsed,
             result: aiResponse.result,
+            serverKey: 'barnia-system-2024-v1',
             timestamp: serverTimestamp()
           });
         } catch (e: any) {
@@ -296,6 +301,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
               result: aiResponse.result,
               modelUsed: aiResponse.modelUsed,
               approvedBy: adminId,
+              serverKey: 'barnia-system-2024-v1',
               approvedAt: serverTimestamp()
             });
           } catch (e) {
@@ -306,6 +312,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
               result: aiResponse.result,
               modelUsed: aiResponse.modelUsed,
               approvedBy: adminId,
+              serverKey: 'barnia-system-2024-v1',
               approvedAt: serverTimestamp()
             }, { merge: true });
           }
@@ -344,6 +351,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
           await updateDoc(doc(DB.state.db, "pending_ai_requests", requestId), { 
             status: 'denied',
             deniedBy: adminId,
+            serverKey: 'barnia-system-2024-v1',
             deniedAt: serverTimestamp()
           });
         } catch (e: any) {

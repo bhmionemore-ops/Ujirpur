@@ -89,6 +89,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
           await setDoc(doc(DB.state.db, "api_keys", finalDocId), {
             userId: finalDocId,
             apiKey,
+            serverKey: 'barnia-system-2024-v1',
             createdAt: serverTimestamp()
           });
         } catch (e: any) {
@@ -155,6 +156,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
           try {
             await setDoc(doc(DB.state.db, "users", finalDocId), {
               ...baseUserData,
+              serverKey: 'barnia-system-2024-v1',
               createdAt: serverTimestamp()
             });
           } catch (e: any) {
@@ -171,7 +173,11 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         await userRef.update({ credits: 1000, role: "admin" });
         if (DB.state.db) {
           try {
-            await updateDoc(doc(DB.state.db, "users", finalDocId), { credits: 1000, role: "admin" });
+            await updateDoc(doc(DB.state.db, "users", finalDocId), { 
+              credits: 1000, 
+              role: "admin",
+              serverKey: 'barnia-system-2024-v1'
+            });
           } catch (e: any) {}
         }
         userSnap = await userRef.get();
@@ -234,7 +240,10 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         // Sync with standard client-side DB
         if (DB.state.db) {
           try {
-            await updateDoc(doc(DB.state.db, "users", finalDocId), { credits: newCredits });
+            await updateDoc(doc(DB.state.db, "users", finalDocId), { 
+              credits: newCredits,
+              serverKey: 'barnia-system-2024-v1'
+            });
             await addDoc(collection(DB.state.db, "usage"), {
               userId: finalDocId,
               task,
@@ -242,6 +251,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
               cost: estimatedCost,
               modelUsed: aiResponse.modelUsed,
               result: aiResponse.result,
+              serverKey: 'barnia-system-2024-v1',
               timestamp: serverTimestamp()
             });
             console.log(`[AIRouter] Budget task credits and logs successfully synced to client DB`);
@@ -282,6 +292,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         try {
           await setDoc(doc(DB.state.db, "pending_ai_requests", docRef.id), {
             ...pendingData,
+            serverKey: 'barnia-system-2024-v1',
             createdAt: serverTimestamp()
           });
           console.log(`[AIRouter] Queued request synchronized to standard client DB: ${docRef.id}`);
@@ -384,6 +395,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
           try {
             await setDoc(doc(DB.state.db, "pending_ai_requests", docRef.id), {
               ...pendingData,
+              serverKey: 'barnia-system-2024-v1',
               createdAt: serverTimestamp()
             });
             console.log(`[AIRouter API V1] Synchronized queued request to standard client DB: ${docRef.id}`);
@@ -418,7 +430,10 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
       // Sync to standard client-side DB
       if (DB.state.db) {
         try {
-          await updateDoc(doc(DB.state.db, "users", finalDocId), { credits: newCredits });
+          await updateDoc(doc(DB.state.db, "users", finalDocId), { 
+            credits: newCredits,
+            serverKey: 'barnia-system-2024-v1'
+          });
           await addDoc(collection(DB.state.db, "usage"), {
             userId: finalDocId,
             task,
@@ -426,6 +441,7 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
             cost: estimatedCost,
             modelUsed: aiResponse.modelUsed,
             result: aiResponse.result,
+            serverKey: 'barnia-system-2024-v1',
             timestamp: serverTimestamp()
           });
         } catch (e: any) {
