@@ -151,9 +151,24 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       const requestRef = adminDb.collection("pending_ai_requests").doc(requestId);
       const snap = await requestRef.get();
       
-      if (!snap.exists) return res.status(404).json({ error: "Request not found" });
+      let requestData = snap.exists ? snap.data()! : null;
+
+      // Dynamic load fallback from standard web client DB if not found in local backend db
+      if (!requestData && DB.state.db) {
+        try {
+          const { doc, getDoc } = await import("firebase/firestore");
+          const clientSnap = await getDoc(doc(DB.state.db, "pending_ai_requests", requestId));
+          if (clientSnap.exists()) {
+            requestData = clientSnap.data() as any;
+            console.log(`[AdminAPI] Dynamically loaded pending request ${requestId} from client DB for approval`);
+          }
+        } catch (e: any) {
+          console.warn("[AdminAPI] Client DB request load skipped/failed:", e.message);
+        }
+      }
       
-      const requestData = snap.data()!;
+      if (!requestData) return res.status(404).json({ error: "Request not found in databases" });
+      
       if (requestData.status !== 'pending') {
          return res.status(400).json({ error: "Request is already processed" });
       }
@@ -190,11 +205,45 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       const userRef = adminDb.collection("users").doc(resolvedUserId);
       const userSnap = await userRef.get();
       let remainingCredits = 0;
+      let creditsDeducted = false;
+
       if (userSnap.exists) {
         const uData = userSnap.data()!;
         const currentCredits = uData.credits !== undefined ? uData.credits : 10;
         remainingCredits = Math.max(0, currentCredits - requestData.cost);
         await userRef.update({ credits: remainingCredits });
+        creditsDeducted = true;
+      }
+
+      // Sync credits & sync verification into client-side JS Firestore SDK
+      if (DB.state.db) {
+        try {
+          const { doc, getDoc, updateDoc } = await import("firebase/firestore");
+          const clientUserRef = doc(DB.state.db, "users", resolvedUserId);
+          const clientUserSnap = await getDoc(clientUserRef);
+          if (clientUserSnap.exists()) {
+            const uData = clientUserSnap.data();
+            const currentCredits = uData.credits !== undefined ? uData.credits : 10;
+            remainingCredits = Math.max(0, currentCredits - requestData.cost);
+            await updateDoc(clientUserRef, { credits: remainingCredits });
+            creditsDeducted = true;
+          } else if (!creditsDeducted) {
+            // Bootstrap user document in client db
+            const { setDoc, serverTimestamp } = await import("firebase/firestore");
+            remainingCredits = Math.max(0, 10 - requestData.cost);
+            await setDoc(clientUserRef, {
+              uid: resolvedUserId,
+              email: resolvedUserId,
+              displayName: resolvedUserId.split('@')[0],
+              credits: remainingCredits,
+              role: "user",
+              createdAt: serverTimestamp()
+            });
+            creditsDeducted = true;
+          }
+        } catch (e: any) {
+          console.warn("[AdminAPI] Client DB credits synchronization failed:", e.message);
+        }
       }
 
       // 2. Add to actual usage collection for billing & logs
@@ -208,14 +257,63 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
         timestamp: new Date()
       });
 
+      if (DB.state.db) {
+        try {
+          const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+          await addDoc(collection(DB.state.db, "usage"), {
+            userId: resolvedUserId,
+            task: requestData.task,
+            type: requestData.type,
+            cost: requestData.cost,
+            modelUsed: aiResponse.modelUsed,
+            result: aiResponse.result,
+            timestamp: serverTimestamp()
+          });
+        } catch (e: any) {
+          console.warn("[AdminAPI] Usage log sync to client DB failed:", e.message);
+        }
+      }
+
       // 3. Mark the pending request doc as completed and store the output
-      await requestRef.update({ 
-        status: 'completed',
-        result: aiResponse.result,
-        modelUsed: aiResponse.modelUsed,
-        approvedBy: adminId,
-        approvedAt: new Date()
-      });
+      if (snap.exists) {
+        await requestRef.update({ 
+          status: 'completed',
+          result: aiResponse.result,
+          modelUsed: aiResponse.modelUsed,
+          approvedBy: adminId,
+          approvedAt: new Date()
+        });
+      }
+
+      if (DB.state.db) {
+        try {
+          const { doc, updateDoc, serverTimestamp, setDoc } = await import("firebase/firestore");
+          const clientReqRef = doc(DB.state.db, "pending_ai_requests", requestId);
+          // Standard update or create if doesn't exist
+          try {
+            await updateDoc(clientReqRef, { 
+              status: 'completed',
+              result: aiResponse.result,
+              modelUsed: aiResponse.modelUsed,
+              approvedBy: adminId,
+              approvedAt: serverTimestamp()
+            });
+          } catch (e) {
+            // Fallback setDoc
+            await setDoc(clientReqRef, {
+              ...requestData,
+              status: 'completed',
+              result: aiResponse.result,
+              modelUsed: aiResponse.modelUsed,
+              approvedBy: adminId,
+              approvedAt: serverTimestamp()
+            }, { merge: true });
+          }
+          console.log(`[AdminAPI] Approved AI request successfully synchronized to client DB`);
+        } catch (e: any) {
+          console.warn("[AdminAPI] Request status sync to client DB failed:", e.message);
+        }
+      }
 
       res.json({ success: true, message: "AI Request approved and processed successfully", result: aiResponse.result });
     } catch (e: any) {
@@ -230,11 +328,28 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       const adminDb = DB.state.adminDb;
       if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
 
-      await adminDb.collection("pending_ai_requests").doc(requestId).update({ 
-        status: 'denied',
-        deniedBy: adminId,
-        deniedAt: new Date()
-      });
+      const requestRef = adminDb.collection("pending_ai_requests").doc(requestId);
+      const snap = await requestRef.get();
+      if (snap.exists) {
+        await requestRef.update({ 
+          status: 'denied',
+          deniedBy: adminId,
+          deniedAt: new Date()
+        });
+      }
+
+      if (DB.state.db) {
+        try {
+          const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+          await updateDoc(doc(DB.state.db, "pending_ai_requests", requestId), { 
+            status: 'denied',
+            deniedBy: adminId,
+            deniedAt: serverTimestamp()
+          });
+        } catch (e: any) {
+          console.warn("[AdminAPI] Deny status sync to client DB failed:", e.message);
+        }
+      }
 
       res.json({ success: true });
     } catch (e: any) {
