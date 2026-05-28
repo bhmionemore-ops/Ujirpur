@@ -309,7 +309,7 @@ ${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
 Format answers beautifully. Speak in Bengali or English based on the user's language. Keep answers concise.`;
 
     const response = await callGeminiWithRetry(apiKey, {
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: [
         { role: "user", parts: [ { text: `${systemPrompt}\n\nUser request: ${unifiedPrompt}` } ] }
       ]

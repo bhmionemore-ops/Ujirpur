@@ -19,7 +19,8 @@ import {
   Upload,
   X,
   Plus,
-  Play
+  Play,
+  Info
 } from 'lucide-react';
 import { doc, onSnapshot, collection, query, where, orderBy, limit, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -108,8 +109,13 @@ export const AiRouterPage = () => {
 
   const handleSimulatePayment = async () => {
     if (!selectedPackage || !user) return;
-    if (!cardNumber || cardNumber.replace(/\s+/g, '').length < 16) {
+    const cleanCard = cardNumber.replace(/\s+/g, '');
+    if (!cardNumber || cleanCard.length < 16) {
       toast.error('Please enter a valid 16-digit card number.');
+      return;
+    }
+    if (cleanCard !== '4242424242424242') {
+      toast.error('Sandbox Authorization Denied: For security and compliance, you must use the official Stripe Test Card "4242 4242 4242 4242" to complete this simulation.');
       return;
     }
     if (!cardExpiry || !cardExpiry.includes('/')) {
@@ -141,28 +147,11 @@ export const AiRouterPage = () => {
     }
 
     try {
-      const userDocId = user.email ? user.email.toLowerCase().trim() : user.uid;
-      const userRef = doc(db, 'users', userDocId);
-      await updateDoc(userRef, {
-        credits: (credits || 0) + selectedPackage.credits,
-        updatedAt: new Date()
-      });
-      
-      const logsRef = collection(db, 'usage');
-      await addDoc(logsRef, {
-        userId: userDocId,
-        task: `Credit Purchased: ${selectedPackage.name}`,
-        type: 'billing',
-        cost: -selectedPackage.credits,
-        modelUsed: 'Stripe Sandbox Engine',
-        timestamp: new Date()
-      });
-
       setPaymentStep('success');
-      toast.success(`Successfully added ${selectedPackage.credits} credits to your account!`);
+      toast.success(`Sandbox checkout simulated successfully! (No actual credits added in demo mode)`);
     } catch (err: any) {
       console.error(err);
-      toast.error(`Ledger credit update failed: ${err.message}`);
+      toast.error(`Simulation failed: ${err.message}`);
       setPaymentStep('details');
     }
   };
@@ -927,6 +916,16 @@ export const AiRouterPage = () => {
                         <p className="text-sm font-bold text-zinc-500 font-mono mt-1">{selectedPackage.price}</p>
                       </div>
 
+                      <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-2.5">
+                        <Info size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5 text-left">
+                          <p className="text-[10px] font-black text-amber-800 uppercase tracking-wide">Developer Sandbox Active</p>
+                          <p className="text-[9px] text-amber-700 leading-normal font-medium">
+                            To simulate a successful credit ledger top-up, you must input the official Stripe Sandbox test card: <strong className="font-mono text-amber-900 bg-amber-100 px-1 rounded">4242 4242 4242 4242</strong> with any expiry date and CVC.
+                          </p>
+                        </div>
+                      </div>
+
                       <div className="space-y-4">
                         <div>
                           <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Name on Card</label>
@@ -1013,23 +1012,31 @@ export const AiRouterPage = () => {
                         <CheckCircle2 size={32} className="animate-bounce" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-lg font-black text-zinc-900 uppercase">Payment Authorized</h4>
-                        <p className="text-xs text-zinc-400 font-medium">Your bank ledger has synchronized successfully.</p>
+                        <h4 className="text-lg font-black text-zinc-900 uppercase">Checkout Simulated</h4>
+                        <p className="text-xs text-zinc-400 font-medium">This sandbox flow is a visual demonstration step.</p>
                       </div>
 
-                      <div className="p-4 bg-zinc-50 rounded-2xl w-full border border-zinc-100 space-y-2 text-left font-mono">
-                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
+                      <div className="p-4 bg-zinc-50 rounded-2xl w-full border border-zinc-100 space-y-2 text-left font-mono text-[9px]">
+                        <div className="flex justify-between text-zinc-400 font-bold uppercase">
+                          <span>Billing Mode</span>
+                          <span className="text-amber-600 font-black">DEMO SANDBOX</span>
+                        </div>
+                        <div className="flex justify-between text-zinc-400 font-bold uppercase">
                           <span>Transaction Ref</span>
                           <span className="text-zinc-900">TXN-{Math.floor(100000 + Math.random() * 900000)}</span>
                         </div>
-                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
+                        <div className="flex justify-between text-zinc-400 font-bold uppercase">
                           <span>Credits Added</span>
-                          <span className="text-brand-600 font-black">+{selectedPackage.credits} CR</span>
+                          <span className="text-red-500 font-black">0 CR (Visual Only)</span>
                         </div>
-                        <div className="flex justify-between text-[9px] text-zinc-400 font-bold uppercase">
-                          <span>Settlement Code</span>
-                          <span className="text-emerald-600 font-black">SUCCESS</span>
+                        <div className="flex justify-between text-zinc-400 font-bold uppercase">
+                          <span>Status</span>
+                          <span className="text-emerald-600 font-black">SIMULATION SUCCESS</span>
                         </div>
+                      </div>
+
+                      <div className="text-[10px] text-zinc-500 font-bold leading-normal italic px-2">
+                        Disclaimer: Sandbox demo checkouts secure the frontend UI flow. Actual credit allocations must be approved via official Support.
                       </div>
 
                       <button 

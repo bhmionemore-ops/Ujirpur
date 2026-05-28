@@ -10,7 +10,7 @@ export function setupNumerologyRoutes(app: express.Application) {
       const apiKey = await getGeminiApiKey();
       const prompt = `Perform a Vedic Numerology reading for DOB: ${dob}.`;
       const response = await callGeminiWithRetry(apiKey, {
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: prompt
       });
       res.json({ reading: response.text });
