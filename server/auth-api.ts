@@ -21,6 +21,7 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       console.log(`[AuthAPI] Generating OTP for ${email}...`);
+      console.log(`🔑 [DEVELOPER] Generated OTP for ${email} is: ${otp}`);
 
       let saved = false;
       const otpDocData = {
@@ -109,10 +110,15 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       // 1. Check Memory (Primary)
       const memData = memoryOtps.get(email);
       if (memData) {
-        if (memData.otp === otp && memData.expiresAt > new Date()) {
+        const hasMatch = memData.otp === otp;
+        const hasTime = memData.expiresAt > new Date();
+        console.log(`[AuthAPI] Memory OTP check for ${email}: input="${otp}", stored="${memData.otp}" (match: ${hasMatch}), expires="${memData.expiresAt.toISOString()}" (valid: ${hasTime})`);
+        if (hasMatch && hasTime) {
           otpData = memData;
           console.log(`[AuthAPI] OTP verified via memory`);
         }
+      } else {
+        console.log(`[AuthAPI] No active memory OTP found for ${email}`);
       }
 
       // 2. Fallback to DBs if not in memory
@@ -123,7 +129,10 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
             3000,
             "AdminDB get OTP"
           );
-          if (snap && snap.exists) otpData = snap.data();
+          if (snap && snap.exists) {
+            otpData = snap.data();
+            console.log(`[AuthAPI] Loaded stored OTP from AdminDB for ${email}`);
+          }
         } catch (eOnAdmin: any) {
           console.warn("[AuthAPI] AdminDB verify check failed or timed out:", eOnAdmin.message);
           DB.handleAdminError(eOnAdmin, "AuthAPI OTP verify");
@@ -137,18 +146,23 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
             3000,
             "ClientDB get OTP"
           );
-          if (snap && snap.exists()) otpData = snap.data();
+          if (snap && snap.exists()) {
+            otpData = snap.data();
+            console.log(`[AuthAPI] Loaded stored OTP from ClientDB for ${email}`);
+          }
         } catch (e) {
           console.warn("[AuthAPI] ClientDB verify check failed or timed out:", e.message);
         }
       }
 
       if (!otpData) {
+        console.warn(`[AuthAPI] Verification failed: No stored OTP data found for ${email}`);
         return res.status(400).json({ error: "Invalid or expired OTP. Please request a new one." });
       }
 
       // Final check for DB data
       if (otpData.otp !== otp) {
+        console.warn(`[AuthAPI] Verification failed: OTP code mismatch for ${email}. Entered "${otp}", Expected "${otpData.otp}"`);
         return res.status(400).json({ error: "Invalid OTP code." });
       }
 
@@ -159,7 +173,9 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
         else if (otpData.expiresAt?._seconds) expiresAt = new Date(otpData.expiresAt._seconds * 1000);
         else expiresAt = new Date(otpData.expiresAt);
         
+        console.log(`[AuthAPI] DB OTP expiry check: expires="${expiresAt.toISOString()}", now="${new Date().toISOString()}"`);
         if (expiresAt < new Date()) {
+          console.warn(`[AuthAPI] Verification failed: DB OTP has expired for ${email}`);
           return res.status(400).json({ error: "OTP has expired." });
         }
       }

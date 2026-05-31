@@ -245,6 +245,162 @@
       "serverKey": "barnia-system-2024-v1",
       "id": "2026-05-26-en",
       "createdAt": "2026-05-26T17:51:29.451Z"
+    },
+    "2026-05-31-bn": {
+      "local": {
+        "0": {
+          "title": "রানাঘাটে আধুনিক কৃষি মেলা ও প্রদর্শনী",
+          "content": "নদীয়ার রানাঘাটে আধুনিক কৃষি প্রযুক্তি এবং জৈব চাষের উপর তিন দিনের মেলা শুরু হয়েছে, যেখানে স্থানীয় কৃষকরা উন্নত বীজ ও সার সম্পর্কে তথ্য পাচ্ছেন।",
+          "source": "নদীয়ার কণ্ঠ",
+          "date": "2026-05-31"
+        },
+        "1": {
+          "title": "বার্নিয়া গ্রামে পানীয় জলের নতুন প্রকল্প",
+          "content": "বার্নিয়া এলাকায় দীর্ঘদিনের জলকষ্ট দূর করতে রাজ্য সরকারের উদ্যোগে নতুন পানীয় জলের পাইপলাইন বসানোর কাজ আজ থেকে শুরু হয়েছে।",
+          "source": "পশ্চিমবঙ্গ সংবাদ",
+          "date": "2026-05-31"
+        },
+        "2": {
+          "title": "নদীয়ায় বর্ষাকালীন বৃক্ষরোপণ কর্মসূচি",
+          "content": "পরিবেশ রক্ষায় নদীয়ার বিভিন্ন স্কুল ও ক্লাব মিলে আজ বিশ্ব পরিবেশ দিবসের প্রাক্কালে বৃক্ষরোপণ কর্মসূচি পালন করেছে।",
+          "source": "দৈনিক নদীয়া",
+          "date": "2026-05-31"
+        },
+        "3": {
+          "title": "বার্নিয়া হাইস্কুলে মেধাবী ছাত্রছাত্রীদের সংবর্ধনা",
+          "content": "মাধ্যমিক ও উচ্চমাধ্যমিক পরীক্ষায় সাফল্য অর্জনকারী বার্নিয়ার ছাত্রছাত্রীদের আজ স্থানীয় পঞ্চায়েতের পক্ষ থেকে বিশেষ সংবর্ধনা প্রদান করা হলো।",
+          "source": "গ্রামের খবর",
+          "date": "2026-05-31"
+        },
+        "4": {
+          "title": "নদীয়ায় গ্রামীণ হস্তশিল্প মেলা",
+          "content": "নদীয়ার মাটির শিল্প ও হস্তশিল্পকে তুলে ধরতে আজ থেকে এক সপ্তাহব্যাপী মেলা শুরু হয়েছে কৃষ্ণনগরের কাছে, যা স্থানীয় কারিগরদের উৎসাহিত করছে।",
+          "source": "বাংলার মাটি",
+          "date": "2026-05-31"
+        }
+      },
+      "fbTrends": {
+        "0": "পশ্চিমবঙ্গে বর্ষার আগমনী বার্তা",
+        "1": "বিশ্ব পরিবেশ দিবসের প্রস্তুতি",
+        "2": "স্থানীয় ফুটবলে নতুন প্রতিভা",
+        "3": "বাংলার ঐতিহ্যবাহী পিঠে-পুলি উৎসব",
+        "4": "গ্রীষ্মের শেষে আমের ফলন নিয়ে আলোচনা"
+      },
+      "igTrends": {
+        "0": "নদীয়ার প্রাকৃতিক সৌন্দর্য ফটোগ্রাফি",
+        "1": "বাংলার গ্রামীণ জীবনযাত্রা রিলস",
+        "2": "সকালের নাস্তায় দেশি খাবার",
+        "3": "হ্যান্ডলুম শাড়ি কালেকশন",
+        "4": "বর্ষার মেঘলা আকাশ ও চা"
+      },
+      "updatedAt": "2026-05-31T20:14:10.837Z",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "id": "2026-05-31-bn",
+      "createdAt": "2026-05-31T20:14:03.975Z"
+    },
+    "2026-05-31-en": {
+      "local": {
+        "0": {
+          "title": "New Science Lab Inaugurated at Barnia High School",
+          "content": "A state-of-the-art science laboratory was inaugurated today at Barnia High School, Nadia, aimed at boosting practical STEM education for rural students in the district.",
+          "source": "Nadia Chronicle",
+          "date": "2026-05-31"
+        },
+        "1": {
+          "title": "Nadia District Administration Launches Water Purification Plant in Barnia",
+          "content": "To combat groundwater contamination, a new community-level water purification plant was set up in Barnia, benefiting over 500 local households with safe drinking water.",
+          "source": "Bengal Local News",
+          "date": "2026-05-31"
+        },
+        "2": {
+          "title": "Barnia Mango Festival Attracts Regional Buyers",
+          "content": "The annual Barnia Mango Exhibition kicked off today, featuring unique local varieties of Himsagar and Langra, drawing traders and enthusiasts from all across West Bengal.",
+          "source": "Krishnanagar Times",
+          "date": "2026-05-31"
+        },
+        "3": {
+          "title": "Free Health Camp Organized by Barnia Youth Club",
+          "content": "Over 300 residents received free medical check-ups, diagnostic services, and essential medicines at a health camp organized by the Barnia Pragati Sangha today.",
+          "source": "Nadia Today",
+          "date": "2026-05-31"
+        },
+        "4": {
+          "title": "Krishnanagar-Barnia Road Expansion Project Approved",
+          "content": "The West Bengal State Highway Authority has officially approved the widening of the key arterial road connecting Barnia to Krishnanagar to ease long-term traffic congestion.",
+          "source": "Bengal Express",
+          "date": "2026-05-31"
+        }
+      },
+      "fbTrends": {
+        "0": {
+          "title": "#DecadeChallenge2026",
+          "content": "Users are sharing side-by-side photos comparing their lives in 2016 versus 2026, highlighting massive shifts in technology, fashion, and personal growth over the decade.",
+          "source": "FB Trends Monitor",
+          "date": "2026-05-31"
+        },
+        "1": {
+          "title": "AI Wellness Coaches",
+          "content": "Discussion groups are buzzing over the global launch of new personalized AI mental health and wellness companions integrated directly into social messaging platforms.",
+          "source": "TechPulse",
+          "date": "2026-05-31"
+        },
+        "2": {
+          "title": "E-Sports Senior Leagues",
+          "content": "A viral video of a competitive gaming tournament exclusively for senior citizens aged 65 and over has sparked widespread admiration and sharing across Facebook feeds.",
+          "source": "ViralFeed",
+          "date": "2026-05-31"
+        },
+        "3": {
+          "title": "#SaveOurSoil Initiative",
+          "content": "A global community-driven campaign raising awareness about agricultural soil degradation has garnered millions of shares and commitments to home composting.",
+          "source": "GreenEarth Network",
+          "date": "2026-05-31"
+        },
+        "4": {
+          "title": "Hybrid Work Anniversary",
+          "content": "As companies mark several years of permanent hybrid policies, employees are sharing humorous memes and serious discussions about the evolution of work-from-home culture.",
+          "source": "Workplace Insight",
+          "date": "2026-05-31"
+        }
+      },
+      "igTrends": {
+        "0": {
+          "title": "#NeonPastelAesthetic",
+          "content": "Creators are flooding feeds with a new visual trend combining bright neons with soft pastel backdrops, dominating fashion and interior design reels.",
+          "source": "IG Creative Lab",
+          "date": "2026-05-31"
+        },
+        "1": {
+          "title": "Silent Travel Vlogs",
+          "content": "A shift away from loud voiceovers; creators are gaining millions of views using ASMR and ambient natural sounds to document their solo travel journeys.",
+          "source": "TrendSpotter",
+          "date": "2026-05-31"
+        },
+        "2": {
+          "title": "#CyberPunkSelfie Challenge",
+          "content": "An augmented reality filter that turns users into holographic cyberpunk characters is the top-trending effect of the week.",
+          "source": "IG Filter Analytics",
+          "date": "2026-05-31"
+        },
+        "3": {
+          "title": "Micro-Balcony Farming",
+          "content": "A surge in carousel posts showing step-by-step guides on how to grow organic vegetables in extremely small apartment balconies.",
+          "source": "Urban Green",
+          "date": "2026-05-31"
+        },
+        "4": {
+          "title": "Lo-Fi Study Beats Sync",
+          "content": "Users are syncing transition reels of their late-night study or work sessions to a newly trending lo-fi hip-hop track.",
+          "source": "MusicCharts IG",
+          "date": "2026-05-31"
+        }
+      },
+      "date": "2026-05-31",
+      "updatedAt": "2026-05-31T20:14:20.961Z",
+      "serverKey": "barnia-system-2024-v1",
+      "id": "2026-05-31-en",
+      "createdAt": "2026-05-31T20:14:20.961Z"
     }
   },
   "fact_checks": {
@@ -302,6 +458,61 @@
       "serverKey": "barnia-system-2024-v1",
       "createdAt": "2026-05-26T17:51:23.715Z",
       "id": "sanatana-dharma-is-opposed-to-modern-science-and-l-0mbqg"
+    },
+    "sanatana-dharma-promotes-a-rigid-birth-based-caste-kdq95": {
+      "claim": "Sanatana Dharma promotes a rigid, birth-based caste system as its core theological pillar.",
+      "status": "misleading",
+      "explanation": "The Bhagavad Gita (4.13) states 'Catur-varnyam maya srstam guna-karma-vibhagasah', which translates to the division of society based on Guna (inherent nature) and Karma (actions), not Janma (birth). The perversion into a rigid hereditary hierarchy is a later social distortion inconsistent with Vedic equality of the Atman.",
+      "source": "Bhagavad Gita Chapter 4, Verse 13",
+      "guidance": "Recognize the divinity in every soul regardless of social origin; focus on aligning your actions with your inherent dharma rather than social status.",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-31T20:13:56.309Z",
+      "id": "sanatana-dharma-promotes-a-rigid-birth-based-caste-kdq95"
+    },
+    "sanatana-dharma-is-polytheistic-and-involves-the-w-iwwuq": {
+      "claim": "Sanatana Dharma is polytheistic and involves the worship of millions of different gods.",
+      "status": "false",
+      "explanation": "The Vedas clearly state 'Ekam Sat Vipra Bahudha Vadanti' (Truth is one, the wise speak of it in many ways). Sanatana Dharma is fundamentally monistic (Advaita); the various Deities are manifestations of the one supreme Brahman, intended to help the limited human mind grasp the infinite.",
+      "source": "Rig Veda 1.164.46",
+      "guidance": "Understand that all forms of worship are directed toward the one Ultimate Reality; respect all paths as diverse reflections of the same divine light.",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-31T20:13:56.309Z",
+      "id": "sanatana-dharma-is-polytheistic-and-involves-the-w-iwwuq"
+    },
+    "temple-idols-are-merely-statues-and-sanatanis-enga-txz42": {
+      "claim": "Temple idols are merely statues and Sanatanis engage in idol worship.",
+      "status": "misleading",
+      "explanation": "Sanatana Dharma practices 'Murti-puja' (worship of an icon), not idol worship. The Murti is consecrated via Prana Pratishtha, inviting the Divine presence into the form to facilitate focus for the devotee. It is a conduit for communion with the Divine, not a worship of inanimate matter.",
+      "source": "Agama Shastras (Temple Consecration Rituals)",
+      "guidance": "Treat the Murti as a living manifestation of the Divine. Use it as a tool to cultivate devotion (Bhakti) and inner stillness.",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-31T20:13:56.310Z",
+      "id": "temple-idols-are-merely-statues-and-sanatanis-enga-txz42"
+    },
+    "sanatana-dharma-is-an-ancient-religion-founded-by--41gsw": {
+      "claim": "Sanatana Dharma is an ancient 'religion' founded by a specific person or prophet.",
+      "status": "false",
+      "explanation": "Sanatana Dharma means 'The Eternal Law' or 'Everlasting Duty'. Unlike Abrahamic religions, it has no single human founder. It is 'Apaurusheya' (not of human origin), consisting of eternal cosmic truths discovered by Rishis over millennia.",
+      "source": "Manusmriti and Vedic Tradition",
+      "guidance": "Stand firm in the knowledge that your path is rooted in eternal cosmic order, not a sectarian ideology; embrace the timelessness of your spiritual heritage.",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-31T20:13:56.310Z",
+      "id": "sanatana-dharma-is-an-ancient-religion-founded-by--41gsw"
+    },
+    "animal-sacrifice-is-an-essential-part-of-sanatana--qqsim": {
+      "claim": "Animal sacrifice is an essential part of Sanatana Dharma ritual practice.",
+      "status": "false",
+      "explanation": "While some ancient Vedic rituals mentioned sacrifice, the consensus of the Upanishads and the later development of Ahimsa (non-violence) as the highest Dharma (Ahimsa Paramo Dharma) renders literal animal sacrifice antithetical to the path. 'Yajna' primarily symbolizes the sacrifice of the ego and lower impulses.",
+      "source": "Mahabharata, Anushasana Parva 116.37",
+      "guidance": "Practice Ahimsa as the supreme virtue. Dedicate your energy to the internal sacrifice of selfishness and attachment rather than external harm.",
+      "date": "2026-05-31",
+      "serverKey": "barnia-system-2024-v1",
+      "createdAt": "2026-05-31T20:13:56.310Z",
+      "id": "animal-sacrifice-is-an-essential-part-of-sanatana--qqsim"
     }
   },
   "usage": {
@@ -348,6 +559,15 @@
       "timestamp": {},
       "id": "njf0bcsgc5i",
       "createdAt": "2026-05-26T19:37:08.732Z"
+    }
+  },
+  "auth_otps": {
+    "okbgmi611@gmail.com": {
+      "otp": "376711",
+      "expiresAt": {},
+      "createdAt": "2026-05-31T21:13:58.083Z",
+      "serverKey": "barnia-system-2024-v1",
+      "id": "okbgmi611@gmail.com"
     }
   }
 }

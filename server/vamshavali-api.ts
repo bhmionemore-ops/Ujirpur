@@ -17,6 +17,9 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      console.log(`[Vamshavali] Generating OTP for ${email}...`);
+      console.log(`🔑 [DEVELOPER] Generated Vamshavali OTP for ${email} is: ${otp}`);
+
       const otpDocData = {
         otp,
         expiresAt,
@@ -109,14 +112,20 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
 
     try {
       let otpData: any = null;
+      console.log(`[Vamshavali] Verifying OTP for ${email}...`);
 
       // 1. Check Memory (Primary)
       const memData = memoryVamshavaliOtps.get(email);
       if (memData) {
-        if (memData.otp === otp && memData.expiresAt > new Date()) {
+        const hasMatch = memData.otp === otp;
+        const hasTime = memData.expiresAt > new Date();
+        console.log(`[Vamshavali] Memory OTP check for ${email}: input="${otp}", stored="${memData.otp}" (match: ${hasMatch}), expires="${memData.expiresAt.toISOString()}" (valid: ${hasTime})`);
+        if (hasMatch && hasTime) {
           otpData = memData;
           console.log(`[Vamshavali] OTP verified via memory`);
         }
+      } else {
+        console.log(`[Vamshavali] No active memory OTP found for ${email}`);
       }
 
       // 2. Try StateAdminDB
@@ -127,7 +136,10 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
             3000,
             "AdminDB get Vamshavali OTP"
           );
-          if (snap && snap.exists) otpData = snap.data();
+          if (snap && snap.exists) {
+            otpData = snap.data();
+            console.log(`[Vamshavali] Loaded stored OTP from AdminDB for ${email}`);
+          }
         } catch (e: any) {
           console.warn("[Vamshavali] AdminDB verify check failed or timed out:", e.message);
           // If StateAdminDB fails, try fallback ONLY if default is different
@@ -139,7 +151,10 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
                 3000,
                 "DefaultDb get Vamshavali OTP"
               );
-              if (snap && snap.exists) otpData = snap.data();
+              if (snap && snap.exists) {
+                otpData = snap.data();
+                console.log(`[Vamshavali] Loaded stored OTP from DefaultDb for ${email}`);
+              }
             }
           } catch (e2) {}
         }
@@ -151,7 +166,10 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
             3000,
             "DirectAdmin Firestore get Vamshavali OTP"
           );
-          if (snap && snap.exists) otpData = snap.data();
+          if (snap && snap.exists) {
+            otpData = snap.data();
+            console.log(`[Vamshavali] Loaded stored OTP from Direct Firestore for ${email}`);
+          }
         } catch (e) {}
       }
       
@@ -163,11 +181,20 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
             3000,
             "ClientDB get Vamshavali OTP"
           );
-          if (snap && snap.exists()) otpData = snap.data();
+          if (snap && snap.exists()) {
+            otpData = snap.data();
+            console.log(`[Vamshavali] Loaded stored OTP from ClientDB for ${email}`);
+          }
         } catch (e) {}
       }
 
-      if (!otpData || otpData.otp !== otp) {
+      if (!otpData) {
+        console.warn(`[Vamshavali] Verification failed: No stored OTP data found for ${email}`);
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+
+      if (otpData.otp !== otp) {
+        console.warn(`[Vamshavali] Verification failed: OTP code mismatch for ${email}. Entered "${otp}", Expected "${otpData.otp}"`);
         return res.status(400).json({ error: "Invalid or expired OTP" });
       }
 
@@ -177,7 +204,9 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
       else if (otpData.expiresAt?._seconds) expiresAt = new Date(otpData.expiresAt._seconds * 1000);
       else expiresAt = new Date(otpData.expiresAt);
 
+      console.log(`[Vamshavali] DB OTP expiry check: expires="${expiresAt.toISOString()}", now="${new Date().toISOString()}"`);
       if (expiresAt < new Date()) {
+        console.warn(`[Vamshavali] Verification failed: Stored OTP has expired for ${email}`);
         return res.status(400).json({ error: "OTP has expired" });
       }
 
