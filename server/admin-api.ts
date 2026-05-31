@@ -173,147 +173,211 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
          return res.status(400).json({ error: "Request is already processed" });
       }
 
-      console.log(`[AdminAPI] Approved AI request ${requestId} for user ${requestData.userId}. Executing generation...`);
+      console.log(`[AdminAPI] Approved AI request ${requestId} for user ${requestData.userId}. Setting state to processing...`);
       
-      // Execute the actual AI generation run
-      const aiResponse = await generateAIResult(
-        requestData.task, 
-        requestData.type, 
-        requestData.inputImage || null,
-        requestData.model || requestData.modelUsed || null
-      );
-      
-      // 1. Deduct user credits
-      let resolvedUserId = requestData.userId;
-      if (!resolvedUserId.includes('@')) {
-        try {
-          const adminSDK = await import("firebase-admin");
-          const authUser = await adminSDK.auth().getUser(resolvedUserId);
-          if (authUser.email) resolvedUserId = authUser.email.toLowerCase().trim();
-        } catch (e) {
-          try {
-            const usersSnap = await adminDb.collection("users").where("uid", "==", resolvedUserId).limit(1).get();
-            if (!usersSnap.empty) {
-              const matchedUser = usersSnap.docs[0];
-              const emailField = matchedUser.data().email;
-              if (emailField) resolvedUserId = emailField.toLowerCase().trim();
-            }
-          } catch (e2) {}
-        }
-      }
-
-      const userRef = adminDb.collection("users").doc(resolvedUserId);
-      const userSnap = await userRef.get();
-      let remainingCredits = 0;
-
-      if (userSnap.exists) {
-        const uData = userSnap.data()!;
-        const currentCredits = uData.credits !== undefined ? uData.credits : 10;
-        remainingCredits = Math.max(0, currentCredits - requestData.cost);
-        await userRef.update({ credits: remainingCredits });
-      } else {
-        const isDeveloper = resolvedUserId === "okbgmi611@gmail.com" || resolvedUserId === "ujirpur.barnia6@gmail.com";
-        remainingCredits = Math.max(0, (isDeveloper ? 1000 : 10) - requestData.cost);
-        await userRef.set({
-          uid: resolvedUserId,
-          email: resolvedUserId,
-          displayName: resolvedUserId.split('@')[0],
-          credits: remainingCredits,
-          role: isDeveloper ? "admin" : "user",
-          createdAt: new Date()
+      // Update status to 'processing' in admin DB
+      if (snap.exists) {
+        await requestRef.update({
+          status: 'processing',
+          approvedBy: adminId,
+          approvedAt: new Date()
         });
       }
 
-      // Sync and mirror reduced credits directly to standard client-side DB via blind write
+      // Update status to 'processing' and sync to client DB
       if (DB.state.db) {
         try {
-          const { doc, setDoc } = await import("firebase/firestore");
-          const clientUserRef = doc(DB.state.db, "users", resolvedUserId);
-          await setDoc(clientUserRef, { 
-            credits: remainingCredits,
+          const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+          const clientReqRef = doc(DB.state.db, "pending_ai_requests", requestId);
+          await updateDoc(clientReqRef, {
+            status: 'processing',
+            approvedBy: adminId,
+            approvedAt: serverTimestamp(),
             serverKey: 'barnia-system-2024-v1'
-          }, { merge: true });
-          console.log(`[AdminAPI] Mirrored remaining credits (${remainingCredits}) to client user document`);
+          });
+          console.log(`[AdminAPI] Request status set to 'processing' in client DB`);
         } catch (e: any) {
-          console.warn("[AdminAPI] Client DB credits synchronization failed:", e.message);
+          console.warn("[AdminAPI] Request status sync to client DB failed for 'processing':", e.message);
         }
       }
 
-      // 2. Add to actual usage collection for billing & logs
-      await adminDb.collection("usage").add({
-        userId: resolvedUserId,
-        task: requestData.task,
-        type: requestData.type,
-        cost: requestData.cost,
-        modelUsed: aiResponse.modelUsed,
-        result: aiResponse.result,
-        timestamp: new Date()
-      });
+      // Immediately respond with success to the admin page without waiting for generations (avoids network timeouts)
+      res.json({ success: true, message: "AI Request approved. Generation starting in background." });
 
-      if (DB.state.db) {
+      // Run real generation in background
+      (async () => {
         try {
-          const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
-          await addDoc(collection(DB.state.db, "usage"), {
+          console.log(`[AdminAPI] [AsyncBackground] Launching high-performance generation run for request ${requestId}...`);
+          const aiResponse = await generateAIResult(
+            requestData.task, 
+            requestData.type, 
+            requestData.inputImage || null,
+            requestData.model || requestData.modelUsed || null
+          );
+          
+          console.log(`[AdminAPI] [AsyncBackground] Generation completed successfully. Remaining steps...`);
+
+          // 1. Deduct user credits
+          let resolvedUserId = requestData.userId;
+          if (!resolvedUserId.includes('@')) {
+            try {
+              const adminSDK = await import("firebase-admin");
+              const authUser = await adminSDK.auth().getUser(resolvedUserId);
+              if (authUser.email) resolvedUserId = authUser.email.toLowerCase().trim();
+            } catch (e) {
+              try {
+                const usersSnap = await adminDb.collection("users").where("uid", "==", resolvedUserId).limit(1).get();
+                if (!usersSnap.empty) {
+                  const matchedUser = usersSnap.docs[0];
+                  const emailField = matchedUser.data().email;
+                  if (emailField) resolvedUserId = emailField.toLowerCase().trim();
+                }
+              } catch (e2) {}
+            }
+          }
+
+          const userRef = adminDb.collection("users").doc(resolvedUserId);
+          const userSnap = await userRef.get();
+          let remainingCredits = 0;
+
+          if (userSnap.exists) {
+            const uData = userSnap.data()!;
+            const currentCredits = uData.credits !== undefined ? uData.credits : 10;
+            remainingCredits = Math.max(0, currentCredits - requestData.cost);
+            await userRef.update({ credits: remainingCredits });
+          } else {
+            const isDeveloper = resolvedUserId === "okbgmi611@gmail.com" || resolvedUserId === "ujirpur.barnia6@gmail.com";
+            remainingCredits = Math.max(0, (isDeveloper ? 1000 : 10) - requestData.cost);
+            await userRef.set({
+              uid: resolvedUserId,
+              email: resolvedUserId,
+              displayName: resolvedUserId.split('@')[0],
+              credits: remainingCredits,
+              role: isDeveloper ? "admin" : "user",
+              createdAt: new Date()
+            });
+          }
+
+          // Sync reduced credits back to client DB
+          if (DB.state.db) {
+            try {
+              const { doc, setDoc } = await import("firebase/firestore");
+              const clientUserRef = doc(DB.state.db, "users", resolvedUserId);
+              await setDoc(clientUserRef, { 
+                credits: remainingCredits,
+                serverKey: 'barnia-system-2024-v1'
+              }, { merge: true });
+              console.log(`[AdminAPI] [AsyncBackground] Mirrored remaining credits (${remainingCredits}) to client user`);
+            } catch (e: any) {
+              console.warn("[AdminAPI] [AsyncBackground] Client DB credits sync failed:", e.message);
+            }
+          }
+
+          // 2. Add to usage logs
+          await adminDb.collection("usage").add({
             userId: resolvedUserId,
             task: requestData.task,
             type: requestData.type,
             cost: requestData.cost,
             modelUsed: aiResponse.modelUsed,
             result: aiResponse.result,
-            serverKey: 'barnia-system-2024-v1',
-            timestamp: serverTimestamp()
+            timestamp: new Date()
           });
-        } catch (e: any) {
-          console.warn("[AdminAPI] Usage log sync to client DB failed:", e.message);
-        }
-      }
 
-      // 3. Mark the pending request doc as completed and store the output
-      if (snap.exists) {
-        await requestRef.update({ 
-          status: 'completed',
-          result: aiResponse.result,
-          modelUsed: aiResponse.modelUsed,
-          approvedBy: adminId,
-          approvedAt: new Date()
-        });
-      }
-
-      if (DB.state.db) {
-        try {
-          const { doc, updateDoc, serverTimestamp, setDoc } = await import("firebase/firestore");
-          const clientReqRef = doc(DB.state.db, "pending_ai_requests", requestId);
-          // Standard update or create if doesn't exist
-          try {
-            await updateDoc(clientReqRef, { 
-              status: 'completed',
-              result: aiResponse.result,
-              modelUsed: aiResponse.modelUsed,
-              approvedBy: adminId,
-              serverKey: 'barnia-system-2024-v1',
-              approvedAt: serverTimestamp()
-            });
-          } catch (e) {
-            // Fallback setDoc
-            await setDoc(clientReqRef, {
-              ...requestData,
-              status: 'completed',
-              result: aiResponse.result,
-              modelUsed: aiResponse.modelUsed,
-              approvedBy: adminId,
-              serverKey: 'barnia-system-2024-v1',
-              approvedAt: serverTimestamp()
-            }, { merge: true });
+          if (DB.state.db) {
+            try {
+              const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+              await addDoc(collection(DB.state.db, "usage"), {
+                userId: resolvedUserId,
+                task: requestData.task,
+                type: requestData.type,
+                cost: requestData.cost,
+                modelUsed: aiResponse.modelUsed,
+                result: aiResponse.result,
+                serverKey: 'barnia-system-2024-v1',
+                timestamp: serverTimestamp()
+              });
+            } catch (e: any) {
+              console.warn("[AdminAPI] [AsyncBackground] Usage log sync client DB failed:", e.message);
+            }
           }
-          console.log(`[AdminAPI] Approved AI request successfully synchronized to client DB`);
-        } catch (e: any) {
-          console.warn("[AdminAPI] Request status sync to client DB failed:", e.message);
-        }
-      }
 
-      res.json({ success: true, message: "AI Request approved and processed successfully", result: aiResponse.result });
+          // 3. Update pending request doc status to completed and store the result
+          if (snap.exists) {
+            await requestRef.update({ 
+              status: 'completed',
+              result: aiResponse.result,
+              modelUsed: aiResponse.modelUsed,
+              approvedBy: adminId,
+              approvedAt: new Date()
+            });
+          }
+
+          if (DB.state.db) {
+            try {
+              const { doc, updateDoc, serverTimestamp, setDoc } = await import("firebase/firestore");
+              const clientReqRef = doc(DB.state.db, "pending_ai_requests", requestId);
+              try {
+                await updateDoc(clientReqRef, { 
+                  status: 'completed',
+                  result: aiResponse.result,
+                  modelUsed: aiResponse.modelUsed,
+                  approvedBy: adminId,
+                  serverKey: 'barnia-system-2024-v1',
+                  approvedAt: serverTimestamp()
+                });
+              } catch (e) {
+                // Fallback setDoc
+                await setDoc(clientReqRef, {
+                  ...requestData,
+                  status: 'completed',
+                  result: aiResponse.result,
+                  modelUsed: aiResponse.modelUsed,
+                  approvedBy: adminId,
+                  serverKey: 'barnia-system-2024-v1',
+                  approvedAt: serverTimestamp()
+                }, { merge: true });
+              }
+              console.log(`[AdminAPI] [AsyncBackground] Request completed status synced to client DB successfully`);
+            } catch (e: any) {
+              console.warn("[AdminAPI] [AsyncBackground] Sync completed status failed:", e.message);
+            }
+          }
+
+        } catch (genErr: any) {
+          console.error(`[AdminAPI] [AsyncBackground] AI Generation run failed for request ${requestId}:`, genErr);
+          
+          const failStatus = {
+            status: 'failed',
+            error: genErr?.message || "AI generation failed during execution.",
+            approvedBy: adminId,
+            approvedAt: new Date()
+          };
+          
+          if (snap.exists) {
+            await requestRef.update(failStatus);
+          }
+          
+          if (DB.state.db) {
+            try {
+              const { doc, updateDoc, serverTimestamp } = await import("firebase/firestore");
+              const clientReqRef = doc(DB.state.db, "pending_ai_requests", requestId);
+              await updateDoc(clientReqRef, {
+                status: 'failed',
+                error: genErr?.message || "AI generation failed during execution.",
+                approvedBy: adminId,
+                approvedAt: serverTimestamp(),
+                serverKey: 'barnia-system-2024-v1'
+              });
+              console.log(`[AdminAPI] [AsyncBackground] Updated failure status to client DB for request: ${requestId}`);
+            } catch (eSync: any) {
+              console.warn("[AdminAPI] [AsyncBackground] Syncing failure status to client DB failed:", eSync.message);
+            }
+          }
+        }
+      })();
     } catch (e: any) {
-      console.error("[AdminAPI] Error during AI approval task:", e);
+      console.error("[AdminAPI] Error during AI approval task wrapper:", e);
       res.status(500).json({ error: e.message });
     }
   });

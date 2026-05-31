@@ -12,10 +12,7 @@ function getEstimatedCost(type: string, model?: string): number {
     return 10;
   }
   if (type === 'video' || type === 'image_to_video') {
-    if (model && (model === 'minimax-hailuo-02-10s' || model.includes('10s'))) {
-      return 85;
-    }
-    return 65;
+    return 30; // Economy Video-01 model cost
   }
   return 1;
 }
@@ -208,8 +205,10 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         return res.status(400).json({ error: `Insufficient credit balance. This task requires ${estimatedCost} credits but you only have ${credits}.` });
       }
 
-      // Check user approval loop for premium items
-      if (estimatedCost >= 15 && !approved) {
+      const isAdmin = userData.role === "admin" || isDev;
+
+      // Check user approval loop for premium items (bypassed for admins)
+      if (estimatedCost >= 15 && !approved && !isAdmin) {
         return res.json({ 
           needsApproval: true, 
           cost: estimatedCost, 
@@ -217,8 +216,8 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
         });
       }
 
-      // Standard budget tasks are executed instantly (credits < 15)
-      if (estimatedCost < 15) {
+      // Standard budget tasks are executed instantly, as well as premium tasks triggered by admins
+      if (estimatedCost < 15 || isAdmin) {
         console.log(`[AIRouter] Running budget task (${resolvedType}) instantly for user ${finalDocId}`);
         const aiResponse = await generateAIResult(task, resolvedType, inputImage || null, model);
         
@@ -309,6 +308,56 @@ export function setupAIRouter(app: any, _db: any, _adminDb: any, admin: any) {
 
     } catch (e: any) {
       console.error("[AIRouter] Endpoint Error:", e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get status of a pending AI request
+  app.get("/api/ai/status/:requestId", async (req: any, res: any) => {
+    try {
+      const { requestId } = req.params;
+      const adminDb = DB.state.adminDb;
+      if (!adminDb) return res.status(500).json({ error: "Admin DB not initialized" });
+
+      const requestRef = adminDb.collection("pending_ai_requests").doc(requestId);
+      const snap = await requestRef.get();
+      if (!snap.exists) {
+        // Fallback check standard client-side DB if active
+        if (DB.state.db) {
+          try {
+            const { doc, getDoc } = await import("firebase/firestore");
+            const clientSnap = await getDoc(doc(DB.state.db, "pending_ai_requests", requestId));
+            if (clientSnap.exists()) {
+              const clientData = clientSnap.data() as any;
+              return res.json({
+                id: requestId,
+                status: clientData.status,
+                result: clientData.result || null,
+                modelUsed: clientData.modelUsed || null,
+                cost: clientData.cost || 0,
+                type: clientData.type || "text",
+                error: clientData.error || null
+              });
+            }
+          } catch (eSnap: any) {
+            console.warn("[AIRouter] Status query fallback skipped:", eSnap.message);
+          }
+        }
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      const data = snap.data();
+      res.json({
+        id: snap.id,
+        status: data.status,
+        result: data.result || null,
+        modelUsed: data.modelUsed || null,
+        cost: data.cost || 0,
+        type: data.type || "text",
+        error: data.error || null
+      });
+    } catch (e: any) {
+      console.error("[AIRouter] Status Endpoint Error:", e);
       res.status(500).json({ error: e.message });
     }
   });

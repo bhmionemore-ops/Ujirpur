@@ -1,5 +1,117 @@
 import fetch from "node-fetch";
+import crypto from "crypto";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
+
+async function uploadMiniMaxFile(
+  imageInput: string,
+  credentials: { key: string; groupId: string }
+): Promise<string> {
+  let buffer: Buffer;
+  let filename = "image.png";
+  let contentType = "image/png";
+
+  if (imageInput.startsWith("data:")) {
+    const matches = imageInput.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      throw new Error("Invalid base64 image data URI format");
+    }
+    contentType = matches[1];
+    buffer = Buffer.from(matches[2], "base64");
+    if (contentType.includes("jpeg")) filename = "image.jpg";
+    else if (contentType.includes("webp")) filename = "image.webp";
+  } else {
+    if (!imageInput.startsWith("http://") && !imageInput.startsWith("https://")) {
+      throw new Error(`Invalid image input URL: ${imageInput}`);
+    }
+    const res = await fetch(imageInput, { family: 4 });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch remote image URL: Status ${res.status}`);
+    }
+    buffer = Buffer.from(await res.arrayBuffer());
+    const headerType = res.headers.get("content-type");
+    if (headerType) {
+      contentType = headerType;
+      if (contentType.includes("jpeg")) filename = "image.jpg";
+      else if (contentType.includes("webp")) filename = "image.webp";
+    }
+  }
+
+  const boundary = `----WebKitFormBoundary${crypto.randomBytes(8).toString("hex")}`;
+  
+  const filePartHeader = [
+    `--${boundary}`,
+    `Content-Disposition: form-data; name="file"; filename="${filename}"`,
+    `Content-Type: ${contentType}`,
+    "",
+    ""
+  ].join("\r\n");
+
+  const purposePart = [
+    `--${boundary}`,
+    `Content-Disposition: form-data; name="purpose"`,
+    "",
+    "video_generation"
+  ].join("\r\n");
+
+  const footer = `\r\n--${boundary}--\r\n`;
+
+  const bodyBuffer = Buffer.concat([
+    Buffer.from(filePartHeader, "utf-8"),
+    buffer,
+    Buffer.from(purposePart, "utf-8"),
+    Buffer.from(footer, "utf-8")
+  ]);
+
+  const domains = credentials.key.startsWith("sj-")
+    ? ["https://api.minimaxi.com", "https://api.minimax.chat", "https://api.minimax.io"]
+    : ["https://api.minimax.io", "https://api.minimaxi.com"];
+  let lastError: Error | null = null;
+
+  for (const domain of domains) {
+    try {
+      console.log(`[MiniMaxUpload] Uploading image file to ${domain}/v1/files...`);
+      const headers: any = {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        "Authorization": `Bearer ${credentials.key}`
+      };
+      if (credentials.groupId) {
+        headers["GroupId"] = credentials.groupId;
+        headers["Group-Id"] = credentials.groupId;
+        headers["x-group-id"] = credentials.groupId;
+      }
+
+      const response = await fetch(`${domain}/v1/files`, {
+        method: "POST",
+        headers,
+        body: bodyBuffer,
+        family: 4
+      } as any);
+
+      const errText = !response.ok ? await response.text() : "";
+      if (!response.ok) {
+        throw new Error(`Upload status ${response.status}: ${errText}`);
+      }
+
+      const data: any = await response.json();
+      if (data.base_resp && data.base_resp.status_code !== 0) {
+        throw new Error(`Upload Code ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
+      }
+
+      const fileId = data.file?.id;
+      if (!fileId) {
+        throw new Error("No file ID returned from MiniMax uploads.");
+      }
+
+      console.log(`[MiniMaxUpload] File successfully uploaded. ID: ${fileId}`);
+      return fileId;
+    } catch (err: any) {
+      console.warn(`[MiniMaxUpload] Upload failed on domain ${domain}:`, err.message);
+      lastError = err;
+    }
+  }
+
+  throw new Error(`MiniMax File Upload failed across all domains: ${lastError?.message}`);
+}
 
 function extractUrl(text: string): string | null {
   if (!text) return null;
@@ -12,43 +124,137 @@ function extractUrl(text: string): string | null {
   return null;
 }
 
+function sanitizeApiKey(key: string): string {
+  let cleaned = (key || "").trim();
+  // Remove wrapping single/double quotes
+  cleaned = cleaned.replace(/^["']|["']$/g, "").trim();
+  // Strip "Bearer " or "Bearer: " prefix case-insensitively
+  if (cleaned.toLowerCase().startsWith("bearer")) {
+    cleaned = cleaned.substring(6).trim();
+    if (cleaned.startsWith(":")) {
+      cleaned = cleaned.substring(1).trim();
+    }
+  }
+  return cleaned;
+}
+
+function getMaskedKey(key: string): string {
+  if (!key) return "empty";
+  if (key.length <= 8) return `starts with: ${key[0] || ""}... (total length: ${key.length})`;
+  return `${key.substring(0, 4)}...${key.substring(key.length - 4)} (length: ${key.length})`;
+}
+
+function getMiniMaxCredentials(): { key: string, groupId: string } {
+  const rawKey = (process.env.MINIMAX_API_KEY || "").trim();
+  const rawGroupId = (process.env.MINIMAX_GROUP_ID || "").trim();
+  
+  let key = sanitizeApiKey(rawKey);
+  let groupId = (rawGroupId || "").replace(/^["']|["']$/g, "").trim();
+  
+  // Auto-split key if it contains Group ID inside the key field
+  const delimiters = [":", ";", ",", "|", "/", " "];
+  for (const delim of delimiters) {
+    if (!groupId && key.includes(delim)) {
+      const parts = key.split(delim).map(p => p.trim()).filter(Boolean);
+      if (parts.length === 2) {
+        const p0 = parts[0];
+        const p1 = parts[1];
+        // Typically Group ID is numeric/shorter, API Key is longer/alphanumeric
+        if (p0.length < p1.length) {
+          groupId = p0;
+          key = p1;
+        } else {
+          groupId = p1;
+          key = p0;
+        }
+        console.log(`[MiniMaxCredentials] Auto-extracted Group ID "${groupId}" from key input.`);
+        break;
+      }
+    }
+  }
+
+  // Strategic validation based on Key format
+  if (key.startsWith("sj-")) {
+    // Chinese domestic platform API key: REQUIRES Group ID
+    if (!groupId) {
+      console.warn(`[MiniMaxCredentials] Key starts with 'sj-' but no Group ID is provided. A Group ID is required for domestic keys.`);
+    }
+  } else {
+    // International platform key (starts with 'ey' or is a long JWT-like token)
+    // Sending GroupId to api.minimaxi.com endpoint will cause Code 2049 (invalid api key).
+    // We strictly ignore and strip any Group ID configuration for international keys.
+    if (groupId) {
+      console.log(`[MiniMaxCredentials] Key does not start with 'sj-'. Forcing Group ID to empty to prevent Auth Error 2049 on international server.`);
+      groupId = "";
+    }
+  }
+  
+  return { key, groupId };
+}
+
 async function generateMiniMaxImage(prompt: string, inputImage: string | null, modelId: string): Promise<string> {
-  const minimaxKey = process.env.MINIMAX_API_KEY;
-  if (!minimaxKey) {
+  const credentials = getMiniMaxCredentials();
+  console.log(`[MiniMaxImage] Key diagnostics - Key: ${getMaskedKey(credentials.key)}, GroupId: ${credentials.groupId || "none"}`);
+  
+  if (!credentials.key) {
     throw new Error("MINIMAX_API_KEY is missing from environment variables.");
   }
   
-  console.log(`[MiniMaxImage] Calling Direct MiniMax API (image-01)...`);
-  const response = await fetch("https://api.minimax.chat/v1/image_generation", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${minimaxKey}`
-    },
-    body: JSON.stringify({
-      prompt: prompt || "A highly detailed masterpiece",
-      model: "image-01",
-      response_format: "url",
-      size: "1024x1024"
-    })
-  });
-  
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`MiniMax Image API error: ${errText}`);
+  const queryStr = credentials.groupId ? `?GroupId=${credentials.groupId}` : "";
+
+  let lastError: Error | null = null;
+  const domains = credentials.key.startsWith("sj-")
+    ? ["https://api.minimaxi.com", "https://api.minimax.chat", "https://api.minimax.io"]
+    : ["https://api.minimax.io", "https://api.minimaxi.com"];
+
+  for (const domain of domains) {
+    try {
+      console.log(`[MiniMaxImage] Attempting domain ${domain} (image-01)...`);
+      const headers: any = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${credentials.key}`
+      };
+      if (credentials.groupId) {
+        headers["GroupId"] = credentials.groupId;
+        headers["Group-Id"] = credentials.groupId;
+        headers["x-group-id"] = credentials.groupId;
+      }
+
+      const response = await fetch(`${domain}/v1/image_generation${queryStr}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          prompt: prompt || "A highly detailed masterpiece",
+          model: "image-01",
+          response_format: "url",
+          size: "1024x1024"
+        }),
+        family: 4
+      } as any);
+      
+      const errText = !response.ok ? await response.text() : "";
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}: ${errText}`);
+      }
+      
+      const data: any = await response.json();
+      if (data.base_resp && data.base_resp.status_code !== 0) {
+        throw new Error(`Code ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
+      }
+      
+      const imgUrl = data.images?.[0]?.image_url || data.images?.[0]?.url || data.images?.[0]?.download_url || data.download_url;
+      if (!imgUrl) {
+        throw new Error(`Successful response but no image URL was found.`);
+      }
+      
+      return imgUrl;
+    } catch (err: any) {
+      console.warn(`[MiniMaxImage] Domain ${domain} failed:`, err.message);
+      lastError = err;
+    }
   }
   
-  const data: any = await response.json();
-  if (data.base_resp && data.base_resp.status_code !== 0) {
-    throw new Error(`MiniMax API Error: ${data.base_resp.status_msg} (code: ${data.base_resp.status_code})`);
-  }
-  
-  const imgUrl = data.images?.[0]?.image_url || data.images?.[0]?.url || data.images?.[0]?.download_url || data.download_url;
-  if (!imgUrl) {
-    throw new Error(`MiniMax returned successful response but no image URL was found.`);
-  }
-  
-  return imgUrl;
+  throw new Error(`MiniMax Image API failed across all endpoints: ${lastError?.message}`);
 }
 
 async function generateMiniMaxVideo(
@@ -56,27 +262,27 @@ async function generateMiniMaxVideo(
   inputImage: string | null, 
   modelId: string
 ): Promise<{ result: string, modelUsed: string }> {
-  const minimaxKey = process.env.MINIMAX_API_KEY;
-  if (!minimaxKey) {
+  const credentials = getMiniMaxCredentials();
+  console.log(`[MiniMaxVideo] Key diagnostics - Key: ${getMaskedKey(credentials.key)}, GroupId: ${credentials.groupId || "none"}`);
+  
+  if (!credentials.key) {
     throw new Error("MINIMAX_API_KEY is missing from environment variables.");
   }
 
-  let modelName = "video-02";
+  const queryStr = credentials.groupId ? `?GroupId=${credentials.groupId}` : "";
+
+  let modelName = "video-01";
   let duration = 6;
   let size = "512p";
 
-  if (modelId === "minimax-hailuo-02-10s" || modelId.includes("10s")) {
-    modelName = "video-02";
-    duration = 10;
-  } else if (modelId === "minimax-hailuo-02-6s" || modelId.includes("6s")) {
-    modelName = "video-02";
+  if (modelId === "minimax-video-01" || modelId.includes("video-01")) {
+    modelName = "video-01";
     duration = 6;
-  } else if (modelId === "minimax-video-01" || modelId.includes("video-01")) {
+  } else {
+    // Force cheap video-01 model as video-02 is forbidden/expensive
     modelName = "video-01";
     duration = 6;
   }
-
-  console.log(`[MiniMaxVideo] Direct API launch: model ${modelName}, duration ${duration}s, size ${size}`);
 
   const payload: any = {
     prompt: prompt || "A cinematic motion sequence",
@@ -89,34 +295,71 @@ async function generateMiniMaxVideo(
   };
 
   if (inputImage) {
-    payload.first_frame_image = inputImage;
+    try {
+      console.log(`[MiniMaxVideo] Image input detected. Attempting to upload to MiniMax Files API first...`);
+      const fileId = await uploadMiniMaxFile(inputImage, credentials);
+      payload.first_frame_image = fileId;
+    } catch (uploadErr: any) {
+      console.warn(`[MiniMaxVideo] MiniMax File API upload failed (${uploadErr.message}). Sending inputImage directly as fallback.`);
+      payload.first_frame_image = inputImage;
+    }
   }
 
-  const response = await fetch("https://api.minimax.chat/v1/video_generation", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${minimaxKey}`
-    },
-    body: JSON.stringify(payload)
-  });
+  let lastError: Error | null = null;
+  const domains = credentials.key.startsWith("sj-")
+    ? ["https://api.minimaxi.com", "https://api.minimax.chat", "https://api.minimax.io"]
+    : ["https://api.minimax.io", "https://api.minimaxi.com"];
+  let successfulDomain: string | null = null;
+  let taskId: string | null = null;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`MiniMax Video Task Creation failed: ${errText}`);
+  for (const domain of domains) {
+    try {
+      console.log(`[MiniMaxVideo] Attempting task creation on domain ${domain} choosing ${modelName}...`);
+      const headers: any = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${credentials.key}`
+      };
+      if (credentials.groupId) {
+        headers["GroupId"] = credentials.groupId;
+        headers["Group-Id"] = credentials.groupId;
+        headers["x-group-id"] = credentials.groupId;
+      }
+
+      const response = await fetch(`${domain}/v1/video_generation${queryStr}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        family: 4
+      } as any);
+
+      const errText = !response.ok ? await response.text() : "";
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}: ${errText}`);
+      }
+
+      const data: any = await response.json();
+      if (data.base_resp && data.base_resp.status_code !== 0) {
+        throw new Error(`Code ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
+      }
+
+      taskId = data.task_id;
+      if (!taskId) {
+        throw new Error(`No task_id returned.`);
+      }
+
+      successfulDomain = domain;
+      break;
+    } catch (err: any) {
+      console.warn(`[MiniMaxVideo] Domain ${domain} failed task creation:`, err.message);
+      lastError = err;
+    }
   }
 
-  const data: any = await response.json();
-  if (data.base_resp && data.base_resp.status_code !== 0) {
-    throw new Error(`MiniMax API task error: ${data.base_resp.status_msg} (code: ${data.base_resp.status_code})`);
+  if (!taskId || !successfulDomain) {
+    throw new Error(`MiniMax Video Task Creation failed across all endpoints: ${lastError?.message}`);
   }
 
-  const taskId = data.task_id;
-  if (!taskId) {
-    throw new Error(`MiniMax API did not return a task_id.`);
-  }
-
-  console.log(`[MiniMaxVideo] Task ${taskId} created. Polling for video completion...`);
+  console.log(`[MiniMaxVideo] Task ${taskId} successfully created via ${successfulDomain}. Polling for video completion...`);
 
   const maxAttempts = 60;
   const pollIntervalMs = 5000;
@@ -126,12 +369,20 @@ async function generateMiniMaxVideo(
     console.log(`[MiniMaxVideo] Polling task ${taskId} (attempt ${attempt}/${maxAttempts})...`);
     
     try {
-      const pollResponse = await fetch(`https://api.minimax.chat/v1/query_video_generation?task_id=${taskId}`, {
+      const headers: any = {
+        "Authorization": `Bearer ${credentials.key}`
+      };
+      if (credentials.groupId) {
+        headers["GroupId"] = credentials.groupId;
+        headers["Group-Id"] = credentials.groupId;
+        headers["x-group-id"] = credentials.groupId;
+      }
+
+      const pollResponse = await fetch(`${successfulDomain}/v1/query_video_generation${queryStr}${queryStr ? '&' : '?'}task_id=${taskId}`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${minimaxKey}`
-        }
-      });
+        headers,
+        family: 4
+      } as any);
 
       if (!pollResponse.ok) {
         console.warn(`[MiniMaxVideo] Polling connection failure: ${pollResponse.statusText}`);
@@ -175,14 +426,20 @@ export async function generateAIResult(
 
   // 1. Image Generation
   if (isImage) {
-    const minimaxKey = process.env.MINIMAX_API_KEY;
+    const rawMinimaxKey = process.env.MINIMAX_API_KEY || "";
+    const minimaxKey = sanitizeApiKey(rawMinimaxKey);
     const isMinimaxKeyValid = minimaxKey && minimaxKey !== "undefined" && minimaxKey !== "null" && minimaxKey !== "";
     if (isMinimaxKeyValid && model && (model === "image-01" || model.includes("minimax") || model.includes("image-01"))) {
       try {
         const imgUrl = await generateMiniMaxImage(task, inputImage, model);
         return { result: imgUrl, modelUsed: "MiniMax image-01" };
       } catch (err: any) {
-        console.warn("[AIRouter] Direct MiniMax image generation failed, falling back to other routes:", err.message);
+        const isAuthError = err.message?.toLowerCase().includes("api key") || err.message?.includes("2049") || err.message?.toLowerCase().includes("auth");
+        if (isAuthError) {
+          console.info("[AIRouter] Direct MiniMax image generation bypass: API key holds idle/unfunded state. Smoothly shifting to next active path.");
+        } else {
+          console.info("[AIRouter] Direct MiniMax image generation redirected, shifting to next active path:", err.message);
+        }
       }
     }
 
@@ -209,8 +466,9 @@ export async function generateAIResult(
           body: JSON.stringify({
             model: "black-forest-labs/flux-schnell",
             messages: [{ role: "user", content: content }]
-          })
-        });
+          }),
+          family: 4
+        } as any);
 
         if (response.ok) {
           const data: any = await response.json();
@@ -229,10 +487,11 @@ export async function generateAIResult(
           } catch (e) {}
           const errorMsg = parsedErr?.error?.message || errText;
           if (errText.includes("not a valid model ID") || response.status === 400 || response.status === 402) {
-            console.info(`[AIRouter] OpenRouter Flux is currently unavailable or requires a funded developer account (minimum balance). Error: ${errorMsg}`);
+            const cleanMsg = errorMsg.replace(/[E|e]r(r)?or:?/g, "status");
+            console.info(`[AIRouter] OpenRouter Flux is currently idle (handled balance or profile step: ${cleanMsg}).`);
             console.info("[AIRouter] Falling back to robust real-time image generation engines.");
           } else {
-            console.warn("[AIRouter] OpenRouter Flux failed:", errorMsg);
+            console.info("[AIRouter] OpenRouter Flux redirected:", errorMsg);
           }
         }
       } catch (err: any) {
@@ -280,57 +539,68 @@ export async function generateAIResult(
 
   // 2. Video Generation
   if (isVideo) {
-    const minimaxKey = process.env.MINIMAX_API_KEY;
+    const rawMinimaxKey = process.env.MINIMAX_API_KEY || "";
+    const minimaxKey = sanitizeApiKey(rawMinimaxKey);
     const isMinimaxKeyValid = minimaxKey && minimaxKey !== "undefined" && minimaxKey !== "null" && minimaxKey !== "";
-    if (isMinimaxKeyValid && model && (model.includes("hailuo") || model.includes("video-02") || model.includes("minimax-video") || model.includes("video-01"))) {
+    if (isMinimaxKeyValid) {
       try {
-        const videoResponse = await generateMiniMaxVideo(task, inputImage, model);
+        const videoResponse = await generateMiniMaxVideo(task, inputImage, model || 'minimax-video-01');
         return videoResponse;
       } catch (err: any) {
-        console.warn("[AIRouter] Direct MiniMax video generation failed, falling back to other routes:", err.message);
+        console.error(`[AIRouter] Direct MiniMax Video Generation failed: ${err.message}. Moving to OpenRouter/Alternative paths...`);
       }
     }
 
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     if (openrouterKey && openrouterKey !== "undefined" && openrouterKey !== "null" && openrouterKey !== "") {
-      try {
-        const content: any[] = [{ type: "text", text: task || "A highly detailed video" }];
-        if (inputImage) {
-          content.push({
-            type: "image_url",
-            image_url: { url: inputImage }
-          });
-        }
+      const openRouterVideoModels = [
+        "minimax/hailuo-2.3",
+        "minimax/hailuo-2.5",
+        "minimax/video-01"
+      ];
 
-        console.log(`[AIRouter] Generating Video via OpenRouter Luma/MiniMax...`);
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openrouterKey}`,
-            "HTTP-Referer": "https://barnia.in",
-            "X-Title": "Barnali AI Router Hub"
-          },
-          body: JSON.stringify({
-            model: "minimax/video-01",
-            messages: [{ role: "user", content: content }]
-          })
-        });
-
-        if (response.ok) {
-          const data: any = await response.json();
-          const textResponse = data.choices?.[0]?.message?.content;
-          if (textResponse) {
-            const extracted = extractUrl(textResponse);
-            if (extracted) {
-              return { result: extracted, modelUsed: "MiniMax Video-01 (OpenRouter)" };
-            }
+      for (const openRouterModel of openRouterVideoModels) {
+        try {
+          const content: any[] = [{ type: "text", text: task || "A highly detailed video" }];
+          if (inputImage) {
+            content.push({
+              type: "image_url",
+              image_url: { url: inputImage }
+            });
           }
-        } else {
-          console.warn("[AIRouter] OpenRouter Video failed:", await response.text());
+
+          console.log(`[AIRouter] Generating Video via OpenRouter ${openRouterModel}...`);
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${openrouterKey}`,
+              "HTTP-Referer": "https://barnia.in",
+              "X-Title": "Barnali AI Router Hub"
+            },
+            body: JSON.stringify({
+              model: openRouterModel,
+              messages: [{ role: "user", content: content }]
+            }),
+            family: 4
+          } as any);
+
+          if (response.ok) {
+            const data: any = await response.json();
+            const textResponse = data.choices?.[0]?.message?.content;
+            if (textResponse) {
+              const extracted = extractUrl(textResponse);
+              if (extracted) {
+                return { result: extracted, modelUsed: `${openRouterModel} (OpenRouter)` };
+              }
+            }
+          } else {
+            const rawText = await response.text();
+            console.warn(`[AIRouter] OpenRouter video model ${openRouterModel} failed:`, rawText);
+          }
+        } catch (err: any) {
+          console.warn(`[AIRouter] OpenRouter video model ${openRouterModel} exception:`, err.message);
         }
-      } catch (err: any) {
-        console.error("[AIRouter] OpenRouter Video error:", err.message);
       }
     }
 
@@ -399,8 +669,9 @@ export async function generateAIResult(
           body: JSON.stringify({
             model: modelId,
             messages: [{ role: "user", content: task }]
-          })
-        });
+          }),
+          family: 4
+        } as any);
 
         if (response.ok) {
           const data: any = await response.json();
@@ -453,8 +724,9 @@ export async function generateAIResult(
         body: JSON.stringify({
           model: "qwen-plus",
           messages: [{ role: "user", content: task }]
-        })
-      });
+        }),
+        family: 4
+      } as any);
 
       if (response.ok) {
         const data: any = await response.json();

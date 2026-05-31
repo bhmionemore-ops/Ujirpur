@@ -23,11 +23,43 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [isSessionAuth, setIsSessionAuth] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('isSessionAuth') === 'true';
+    }
+    return false;
+  });
+
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('sessionUser');
+      if (savedUser) {
+        try {
+          return JSON.parse(savedUser);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('sessionUser');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          return parsed.email === 'okbgmi611@gmail.com' || parsed.email === 'ujirpur.barnia6@gmail.com';
+        } catch (e) {
+          return false;
+        }
+      }
+    }
+    return false;
+  });
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
-  const [isSessionAuth, setIsSessionAuth] = useState(false);
 
   useEffect(() => {
     // Safety timeout to prevent infinite loading screen if Firebase fails to connect
@@ -49,6 +81,14 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.log("[FirebaseContext] Preserving session user");
         setLoading(false);
         return;
+      }
+
+      if (currentUser) {
+        setIsSessionAuth(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('isSessionAuth');
+          localStorage.removeItem('sessionUser');
+        }
       }
 
       setUser(currentUser);
@@ -93,45 +133,68 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 console.log(`[FirebaseContext] Migration from UID ${currentUser.uid} completed successfully and legacy doc removed.`);
               }
             } catch (migErr: any) {
-              console.error("[FirebaseContext] Failed to merge duplicate profiles:", migErr.message);
+              const isOffline = migErr.message?.toLowerCase().includes("offline") || migErr.message?.toLowerCase().includes("unavailable") || migErr.code === 'unavailable';
+              if (isOffline) {
+                console.info("[FirebaseContext] Profiler merge deferred: client is currently offline/caching.");
+              } else {
+                console.error("[FirebaseContext] Failed to merge duplicate profiles:", migErr.message);
+              }
             }
           }
 
-          const userDoc = await getDoc(userRef);
-          if (!userDoc.exists()) {
-            console.log(`[FirebaseContext] New user detected via auth state change: ${currentUser.email}. Creating Firestore doc...`);
-            await setDoc(userRef, {
-              displayName: currentUser.displayName || (emailKey ? emailKey.split('@')[0] : 'User'),
-              email: currentUser.email,
-              photoURL: currentUser.photoURL,
-              role: (currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com') ? 'admin' : 'user',
-              credits: 10,
-              createdAt: serverTimestamp()
-            });
-            
-            // Send welcome email
-            if (currentUser.email) {
-              console.log(`[FirebaseContext] Sending welcome email to: ${currentUser.email}`);
-              fetch('/api/send-welcome-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email: currentUser.email,
-                  name: currentUser.displayName || 'User'
-                })
-              }).then(res => {
-                if (res.ok) {
-                  console.log(`[FirebaseContext] Welcome email API call successful for: ${currentUser.email}`);
-                } else {
-                  console.error(`[FirebaseContext] Welcome email API failed with status: ${res.status}`);
-                }
-              }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
+          let userDoc = null;
+          let loadedFromFirestore = false;
+          try {
+            userDoc = await getDoc(userRef);
+            loadedFromFirestore = true;
+          } catch (getErr: any) {
+            const isOffline = getErr.message?.toLowerCase().includes("offline") || getErr.message?.toLowerCase().includes("unavailable") || getErr.code === 'unavailable';
+            if (isOffline) {
+              console.info("[FirebaseContext] Operating in offline mode: falling back to secure auth-level session credentials.");
+              setIsAdmin(currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com');
+              setLoading(false);
+              return;
+            } else {
+              throw getErr;
             }
-            
-            setIsAdmin((currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com'));
-          } else {
-            console.log(`[FirebaseContext] User already exists in Firestore: ${currentUser.email}`);
-            setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com');
+          }
+
+          if (loadedFromFirestore && userDoc) {
+            if (!userDoc.exists()) {
+              console.log(`[FirebaseContext] New user detected via auth state change: ${currentUser.email}. Creating Firestore doc...`);
+              await setDoc(userRef, {
+                displayName: currentUser.displayName || (emailKey ? emailKey.split('@')[0] : 'User'),
+                email: currentUser.email,
+                photoURL: currentUser.photoURL,
+                role: (currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com') ? 'admin' : 'user',
+                credits: 10,
+                createdAt: serverTimestamp()
+              });
+              
+              // Send welcome email
+              if (currentUser.email) {
+                console.log(`[FirebaseContext] Sending welcome email to: ${currentUser.email}`);
+                fetch('/api/send-welcome-email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: currentUser.email,
+                    name: currentUser.displayName || 'User'
+                  })
+                }).then(res => {
+                  if (res.ok) {
+                    console.log(`[FirebaseContext] Welcome email API call successful for: ${currentUser.email}`);
+                  } else {
+                    console.error(`[FirebaseContext] Welcome email API failed with status: ${res.status}`);
+                  }
+                }).catch(err => console.error("[FirebaseContext] Error sending welcome email:", err));
+              }
+              
+              setIsAdmin((currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com'));
+            } else {
+              console.log(`[FirebaseContext] User already exists in Firestore: ${currentUser.email}`);
+              setIsAdmin(userDoc.data().role === 'admin' || currentUser.email === 'okbgmi611@gmail.com' || currentUser.email === 'ujirpur.barnia6@gmail.com');
+            }
           }
         } catch (error) {
           console.error("Error syncing user:", error);
@@ -330,6 +393,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const signOut = async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('isSessionAuth');
+      localStorage.removeItem('sessionUser');
+    }
+    setIsSessionAuth(false);
+    setUser(null);
+    setIsAdmin(false);
     const { logout } = await import('./firebase');
     await logout();
   };
@@ -377,7 +447,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (data.authStatus === 'session_only' && data.user) {
           console.warn("[FirebaseContext] Identity Toolkit API issue. Using session fallback.");
           setIsSessionAuth(true);
-          setUser({
+          const mockUser = {
             uid: data.user.uid,
             email: data.user.email,
             displayName: data.user.displayName,
@@ -392,9 +462,14 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             getIdToken: async () => 'session_only_token',
             getIdTokenResult: async () => ({} as any),
             reload: async () => {},
-            toJSON: () => ({}),
-          } as any);
+            toJSON: () => ({} as any),
+          };
+          setUser(mockUser as any);
           setIsAdmin(data.user.email === 'okbgmi611@gmail.com' || data.user.email === 'ujirpur.barnia6@gmail.com');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('isSessionAuth', 'true');
+            localStorage.setItem('sessionUser', JSON.stringify(mockUser));
+          }
           setAuthModalOpen(false);
           return;
         }

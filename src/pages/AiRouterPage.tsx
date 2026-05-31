@@ -20,7 +20,8 @@ import {
   X,
   Plus,
   Play,
-  Info
+  Info,
+  Download
 } from 'lucide-react';
 import { doc, onSnapshot, collection, query, where, orderBy, limit, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -63,9 +64,7 @@ export const AiRouterPage = () => {
     }
     if (currentType === 'video' || currentType === 'image_to_video') {
       return [
-        { id: 'minimax-video-01', name: 'MiniMax Video-01 (OpenRouter)', cost: 65, description: 'Standard high-definition video generation model.' },
-        { id: 'minimax-hailuo-02-6s', name: 'MiniMax-Hailuo-02 6s', cost: 65, description: 'Next-generation hyper-realistic motion video (6s, 512P).' },
-        { id: 'minimax-hailuo-02-10s', name: 'MiniMax-Hailuo-02 10s', cost: 85, description: 'Next-generation hyper-realistic motion video (10s, 512P).' },
+        { id: 'minimax-video-01', name: 'MiniMax Video-01 (Economy)', cost: 30, description: 'Fast, budget-friendly high definition video generation model.' },
       ];
     }
     return [];
@@ -78,9 +77,67 @@ export const AiRouterPage = () => {
   const [approvalRequest, setApprovalRequest] = useState<any>(null);
   const [inputImage, setInputImage] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<string>('pending');
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [showApiDocs, setShowApiDocs] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Secure cross-origin blob routing function for downloading generated visual assets
+  const handleDownloadMedia = async (url: string, fileType: string) => {
+    setIsDownloading(true);
+    try {
+      if (url.startsWith('data:') || url.startsWith('blob:')) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `barnali-generation-${Date.now()}.${fileType.includes('video') ? 'mp4' : 'png'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Download started!');
+        return;
+      }
+
+      const isInternal = url.startsWith('/') || url.startsWith(window.location.origin);
+      if (!isInternal) {
+        // Direct download window fallback for cross-origin assets to prevent browser "Failed to fetch" CORS exceptions
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.info('Opening asset url directly of external resource...');
+        return;
+      }
+
+      // Bypass general browser link routing and navigate content range via safe blob assembly
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `barnali-generation-${Date.now()}.${fileType.includes('video') ? 'mp4' : 'png'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Download started!');
+    } catch (err) {
+      console.warn("Blob routing failed, opening direct resource window fallback:", err);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.download = `barnali-generation-${Date.now()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.info('Opening asset url directly for frame capture...');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const [showNoCredits, setShowNoCredits] = useState(false);
   const [requiredCredits, setRequiredCredits] = useState(0);
@@ -191,33 +248,80 @@ export const AiRouterPage = () => {
   };
 
   useEffect(() => {
-    if (!pendingRequestId || !db) return;
+    if (!pendingRequestId) return;
 
-    const reqRef = doc(db, 'pending_ai_requests', pendingRequestId);
-    const unsubReq = onSnapshot(reqRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.status === 'completed') {
-          setResult({
-            success: true,
-            type: data.type,
-            result: data.result,
-            modelUsed: data.modelUsed,
-            cost: data.cost,
-            remainingCredits: credits - data.cost
-          });
-          setLoading(false);
-          setPendingRequestId(null);
-          toast.success("Admin approved! Task completed.");
-        } else if (data.status === 'denied') {
-          setLoading(false);
-          setPendingRequestId(null);
-          toast.error("Admin denied the premium request.");
-        }
+    let isMounted = true;
+    let fallbackInterval: any = null;
+
+    // Standard real-time listener
+    let unsubReq = () => {};
+    if (db) {
+      try {
+        const reqRef = doc(db, 'pending_ai_requests', pendingRequestId);
+        unsubReq = onSnapshot(reqRef, (snap) => {
+          if (!isMounted) return;
+          if (snap.exists()) {
+            const data = snap.data();
+            handleRequestUpdate(data);
+          }
+        }, (err) => {
+          console.warn("[AIRouterPage] Firestore live listener failed (falling back to API polling):", err.message);
+        });
+      } catch (e: any) {
+        console.warn("[AIRouterPage] Failed to start Firestore live listener:", e.message);
       }
-    });
+    }
 
-    return () => unsubReq();
+    // Direct HTTP Polling Fallback (in case of Firebase permissions/offline)
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/ai/status/${pendingRequestId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            handleRequestUpdate(data);
+          }
+        }
+      } catch (err) {
+        console.warn("[AIRouterPage] Status poll error:", err);
+      }
+    };
+
+    const handleRequestUpdate = (data: any) => {
+      if (data.status) {
+        setPendingStatus(data.status);
+      }
+      if (data.status === 'completed') {
+        setResult({
+          success: true,
+          type: data.type,
+          result: data.result,
+          modelUsed: data.modelUsed,
+          cost: data.cost,
+          remainingCredits: credits - data.cost
+        });
+        setLoading(false);
+        setPendingRequestId(null);
+        toast.success("Admin approved! Task completed.");
+      } else if (data.status === 'failed' || data.status === 'error') {
+        setLoading(false);
+        setPendingRequestId(null);
+        toast.error(`Generation failed: ${data.error || "Generation error"}`);
+      } else if (data.status === 'denied') {
+        setLoading(false);
+        setPendingRequestId(null);
+        toast.error("Admin denied the premium request.");
+      }
+    };
+
+    // Run poll query every 4 seconds as fallback
+    fallbackInterval = setInterval(pollStatus, 4000);
+
+    return () => {
+      isMounted = false;
+      unsubReq();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, [pendingRequestId, credits]);
 
   useEffect(() => {
@@ -276,20 +380,56 @@ export const AiRouterPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size too large (max 5MB)');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size too large (max 10MB)');
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setInputImage(reader.result as string);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85); // High quality compressed JPEG
+          setInputImage(compressed);
+        } else {
+          setInputImage(reader.result as string);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
 
   const calculateCost = () => {
     if (type === 'text') return 1;
+    const models = getModelsForType(type);
+    const modelObj = models.find(m => m.id === selectedModel);
+    if (modelObj) return modelObj.cost;
+    
+    // Fallback logic
     if (type === 'image' || type === 'image_to_image') {
       if (selectedModel === 'image-01' || selectedModel.includes('minimax')) {
         return 15;
@@ -297,10 +437,7 @@ export const AiRouterPage = () => {
       return 10;
     }
     if (type === 'video' || type === 'image_to_video') {
-      if (selectedModel === 'minimax-hailuo-02-10s') {
-        return 85;
-      }
-      return 65;
+      return 30; // Cheapest budget video model (Video-01)
     }
     return 1; // Default
   };
@@ -380,6 +517,7 @@ export const AiRouterPage = () => {
         setApprovalRequest(data);
         toast.info(data.message);
       } else if (data.pending) {
+        setPendingStatus('pending');
         setPendingRequestId(data.requestId);
         toast.info("Waiting for developer approval...");
       } else {
@@ -578,19 +716,28 @@ export const AiRouterPage = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-amber-50 rounded-[3rem] p-12 border-2 border-amber-200 border-dashed text-center space-y-4"
+                className={`${pendingStatus === 'processing' ? 'bg-emerald-50 border-emerald-200 shadow-md shadow-emerald-500/5' : 'bg-amber-50 border-amber-200'} rounded-[3rem] p-12 border-2 border-dashed text-center space-y-4 transition-all duration-300`}
               >
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                   <Clock size={32} className="text-amber-600" />
+                <div className={`${pendingStatus === 'processing' ? 'bg-emerald-100' : 'bg-amber-100'} w-16 h-16 rounded-full flex items-center justify-center mx-auto animate-pulse`}>
+                   {pendingStatus === 'processing' ? (
+                     <Loader2 size={32} className="text-emerald-600 animate-spin" />
+                   ) : (
+                     <Clock size={32} className="text-amber-600" />
+                   )}
                 </div>
-                <h3 className="text-xl font-black text-amber-900 uppercase">Approval Pending</h3>
-                <p className="text-amber-700 font-medium max-w-md mx-auto">
-                  Your premium request has been sent to the developer for budget verification. 
-                  Once approved, it will automatically execute.
+                <h3 className={`text-xl font-black uppercase ${pendingStatus === 'processing' ? 'text-emerald-900' : 'text-amber-900'}`}>
+                  {pendingStatus === 'processing' ? 'Generation Active & Running' : 'Approval Pending'}
+                </h3>
+                <p className={`font-medium max-w-md mx-auto ${pendingStatus === 'processing' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {pendingStatus === 'processing' ? (
+                    'The developer has approved your generation request! Our high-performance AI routers are currently executing the real-time model in the background. Please wait a few moments...'
+                  ) : (
+                    'Your premium request has been sent to the developer for budget verification. Once approved, it will automatically execute.'
+                  )}
                 </p>
-                <div className="flex items-center justify-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                <div className={`flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest ${pendingStatus === 'processing' ? 'text-emerald-500 animate-pulse' : 'text-amber-500'}`}>
                   <Loader2 size={12} className="animate-spin" />
-                  Monitoring real-time response from router
+                  {pendingStatus === 'processing' ? 'Synthesizing quality parameters & completing frame streams' : 'Monitoring real-time response from router'}
                 </div>
               </motion.div>
             )}
@@ -632,7 +779,21 @@ export const AiRouterPage = () => {
                   )}
                 </div>
 
-                <div className="mt-8 flex justify-end">
+                <div className="mt-8 flex justify-end gap-3">
+                  {(result.type === 'image' || result.type === 'video' || result.type === 'image_to_image' || result.type === 'image_to_video') && (
+                    <button
+                      onClick={() => handleDownloadMedia(result.result, result.type)}
+                      disabled={isDownloading}
+                      className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-bold text-xs hover:bg-brand-700 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      {isDownloading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Download size={16} />
+                      )}
+                      Download {result.type.includes('video') ? 'Video' : 'Image'}
+                    </button>
+                  )}
                   <button 
                     onClick={() => {
                        navigator.clipboard.writeText(result.result);

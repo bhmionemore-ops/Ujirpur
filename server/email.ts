@@ -28,11 +28,29 @@ export async function robustSendMail(mailOptions: any) {
     captureLog('WARN', 'EMAIL_PASS looks like an email address');
   }
 
+  // Prevent Gmail SMTP sender address spoofing rejection by rewriting mismatching "from" addresses 
+  // to always use the authenticated user email while retaining the display name
+  let fromName = "Barnali AI";
+  if (mailOptions.from) {
+    const match = mailOptions.from.match(/^"([^"]+)"/);
+    if (match) {
+      fromName = match[1];
+    } else {
+      const angleMatch = mailOptions.from.match(/([^<]+)/);
+      if (angleMatch) {
+        fromName = angleMatch[1].trim();
+      }
+    }
+  }
+  mailOptions.from = `"${fromName}" <${emailUser}>`;
+
+  // Prioritize stable DNS-resolved G-TLS-587 or G-SSL-465 first for instantaneous sub-second delivery, 
+  // falling back to direct Gmail IP-based configs to combat local DNS or IPv6 routing glitches
   const attempts = [
+    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
+    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
     { host: smtpIps[0], port: 465, secure: true, label: 'IP1-SSL-465' },
     { host: smtpIps[1], port: 587, secure: false, label: 'IP2-TLS-587' },
-    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
-    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
     { service: 'gmail', label: 'SERVICE-GMAIL' }
   ];
 
