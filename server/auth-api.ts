@@ -33,41 +33,41 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       // 0. Always save to Memory first (Most reliable)
       memoryOtps.set(email, { otp, expiresAt });
       
-      // 1. Try DB.state.adminDb (Primary Admin SDK)
-      if (DB.state.adminDb) {
-        try {
-          await DB.withTimeout(
-            DB.state.adminDb.collection("auth_otps").doc(email).set(otpDocData),
-            3000,
-            "AdminDB save OTP"
-          );
-          saved = true;
-          console.log(`[AuthAPI] OTP saved to AdminDB`);
-        } catch (e: any) {
-          console.warn("[AuthAPI] AdminDB save failed or timed out:", e.message);
-          DB.handleAdminError(e, "AuthAPI OTP send");
+      // Save to databases in the background so the user gets their OTP instantly without waiting
+      (async () => {
+        if (DB.state.adminDb) {
+          try {
+            await DB.withTimeout(
+              DB.state.adminDb.collection("auth_otps").doc(email).set(otpDocData),
+              3000,
+              "AdminDB save OTP"
+            );
+            console.log(`[AuthAPI] OTP saved to AdminDB (bg)`);
+            return;
+          } catch (e: any) {
+            console.warn("[AuthAPI] AdminDB background save failed:", e.message);
+            DB.handleAdminError(e, "AuthAPI OTP send bg");
+          }
         }
-      }
 
-      // 2. Try Client SDK
-      if (!saved && DB.state.db) {
-        try {
-          await DB.withTimeout(
-            setDoc(doc(DB.state.db, "auth_otps", email), {
-              otp,
-              expiresAt,
-              createdAt: serverTimestamp(),
-              serverKey: FIRESTORE_SERVER_KEY
-            }),
-            3000,
-            "ClientDB save OTP"
-          );
-          saved = true;
-          console.log(`[AuthAPI] OTP saved to ClientDB`);
-        } catch (e: any) {
-          console.warn("[AuthAPI] ClientDB save failed or timed out:", e.message);
+        if (DB.state.db) {
+          try {
+            await DB.withTimeout(
+              setDoc(doc(DB.state.db, "auth_otps", email), {
+                otp,
+                expiresAt,
+                createdAt: serverTimestamp(),
+                serverKey: FIRESTORE_SERVER_KEY
+              }),
+              3000,
+              "ClientDB save OTP"
+            );
+            console.log(`[AuthAPI] OTP saved to ClientDB (bg)`);
+          } catch (e: any) {
+            console.warn("[AuthAPI] ClientDB background save failed:", e.message);
+          }
         }
-      }
+      })().catch(err => console.error("[AuthAPI] Background OTP save failed:", err));
 
       // We consider it "saved" if it's in memory at least
       const mailOptions = {

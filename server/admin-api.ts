@@ -483,6 +483,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
   });
 
   app.get("/api/admin/verify-smtp", async (req, res) => {
+    const { getSmtpLogs } = await import("./email");
     try {
       const results = {
         config: {
@@ -490,7 +491,8 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
           host: process.env.SMTP_HOST || "smtp.gmail.com",
           port: process.env.SMTP_PORT || 587
         },
-        connection: "pending"
+        connection: "pending",
+        logs: getSmtpLogs()
       };
       
       // Try to send a silent self-test email
@@ -502,9 +504,14 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       });
       
       results.connection = "success";
+      results.logs = getSmtpLogs();
       res.json(results);
     } catch (e: any) {
-      res.status(500).json({ status: "error", error: e.message });
+      res.status(500).json({ 
+        status: "error", 
+        error: e.message, 
+        smtpLogs: getSmtpLogs() 
+      });
     }
   });
 

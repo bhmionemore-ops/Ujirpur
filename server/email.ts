@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import fetch from "node-fetch";
+import dns from "dns";
 
 let transporter: any = null;
 let emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
@@ -13,6 +14,20 @@ export function captureLog(level: string, msg: string, obj?: any) {
   const entry = `[${level}] ${timestamp} ${msg} ${obj ? (typeof obj === 'string' ? obj : JSON.stringify(obj).substring(0, 150)) : ''}`;
   smtpLogs.push(entry);
   if (smtpLogs.length > 50) smtpLogs.shift();
+}
+
+async function resolveHostIpv4(host: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    dns.resolve4(host, (err, addresses) => {
+      if (err || !addresses || addresses.length === 0) {
+        console.warn(`[SMTP-Robust] Failed to resolve ${host} to IPv4:`, err?.message);
+        resolve([]);
+      } else {
+        console.log(`[SMTP-Robust] Resolved ${host} IPv4s:`, addresses);
+        resolve(addresses);
+      }
+    });
+  });
 }
 
 export async function robustSendMail(mailOptions: any) {
@@ -44,13 +59,27 @@ export async function robustSendMail(mailOptions: any) {
   }
   mailOptions.from = `"${fromName}" <${emailUser}>`;
 
-  // Prioritize stable DNS-resolved G-TLS-587 or G-SSL-465 first for instantaneous sub-second delivery, 
-  // falling back to direct Gmail IP-based configs to combat local DNS or IPv6 routing glitches
-  const attempts = [
-    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'G-TLS-587' },
-    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'G-SSL-465' },
-    { host: smtpIps[0], port: 465, secure: true, label: 'IP1-SSL-465' },
-    { host: smtpIps[1], port: 587, secure: false, label: 'IP2-TLS-587' },
+  // Dynamically resolve smtp.gmail.com to IPv4 to prevent connection to unreachable IPv6 on some servers
+  let resolvedIps: string[] = [];
+  try {
+    resolvedIps = await resolveHostIpv4('smtp.gmail.com');
+  } catch (e: any) {
+    console.warn("[SMTP-Robust] Dynamic DNS lookup caught error:", e.message);
+  }
+
+  const hostIps = resolvedIps.length > 0 ? resolvedIps : smtpIps;
+  const primaryIp = hostIps[0];
+
+  const attempts: any[] = [
+    // 1. Direct standard TLS-587 (Most common, fastest, custom IPv4 lookup enforced)
+    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail-TLS-587' },
+    // 2. Direct standard SSL-465 (Alternative secure option, custom IPv4 lookup enforced)
+    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'Gmail-SSL-465' },
+    // 3. Direct IP-based TLS-587 (Bypasses any hostname resolution issues)
+    { host: primaryIp, port: 587, secure: false, label: `DirectIP-TLS-587 (${primaryIp})` },
+    // 4. Direct IP-based SSL-465
+    { host: primaryIp, port: 465, secure: true, label: `DirectIP-SSL-465 (${primaryIp})` },
+    // 5. Ultimate service fallback via Gmail registry
     { service: 'gmail', label: 'SERVICE-GMAIL' }
   ];
 
@@ -66,9 +95,13 @@ export async function robustSendMail(mailOptions: any) {
         family: 4,
         auth: { user: emailUser, pass: emailPass },
         tls: { rejectUnauthorized: false, servername: 'smtp.gmail.com' },
-        connectionTimeout: 15000,
-        greetingTimeout: 10000,
-        socketTimeout: 20000
+        // Enforce IPv4 via custom lookup helper
+        lookup: (hostname: string, options: any, callback: any) => {
+          dns.lookup(hostname, { ...options, family: 4 }, callback);
+        },
+        connectionTimeout: 4000,
+        greetingTimeout: 3000,
+        socketTimeout: 5000
       };
 
       if (config.service) {
@@ -86,7 +119,7 @@ export async function robustSendMail(mailOptions: any) {
     } catch (err: any) {
       lastError = err;
       const msg = err.message || String(err);
-      console.warn(`[SMTP-Robust] ❌ Failed via ${config.label}: ${msg.substring(0, 50)}`);
+      console.warn(`[SMTP-Robust] ❌ Failed via ${config.label}: ${msg.substring(0, 100)}`);
       captureLog('ROBUST-FAIL', `${config.label}: ${msg}`);
     }
   }

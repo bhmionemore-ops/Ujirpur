@@ -27,53 +27,63 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
       memoryVamshavaliOtps.set(email, { otp, expiresAt });
       let saved = true; // Memory is always successful, so consider it saved!
 
-      // 1. Try StateAdminDB
-      if (DB.state.adminDb) {
-        try {
-          await DB.withTimeout(
-            DB.state.adminDb.collection("vamshavali_otps").doc(email).set(otpDocData),
-            3000,
-            "AdminDB set Vamshavali OTP"
-          );
-        } catch (e: any) {
-          console.warn("[Vamshavali] AdminDB save failed or timed out:", e.message);
-          // If StateAdminDB fails, try fallback ONLY if default is different
+      // Save to databases in the background so the user gets their OTP instantly without waiting
+      (async () => {
+        // 1. Try StateAdminDB
+        if (DB.state.adminDb) {
           try {
-            const defaultDb = admin.firestore();
-            if (defaultDb !== DB.state.adminDb) {
-              await DB.withTimeout(
-                defaultDb.collection("vamshavali_otps").doc(email).set(otpDocData),
-                3000,
-                "DefaultDb set Vamshavali OTP"
-              );
-            }
-          } catch (e2) {}
+            await DB.withTimeout(
+              DB.state.adminDb.collection("vamshavali_otps").doc(email).set(otpDocData),
+              3000,
+              "AdminDB set Vamshavali OTP"
+            );
+            console.log(`[Vamshavali] OTP saved to AdminDB (bg)`);
+            return;
+          } catch (e: any) {
+            console.warn("[Vamshavali] AdminDB save failed or timed out:", e.message);
+            // If StateAdminDB fails, try fallback ONLY if default is different
+            try {
+              const defaultDb = admin.firestore();
+              if (defaultDb !== DB.state.adminDb) {
+                await DB.withTimeout(
+                  defaultDb.collection("vamshavali_otps").doc(email).set(otpDocData),
+                  3000,
+                  "DefaultDb set Vamshavali OTP"
+                );
+                console.log(`[Vamshavali] OTP saved to DefaultDb (bg)`);
+                return;
+              }
+            } catch (e2) {}
+          }
+        } else if (admin && typeof admin.firestore === 'function') {
+          // 2. Try direct admin.firestore() ONLY if state was null
+          try {
+            await DB.withTimeout(
+              admin.firestore().collection("vamshavali_otps").doc(email).set(otpDocData),
+              3000,
+              "DirectAdmin Firestore set Vamshavali OTP"
+            );
+            console.log(`[Vamshavali] OTP saved to direct admin firestore (bg)`);
+            return;
+          } catch (e) {}
         }
-      } else if (admin && typeof admin.firestore === 'function') {
-        // 2. Try direct admin.firestore() ONLY if state was null
-        try {
-          await DB.withTimeout(
-            admin.firestore().collection("vamshavali_otps").doc(email).set(otpDocData),
-            3000,
-            "DirectAdmin Firestore set Vamshavali OTP"
-          );
-        } catch (e) {}
-      }
-      
-      // 3. Try Client SDK
-      if (DB.state.db) {
-        try {
-          await DB.withTimeout(
-            setDoc(doc(DB.state.db, "vamshavali_otps", email), {
-              ...otpDocData,
-              createdAt: serverTimestamp(),
-              serverKey: FIRESTORE_SERVER_KEY
-            }),
-            3000,
-            "ClientDB set Vamshavali OTP"
-          );
-        } catch (e) {}
-      }
+        
+        // 3. Try Client SDK
+        if (DB.state.db) {
+          try {
+            await DB.withTimeout(
+              setDoc(doc(DB.state.db, "vamshavali_otps", email), {
+                ...otpDocData,
+                createdAt: serverTimestamp(),
+                serverKey: FIRESTORE_SERVER_KEY
+              }),
+              3000,
+              "ClientDB set Vamshavali OTP"
+            );
+            console.log(`[Vamshavali] OTP saved to ClientDB (bg)`);
+          } catch (e) {}
+        }
+      })().catch(err => console.error("[Vamshavali] Background OTP save failed:", err));
 
       const mailOptions = {
         from: `"Barnali AI" <no-reply@barnaliai.com>`,
