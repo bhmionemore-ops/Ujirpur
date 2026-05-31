@@ -29,6 +29,24 @@ export function setIsAdminSDKActive(active: boolean) { isAdminSDKActive = active
 export function setClientAuth(newAuth: any) { clientAuth = newAuth; }
 export function setFirebaseConfig(config: any) { firebaseConfig = config; }
 
+export async function withTimeout<T>(promise: Promise<T> | any, timeoutMs = 4000, label = "Operation"): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    return result;
+  } catch (err) {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    throw err;
+  }
+}
+
 export function handleAdminError(err: any, context?: string) {
   if (err) {
     const msg = err.message || "";

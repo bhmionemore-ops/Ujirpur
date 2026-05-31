@@ -36,11 +36,15 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       // 1. Try DB.state.adminDb (Primary Admin SDK)
       if (DB.state.adminDb) {
         try {
-          await DB.state.adminDb.collection("auth_otps").doc(email).set(otpDocData);
+          await DB.withTimeout(
+            DB.state.adminDb.collection("auth_otps").doc(email).set(otpDocData),
+            3000,
+            "AdminDB save OTP"
+          );
           saved = true;
           console.log(`[AuthAPI] OTP saved to AdminDB`);
         } catch (e: any) {
-          console.warn("[AuthAPI] AdminDB save failed:", e.message);
+          console.warn("[AuthAPI] AdminDB save failed or timed out:", e.message);
           DB.handleAdminError(e, "AuthAPI OTP send");
         }
       }
@@ -48,16 +52,20 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       // 2. Try Client SDK
       if (!saved && DB.state.db) {
         try {
-          await setDoc(doc(DB.state.db, "auth_otps", email), {
-            otp,
-            expiresAt,
-            createdAt: serverTimestamp(),
-            serverKey: FIRESTORE_SERVER_KEY
-          });
+          await DB.withTimeout(
+            setDoc(doc(DB.state.db, "auth_otps", email), {
+              otp,
+              expiresAt,
+              createdAt: serverTimestamp(),
+              serverKey: FIRESTORE_SERVER_KEY
+            }),
+            3000,
+            "ClientDB save OTP"
+          );
           saved = true;
           console.log(`[AuthAPI] OTP saved to ClientDB`);
         } catch (e: any) {
-          console.warn("[AuthAPI] ClientDB save failed:", e.message);
+          console.warn("[AuthAPI] ClientDB save failed or timed out:", e.message);
         }
       }
 
@@ -110,18 +118,29 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       // 2. Fallback to DBs if not in memory
       if (!otpData && DB.state.adminDb) {
         try {
-          const snap = await DB.state.adminDb.collection("auth_otps").doc(email).get();
-          if (snap.exists) otpData = snap.data();
+          const snap: any = await DB.withTimeout(
+            DB.state.adminDb.collection("auth_otps").doc(email).get(),
+            3000,
+            "AdminDB get OTP"
+          );
+          if (snap && snap.exists) otpData = snap.data();
         } catch (eOnAdmin: any) {
+          console.warn("[AuthAPI] AdminDB verify check failed or timed out:", eOnAdmin.message);
           DB.handleAdminError(eOnAdmin, "AuthAPI OTP verify");
         }
       }
 
       if (!otpData && DB.state.db) {
         try {
-          const snap = await getDoc(doc(DB.state.db, "auth_otps", email));
-          if (snap.exists()) otpData = snap.data();
-        } catch (e) {}
+          const snap: any = await DB.withTimeout(
+            getDoc(doc(DB.state.db, "auth_otps", email)),
+            3000,
+            "ClientDB get OTP"
+          );
+          if (snap && snap.exists()) otpData = snap.data();
+        } catch (e) {
+          console.warn("[AuthAPI] ClientDB verify check failed or timed out:", e.message);
+        }
       }
 
       if (!otpData) {
@@ -159,13 +178,25 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
 
       if (authEnabled) {
         try {
-          userRecord = await admin.auth().getUserByEmail(email);
+          userRecord = await DB.withTimeout(
+            admin.auth().getUserByEmail(email),
+            2000,
+            "AdminAuth getUserByEmail"
+          );
         } catch (error: any) {
-          if (error.code === 'auth/user-not-found') {
+          const errMsg = error.message || String(error);
+          if (errMsg.includes("timed out")) {
+            console.warn("[AuthAPI] admin.auth().getUserByEmail timed out, falling back to session-only mode.");
+            authEnabled = false;
+          } else if (error.code === 'auth/user-not-found') {
             try {
-              userRecord = await admin.auth().createUser({ email, emailVerified: true });
-            } catch (createErr) {
-              console.warn("[AuthAPI] Failed to create user via Admin SDK, setting authEnabled false:", createErr);
+              userRecord = await DB.withTimeout(
+                admin.auth().createUser({ email, emailVerified: true }),
+                2000,
+                "AdminAuth createUser"
+              );
+            } catch (createErr: any) {
+              console.warn("[AuthAPI] Failed to create user via Admin SDK, setting authEnabled false:", createErr.message || createErr);
               authEnabled = false;
             }
           } else {
@@ -188,9 +219,13 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       let customToken = null;
       if (authEnabled) {
         try {
-          customToken = await admin.auth().createCustomToken(userRecord.uid);
+          customToken = await DB.withTimeout(
+            admin.auth().createCustomToken(userRecord.uid),
+            2000,
+            "AdminAuth createCustomToken"
+          );
         } catch (tokenErr: any) {
-          console.warn("[AuthAPI] Custom Token failed, falling back to session-only.");
+          console.warn("[AuthAPI] Custom Token failed, falling back to session-only:", tokenErr.message || tokenErr);
           authEnabled = false;
         }
       }
