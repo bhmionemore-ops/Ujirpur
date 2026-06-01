@@ -3,8 +3,25 @@ import fetch from "node-fetch";
 import dns from "dns";
 
 let transporter: any = null;
-let emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
-let emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+let emailUser = "";
+let emailPass = "";
+
+export function cleanEnvVar(val: string | undefined): string {
+  if (!val) return "";
+  let s = val.trim();
+  // Remove enclosing double quotes
+  if (s.startsWith('"') && s.endsWith('"')) {
+    s = s.slice(1, -1).trim();
+  }
+  // Remove enclosing single quotes
+  if (s.startsWith("'") && s.endsWith("'")) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+emailUser = cleanEnvVar(process.env.EMAIL_USER || process.env.SMTP_USER) || "ujirpur.barnia6@gmail.com";
+emailPass = cleanEnvVar(process.env.EMAIL_PASS || process.env.SMTP_PASS);
 
 const smtpIps = ['173.194.77.108', '74.125.133.108', '142.250.150.108', '64.233.184.108'];
 const smtpLogs: string[] = [];
@@ -31,9 +48,9 @@ async function resolveHostIpv4(host: string): Promise<string[]> {
 }
 
 export async function robustSendMail(mailOptions: any) {
-  // Update credentials just in case env changed
-  emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
-  emailPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").trim();
+  // Update credentials just in case env changed, ensuring quotes are cleanly removed
+  emailUser = cleanEnvVar(process.env.EMAIL_USER || process.env.SMTP_USER) || "ujirpur.barnia6@gmail.com";
+  emailPass = cleanEnvVar(process.env.EMAIL_PASS || process.env.SMTP_PASS);
 
   if (!emailPass) {
     console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS is empty. Sending will likely fail.");
@@ -59,7 +76,7 @@ export async function robustSendMail(mailOptions: any) {
   }
   mailOptions.from = `"${fromName}" <${emailUser}>`;
 
-  // Dynamically resolve smtp.gmail.com to IPv4 to prevent connection to unreachable IPv6 on some servers
+  // Dynamically resolve smtp.gmail.com to IPv4 as a backup configuration
   let resolvedIps: string[] = [];
   try {
     resolvedIps = await resolveHostIpv4('smtp.gmail.com');
@@ -71,19 +88,19 @@ export async function robustSendMail(mailOptions: any) {
   const primaryIp = hostIps[0];
 
   const attempts: any[] = [
-    // 1. Direct IP-based TLS-587 (Our primary target - avoids DNS query and IPv6 entirely)
-    { host: primaryIp, port: 587, secure: false, label: `DirectIP-TLS-587 (${primaryIp})` },
-    // 2. Direct IP-based SSL-465 (Alternative port, avoids DNS and IPv6 entirely)
-    { host: primaryIp, port: 465, secure: true, label: `DirectIP-SSL-465 (${primaryIp})` },
-    // 3. Backup IPs in case primary IP has issues
-    ...hostIps.slice(1).map(ip => ({ host: ip, port: 587, secure: false, label: `BackupIP-TLS-587 (${ip})` })),
-    ...hostIps.slice(1).map(ip => ({ host: ip, port: 465, secure: true, label: `BackupIP-SSL-465 (${ip})` })),
-    // 4. Standard TLS-587 hostname based (Our lookup override will force IPv4)
+    // 1. Standard TLS-587 hostname based (Our global setDefaultResultOrder ensures clean IPv4 priority)
     { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail-TLS-587' },
-    // 5. Standard SSL-465 hostname based
+    // 2. Standard SSL-465 hostname based (Many restricted environments prefer SSL over TLS upgrade)
     { host: 'smtp.gmail.com', port: 465, secure: true, label: 'Gmail-SSL-465' },
-    // 6. Ultimate service fallback via Gmail registry
-    { service: 'gmail', label: 'SERVICE-GMAIL' }
+    // 3. Ultimate native service config via Gmail registry
+    { service: 'gmail', label: 'SERVICE-GMAIL' },
+    // 4. Direct IP-based TLS-587 (Backup - avoids DNS query entirely)
+    { host: primaryIp, port: 587, secure: false, label: `DirectIP-TLS-587 (${primaryIp})` },
+    // 5. Direct IP-based SSL-465 (Backup alternative)
+    { host: primaryIp, port: 465, secure: true, label: `DirectIP-SSL-465 (${primaryIp})` },
+    // 6. Deep backup IPs
+    ...hostIps.slice(1).map(ip => ({ host: ip, port: 587, secure: false, label: `BackupIP-TLS-587 (${ip})` })),
+    ...hostIps.slice(1).map(ip => ({ host: ip, port: 465, secure: true, label: `BackupIP-SSL-465 (${ip})` }))
   ];
 
   let lastError: any = null;
@@ -149,8 +166,8 @@ export function getSmtpLogs() {
 }
 
 export function initEmail() {
-  emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
-  emailPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").trim();
+  emailUser = cleanEnvVar(process.env.EMAIL_USER || process.env.SMTP_USER) || "ujirpur.barnia6@gmail.com";
+  emailPass = cleanEnvVar(process.env.EMAIL_PASS || process.env.SMTP_PASS);
   
   console.log(`[Email] 📬 Diagnostic SMTP Init:`);
   console.log(`        - SMTP User: "${emailUser}"`);

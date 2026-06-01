@@ -132,6 +132,7 @@ export const AdminAnalytics = () => {
   const [seeding, setSeeding] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<InboundEmail | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [smtpLogOutput, setSmtpLogOutput] = useState<string[]>([]);
   const [approving, setApproving] = useState<string | null>(null);
   
   // Credit Adjustment Modal States
@@ -1166,12 +1167,15 @@ export const AdminAnalytics = () => {
                     toast.loading("Verifying SMTP connection...", { id: 'verify-smtp' });
                     const response = await fetch('/api/admin/verify-smtp');
                     const data = await response.json();
+                    if (data.smtpLogs || data.logs) {
+                      setSmtpLogOutput(data.smtpLogs || data.logs || []);
+                    }
                     if (response.ok) {
                       toast.success("SMTP Connection Verified!", { id: 'verify-smtp' });
                     } else {
                       toast.error(`Verification Failed: ${data.error}`, { 
                         id: 'verify-smtp',
-                        description: `Code: ${data.code || 'N/A'}`
+                        description: `See configuration console below.`
                       });
                     }
                   } catch (err: any) {
@@ -1193,6 +1197,9 @@ export const AdminAnalytics = () => {
                     toast.loading("Sending test welcome email...", { id: 'test-email' });
                     const response = await fetch(`/api/admin/test-email-detailed?email=${user.email}`);
                     const data = await response.json();
+                    if (data.smtpLogs) {
+                      setSmtpLogOutput(data.smtpLogs);
+                    }
                     
                     if (response.ok) {
                       toast.success(`Email sent! (Took ${data.info.timeMs}ms)`, { id: 'test-email' });
@@ -1203,7 +1210,7 @@ export const AdminAnalytics = () => {
                       toast.error(`Failed: ${errorMsg}${detail}`, { 
                         id: 'test-email',
                         duration: 10000,
-                        description: "Check console for full stack trace."
+                        description: "Check the design diagnostic console below."
                       });
                     }
                   } catch (err: any) {
@@ -1268,6 +1275,40 @@ export const AdminAnalytics = () => {
               </div>
             </div>
           </div>
+
+          {smtpLogOutput && smtpLogOutput.length > 0 && (
+            <div id="smtp-diagnostic-panel" className="bg-zinc-950 rounded-[1.5rem] p-6 border border-zinc-850 font-mono text-xs text-zinc-300 space-y-3 mt-4 max-h-72 overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-2">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  SMTP Diagnostics & Deliverability Console
+                </span>
+                <button 
+                  onClick={() => setSmtpLogOutput([])}
+                  className="text-[10px] hover:text-white uppercase font-black text-zinc-400 hover:bg-zinc-800 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Clear Diagnostics
+                </button>
+              </div>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-2">
+                {smtpLogOutput.map((log, idx) => {
+                  const isSuccess = log.includes('ROBUST-SUCCESS') || log.includes('Success via') || log.includes('SUCCESS');
+                  const isFail = log.includes('ROBUST-FAIL') || log.includes('❌') || log.includes('Failed via') || log.includes('FAILED');
+                  const isWarn = log.includes('WARN') || log.includes('⚠️');
+                  let textColor = 'text-zinc-400';
+                  if (isSuccess) textColor = 'text-emerald-400 font-bold';
+                  else if (isFail) textColor = 'text-rose-400 font-medium';
+                  else if (isWarn) textColor = 'text-amber-400';
+                  
+                  return (
+                    <div key={idx} className={`${textColor} break-all text-[11px]`}>
+                      {log}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">

@@ -1,7 +1,7 @@
 import express from "express";
 import * as DB from "./db";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
-import { robustSendMail } from "./email";
+import { robustSendMail, getSmtpLogs } from "./email";
 import { generateAIResult } from "./ai-router-logic";
 
 export function setupAdminRoutes(app: express.Application, newsLocks: Map<string, number>) {
@@ -75,6 +75,32 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
       res.json({ status: "success", message: `Test email sent to ${to}` });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/admin/test-email-detailed", async (req, res) => {
+    const to = req.query.email as string || "okbgmi611@gmail.com";
+    const startTime = Date.now();
+    try {
+      await robustSendMail({
+        from: '"Barnia Digital Hub Test" <ujirpur.barnia6@gmail.com>',
+        to,
+        subject: "SMTP Detailed Test from Barnia Digital Hub",
+        text: "This is a detailed test email to verify SMTP configuration and measure performance."
+      });
+      const endTime = Date.now();
+      res.json({ 
+        status: "success", 
+        info: { timeMs: endTime - startTime },
+        smtpLogs: getSmtpLogs()
+      });
+    } catch (e: any) {
+      res.status(500).json({ 
+        status: "error", 
+        error: e.message, 
+        smtpLogs: getSmtpLogs(),
+        details: e.stack || e.message
+      });
     }
   });
 
