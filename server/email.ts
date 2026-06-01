@@ -149,9 +149,22 @@ export function getSmtpLogs() {
 }
 
 export function initEmail() {
-  emailUser = process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com";
-  emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+  emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
+  emailPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").trim();
   
+  console.log(`[Email] 📬 Diagnostic SMTP Init:`);
+  console.log(`        - SMTP User: "${emailUser}"`);
+  if (!emailPass) {
+    console.warn(`        - ❌ SMTP Pass: NOT DEFINED (EMAIL_PASS or SMTP_PASS is missing in environment variables!)`);
+  } else {
+    console.log(`        - ✅ SMTP Pass: Defined (Length: ${emailPass.length} chars, starts with "${emailPass[0]}...", ends with "...${emailPass[emailPass.length-1]}")`);
+    if (emailPass.includes('@')) {
+      console.warn(`        - ⚠️ Warning: SMTP Pass contains '@'. It looks like an email address instead of a 16-character App Password!`);
+    } else if (emailPass.length !== 16) {
+      console.log(`        - ℹ️ Info: Gmail App Password is typically 16 characters. Selected auth pass length is ${emailPass.length}.`);
+    }
+  }
+
   transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
