@@ -5,6 +5,7 @@ import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import * as DB from "./db";
 
 const memoryOtps = new Map<string, any>();
+const senderEmail = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
 
 export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: any, admin: any) {
   console.log(`[AuthAPI] Setup Routes. DB available: ${!!DB.state.db}, AdminDB available: ${!!DB.state.adminDb}`);
@@ -72,7 +73,7 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
 
       // We consider it "saved" if it's in memory at least
       const mailOptions = {
-        from: `"Barnia Digital Hub" <no-reply@barnaliai.com>`,
+        from: `"Barnia Digital Hub" <${senderEmail}>`,
         to: email,
         subject: `Your Login OTP for Barnia Digital Hub`,
         html: `
@@ -284,7 +285,7 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       console.log(`[AuthAPI] Sending welcome email to ${email}...`);
 
       const mailOptions = {
-        from: `"Barnia Digital Hub" <no-reply@barnaliai.com>`,
+        from: `"Barnia Digital Hub" <${senderEmail}>`,
         to: email,
         subject: `Welcome to Barnia Digital Hub, ${displayName}!`,
         html: `

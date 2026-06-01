@@ -5,6 +5,7 @@ import { FIRESTORE_SERVER_KEY } from "./constants";
 import * as DB from "./db";
 
 const memoryVamshavaliOtps = new Map<string, any>();
+const senderEmail = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
 
 export function setupVamshavaliRoutes(app: express.Application, _db: any, _adminDb: any, admin: any) {
   // Send OTP
@@ -89,7 +90,7 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
       })().catch(err => console.error("[Vamshavali] Background OTP save failed:", err));
 
       const mailOptions = {
-        from: `"Barnia Digital Hub" <no-reply@barnaliai.com>`,
+        from: `"Barnia Digital Hub" <${senderEmail}>`,
         to: email,
         subject: `Your OTP for Vamshavali`,
         html: `<h1>Your OTP: ${otp}</h1>`
