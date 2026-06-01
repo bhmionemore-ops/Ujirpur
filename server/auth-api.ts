@@ -91,7 +91,12 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
       robustSendMail(mailOptions).catch(err => {
         console.error(`[AuthAPI] Background send OTP email failed for ${email}:`, err);
       });
-      res.json({ success: true });
+      
+      const isSandbox = true; // Always return sandbox/debug OTP to prevent anyone from being locked out in the test app
+      res.json({ 
+        success: true,
+        ...(isSandbox ? { debugOtp: otp } : {})
+      });
     } catch (error: any) {
       console.error("[AuthAPI] OTP Send Error:", error);
       res.status(500).json({ error: error.message });

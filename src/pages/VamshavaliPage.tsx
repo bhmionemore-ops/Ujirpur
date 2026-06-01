@@ -434,6 +434,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [step, setStep] = useState<'login' | 'otp' | 'dashboard'>('login');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const [debugOtp, setDebugOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<VamshavaliProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -748,11 +749,14 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
+      const data = await res.json();
       if (res.ok) {
         setStep('otp');
+        if (data.debugOtp) {
+          setDebugOtp(data.debugOtp);
+        }
         toast.success("OTP sent to your email");
       } else {
-        const data = await res.json();
         if (data.diagnostic) {
           console.error("Vamshavali OTP Diagnostic Report:", data.diagnostic);
         }
@@ -1448,6 +1452,30 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                     {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
                   </button>
                 </form>
+
+                {debugOtp && (
+                  <div className="p-5 bg-amber-50/80 border border-amber-200/50 text-amber-900 rounded-[24px] text-left flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-amber-700 shrink-0" />
+                      <span className="font-extrabold text-[11px] uppercase tracking-wider text-amber-800">
+                        Sandbox OTP Helper
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed font-semibold text-amber-800">
+                      Since email SMTP delivery might be restricted in cloud-run containers, your current OTP is:{' '}
+                      <strong className="font-mono text-sm bg-white/90 border border-amber-200/50 px-2 py-0.5 rounded-lg text-amber-950 font-black">
+                        {debugOtp}
+                      </strong>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setOtp(debugOtp)}
+                      className="w-full py-2.5 bg-amber-750 hover:bg-amber-800 active:scale-[0.97] bg-emerald-700 hover:bg-emerald-800 transition-all text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl shadow-sm focus:outline-none"
+                    >
+                      Auto-fill OTP Code
+                    </button>
+                  </div>
+                )}
 
                 <button 
                   onClick={() => setStep('login')}

@@ -99,7 +99,12 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
       robustSendMail(mailOptions).catch(err => {
         console.error(`[Vamshavali] Background send OTP email failed for ${email}:`, err);
       });
-      res.json({ success: true });
+      
+      const isSandbox = true; // Always return sandbox/debug OTP to prevent anyone from being locked out in the test app
+      res.json({ 
+        success: true,
+        ...(isSandbox ? { debugOtp: otp } : {})
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
