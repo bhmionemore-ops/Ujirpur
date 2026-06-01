@@ -45,7 +45,7 @@ export async function robustSendMail(mailOptions: any) {
 
   // Prevent Gmail SMTP sender address spoofing rejection by rewriting mismatching "from" addresses 
   // to always use the authenticated user email while retaining the display name
-  let fromName = "Barnali AI";
+  let fromName = "Barnia Digital Hub";
   if (mailOptions.from) {
     const match = mailOptions.from.match(/^"([^"]+)"/);
     if (match) {
@@ -71,15 +71,18 @@ export async function robustSendMail(mailOptions: any) {
   const primaryIp = hostIps[0];
 
   const attempts: any[] = [
-    // 1. Direct standard TLS-587 (Most common, fastest, custom IPv4 lookup enforced)
-    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail-TLS-587' },
-    // 2. Direct standard SSL-465 (Alternative secure option, custom IPv4 lookup enforced)
-    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'Gmail-SSL-465' },
-    // 3. Direct IP-based TLS-587 (Bypasses any hostname resolution issues)
+    // 1. Direct IP-based TLS-587 (Our primary target - avoids DNS query and IPv6 entirely)
     { host: primaryIp, port: 587, secure: false, label: `DirectIP-TLS-587 (${primaryIp})` },
-    // 4. Direct IP-based SSL-465
+    // 2. Direct IP-based SSL-465 (Alternative port, avoids DNS and IPv6 entirely)
     { host: primaryIp, port: 465, secure: true, label: `DirectIP-SSL-465 (${primaryIp})` },
-    // 5. Ultimate service fallback via Gmail registry
+    // 3. Backup IPs in case primary IP has issues
+    ...hostIps.slice(1).map(ip => ({ host: ip, port: 587, secure: false, label: `BackupIP-TLS-587 (${ip})` })),
+    ...hostIps.slice(1).map(ip => ({ host: ip, port: 465, secure: true, label: `BackupIP-SSL-465 (${ip})` })),
+    // 4. Standard TLS-587 hostname based (Our lookup override will force IPv4)
+    { host: 'smtp.gmail.com', port: 587, secure: false, label: 'Gmail-TLS-587' },
+    // 5. Standard SSL-465 hostname based
+    { host: 'smtp.gmail.com', port: 465, secure: true, label: 'Gmail-SSL-465' },
+    // 6. Ultimate service fallback via Gmail registry
     { service: 'gmail', label: 'SERVICE-GMAIL' }
   ];
 
@@ -95,9 +98,23 @@ export async function robustSendMail(mailOptions: any) {
         family: 4,
         auth: { user: emailUser, pass: emailPass },
         tls: { rejectUnauthorized: false, servername: 'smtp.gmail.com' },
-        // Enforce IPv4 via custom lookup helper
+        // Enforce strict IPv4 lookup bypasses/overrides
         lookup: (hostname: string, options: any, callback: any) => {
-          dns.lookup(hostname, { ...options, family: 4 }, callback);
+          if (hostname === 'smtp.gmail.com' && primaryIp && primaryIp.includes('.')) {
+            callback(null, primaryIp, 4);
+          } else {
+            const opt = typeof options === 'object' ? { ...options, family: 4 } : { family: 4 };
+            opt.family = 4;
+            dns.lookup(hostname, opt, (dnsErr, address, family) => {
+              if (dnsErr) {
+                // If DNS fails, fallback directly to known IPv4
+                const fallbackIp = hostIps[0] || smtpIps[0];
+                callback(null, fallbackIp, 4);
+              } else {
+                callback(null, address, family);
+              }
+            });
+          }
         },
         connectionTimeout: 4000,
         greetingTimeout: 3000,

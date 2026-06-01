@@ -67,7 +67,7 @@ export function setupAdminRoutes(app: express.Application, newsLocks: Map<string
     const to = req.query.email as string || "okbgmi611@gmail.com";
     try {
       await robustSendMail({
-        from: '"Barnali AI Test" <ujirpur.barnia6@gmail.com>',
+        from: '"Barnia Digital Hub Test" <ujirpur.barnia6@gmail.com>',
         to,
         subject: "SMTP Test from Barnia Digital Hub",
         text: "This is a test email to verify SMTP configuration."

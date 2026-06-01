@@ -737,7 +737,7 @@ export const VillageTransportPage = () => {
   useEffect(() => {
     // Listen for available and busy vehicles (to track assigned drivers)
     // Only listen if authenticated to avoid permission errors
-    if (!user) {
+    if (!user || !user.uid) {
       setLoading(false);
       return;
     }
@@ -785,7 +785,7 @@ export const VillageTransportPage = () => {
 
   useEffect(() => {
     // Listen for incoming requests (as a driver)
-    if (user && myVehicle) {
+    if (user && user.uid && myVehicle) {
       const qIncoming = query(
         collection(db, 'ride_requests'),
         where('status', '==', 'pending'),
@@ -837,7 +837,7 @@ export const VillageTransportPage = () => {
   }, [activeChat]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !user.uid) return;
 
     // Listen for incoming calls
     const q = query(

@@ -38,7 +38,7 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check if user is a driver
   useEffect(() => {
-    if (!user) {
+    if (!user || !user.uid) {
       setIsDriver(false);
       return;
     }
@@ -66,7 +66,7 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen for incoming requests if user is a driver
   useEffect(() => {
-    if (!user || !isDriver) {
+    if (!user || !user.uid || !isDriver) {
       setActiveIncomingRequest(null);
       return;
     }
@@ -123,7 +123,7 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, isDriver]);
 
   const acceptRide = async (requestId: string) => {
-    if (!user) return;
+    if (!user || !user.uid) return;
     try {
       const rideRef = doc(db, 'ride_requests', requestId);
       

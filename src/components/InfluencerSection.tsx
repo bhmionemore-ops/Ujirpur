@@ -319,7 +319,7 @@ export const InfluencerSection = () => {
 
     // Listen to collab requests (only if logged in)
     let unsubReq = () => {};
-    if (user) {
+    if (user && user.uid) {
       const qReq = query(collection(db, 'collab_requests'), where('toUid', '==', user.uid), orderBy('timestamp', 'desc'));
       unsubReq = onSnapshot(qReq, (snapshot) => {
         const items = snapshot.docs.map(doc => ({

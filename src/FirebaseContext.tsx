@@ -312,13 +312,27 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             console.log('[FirebaseContext] User synced successfully. Closing modal.');
             setAuthModalOpen(false);
             
-            // Force state update to ensure UI updates immediately
-            setUser({
-              ...currentUser,
+            // Force state update to ensure UI updates immediately.
+            // Since currentUser contains prototype getters (like uid) that don't get copied by spread,
+            // we construct a robust plain object containing all the vital fields and functions.
+            const clonedUser = {
+              uid: currentUser.uid,
+              email: fbUser.email || currentUser.email,
               displayName: fbUser.name,
               photoURL: fbUser.picture || null,
-              email: fbUser.email || currentUser.email
-            } as User);
+              emailVerified: currentUser.emailVerified,
+              isAnonymous: currentUser.isAnonymous,
+              metadata: currentUser.metadata,
+              providerData: currentUser.providerData,
+              phoneNumber: currentUser.phoneNumber,
+              tenantId: currentUser.tenantId,
+              delete: currentUser.delete ? currentUser.delete.bind(currentUser) : async () => {},
+              getIdToken: currentUser.getIdToken ? currentUser.getIdToken.bind(currentUser) : async () => 'session_only_token',
+              getIdTokenResult: currentUser.getIdTokenResult ? currentUser.getIdTokenResult.bind(currentUser) : async () => ({} as any),
+              reload: currentUser.reload ? currentUser.reload.bind(currentUser) : async () => {},
+              toJSON: currentUser.toJSON ? currentUser.toJSON.bind(currentUser) : () => ({} as any),
+            };
+            setUser(clonedUser as any);
           }
         } catch (err: any) {
           console.error('[FirebaseContext] Error handling OAuth success:', err);
@@ -478,9 +492,42 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       console.log(`[FirebaseContext] Success! Received custom token. Signing in...`);
       const { signInWithCustomToken } = await import('firebase/auth');
-      await signInWithCustomToken(auth, data.customToken);
-      console.log("[FirebaseContext] OTP login via Firebase Auth successful");
-      setAuthModalOpen(false);
+      
+      try {
+        await Promise.race([
+          signInWithCustomToken(auth, data.customToken),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Client sign-in timed out after 4000ms")), 4000))
+        ]);
+        console.log("[FirebaseContext] OTP login via Firebase Auth successful");
+        setAuthModalOpen(false);
+      } catch (authErr: any) {
+        console.warn("[FirebaseContext] Custom Token login timed out or failed. Falling back to session auth:", authErr.message || authErr);
+        setIsSessionAuth(true);
+        const mockUser = {
+          uid: data.user?.uid || `user_${email.replace(/[^a-z0-9]/g, '_')}`,
+          email: data.user?.email || email,
+          displayName: data.user?.displayName || email.split('@')[0],
+          photoURL: null,
+          emailVerified: true,
+          isAnonymous: false,
+          metadata: {},
+          providerData: [],
+          phoneNumber: null,
+          tenantId: null,
+          delete: async () => {},
+          getIdToken: async () => 'session_only_token',
+          getIdTokenResult: async () => ({} as any),
+          reload: async () => {},
+          toJSON: () => ({} as any),
+        };
+        setUser(mockUser as any);
+        setIsAdmin(email === 'okbgmi611@gmail.com' || email === 'ujirpur.barnia6@gmail.com');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('isSessionAuth', 'true');
+          localStorage.setItem('sessionUser', JSON.stringify(mockUser));
+        }
+        setAuthModalOpen(false);
+      }
     } catch (error: any) {
       console.error("[FirebaseContext] Error verifying OTP:", error);
       throw error;

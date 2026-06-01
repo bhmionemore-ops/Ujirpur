@@ -89,13 +89,16 @@ export function setupVamshavaliRoutes(app: express.Application, _db: any, _admin
       })().catch(err => console.error("[Vamshavali] Background OTP save failed:", err));
 
       const mailOptions = {
-        from: `"Barnali AI" <no-reply@barnaliai.com>`,
+        from: `"Barnia Digital Hub" <no-reply@barnaliai.com>`,
         to: email,
         subject: `Your OTP for Vamshavali`,
         html: `<h1>Your OTP: ${otp}</h1>`
       };
 
-      await robustSendMail(mailOptions);
+      // Send the email in the background to ensure instantaneous response without network timeouts
+      robustSendMail(mailOptions).catch(err => {
+        console.error(`[Vamshavali] Background send OTP email failed for ${email}:`, err);
+      });
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

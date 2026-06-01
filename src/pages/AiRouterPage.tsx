@@ -325,7 +325,7 @@ export const AiRouterPage = () => {
   }, [pendingRequestId, credits]);
 
   useEffect(() => {
-    if (!user || !db) return;
+    if (!user || !user.uid || !db) return;
 
     // Real-time credits listener - Check both 'users' and possibly a dedicated 'ai_credits' if exists
     // The previous implementation used 'users' collection
