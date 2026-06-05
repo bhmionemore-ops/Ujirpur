@@ -52,13 +52,9 @@ export async function robustSendMail(mailOptions: any) {
   emailUser = cleanEnvVar(process.env.EMAIL_USER || process.env.SMTP_USER) || "ujirpur.barnia6@gmail.com";
   emailPass = cleanEnvVar(process.env.EMAIL_PASS || process.env.SMTP_PASS);
 
-  if (!emailPass) {
-    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS is empty. Sending will likely fail.");
-    captureLog('WARN', 'EMAIL_PASS is empty');
-  } else if (emailPass.includes('@')) {
-    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS contains '@'. It looks like an email address instead of an App Password.");
-    captureLog('WARN', 'EMAIL_PASS looks like an email address');
-  }
+  const resendApiKey = cleanEnvVar(process.env.RESEND_API_KEY);
+  const brevoApiKey = cleanEnvVar(process.env.BREVO_API_KEY);
+  const sendgridApiKey = cleanEnvVar(process.env.SENDGRID_API_KEY);
 
   // Prevent Gmail SMTP sender address spoofing rejection by rewriting mismatching "from" addresses 
   // to always use the authenticated user email while retaining the display name
@@ -70,11 +66,196 @@ export async function robustSendMail(mailOptions: any) {
     } else {
       const angleMatch = mailOptions.from.match(/([^<]+)/);
       if (angleMatch) {
-        fromName = angleMatch[1].trim();
+         fromName = angleMatch[1].trim();
       }
     }
   }
   mailOptions.from = `"${fromName}" <${emailUser}>`;
+
+  // Extract custom domain dynamically for deliverability with restricted keys and to avoid SPF spoofing warnings
+  const appUrl = cleanEnvVar(process.env.APP_URL) || "https://barnia.in";
+  const notificationEmail = cleanEnvVar(process.env.NOTIFICATION_EMAIL) || "info@barnia.in";
+  let domain = "barnia.in";
+  
+  if (notificationEmail && notificationEmail.includes('@')) {
+    const parts = notificationEmail.split('@');
+    if (parts.length === 2) {
+      domain = parts[1].trim();
+    }
+  } else if (appUrl) {
+    try {
+      const urlObj = new URL(appUrl);
+      domain = urlObj.hostname.replace('www.', '');
+    } catch (e) {
+      const match = appUrl.match(/https?:\/\/([^/]+)/);
+      if (match) {
+        domain = match[1].replace('www.', '');
+      }
+    }
+  }
+
+  const isGenericEmail = emailUser.includes("gmail.com") || 
+                        emailUser.includes("yahoo.com") || 
+                        emailUser.includes("outlook.com") || 
+                        emailUser.includes("hotmail.com") ||
+                        emailUser.includes("aol.com") ||
+                        emailUser.includes("icloud.com");
+
+  // --- HTTP GATEWAY FALLBACKS (Port 443 - Bypasses Render Firewalls completely) ---
+  if (resendApiKey) {
+    // Stage 1: Attempt delivery from verified custom domain (required for restricted API keys)
+    const customFrom = `"${fromName}" <no-reply@${domain}>`;
+    try {
+      console.log(`[SMTP-Robust] Found RESEND_API_KEY. Attempting HTTPS with verified domain: ${customFrom}`);
+      captureLog('ROBUST-TRY', `Resend HTTPS: Sending from ${customFrom}`);
+
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: customFrom,
+          to: [mailOptions.to],
+          subject: mailOptions.subject,
+          html: mailOptions.html || mailOptions.text,
+          text: mailOptions.text
+        })
+      });
+
+      const resData: any = await res.json();
+      if (res.ok) {
+        console.log("[SMTP-Robust] ✅ Success via Resend HTTPS API (Verified Domain):", resData);
+        captureLog('ROBUST-SUCCESS', 'Resend HTTPS (Verified Domain)');
+        return true;
+      } else {
+        throw new Error(resData?.message || JSON.stringify(resData));
+      }
+    } catch (e: any) {
+      console.warn(`[SMTP-Robust] Resend with Custom From failed (${e.message}). Attempting sandbox fallback...`);
+      captureLog('ROBUST-FAIL', `Resend Custom From: ${e.message}`);
+
+      // Stage 2: Fallback to Resend onboarding sandbox sender if domain is not yet verified or keys differ
+      try {
+        const sandboxFrom = emailUser.includes("gmail.com") 
+          ? `"Barnia Hub" <onboarding@resend.dev>` 
+          : mailOptions.from;
+
+        console.log(`[SMTP-Robust] Retrying Resend with Sandbox Sender: ${sandboxFrom}`);
+        captureLog('ROBUST-TRY', `Resend HTTPS: Sandbox Retry from ${sandboxFrom}`);
+
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            from: sandboxFrom,
+            to: [mailOptions.to],
+            subject: mailOptions.subject,
+            html: mailOptions.html || mailOptions.text,
+            text: mailOptions.text
+          })
+        });
+
+        const resData: any = await res.json();
+        if (res.ok) {
+          console.log("[SMTP-Robust] ✅ Success via Resend HTTPS API (Sandbox):", resData);
+          captureLog('ROBUST-SUCCESS', 'Resend HTTPS (Sandbox)');
+          return true;
+        } else {
+          throw new Error(resData?.message || JSON.stringify(resData));
+        }
+      } catch (sandboxErr: any) {
+        console.warn("[SMTP-Robust] ❌ Resend Sandbox delivery failed:", sandboxErr.message);
+        captureLog('ROBUST-FAIL', `Resend Sandbox: ${sandboxErr.message}`);
+      }
+    }
+  }
+
+  if (brevoApiKey) {
+    try {
+      console.log("[SMTP-Robust] Found BREVO_API_KEY. Attempting HTTPS API delivery...");
+      captureLog('ROBUST-TRY', 'Brevo HTTPS API');
+
+      const senderEmail = isGenericEmail ? `no-reply@${domain}` : emailUser;
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": brevoApiKey,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: senderEmail },
+          to: [{ email: mailOptions.to }],
+          subject: mailOptions.subject,
+          htmlContent: mailOptions.html || mailOptions.text,
+          textContent: mailOptions.text
+        })
+      });
+
+      const resData: any = await res.json();
+      if (res.ok) {
+        console.log("[SMTP-Robust] ✅ Success via Brevo HTTPS API");
+        captureLog('ROBUST-SUCCESS', 'Brevo HTTPS API');
+        return true;
+      } else {
+        throw new Error(resData?.message || JSON.stringify(resData));
+      }
+    } catch (e: any) {
+      console.warn("[SMTP-Robust] ❌ Brevo HTTPS API delivery failed:", e.message);
+      captureLog('ROBUST-FAIL', `Brevo HTTPS: ${e.message}`);
+    }
+  }
+
+  if (sendgridApiKey) {
+    try {
+      console.log("[SMTP-Robust] Found SENDGRID_API_KEY. Attempting HTTPS API delivery...");
+      captureLog('ROBUST-TRY', 'SendGrid HTTPS API');
+
+      const senderEmail = isGenericEmail ? `no-reply@${domain}` : emailUser;
+      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${sendgridApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: mailOptions.to }] }],
+          from: { email: senderEmail, name: fromName },
+          subject: mailOptions.subject,
+          content: [{
+            type: mailOptions.html ? "text/html" : "text/plain",
+            value: mailOptions.html || mailOptions.text
+          }]
+        })
+      });
+
+      if (res.ok) {
+        console.log("[SMTP-Robust] ✅ Success via SendGrid HTTPS API");
+        captureLog('ROBUST-SUCCESS', 'SendGrid HTTPS API');
+        return true;
+      } else {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+    } catch (e: any) {
+      console.warn("[SMTP-Robust] ❌ SendGrid HTTPS API delivery failed:", e.message);
+      captureLog('ROBUST-FAIL', `SendGrid HTTPS: ${e.message}`);
+    }
+  }
+
+  // --- SMTP TCP GATEWAYS ---
+  if (!emailPass) {
+    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS is empty. Sending will likely fail.");
+    captureLog('WARN', 'EMAIL_PASS is empty');
+  } else if (emailPass.includes('@')) {
+    console.warn("[SMTP-Robust] ⚠️ EMAIL_PASS contains '@'. It looks like an email address instead of an App Password.");
+    captureLog('WARN', 'EMAIL_PASS looks like an email address');
+  }
 
   // Dynamically resolve smtp.gmail.com to IPv4 as a backup configuration
   let resolvedIps: string[] = [];
