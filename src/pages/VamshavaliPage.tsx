@@ -498,25 +498,85 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeLightboxMember, setActiveLightboxMember] = useState<any>(null);
   const treeRef = useRef<HTMLDivElement>(null);
+  const lastLayoutWidth = useRef<number>(0);
+  const lastLayoutHeight = useRef<number>(0);
 
   useEffect(() => {
     if (step === 'dashboard' && profile && treeRef.current) {
-      // Small delay to ensure layout is measured correctly
-      setTimeout(() => {
-        const container = treeRef.current;
-        if (container) {
-          const content = container.querySelector('.inline-block');
-          if (content) {
-             const treeWidth = (content as HTMLElement).offsetWidth * treeScale;
-             const containerWidth = container.offsetWidth;
-             if (treeWidth > containerWidth) {
-                container.scrollLeft = (treeWidth - containerWidth) / 2;
-             }
+      const container = treeRef.current;
+      const scrollContent = container.querySelector('.inline-block');
+      if (!container || !scrollContent) return;
+
+      const runAutoFit = (force = false) => {
+        const unscaledWidth = (scrollContent as HTMLElement).offsetWidth || 1;
+        const unscaledHeight = (scrollContent as HTMLElement).offsetHeight || 1;
+
+        // Container dimensions with a generous styling padding margin of 80px
+        const containerWidth = container.clientWidth - (isFullScreen ? 120 : 80);
+        const containerHeight = container.clientHeight - (isFullScreen ? 120 : 80);
+
+        if (unscaledWidth > 1 && unscaledHeight > 1 && containerWidth > 0 && containerHeight > 0) {
+          // If unscaled layout has not changed and we aren't forcing, skip resetting scale to protect manual zooms
+          if (!force && 
+              unscaledWidth === lastLayoutWidth.current && 
+              unscaledHeight === lastLayoutHeight.current) {
+            return;
+          }
+
+          lastLayoutWidth.current = unscaledWidth;
+          lastLayoutHeight.current = unscaledHeight;
+
+          const scaleX = containerWidth / unscaledWidth;
+          const scaleY = containerHeight / unscaledHeight;
+          const idealScale = Math.min(scaleX, scaleY);
+          
+          // Fit the tree snugly in the layout. Allow it to scale down further if needed for large trees.
+          const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
+          
+          setTreeScale(prev => {
+            if (Math.abs(prev - finalScale) > 0.01) {
+              return finalScale;
+            }
+            return prev;
+          });
+        }
+      };
+
+      // Create resize observer to handle viewport frame changes and content changes automatically
+      const resizeObserver = new ResizeObserver((entries) => {
+        let shouldFit = false;
+        for (const entry of entries) {
+          if (entry.target === container) {
+            shouldFit = true;
+          } else if (entry.target === scrollContent) {
+            const currentW = (scrollContent as HTMLElement).offsetWidth;
+            const currentH = (scrollContent as HTMLElement).offsetHeight;
+            if (currentW !== lastLayoutWidth.current || currentH !== lastLayoutHeight.current) {
+              shouldFit = true;
+            }
           }
         }
-      }, 800);
+        if (shouldFit) {
+          runAutoFit(true);
+        }
+      });
+
+      resizeObserver.observe(container);
+      resizeObserver.observe(scrollContent);
+
+      // Trigger initial layout checks with staggered delays to ensure complete image/font rendering
+      const t1 = setTimeout(() => runAutoFit(true), 50);
+      const t2 = setTimeout(() => runAutoFit(true), 300);
+      const t3 = setTimeout(() => runAutoFit(true), 800);
+
+      return () => {
+        resizeObserver.disconnect();
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
     }
-  }, [step, profile?.id]);
+  }, [step, profile?.id, isFullScreen, profile?.members]);
 
   useEffect(() => {
     if (isFullScreen) {
@@ -531,10 +591,6 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
-    // When entering full screen, we might want to auto-fit
-    if (!isFullScreen) {
-      toast.info("Entering Zen View: Immersive Lineage Experience");
-    }
   };
 
   const autoFitTree = () => {
@@ -543,11 +599,22 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     const scrollContent = container.querySelector('.inline-block');
     if (!scrollContent) return;
 
-    const containerWidth = container.clientWidth - 100;
-    const contentWidth = scrollContent.scrollWidth;
-    const newScale = Math.min(Math.max(containerWidth / contentWidth, 0.4), 1);
-    setTreeScale(newScale);
-    toast.success("Perspective adjusted for optimal view");
+    const unscaledWidth = (scrollContent as HTMLElement).offsetWidth || 1;
+    const unscaledHeight = (scrollContent as HTMLElement).offsetHeight || 1;
+
+    lastLayoutWidth.current = unscaledWidth;
+    lastLayoutHeight.current = unscaledHeight;
+
+    const containerWidth = container.clientWidth - (isFullScreen ? 120 : 80);
+    const containerHeight = container.clientHeight - (isFullScreen ? 120 : 80);
+
+    const scaleX = containerWidth / unscaledWidth;
+    const scaleY = containerHeight / unscaledHeight;
+    const idealScale = Math.min(scaleX, scaleY);
+
+    const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
+    setTreeScale(finalScale);
+    toast.success("Perspective adjusted to fit your screen");
   };
 
   const getVedicNumerology = async (member: FamilyMember) => {
@@ -679,12 +746,55 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
     try {
       if (provider === 'google') {
+        const isIframe = window.self !== window.top;
+        if (isIframe) {
+          toast.warning("Google login is restricted inside preview iframes by browser security policies. Opening in a new tab for you...", {
+            duration: 6000
+          });
+          setTimeout(() => {
+            window.open(window.location.href, '_blank');
+          }, 1500);
+          return;
+        }
         await signIn();
       } else {
         await signInWithFacebook();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Social sign-in error:", error);
+      const errorCode = error?.code || 'unknown';
+      const errorMessage = error?.message || 'Authentication failed';
+      
+      if (errorCode === 'auth/popup-blocked') {
+        toast.error("Sign-in popup was blocked by your browser. Please allow popups for this site or open in a new tab.", {
+          duration: 8000,
+          action: {
+            label: "Open in Tab",
+            onClick: () => window.open(window.location.href, '_blank')
+          }
+        });
+      } else if (errorCode === 'auth/unauthorized-domain' || errorMessage.includes('unauthorized-domain')) {
+        const hostname = window.location.hostname;
+        toast.error(`Unauthorized Domain: ${hostname} is not registered in Firebase. Please add this domain under Firebase Console > Auth > Settings > Authorized Domains, or sign in using email OTP.`, {
+          duration: 10000
+        });
+      } else if (errorCode === 'auth/web-storage-unsupported') {
+        toast.error("Third-party cookies/storage are blocked by your browser. Please allow cookies or open the app in a new tab.", {
+          duration: 8000,
+          action: {
+            label: "Open in Tab",
+            onClick: () => window.open(window.location.href, '_blank')
+          }
+        });
+      } else {
+        toast.error(`Google Sign-In failed: ${errorMessage} (${errorCode}). Try opening inside a new tab or use the Email OTP.`, {
+          duration: 8000,
+          action: {
+            label: "Open in Tab",
+            onClick: () => window.open(window.location.href, '_blank')
+          }
+        });
+      }
     }
   };
 
@@ -1822,10 +1932,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           <div 
                             ref={treeRef}
                             id="genealogy_container"
-                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat transition-all duration-700 ease-in-out ${
+                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat flex items-center justify-center transition-all duration-700 ease-in-out ${
                               isFullScreen 
-                                ? 'h-screen w-screen rounded-none border-0 p-16 md:p-32 pt-48' 
-                                : 'rounded-[1.5rem] md:rounded-[4rem] border-[3px] md:border-[12px] border-[#d4af37] min-h-[400px] h-fit p-4 md:p-40'
+                                ? 'h-screen w-screen rounded-none border-0 p-6 md:p-12' 
+                                : 'rounded-[1.5rem] md:rounded-[4rem] border-[3px] md:border-[12px] border-[#d4af37] h-[600px] lg:h-[750px] p-6 md:p-12'
                             }`}
                           >
                             <div className="absolute inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[2.8rem]" />
@@ -1838,7 +1948,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
                             
                             <div 
-                              className="inline-block min-w-max text-center relative z-10 pt-12 pb-32 transition-transform duration-300 ease-out origin-top"
+                              className="relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-12 pb-32 transition-transform duration-300 ease-out origin-center flex-shrink-0"
                               style={{ transform: `scale(${treeScale})` }}
                             >
                                <div className="mb-24 flex flex-col items-center">
