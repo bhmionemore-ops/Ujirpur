@@ -24,10 +24,12 @@ interface FamilyMember {
   role: string;
   photo?: string;
   birthYear?: string;
+  gender?: 'male' | 'female';
   partner?: {
     name: string;
     photo?: string;
     birthYear?: string;
+    gender?: 'male' | 'female';
   };
   children: FamilyMember[];
 }
@@ -49,10 +51,12 @@ const EditMemberModal = ({
     name: '', 
     birthYear: '', 
     role: '', 
+    gender: 'male' as 'male' | 'female',
     photo: '',
     partnerName: '',
     partnerBirthYear: '',
     partnerPhoto: '',
+    partnerGender: 'female' as 'male' | 'female',
     hasPartner: false
   });
 
@@ -62,10 +66,12 @@ const EditMemberModal = ({
         name: member.name || '',
         birthYear: member.birthYear || '',
         role: member.role || '',
+        gender: member.gender || (member.role?.toLowerCase().includes('daughter') || member.role?.toLowerCase().includes('mother') || member.role?.toLowerCase().includes('matriarch') ? 'female' : 'male'),
         photo: member.photo || '',
         partnerName: member.partner?.name || '',
         partnerBirthYear: member.partner?.birthYear || '',
         partnerPhoto: member.partner?.photo || '',
+        partnerGender: member.partner?.gender || 'female',
         hasPartner: !!member.partner
       });
     }
@@ -130,6 +136,32 @@ const EditMemberModal = ({
                   placeholder="e.g. 1920 - 2005"
                 />
               </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Vedas / Relationship Role</label>
+                <input 
+                  value={formData.role}
+                  onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
+                  placeholder="e.g. patriarch, mother, daughter, son"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Gender Identification</label>
+                <div className="flex gap-4">
+                  {['male', 'female'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setFormData({...formData, gender: g as any})}
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.gender === g ? 'bg-[#064e3b] text-white border-[#064e3b]' : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#d4af37]/30'}`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-8 p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[rgba(212,175,55,0.1)] shadow-inner">
@@ -186,12 +218,12 @@ const EditMemberModal = ({
                   <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Full Name</label>
                   <input 
                     value={formData.partnerName}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    setFormData({...formData, partnerName: caps});
-                  }}
-                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                      setFormData({...formData, partnerName: caps});
+                    }}
+                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
                   />
                 </div>
                 <div className="space-y-3">
@@ -199,8 +231,24 @@ const EditMemberModal = ({
                   <input 
                     value={formData.partnerBirthYear}
                     onChange={(e) => setFormData({...formData, partnerBirthYear: e.target.value})}
-                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all"
+                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
                   />
+                </div>
+
+                <div className="space-y-3 md:col-span-2">
+                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Gender Identification</label>
+                  <div className="flex gap-4">
+                    {['male', 'female'].map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setFormData({...formData, partnerGender: g as any})}
+                        className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.partnerGender === g ? 'bg-[#064e3b] text-white border-[#064e3b]' : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#d4af37]/30'}`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -240,10 +288,14 @@ const EditMemberModal = ({
   );
 };
 
-const GoldenFrame = ({ photo, name, pulse = false, size = "md" }: { photo?: string; name: string; pulse?: boolean; size?: "sm" | "md" }) => {
+const GoldenFrame = ({ photo, name, pulse = false, size = "md", gender = "male" }: { photo?: string; name: string; pulse?: boolean; size?: "sm" | "md"; gender?: "male" | "female" }) => {
   const sizeClasses = size === "sm" ? "w-20 md:w-24" : "w-24 md:w-36";
+  const frameGradient = gender === "female" 
+    ? "bg-gradient-to-tr from-[#9d174d] via-[#f43f5e] to-[#fbcfe8] shadow-[0_20px_50px_rgba(244,63,94,0.3)] border border-[#9d174d]/80" 
+    : "bg-gradient-to-tr from-[#8a6821] via-[#d4af37] to-[#f4e4bc] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[#8a6821]";
+  
   return (
-    <div className={`relative p-1 rounded-[45%] bg-gradient-to-tr from-[#8a6821] via-[#d4af37] to-[#f4e4bc] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[#8a6821] ${pulse ? 'animate-pulse' : ''} group-hover:scale-110 transition-all duration-700 ease-out z-10`}>
+    <div className={`relative p-1 rounded-[45%] ${frameGradient} ${pulse ? 'animate-pulse' : ''} group-hover:scale-110 transition-all duration-700 ease-out z-10`}>
       <div className="absolute inset-0 rounded-[45%] border-2 border-white/10 pointer-events-none" />
       {/* Ornate inner border */}
       <div className="absolute inset-1 rounded-[45%] border border-[#8a6821]/40 pointer-events-none" />
@@ -444,6 +496,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const [isCalculatingNumerology, setIsCalculatingNumerology] = useState(false);
   const [treeScale, setTreeScale] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [activeLightboxMember, setActiveLightboxMember] = useState<any>(null);
   const treeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1062,6 +1115,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
             ...m,
             name: formData.name,
             birthYear: formData.birthYear,
+            role: formData.role,
+            gender: formData.gender,
             photo: formData.photo,
           };
           
@@ -1069,7 +1124,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
             updated.partner = {
               name: formData.partnerName,
               birthYear: formData.partnerBirthYear,
-              photo: formData.partnerPhoto
+              photo: formData.partnerPhoto,
+              gender: formData.partnerGender
             };
           } else {
             delete updated.partner;
@@ -1583,22 +1639,26 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Lateral Details */}
-                    <div className="lg:col-span-1 space-y-6">
-                      <div className="p-8 bg-white rounded-[2.5rem] border border-[#f4f4f5] shadow-xl space-y-8 h-full">
-                        <div className="pb-4 border-b border-[#f4f4f5] flex items-center justify-between">
+                  <div className="space-y-10">
+                    {/* Full Width Lineage Details Panel */}
+                    <div className="p-8 bg-white rounded-[2.5rem] border border-[#f4f4f5] shadow-xl space-y-8">
+                      <div className="pb-4 border-b border-[#f4f4f5] flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                           <Landmark size={20} className="text-[#d4af37]" />
                            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">{vt.lineageDetails}</h4>
-                           <Landmark size={18} className="text-[#d4af37]" />
-                        </div>
-                        
+                         </div>
+                         <div className="text-[10px] uppercase font-black tracking-widest text-[#d4af37] bg-[#064e3b]/5 px-3 py-1 rounded-full border border-[#d4af37]/10">Sacred Credentials</div>
+                      </div>
+                      
+                      {/* Row/Grid of 4 Core Details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
                           { icon: <Users size={16}/>, label: "Parents", value: profile.parents, key: 'parents' },
                           { icon: <Landmark size={16}/>, label: "Gotra", value: profile.gotra, key: 'gotra' },
                           { icon: <Home size={16}/>, label: "Kuldevi Name", value: profile.kuldevi, key: 'kuldevi' },
                           { icon: <MapPin size={16}/>, label: "Native Origin", value: profile.nativePlace, key: 'nativePlace' },
                         ].map((item, i) => (
-                          <div key={i} className="space-y-2">
+                          <div key={i} className="p-5 bg-[#fafafa]/50 rounded-2xl border border-zinc-100 hover:border-[#d4af37]/20 transition-all space-y-2">
                             <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">
                               {item.icon} {item.label}
                             </label>
@@ -1607,7 +1667,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                 <input 
                                   value={item.value}
                                   onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
-                                  className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
+                                  className="w-full px-4 py-3 bg-white border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
                                 />
                                 {item.key === 'kuldevi' && (
                                   <div className="pt-2">
@@ -1638,9 +1698,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             )}
                           </div>
                         ))}
+                      </div>
 
-                        <div className="pt-4 border-t border-[#f4f4f5]">
-                          <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest mb-2">
+                      {/* Chronicles & Numerology row */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-6 border-t border-[#f4f4f5]">
+                        {/* Chronicles Card */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">
                              Chronicles
                           </label>
                           {isEditing ? (
@@ -1650,53 +1714,53 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                               className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs min-h-[120px]"
                             />
                           ) : (
-                            <p className="text-[#52525b] font-medium text-xs leading-relaxed italic">"{profile.additionalNotes || "Records empty."}"</p>
+                            <p className="text-[#52525b] font-medium text-xs leading-relaxed italic bg-[#fafafa]/30 p-4 rounded-2xl border border-zinc-100 h-full">"{profile.additionalNotes || "Records empty."}"</p>
                           )}
                         </div>
 
-                        {/* Manual Vedic Numerology Box */}
-                        <div className="pt-8 border-t border-[#f4f4f5] space-y-4">
+                        {/* Vedic Numerology Card */}
+                        <div className="space-y-4">
                            <div className="flex items-center gap-2">
                               <BookOpen size={18} className="text-[#d4af37]" />
                               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#064e3b]">Vedic Numerology</h4>
                            </div>
-                           <p className="text-[9px] text-[#71717a] font-medium leading-relaxed italic">
-                             Ancient Sankhya Shastra reveals the spiritual path through the vibrations of names and dates.
-                           </p>
-                           <div className="space-y-3 p-4 bg-[#fdfbf7] rounded-2xl border border-[#fef3c7]">
-                              <input 
-                                id="manual_numerology_name"
-                                placeholder="Enter Name..."
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  // Auto-capitalize first letter of each word
-                                  const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                  if (val !== caps) e.target.value = caps;
-                                }}
-                                className="w-full px-4 py-2 bg-white border border-[#f4f4f5] rounded-xl text-xs font-bold outline-none focus:border-[#d4af37]"
-                              />
-                              <button 
-                                onClick={() => {
-                                  const nameInput = document.getElementById('manual_numerology_name') as HTMLInputElement;
-                                  if (nameInput?.value) {
-                                    // Robustly get today's year for the reading
-                                    const currentYear = new Date().getFullYear().toString();
-                                    getVedicNumerology({ name: nameInput.value.trim(), birthYear: currentYear, role: 'Descendant', children: [], id: 'manual' });
-                                  } else {
-                                    toast.error("Please provide a name for the reading.");
-                                  }
-                                }}
-                                className="w-full py-2 bg-[#064e3b] text-[#d4af37] rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md hover:bg-emerald-900 transition-all"
-                              >
-                                Reveal Divine Path
-                              </button>
+                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center p-4 bg-[#fdfbf7] rounded-2xl border border-[#fef3c7]">
+                              <p className="text-[9px] text-[#71717a] font-medium leading-relaxed italic sm:col-span-1">
+                                Ancient Sankhya Shastra reveals the spiritual path through the vibrations of names and dates.
+                              </p>
+                              <div className="space-y-2 sm:col-span-2">
+                                <input 
+                                  id="manual_numerology_name"
+                                  placeholder="Enter Name..."
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                    if (val !== caps) e.target.value = caps;
+                                  }}
+                                  className="w-full px-4 py-2 bg-white border border-[#f4f4f5] rounded-xl text-xs font-bold outline-none focus:border-[#d4af37]"
+                                />
+                                <button 
+                                  onClick={() => {
+                                    const nameInput = document.getElementById('manual_numerology_name') as HTMLInputElement;
+                                    if (nameInput?.value) {
+                                      const currentYear = new Date().getFullYear().toString();
+                                      getVedicNumerology({ name: nameInput.value.trim(), birthYear: currentYear, role: 'Descendant', children: [], id: 'manual' });
+                                    } else {
+                                      toast.error("Please provide a name for the reading.");
+                                    }
+                                  }}
+                                  className="w-full py-2 bg-[#064e3b] text-[#d4af37] rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md hover:bg-emerald-900 transition-all"
+                                >
+                                  Reveal Divine Path
+                                </button>
+                              </div>
                            </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Genealogy Map Container */}
-                    <div className="lg:col-span-3 space-y-8">
+                    {/* Genealogy Map Container (Full Page Width) */}
+                    <div className="w-full space-y-8">
                        <div className="flex items-center justify-between px-4">
                           <div className="flex items-center gap-4">
                              <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
@@ -1802,6 +1866,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                     setEditingNode(node);
                                     setIsEditModalOpen(true);
                                   }}
+                                  onViewDetail={(node: any) => setActiveLightboxMember(node)}
                                   onRemove={removeMember}
                                   onAddChild={addMember}
                                   onGetNumerology={getVedicNumerology}
@@ -1831,6 +1896,84 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         onSave={updateMemberFromModal}
         handlePhotoUpload={handlePhotoUpload}
       />
+
+      {/* Lightbox / High-definition zoom viewer modal */}
+      <AnimatePresence>
+        {activeLightboxMember && (
+          <div 
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out"
+            onClick={() => setActiveLightboxMember(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              className="relative max-w-lg w-full bg-[#18181b] rounded-[3rem] border-4 border-[#d4af37] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden cursor-default text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-6 right-6 z-10">
+                <button 
+                  onClick={() => setActiveLightboxMember(null)}
+                  className="p-3 bg-zinc-900/80 hover:bg-zinc-800 rounded-full transition-colors text-[#d4af37]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Header Image Frame (Big Picture Zoom) */}
+              <div className="relative aspect-[4/5] w-full bg-zinc-950 flex items-center justify-center overflow-hidden group">
+                {activeLightboxMember.photo ? (
+                  <img 
+                    src={activeLightboxMember.photo} 
+                    alt={activeLightboxMember.name} 
+                    className="w-full h-full object-cover select-none scale-100 transition-all duration-700 hover:scale-110" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/20">
+                    <User size={120} strokeWidth={0.5} />
+                    <p className="text-[10px] font-black uppercase tracking-widest mt-4">Portrait Archive Empty</p>
+                  </div>
+                )}
+                {/* Decorative overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-[#18181b]/25 to-transparent pointer-events-none" />
+              </div>
+
+              {/* Bio Detail Content */}
+              <div className="p-8 relative">
+                {/* Spiritual pattern */}
+                <div className="absolute right-8 top-8 opacity-10 text-[#d4af37] pointer-events-none">
+                  <Landmark size={80} strokeWidth={1} />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#d4af37]/10 rounded-full border border-[#d4af37]/30">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#d4af37]">{activeLightboxMember.role || "Generation Node"}</span>
+                  </div>
+
+                  <h3 className="text-3xl font-serif font-black tracking-tight italic text-[#f4e4bc]">{activeLightboxMember.name}</h3>
+                  <p className="text-sm font-bold text-zinc-400 font-mono">Historical Record: {activeLightboxMember.birthYear || "N/A"}</p>
+                  <p className="text-xs text-zinc-300 leading-relaxed font-serif italic pt-2">
+                    "A distinguished figure in the {profile ? profile.name : 'Vamshavali'} registry. May their virtue inspire generations to come."
+                  </p>
+
+                  <div className="pt-6 border-t border-zinc-800/80 flex items-center justify-between">
+                    <div className="text-[10px] uppercase font-bold tracking-widest text-[#d4af37]">Sankhya Shastra Reading</div>
+                    <button 
+                      onClick={() => {
+                        setActiveLightboxMember(null);
+                        getVedicNumerology(activeLightboxMember);
+                      }}
+                      className="px-5 py-2 bg-[#d4af37] text-[#064e3b] rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#b68d40] transition-all flex items-center gap-2"
+                    >
+                      <Sparkles size={12} /> Divine Insight
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Numerology Insights Modal */}
       <AnimatePresence>
@@ -1908,7 +2051,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   );
 };
 
-const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGetNumerology }: any) => {
+const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onAddChild, onGetNumerology }: any) => {
   return (
     <div className="flex justify-center gap-8 md:gap-32 px-4 md:px-10">
       {members.map((member: FamilyMember, index: number) => (
@@ -1921,10 +2064,16 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGet
               {/* Member */}
               <div className="flex flex-col items-center text-center">
                 <div 
-                  className={`relative transition-all duration-500 ease-out ${isEditing ? 'cursor-pointer hover:scale-110 active:scale-95' : ''}`}
-                  onClick={() => isEditing && onEdit(member)}
+                  className="relative transition-all duration-500 ease-out cursor-pointer hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    if (isEditing) {
+                      onEdit(member);
+                    } else if (onViewDetail) {
+                      onViewDetail(member);
+                    }
+                  }}
                 >
-                  <GoldenFrame photo={member.photo} name={member.name} />
+                  <GoldenFrame photo={member.photo} name={member.name} gender={member.gender || (member.role?.toLowerCase().includes('daughter') || member.role?.toLowerCase().includes('mother') || member.role?.toLowerCase().includes('matriarch') ? 'female' : 'male')} />
                   {isEditing && (
                     <div className="absolute -top-3 -right-3 w-10 h-10 bg-[#059669] text-white rounded-full flex items-center justify-center shadow-2xl z-30 border-2 border-white animate-bounce-slow">
                       <Edit2 size={16} />
@@ -1960,10 +2109,20 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGet
 
                   <div className="flex flex-col items-center text-center">
                     <div 
-                      className={`relative transition-all duration-500 ease-out ${isEditing ? 'cursor-pointer hover:scale-110 active:scale-95' : ''}`}
-                      onClick={() => isEditing && onEdit(member)}
+                      className="relative transition-all duration-500 ease-out cursor-pointer hover:scale-105 active:scale-95"
+                      onClick={() => {
+                        if (isEditing) {
+                          onEdit(member);
+                        } else if (onViewDetail) {
+                          onViewDetail({
+                            ...member.partner,
+                            role: "Union Partner",
+                            gender: (member.partner as any).gender || "female"
+                          });
+                        }
+                      }}
                     >
-                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" />
+                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" gender={(member.partner as any).gender || 'female'} />
                     </div>
                     
                     <div className="mt-6 flex flex-col items-center">
@@ -2067,6 +2226,7 @@ const TreeStructure = ({ members, isEditing, onEdit, onRemove, onAddChild, onGet
                       members={[child]} 
                       isEditing={isEditing} 
                       onEdit={onEdit}
+                      onViewDetail={onViewDetail}
                       onRemove={onRemove}
                       onAddChild={onAddChild}
                       onGetNumerology={onGetNumerology}
