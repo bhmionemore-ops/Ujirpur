@@ -311,31 +311,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   </button>
                 </div>
 
-                {debugOtp && (
-                  <div className="p-5 bg-orange-50/80 border border-orange-200/50 text-orange-900 rounded-[24px] flex flex-col gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle size={15} className="text-orange-600 shrink-0" />
-                      <span className="font-extrabold text-[11px] uppercase tracking-wider text-orange-800">
-                        {language === 'bn' ? 'স্যান্ডবক্স ওটিপি হেল্পার' : 'Sandbox OTP Helper'}
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed font-semibold text-orange-800">
-                      {language === 'bn' 
-                        ? 'ক্লাউড সার্ভারে ইমেল ব্লক থাকলে এই কোডটি ব্যবহার করুন:' 
-                        : 'Since email delivery may be restricted in sandbox containers, your OTP is:'}{' '}
-                      <strong className="font-mono text-sm bg-white/90 border border-orange-200/50 px-2 py-0.5 rounded-lg text-orange-950 font-black">
-                        {debugOtp}
-                      </strong>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setOtp(debugOtp)}
-                      className="mt-1 w-full py-2.5 bg-orange-650 hover:bg-orange-700 active:scale-[0.97] transition-all text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                    >
-                      {language === 'bn' ? 'কোডটি অটো-ফিল করুন' : 'Auto-fill OTP Code'}
-                    </button>
-                  </div>
-                )}
+
               </div>
             )}
 

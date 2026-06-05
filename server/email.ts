@@ -47,6 +47,199 @@ async function resolveHostIpv4(host: string): Promise<string[]> {
   });
 }
 
+export function getGrandEmailHtml(title: string, subtitle: string, contentHtml: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=Playfair+Display:ital,wght@0,600;1,400&family=Inter:wght@400;500;600&display=swap');
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #fcfbf9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fcfbf9; padding: 40px 10px 60px 10px;">
+    <tr>
+      <td align="center">
+        <!-- Wrapper Container with Golden Amber Glow & Shadow -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 28px; overflow: hidden; border: 1px solid #ffedd5; box-shadow: 0 20px 40px -15px rgba(245, 142, 39, 0.12), 0 15px 25px -10px rgba(0, 0, 0, 0.04);">
+          
+          <!-- Grand Elegant Header Banner -->
+          <tr>
+            <td style="background-color: #1e1b18; padding: 45px 35px 40px 35px; text-align: center; border-bottom: 5px solid #F58E27;">
+              <!-- Mini Verification Badge -->
+              <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 18px auto;">
+                <tr>
+                  <td style="background-color: rgba(245, 142, 39, 0.12); padding: 5px 14px; border-radius: 100px; border: 1px solid rgba(245, 142, 39, 0.25); text-align: center;">
+                    <span style="color: #F58E27; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-family: 'Space Grotesk', -apple-system, sans-serif;">
+                      MEMBERSHIP SECURE GATEWAY
+                    </span>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Brand Title inside header -->
+              <h1 style="color: #ffffff; font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 1.5px; margin: 0; text-transform: uppercase;">
+                BARNIA DIGITAL HUB
+              </h1>
+              
+              <!-- Serif Italic Subtitle -->
+              <p style="color: #fdba74; font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-style: italic; margin: 8px 0 0 0; font-weight: 500; letter-spacing: 0.5px;">
+                ${subtitle}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Outer padding for core message body -->
+          <tr>
+            <td style="padding: 45px 40px 35px 40px; color: #1f2937; line-height: 1.75; font-family: 'Inter', -apple-system, sans-serif; font-size: 15px;">
+              
+              ${contentHtml}
+
+            </td>
+          </tr>
+
+          <!-- High-Contrast Support/Action Banner -->
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fffbeb; border-left: 4px solid #ea580c; border-radius: 12px; padding: 22px;">
+                <tr>
+                  <td>
+                    <h4 style="margin: 0 0 6px 0; color: #7c2d12; font-size: 14px; font-weight: 700; font-family: -apple-system, sans-serif;">
+                      Need assistance or have features requests?
+                    </h4>
+                    <p style="margin: 0; color: #9a3412; font-size: 13px; line-height: 1.5; font-family: -apple-system, sans-serif;">
+                      Our system is powered by AI Assistant <strong>Barnali</strong>, working 24/7. Open your dashboard to send instant queries, or ask Barnali for support anywhere.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Grand Footer Section -->
+          <tr>
+            <td style="background-color: #faf9f6; border-top: 1px solid #f2ece4; padding: 35px 40px; text-align: center; font-family: -apple-system, sans-serif;">
+              <!-- Secure encryption stamp -->
+              <div style="margin-bottom: 16px;">
+                <span style="display: inline-block; padding: 4px 12px; background-color: #f1f5f9; border-radius: 6px; font-size: 11px; font-weight: 700; color: #475569; letter-spacing: 0.5px; text-transform: uppercase;">
+                  🔒 SSL SECURE VERIFICATION &bull; RESEND SMTP GATEWAY
+                </span>
+              </div>
+              
+              <!-- Legalities & System Details -->
+              <p style="margin: 0; color: #78716c; font-size: 11px; line-height: 1.6;">
+                This transmission contains sensitive account actions. Distributed under strict digital hub guidelines.<br>
+                For further security, please verify the sender domain. Sent via Tokyo Cloud ap-northeast-1 network cluster.<br>
+                <span style="color: #a8a29e; display: block; margin-top: 8px;">&copy; 2026 <strong>Barnia Digital Hub</strong>. All rights reserved. barnia.in</span>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function formatMailToGrandTemplate(body: string, subject: string): string {
+  let normalizedBody = body;
+  let isOtp = false;
+  let otpCode = "";
+
+  // 1. Detect if it is an OTP/Verification email
+  if (normalizedBody.includes("Login Verification") || 
+      normalizedBody.includes("Verification Code") || 
+      normalizedBody.includes("Your OTP") || 
+      subject.toLowerCase().includes("otp") || 
+      subject.toLowerCase().includes("verification") || 
+      subject.toLowerCase().includes("security code")) {
+    isOtp = true;
+    // Extract OTP code from content
+    const otpMatch = normalizedBody.match(/\b(\d{6})\b/);
+    if (otpMatch) {
+      otpCode = otpMatch[1];
+    }
+  }
+
+  // 2. Render beautifully styled layouts
+  if (isOtp && otpCode) {
+    normalizedBody = `
+      <div style="text-align: center;">
+        <h2 style="color: #111827; font-size: 21px; font-weight: 800; margin: 0 0 10px 0; font-family: 'Space Grotesk', sans-serif;">
+          🔒 Security Verification Code
+        </h2>
+        <p style="color: #4b5563; font-size: 14.5px; margin: 0 0 35px 0; line-height: 1.6;">
+          Use the secure One-Time Password (OTP) below to authenticate your action. This code is strictly personal and expires in 10 minutes.
+        </p>
+        
+        <div align="center" style="margin: 30px 0 35px 0;">
+          <table border="0" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #fffcf5 0%, #ffedd5 100%); border: 2px dashed #F58E27; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px -5px rgba(245, 142, 39, 0.1);">
+            <tr>
+              <td style="padding: 25px 50px;">
+                <span style="display: block; color: #c2410c; font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">
+                  YOUR SECURE OTP CODE
+                </span>
+                <span style="display: block; font-family: 'JetBrains Mono', Courier, monospace; font-size: 46px; font-weight: 900; letter-spacing: 12px; color: #ea580c; text-indent: 12px; line-height: 1;">
+                  ${otpCode}
+                </span>
+                <span style="display: block; color: #9a3412; font-size: 11px; font-weight: 600; margin-top: 14px; font-family: -apple-system, sans-serif;">
+                  VALID FOR ONE SESSION ONLY &bull; EXPIRED IN 10 MINUTES
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13.5px; color: #6b7280; text-align: center; margin: 30px 0 0 0; max-width: 450px; display: inline-block; line-height: 1.5;">
+          If you did not initiate this authentication request, please ignore this message or report immediately to our security desk.
+        </p>
+      </div>
+    `;
+  } else if (subject.toLowerCase().includes("welcome")) {
+    // Elegant welcome custom bullet list parsing
+    normalizedBody = normalizedBody
+      // Remove any existing basic styling headers and footers to keep pure content
+      .replace(/<div style="font-family: sans-serif;[\s\S]*?">/, "")
+      .replace(/<\/div>\s*$/, "")
+      .trim();
+
+    // Replace standard bullets with beautiful star-diamonds
+    normalizedBody = normalizedBody.replace(/<li>(.*?)<\/li>/gi, `
+      <li style="margin-bottom: 15px; list-style: none; position: relative; padding-left: 24px; color: #374151; font-size: 14.5px;">
+        <span style="color: #F58E27; font-size: 16px; font-weight: bold; position: absolute; left: 0; top: -1px; line-height: 1;">✦</span>
+        $1
+      </li>
+    `);
+
+    // Polish ul containers
+    normalizedBody = normalizedBody.replace(/<ul style="padding-left: 20px; line-height: 1.6;">/gi, '<ul style="padding: 0; margin: 25px 0; line-height: 1.8;">');
+    
+    // Smooth container titles
+    normalizedBody = normalizedBody.replace(/<h2 style="color: #111827; font-size: 20px; margin-top: 0;">(.*?)<\/h2>/gi, `
+      <h2 style="color: #111827; font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">$1</h2>
+    `);
+  } else {
+    // General text layout enhancement
+    if (!normalizedBody.includes("<div") && !normalizedBody.includes("<p")) {
+      normalizedBody = `<p style="font-size: 15.5px; color: #374151; line-height: 1.8; margin: 0; font-family: 'Inter', sans-serif;">${normalizedBody.replace(/\r?\n/g, "<br>")}</p>`;
+    }
+  }
+
+  // Determine beautiful custom subtitle based on content type
+  let subtitle = "Empowering Our Community, Together";
+  if (isOtp) {
+    subtitle = "Secure Identity & Transaction Gateway";
+  } else if (subject.toLowerCase().includes("welcome")) {
+    subtitle = "Welcome to Our Family & Community Portal";
+  } else if (subject.toLowerCase().includes("test") || subject.toLowerCase().includes("diagnostic") || subject.toLowerCase().includes("self-test")) {
+    subtitle = "SMTP & API Mail Delivery Diagnostics";
+  }
+
+  return getGrandEmailHtml(subject, subtitle, normalizedBody);
+}
+
 export async function robustSendMail(mailOptions: any) {
   // Update credentials just in case env changed, ensuring quotes are cleanly removed
   emailUser = cleanEnvVar(process.env.EMAIL_USER || process.env.SMTP_USER) || "ujirpur.barnia6@gmail.com";
@@ -55,6 +248,11 @@ export async function robustSendMail(mailOptions: any) {
   const resendApiKey = cleanEnvVar(process.env.RESEND_API_KEY);
   const brevoApiKey = cleanEnvVar(process.env.BREVO_API_KEY);
   const sendgridApiKey = cleanEnvVar(process.env.SENDGRID_API_KEY);
+
+  // Apply stunning grand layout wrapper to this email
+  const originalSubject = mailOptions.subject || "Security Alert";
+  const content = mailOptions.html || mailOptions.text || "";
+  mailOptions.html = formatMailToGrandTemplate(content, originalSubject);
 
   // Prevent Gmail SMTP sender address spoofing rejection by rewriting mismatching "from" addresses 
   // to always use the authenticated user email while retaining the display name
@@ -92,6 +290,18 @@ export async function robustSendMail(mailOptions: any) {
         domain = match[1].replace('www.', '');
       }
     }
+  }
+
+  // Ensure domain is NEVER a generic webmail provider or hosting subdomain, defaulting to barnia.in
+  const genericDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com", "protonmail.com"];
+  if (genericDomains.some(gd => domain.toLowerCase().includes(gd)) || 
+      domain.includes("run.app") || 
+      domain.includes("render.com") || 
+      domain.includes("vercel.app") || 
+      domain.includes("localhost") || 
+      domain.includes("aistudio-") ||
+      !domain.includes(".")) {
+    domain = "barnia.in";
   }
 
   const isGenericEmail = emailUser.includes("gmail.com") || 
