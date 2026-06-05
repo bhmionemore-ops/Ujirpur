@@ -1,4 +1,5 @@
 import fetch from "node-fetch";
+import admin from "firebase-admin";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { parseGeminiJson } from "./utils";
 
@@ -79,38 +80,6 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     }
   };
 
-  // Standard static command routing
-  const textLower = text.toLowerCase().trim();
-
-  if (textLower === "/start") {
-    await sendMessage(
-      "Hello! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n" +
-      "I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n" +
-      "🔗 *Link Your Family Tree:*\n" +
-      "To enable tree updates, please link your profile first by typing:\n" +
-      "`/link <your-email>` or `/link <shareId>` (or say: 'link my tree with xyz@gmail.com').\n\n" +
-      "Let me know how I can assist you today with the *barnia.in* app!",
-      { parse_mode: "Markdown" }
-    );
-    return;
-  }
-
-  if (textLower === "/unlink") {
-    if (adminDb) {
-      try {
-        await adminDb.collection("telegram_users").doc(chatId.toString()).set({
-          linkedProfileId: null,
-          linkedEmail: null,
-          linkedShareId: null
-        }, { merge: true });
-        await sendMessage("🔓 *Successfully unlinked your family tree.* You can link to another account anytime using `/link <email>`!", { parse_mode: "Markdown" });
-      } catch (e: any) {
-        await sendMessage("Could not complete unlinking. Please try again later.");
-      }
-    }
-    return;
-  }
-
   // 1. Fetch Telegram state database & bootstrap if missing
   let linkedProfileId: string | null = null;
   let linkedEmail: string | null = null;
@@ -138,6 +107,121 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     } catch (err) {
       console.error("[Telegram] State retrieval / bootstrap error:", err);
     }
+  }
+
+  // Standard static command routing
+  const textLower = text.toLowerCase().trim();
+
+  // Support /start and /start <param> (deeplink)
+  const startParts = text.trim().split(/\s+/);
+  const isStartCmd = startParts[0].toLowerCase() === "/start";
+
+  if (isStartCmd) {
+    const startParam = startParts.length > 1 ? startParts[1].trim() : null;
+
+    if (startParam) {
+      let foundProfile: any = null;
+      if (adminDb) {
+        try {
+          const queryEmail = await adminDb.collection("vamshavali_profiles").where("email", "==", startParam.toLowerCase().trim()).limit(1).get();
+          if (!queryEmail.empty) {
+            foundProfile = { id: queryEmail.docs[0].id, ...queryEmail.docs[0].data() };
+          } else {
+            const queryShare = await adminDb.collection("vamshavali_profiles").where("shareId", "==", startParam.toUpperCase().trim()).limit(1).get();
+            if (!queryShare.empty) {
+              foundProfile = { id: queryShare.docs[0].id, ...queryShare.docs[0].data() };
+            }
+          }
+        } catch (err) {
+          console.error("[Telegram] Error searching family tree on automatic start linking:", err);
+        }
+      }
+
+      if (foundProfile) {
+        if (adminDb) {
+          await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+            linkedProfileId: foundProfile.id,
+            linkedEmail: foundProfile.email || null,
+            linkedShareId: foundProfile.shareId || null,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+        await sendMessage(
+          `💖 *Connected Automatically!*\n\n` +
+          `I have automatically linked your Telegram chat to the family tree of *"${foundProfile.name}"* (ID: \`${foundProfile.shareId || foundProfile.id}\`).\n\n` +
+          `From now on, I will remember this tree! Whenever you send a message or a picture, we'll consult and update this tree.\n\n` +
+          `Enjoy using your voice, text, or pictures to build your tree on [barnia.in/vamshavali](https://barnia.in/vamshavali)!`,
+          { parse_mode: "Markdown" }
+        );
+        return;
+      } else {
+        // Auto-bootstrap if the parameter looks like email
+        const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+        if (startParam.match(emailRegex)) {
+          try {
+            const { bootstrapProfile } = await import("./vamshavali-logic");
+            const newProfile = await bootstrapProfile(startParam.toLowerCase().trim(), db, adminDb, admin);
+            if (newProfile) {
+              if (adminDb) {
+                await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+                  linkedProfileId: newProfile.id,
+                  linkedEmail: newProfile.email || null,
+                  linkedShareId: newProfile.shareId || null,
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              }
+              await sendMessage(
+                `✨ *Tree Initialized & Connected!*\n\n` +
+                `I have initialized a fresh family tree for *"${startParam.toLowerCase().trim()}"* and automatically linked it to this chat.\n\n` +
+                `You can view/edit it on [barnia.in/vamshavali](https://barnia.in/vamshavali) or make updates here in this chat!`,
+                { parse_mode: "Markdown" }
+              );
+              return;
+            }
+          } catch (bootstrapErr: any) {
+            console.error("[Telegram] Auto-bootstrap error during start param:", bootstrapErr);
+          }
+        }
+
+        await sendMessage(
+          `👋 Welcome! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+          `⚠️ *Link ID Not Found*\n` +
+          `I tried to automatically link your tree using parameter *"${startParam}"*, but couldn't find a matching family tree.\n\n` +
+          `Please link your profile first by typing:\n` +
+          `\`/link <your-email>\` or \`/link <shareId>\` (e.g., \`/link contact@barnia.in\`).\n\n` +
+          `Let me know how I can assist you today with the *barnia.in* app!`,
+          { parse_mode: "Markdown" }
+        );
+        return;
+      }
+    } else {
+      await sendMessage(
+        "Hello! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n" +
+        "I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n" +
+        "🔗 *Link Your Family Tree:*\n" +
+        "To enable tree updates, please link your profile first by typing:\n" +
+        "`/link <your-email>` or `/link <shareId>` (or say: 'link my tree with xyz@gmail.com').\n\n" +
+        "Let me know how I can assist you today with the *barnia.in* app!",
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+  }
+
+  if (textLower === "/unlink") {
+    if (adminDb) {
+      try {
+        await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+          linkedProfileId: null,
+          linkedEmail: null,
+          linkedShareId: null
+        }, { merge: true });
+        await sendMessage("🔓 *Successfully unlinked your family tree.* You can link to another account anytime using `/link <email>`!", { parse_mode: "Markdown" });
+      } catch (e: any) {
+        await sendMessage("Could not complete unlinking. Please try again later.");
+      }
+    }
+    return;
   }
 
   // 2. Handling Direct & Conversational Family Tree Linking
@@ -206,10 +290,37 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       );
       return;
     } else {
+      // Let's check if the linkArg looks like a valid email. If so, we can auto-bootstrap a profile for them!
+      if (linkArg.match(emailRegex)) {
+        try {
+          const { bootstrapProfile } = await import("./vamshavali-logic");
+          const newProfile = await bootstrapProfile(linkArg.toLowerCase().trim(), db, adminDb, admin);
+          if (newProfile) {
+            if (adminDb) {
+              await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+                linkedProfileId: newProfile.id,
+                linkedEmail: newProfile.email || null,
+                linkedShareId: newProfile.shareId || null,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+            await sendMessage(
+              `✨ *Tree Initialized & Connected!*\n\n` +
+              `I couldn't find an existing family tree for *"${linkArg.toLowerCase().trim()}"*, so I have initialized a fresh tree for you and linked it to this chat.\n\n` +
+              `You can view/edit it on [barnia.in/vamshavali](https://barnia.in/vamshavali) or make updates directly here in this chat!`,
+              { parse_mode: "Markdown" }
+            );
+            return;
+          }
+        } catch (bootstrapErr: any) {
+          console.error("[Telegram] Auto-bootstrap error during linking:", bootstrapErr);
+        }
+      }
+
       await sendMessage(
         `❌ *Family Tree Not Found*\n\n` +
         `I couldn't find any family tree under the email or share ID: *"${linkArg}"*.\n\n` +
-        `Make sure the email is registered in the *Vamshavali* section of [barnia.in](https://barnia.in).`,
+        `Make sure the email is registered in the *Vamshavali* section of [barnia.in](https://barnia.in) or supply a valid email to bootstrap a fresh tree!`,
         { parse_mode: "Markdown" }
       );
       return;
