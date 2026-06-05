@@ -38,6 +38,9 @@ jobs:
       - name: Grant Execute Permission to Gradle Wrapper
         run: chmod +x android/gradlew
 
+      - name: Download Valid Gradle Wrapper Jar
+        run: wget -O android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar
+
       - name: Build Android Debug APK
         run: |
           cd android
