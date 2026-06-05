@@ -12,6 +12,9 @@ function getEstimatedCost(type: string, model?: string): number {
     return 10;
   }
   if (type === 'video' || type === 'image_to_video') {
+    if (model && (model === 'minimax-hailuo-2.3-fast' || model.includes('hailuo-2.3-fast') || model.includes('hailuo-02') || model.includes('video-02'))) {
+      return 40;
+    }
     return 30; // Economy Video-01 model cost
   }
   return 1;

@@ -278,10 +278,15 @@ async function generateMiniMaxVideo(
   if (modelId === "minimax-video-01" || modelId.includes("video-01")) {
     modelName = "video-01";
     duration = 6;
+    size = "512p";
+  } else if (modelId === "minimax-hailuo-2.3-fast" || modelId.includes("hailuo-2.3-fast") || modelId.includes("hailuo-02") || modelId.includes("video-02")) {
+    modelName = "video-02";
+    duration = 6;
+    size = "768p";
   } else {
-    // Force cheap video-01 model as video-02 is forbidden/expensive
     modelName = "video-01";
     duration = 6;
+    size = "512p";
   }
 
   const payload: any = {
@@ -397,9 +402,12 @@ async function generateMiniMaxVideo(
         if (!videoUrl) {
           throw new Error("MiniMax reported success but download_url is missing.");
         }
+        const returnedModelName = (modelId === "minimax-hailuo-2.3-fast" || modelId.includes("hailuo-2.3-fast"))
+          ? "MiniMax Hailuo-2.3-Fast"
+          : "MiniMax-Hailuo-02";
         return {
           result: videoUrl,
-          modelUsed: `MiniMax-Hailuo-02 (${size}, ${duration}s)`
+          modelUsed: `${returnedModelName} (${size}, ${duration}s)`
         };
       } else if (status === "fail") {
         throw new Error(`MiniMax video generation failed: ${pollData.error_msg || "Unknown error"}`);

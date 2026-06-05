@@ -65,6 +65,7 @@ export const AiRouterPage = () => {
     if (currentType === 'video' || currentType === 'image_to_video') {
       return [
         { id: 'minimax-video-01', name: 'MiniMax Video-01 (Economy)', cost: 30, description: 'Fast, budget-friendly high definition video generation model.' },
+        { id: 'minimax-hailuo-2.3-fast', name: 'Hailuo-2.3-Fast (Premium 768P)', cost: 40, description: 'Premium quality high-definition video at 768p resolution, 6s.' },
       ];
     }
     return [];
@@ -437,6 +438,9 @@ export const AiRouterPage = () => {
       return 10;
     }
     if (type === 'video' || type === 'image_to_video') {
+      if (selectedModel === 'minimax-hailuo-2.3-fast' || selectedModel.includes('hailuo-2.3-fast') || selectedModel.includes('hailuo-02')) {
+        return 40;
+      }
       return 30; // Cheapest budget video model (Video-01)
     }
     return 1; // Default
