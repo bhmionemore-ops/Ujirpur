@@ -1,0 +1,26 @@
+{
+  "name": "Barnia Digital Hub",
+  "short_name": "Barnia",
+  "description": "Community Platform for Barnia, Nadia, West Bengal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f58e27",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+      "sizes": "120x120",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

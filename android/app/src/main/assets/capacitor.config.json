@@ -1,0 +1,9 @@
+{
+	"appId": "com.barnia.digitalhub",
+	"appName": "Barnia Digital Hub",
+	"webDir": "dist",
+	"server": {
+		"url": "https://ais-dev-fgwboxbxglty7rbzy5y3mq-601145018823.europe-west2.run.app",
+		"cleartext": true
+	}
+}

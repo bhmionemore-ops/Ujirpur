@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Barnia Digital Hub</string>
+    <string name="title_activity_main">Barnia Digital Hub</string>
+    <string name="package_name">com.barnia.digitalhub</string>
+    <string name="custom_url_scheme">com.barnia.digitalhub</string>
+</resources>
