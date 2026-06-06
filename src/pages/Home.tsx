@@ -26,6 +26,8 @@ import { LiveNews } from '../components/LiveNews';
 import { Banner } from '../components/Banner';
 import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
+import { WeatherWidget } from '../components/WeatherWidget';
+import { ScrollAssembleText } from '../components/FlyingLettersScrollEffect';
 
 export const Home = () => {
   const { t, language } = useLanguage();
@@ -43,10 +45,49 @@ export const Home = () => {
       <div className="max-w-7xl mx-auto px-4">
         <LiveNews />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12 mb-20">
+        <div className="mt-12">
+          <WeatherWidget />
+        </div>
+
+        {/* Dynamic Flying Letters Interactive Assembly Showcase */}
+        <div className="mt-16 mb-4 text-center px-4 max-w-4xl mx-auto">
+          <ScrollAssembleText 
+            text={language === 'bn' ? "বার্নিয়া ডিজিটাল হাব • মানুষের মেলবন্ধন" : "BARNIA DIGITAL HUB • CONNECTING VILLAGES"} 
+            className="text-2xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-orange-500 to-rose-600 tracking-tighter"
+          />
+          <p className="text-[10px] md:text-xs font-black text-zinc-400 uppercase tracking-[0.3em] mt-3 block animate-pulse">
+            {language === 'bn' ? "★ স্ক্রোল করুন এবং বর্ণমালার যাদু দেখুন ★" : "★ SCROLL TO ASSEMBLE THE ALPHABET MAGIC ★"}
+          </p>
+        </div>
+        
+        {/* Bento Grid with staggered reveal on scroll */}
+        <motion.div 
+          variants={{
+            hidden: {},
+            show: {
+              transition: {
+                staggerChildren: 0.12
+              }
+            }
+          }}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12 mb-20"
+        >
           {/* Influencer Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: -1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: 0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/influencers')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-600 to-brand-500 p-10 text-white shadow-2xl shadow-brand-500/20 border-4 border-brand-400/50"
           >
@@ -72,7 +113,17 @@ export const Home = () => {
 
           {/* Shop Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: 1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: -0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/bazar')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-zinc-900 p-10 text-white shadow-2xl shadow-zinc-900/20 border-4 border-zinc-800"
           >
@@ -98,7 +149,17 @@ export const Home = () => {
 
           {/* Ponjika Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: -1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: 0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/ponjika')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-white p-10 text-zinc-900 shadow-2xl shadow-brand-500/5 border-4 border-zinc-100 hover:border-brand-500 transition-all"
           >
@@ -125,7 +186,17 @@ export const Home = () => {
 
           {/* Transport Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: 1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: -0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/transport')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-emerald-600 p-10 text-white shadow-2xl shadow-emerald-500/20 border-4 border-emerald-500/50"
           >
@@ -151,7 +222,17 @@ export const Home = () => {
 
           {/* Vamshavali Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: -1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: 0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/vamshavali')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-amber-900 p-10 text-white shadow-2xl shadow-amber-900/20 border-4 border-amber-800"
           >
@@ -177,7 +258,17 @@ export const Home = () => {
 
           {/* AI Router Box */}
           <motion.div
-            whileHover={{ y: -10 }}
+            variants={{
+              hidden: { opacity: 0, y: 50, scale: 0.95, rotate: 1.5 },
+              show: { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1, 
+                rotate: 0,
+                transition: { type: "spring", stiffness: 85, damping: 14 } 
+              }
+            }}
+            whileHover={{ y: -10, scale: 1.02, rotate: -0.5, transition: { duration: 0.2 } }}
             onClick={() => navigate('/ai-router')}
             className="group cursor-pointer relative overflow-hidden rounded-[2.5rem] bg-indigo-950 p-10 text-white shadow-2xl shadow-indigo-900/20 border-4 border-indigo-900"
           >
@@ -200,7 +291,7 @@ export const Home = () => {
               </div>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
 
         {/* Facebook Group Section */}
         <div className="mt-20 mb-20 text-center">
@@ -226,7 +317,7 @@ export const Home = () => {
               </p>
               
               <motion.a 
-                href="https://www.facebook.com/groups/barniabazar/"
+                href="https://www.facebook.com/groups/barniadigitalhub"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => logEvent('click_facebook_group')}

@@ -119,6 +119,9 @@ class LocalAdminDbFallback {
 
   private sanitizeData(data: any): any {
     if (data === null || data === undefined) return data;
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitizeData(item));
+    }
     if (typeof data !== "object") return data;
 
     const copy = { ...data };

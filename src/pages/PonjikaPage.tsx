@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   Calendar, ChevronLeft, Sun, Moon, Star, Info, 
   Sunrise, Sunset, Clock, Sparkles, AlertTriangle, 
-  Compass, MapPin, Share2, Download
+  Compass, MapPin, Share2, Download, Heart
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
@@ -11,7 +11,8 @@ import { useTracking } from '../TrackingContext';
 import { Banner } from '../components/Banner';
 import { toast } from 'sonner';
 import { shareContent } from '../utils';
-import { getBengaliDate, toBengaliNumber, getAlmanacData } from '../utils/bengaliDate';
+import { getBengaliDate, toBengaliNumber, getAlmanacData, getAuspiciousMarriageDates } from '../utils/bengaliDate';
+import { TiltCard } from '../components/TiltCard';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -32,6 +33,82 @@ const Swastika = ({ size = 16, className = "" }) => (
     <circle cx="8" cy="16" r="1" fill="currentColor" stroke="none" />
   </svg>
 );
+
+const AlponaMandala = ({ size = 200, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 100 100" 
+    className={`animate-spin-slow text-brand-500/10 pointer-events-none select-none ${className}`}
+    style={{ animationDuration: '60s' }}
+  >
+    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3,3" />
+    <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="0.8" />
+    <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M50 5 L50 95 M5 50 L95 50" stroke="currentColor" strokeWidth="0.3" />
+    {/* Concentric Petals */}
+    {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(angle => (
+      <g key={angle} transform={`rotate(${angle} 50 50)`}>
+        <path d="M50 10 C53 25, 47 25, 50 10" fill="currentColor" opacity="0.4" />
+        <path d="M50 20 C55 35, 45 35, 50 20" fill="none" stroke="currentColor" strokeWidth="0.6" />
+        <circle cx="50" cy="15" r="1" fill="currentColor" />
+        <path d="M50 50 L50 32 M48 39 L50 32 L52 39" stroke="currentColor" strokeWidth="0.5" fill="none" />
+      </g>
+    ))}
+    <circle cx="50" cy="50" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="50" cy="50" r="2" fill="currentColor" />
+  </svg>
+);
+
+const MoonOrb = ({ tithiVal }: { tithiVal: number }) => {
+  // tithiVal is 0 to 29
+  // 14 is Full Moon, 29 is New Moon (Amavasya)
+  const litPercent = tithiVal <= 14 
+    ? (tithiVal / 14) * 100 
+    : ((29 - tithiVal) / 15) * 100;
+
+  const isWaxing = tithiVal < 15;
+
+  return (
+    <div className="relative w-28 h-28 flex flex-col items-center justify-center rounded-3xl bg-zinc-950/70 border border-white/10 shadow-[inset_0_2px_12px_rgba(255,255,255,0.03),0_5px_15px_rgba(0,0,0,0.4)] overflow-hidden group">
+      {/* Halo Glow */}
+      <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${
+        isWaxing ? 'bg-amber-400/5 animate-pulse' : 'bg-sky-400/5'
+      }`} />
+      
+      {/* The Moon Spherical Body */}
+      <div className="w-14 h-14 rounded-full relative bg-zinc-900 border border-white/5 overflow-hidden shadow-inner">
+        {/* Shadow side background */}
+        <div className="absolute inset-0 bg-zinc-950" />
+        
+        {/* Illuminated side */}
+        <div 
+          className="absolute inset-y-0 bg-gradient-to-r from-amber-100 to-amber-200"
+          style={{
+            left: isWaxing ? 0 : 'auto',
+            right: !isWaxing ? 0 : 'auto',
+            width: `${litPercent}%`,
+            borderRadius: litPercent > 50 ? '50%' : '0 99px 99px 0',
+            boxShadow: '0 0 12px rgba(251, 191, 36, 0.45)'
+          }}
+        />
+        
+        {/* Crater Texture details */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay" 
+             style={{ 
+               backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.6) 1.5px, transparent 1.5px), radial-gradient(circle, rgba(0,0,0,0.4) 1px, transparent 1.5px)',
+               backgroundSize: '10px 10px',
+               backgroundPosition: '3px 4px'
+             }} 
+        />
+      </div>
+      
+      <div className="absolute bottom-2 text-[8px] uppercase tracking-widest font-black text-amber-400 font-mono">
+        {isWaxing ? 'Waxing' : 'Waning'}
+      </div>
+    </div>
+  );
+};
 
 export const PonjikaPage = () => {
   const navigate = useNavigate();
@@ -80,7 +157,12 @@ export const PonjikaPage = () => {
   };
 
   const bDate = getBengaliDate(currentDate);
-  const almanac = getAlmanacData(currentDate);
+  const almanac = getAlmanacData(currentDate, language as 'bn' | 'en');
+  const marriageInfo = getAuspiciousMarriageDates(bDate.monthIndex, language as 'bn' | 'en');
+  
+  const timestamp = currentDate.getTime();
+  const epochDays = Math.floor(timestamp / (1000 * 60 * 60 * 24));
+  const tithiVal = epochDays % 30;
 
   // Comprehensive Mock data for Ponjika
   const ponjikaData = {
@@ -94,38 +176,26 @@ export const PonjikaPage = () => {
     yoga: language === 'bn' ? almanac.yoga : almanac.yogaEn,
     karana: language === 'bn' ? almanac.karana : almanac.karanaEn,
     rashi: language === 'bn' ? almanac.rashi : almanac.rashiEn,
+    paksha: language === 'bn' ? almanac.paksha : almanac.pakshaEn,
+    ritu: language === 'bn' ? almanac.ritu : almanac.rituEn,
+    rituVal: language === 'bn' ? almanac.ritu : almanac.rituEn,
+    dayLord: language === 'bn' ? almanac.dayLord : almanac.dayLordEn,
+    bengaliEra: language === 'bn' ? almanac.bengaliEra : almanac.bengaliEraEn,
+    tithiVal,
     sunrise: almanac.sunrise,
     sunset: almanac.sunset,
     moonrise: almanac.moonrise,
     moonset: almanac.moonset,
-    brahmaMuhurta: '04:55 AM - 05:45 AM',
-    abhijitMuhurta: '11:48 AM - 12:38 PM',
-    amritaYoga: language === 'bn' ? 'সকাল ০৬:৩০ - ০৮:১৫, রাত ১০:২০ - ১২:০০' : '06:30 AM - 08:15 AM, 10:20 PM - 12:00 AM',
-    mahendraYoga: language === 'bn' ? 'দুপুর ০১:২০ - ০২:৫০' : '01:20 PM - 02:50 PM',
-    rahuKaal: '01:30 PM - 03:00 PM',
-    barabela: '02:50 PM - 04:20 PM',
-    kalabela: '04:20 PM - 05:50 PM',
-    kalratri: '11:30 PM - 01:00 AM',
-    festivals: language === 'bn' 
-      ? ['বাসন্তী পূজা', 'রাম নবমী উৎসবের প্রাক্কালে', 'অন্নপূর্ণা পূজা'] 
-      : ['Basanti Puja', 'Eve of Ram Navami', 'Annapurna Puja'],
-    monthlyHighlights: language === 'bn' ? [
-      { id: 1, date: '১ চৈত্র (১৫ মার্চ)', event: 'চৈত্র মাস আরম্ভ' },
-      { id: 2, date: '৬ চৈত্র (২০ মার্চ)', event: 'ঈদুল ফিতর' },
-      { id: 3, date: '১২ চৈত্র (২৬ মার্চ)', event: 'বাসন্তী অষ্টমী ও অন্নপূর্ণা পূজা' },
-      { id: 4, date: '১৩ চৈত্র (২৭ মার্চ)', event: 'রাম নবমী' },
-      { id: 5, date: '১৫ চৈত্র (২৯ মার্চ)', event: 'কামদা একাদশী' },
-      { id: 6, date: '২০ চৈত্র (৩ এপ্রিল)', event: 'গুড ফ্রাইডে' },
-      { id: 7, date: '৩০ চৈত্র (১৩ এপ্রিল)', event: 'চৈত্র সংক্রান্তি ও নীল পূজা' },
-    ] : [
-      { id: 1, date: '1 Chaitra (March 15)', event: 'Beginning of Chaitra' },
-      { id: 2, date: '6 Chaitra (March 20)', event: 'Eid-ul-Fitr' },
-      { id: 3, date: '12 Chaitra (March 26)', event: 'Basanti Ashtami & Annapurna Puja' },
-      { id: 4, date: '13 Chaitra (March 27)', event: 'Ram Navami' },
-      { id: 5, date: '15 Chaitra (March 29)', event: 'Kamada Ekadashi' },
-      { id: 6, date: '20 Chaitra (April 3)', event: 'Good Friday' },
-      { id: 7, date: '30 Chaitra (April 13)', event: 'Chaitra Sankranti & Neel Puja' },
-    ],
+    brahmaMuhurta: almanac.brahmaMuhurta,
+    abhijitMuhurta: almanac.abhijitMuhurta,
+    amritaYoga: almanac.amritaYoga,
+    mahendraYoga: almanac.mahendraYoga,
+    rahuKaal: almanac.rahuKaal,
+    barabela: almanac.barabela,
+    kalabela: almanac.kalabela,
+    kalratri: almanac.kalratri,
+    festivals: almanac.festivals,
+    monthlyHighlights: almanac.monthlyHighlights,
     zodiacPredictions: (language === 'bn' ? [
       { sign: 'মেষ', text: 'আজ আপনার জন্য শুভ দিন। নতুন কাজে হাত দিতে পারেন।' },
       { sign: 'বৃষ', text: 'আর্থিক লেনদেনে সতর্ক থাকুন। পরিবারের সাথে সময় কাটান।' },
@@ -403,83 +473,116 @@ export const PonjikaPage = () => {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="lg:col-span-8 bg-white rounded-[4rem] p-10 md:p-16 shadow-2xl shadow-brand-900/5 border-4 border-zinc-900 relative overflow-hidden group"
+              className="lg:col-span-8"
             >
-              {/* Background Image Overlay */}
-              <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                <img 
-                  src="https://images.unsplash.com/photo-1621847468516-1ed5d0df56fe?auto=format&fit=crop&q=80&w=1000" 
-                  alt="Background Pattern" 
-                  className="w-full h-full object-cover grayscale"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-                  <div>
-                    <h2 className="text-5xl md:text-8xl font-black text-zinc-900 tracking-tighter mb-6 leading-none">
-                      {ponjikaData.day}
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <span className="px-6 py-3 rounded-2xl bg-zinc-900 text-white font-black text-base tracking-tight shadow-xl shadow-zinc-900/20">
-                        {ponjikaData.date}
-                      </span>
-                      <span className="px-6 py-3 rounded-2xl bg-zinc-100 text-zinc-600 font-bold text-base border border-zinc-200">
-                        {ponjikaData.englishDate}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">{t.ponjika?.rashi}</p>
-                    <div className="flex items-center gap-3 justify-end">
-                      <Compass size={24} className="text-brand-500" />
-                      <p className="text-3xl font-black text-brand-600 tracking-tight">{ponjikaData.rashi}</p>
-                    </div>
-                  </div>
+              <TiltCard 
+                className="bg-white rounded-[4rem] p-10 md:p-16 border-4 border-zinc-900 relative overflow-hidden group h-full"
+                glowColor="rgba(242,125,38,0.15)"
+                intensity={0.7}
+              >
+                {/* Background Alpona Mandala */}
+                <div className="absolute right-[-80px] top-[-80px] opacity-10 group-hover:opacity-15 transition-opacity duration-500 pointer-events-none">
+                  <AlponaMandala size={320} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-                  <div className="space-y-12">
-                    <div className="group/item">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.tithi}</p>
-                      <p className="text-4xl font-black text-zinc-900 tracking-tighter leading-tight">{ponjikaData.tithi}</p>
-                    </div>
-                    <div className="group/item">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.nakshatra}</p>
-                      <p className="text-3xl font-bold text-zinc-800 tracking-tight leading-tight">{ponjikaData.nakshatra}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-10">
-                      <div className="group/item">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.yoga}</p>
-                        <p className="text-2xl font-black text-zinc-900">{ponjikaData.yoga}</p>
+                {/* Background Image Overlay */}
+                <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
+                  <img 
+                    src="https://images.unsplash.com/photo-1621847468516-1ed5d0df56fe?auto=format&fit=crop&q=80&w=1000" 
+                    alt="Background Pattern" 
+                    className="w-full h-full object-cover grayscale"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+
+                <div className="relative z-10">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+                    <div>
+                      <h2 className="text-5xl md:text-8xl font-black text-zinc-900 tracking-tighter mb-6 leading-none">
+                        {ponjikaData.day}
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="px-6 py-3 rounded-2xl bg-zinc-900 text-white font-black text-base tracking-tight shadow-xl shadow-zinc-900/20">
+                          {ponjikaData.date}
+                        </span>
+                        <span className="px-6 py-3 rounded-2xl bg-zinc-100 text-zinc-600 font-bold text-base border border-zinc-200">
+                          {ponjikaData.englishDate}
+                        </span>
                       </div>
-                      <div className="group/item">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.karana}</p>
-                        <p className="text-2xl font-black text-zinc-900">{ponjikaData.karana}</p>
+                    </div>
+                    <div className="text-right whitespace-nowrap">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">{t.ponjika?.rashi}</p>
+                      <div className="flex items-center gap-3 justify-end">
+                        <Compass size={24} className="text-brand-500 animate-spin-slow" style={{ animationDuration: '20s' }} />
+                        <p className="text-3xl font-black text-brand-600 tracking-tight">{ponjikaData.rashi}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-zinc-50 rounded-[3.5rem] p-12 border-2 border-zinc-100 relative overflow-hidden shadow-inner">
-                    <div className="absolute top-0 right-0 p-8 opacity-5">
-                      <Star size={120} />
+                  {/* Traditional Ponjika Stats Panel */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 border-y-2 border-zinc-100 py-6">
+                    <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-100 flex flex-col justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-700/70 mb-1">{language === 'bn' ? 'বঙ্গাব্দ সাল' : 'Bengali Era'}</span>
+                      <span className="text-base font-black text-brand-950 truncate">{ponjikaData.bengaliEra}</span>
                     </div>
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-10 flex items-center gap-4 text-zinc-400">
-                      <div className="w-8 h-px bg-zinc-200" />
-                      {t.ponjika?.festivals}
-                    </h3>
-                    <div className="space-y-8">
-                      {ponjikaData.festivals.map((fest, idx) => (
-                        <div key={idx} className="flex items-start gap-5 group/fest">
-                          <div className="w-3 h-3 rounded-full bg-brand-500 mt-2 shrink-0 group-hover/fest:scale-150 transition-transform shadow-lg shadow-brand-500/20" />
-                          <p className="text-xl font-bold text-zinc-800 leading-tight group-hover/fest:text-brand-600 transition-colors">{fest}</p>
+                    <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-100 flex flex-col justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-amber-700/70 mb-1">{language === 'bn' ? 'বঙ্গীয় ঋতু' : 'Bengali Season'}</span>
+                      <span className="text-base font-black text-amber-950 truncate">{ponjikaData.rituVal}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700/70 mb-1">{language === 'bn' ? 'চন্দ্র পক্ষ' : 'Lunar Phase'}</span>
+                      <span className="text-base font-black text-indigo-950 truncate">{ponjikaData.paksha}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex flex-col justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{language === 'bn' ? 'বারাধিপতি' : 'Day Lord'}</span>
+                      <span className="text-base font-black text-emerald-950 truncate">{ponjikaData.dayLord}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                    <div className="space-y-12">
+                      <div className="group/item">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.tithi}</p>
+                        <p className="text-4xl font-black text-zinc-900 tracking-tighter leading-tight">{ponjikaData.tithi}</p>
+                      </div>
+                      <div className="group/item">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.nakshatra}</p>
+                        <p className="text-3xl font-bold text-zinc-800 tracking-tight leading-tight">{ponjikaData.nakshatra}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-10">
+                        <div className="group/item">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.yoga}</p>
+                          <p className="text-2xl font-black text-zinc-900">{ponjikaData.yoga}</p>
                         </div>
-                      ))}
+                        <div className="group/item">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-4 group-hover/item:text-brand-500 transition-colors">{t.ponjika?.karana}</p>
+                          <p className="text-2xl font-black text-zinc-900">{ponjikaData.karana}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-50 rounded-[3.5rem] p-12 border-2 border-zinc-100 relative overflow-hidden shadow-inner flex flex-col justify-between">
+                      <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <Star size={120} />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-10 flex items-center gap-4 text-zinc-400">
+                          <div className="w-8 h-px bg-zinc-200" />
+                          {t.ponjika?.festivals}
+                        </h3>
+                        <div className="space-y-8">
+                          {ponjikaData.festivals.map((fest, idx) => (
+                            <div key={idx} className="flex items-start gap-5 group/fest">
+                              <div className="w-3 h-3 rounded-full bg-brand-500 mt-2 shrink-0 group-hover/fest:scale-150 transition-transform shadow-lg shadow-brand-500/20" />
+                              <p className="text-xl font-bold text-zinc-800 leading-tight group-hover/fest:text-brand-600 transition-colors">{fest}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </TiltCard>
             </motion.div>
 
             {/* Calendar - Bento Grid Item */}
@@ -499,14 +602,21 @@ export const PonjikaPage = () => {
               transition={{ delay: 0.15 }}
               className="lg:col-span-4"
             >
-              <div className="bg-zinc-900 rounded-[4rem] p-12 text-white shadow-2xl shadow-zinc-900/30 relative overflow-hidden h-full flex flex-col justify-between">
+              <TiltCard 
+                className="bg-zinc-900 rounded-[4rem] p-12 text-white relative overflow-hidden h-full flex flex-col justify-between border-4 border-zinc-800"
+                glowColor="rgba(251,191,36,0.18)"
+                intensity={1.1}
+              >
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl" />
                 
                 <div>
-                  <h3 className="text-2xl font-black mb-12 flex items-center gap-4">
-                    <Sunrise className="text-brand-500" />
-                    {language === 'bn' ? 'সূর্য ও চন্দ্র' : 'Sun & Moon'}
-                  </h3>
+                  <div className="flex items-start justify-between gap-4 mb-12">
+                    <h3 className="text-2xl font-black flex items-center gap-4 mt-2">
+                      <Sunrise className="text-brand-500" />
+                      {language === 'bn' ? 'সূর্য ও চন্দ্র' : 'Sun & Moon'}
+                    </h3>
+                    <MoonOrb tithiVal={ponjikaData.tithiVal} />
+                  </div>
                   
                   <div className="space-y-10">
                     <div className="flex items-center justify-between group/time">
@@ -560,7 +670,7 @@ export const PonjikaPage = () => {
                       : 'Prepared using a combination of Surya Siddhanta and Bishuddha Siddhanta.'}
                   </p>
                 </div>
-              </div>
+              </TiltCard>
             </motion.div>
 
             {/* Monthly Highlights - Bento Grid Item */}
@@ -568,25 +678,31 @@ export const PonjikaPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="lg:col-span-4 bg-white rounded-[3.5rem] p-12 border-2 border-zinc-100 shadow-xl shadow-brand-900/5 relative overflow-hidden group"
+              className="lg:col-span-4"
             >
-              <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform">
-                <Calendar size={120} />
-              </div>
-              <h3 className="text-xl font-black text-zinc-900 mb-10 flex items-center gap-4">
-                <Calendar className="text-brand-500" />
-                {t.ponjika?.monthlyHighlights}
-              </h3>
-              <div className="space-y-6">
-                {ponjikaData.monthlyHighlights.map((item) => (
-                  <div key={item.id || item.date} className="flex flex-col p-4 rounded-2xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100 group/highlight">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-black text-zinc-400 group-hover/highlight:text-brand-500 transition-colors">{item.date}</span>
-                      <span className="text-base font-bold text-zinc-800">{item.event}</span>
+              <TiltCard 
+                className="bg-white rounded-[3.5rem] p-12 border-2 border-zinc-100 h-full relative overflow-hidden group"
+                glowColor="rgba(99,102,241,0.12)"
+                intensity={1.1}
+              >
+                <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:rotate-12 transition-transform">
+                  <Calendar size={120} />
+                </div>
+                <h3 className="text-xl font-black text-zinc-900 mb-10 flex items-center gap-4">
+                  <Calendar className="text-brand-500" />
+                  {t.ponjika?.monthlyHighlights}
+                </h3>
+                <div className="space-y-6">
+                  {ponjikaData.monthlyHighlights.map((item) => (
+                    <div key={item.id || item.date} className="flex flex-col p-4 rounded-2xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100 group/highlight">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-black text-zinc-400 group-hover/highlight:text-brand-500 transition-colors">{item.date}</span>
+                        <span className="text-base font-bold text-zinc-800">{item.event}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </TiltCard>
             </motion.div>
 
             {/* Auspicious Times - Bento Grid Item */}
@@ -594,37 +710,174 @@ export const PonjikaPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="lg:col-span-8 bg-emerald-50 rounded-[4rem] p-12 md:p-16 border-2 border-emerald-100 relative overflow-hidden group"
+              className="lg:col-span-8"
             >
-              <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform">
-                <Sparkles size={150} className="text-emerald-600" />
-              </div>
-              <h3 className="text-2xl font-black text-emerald-900 mb-12 flex items-center gap-4">
-                <Clock className="text-emerald-600" />
-                {t.ponjika?.auspicious}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-10">
-                  <div className="group/time">
-                    <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.brahmaMuhurta}</p>
-                    <p className="text-2xl font-black text-emerald-900">{ponjikaData.brahmaMuhurta}</p>
+              <TiltCard 
+                className="bg-emerald-50 rounded-[4rem] p-12 md:p-16 border-2 border-emerald-100 relative overflow-hidden group h-full"
+                glowColor="rgba(16,185,129,0.15)"
+                intensity={0.9}
+              >
+                <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform">
+                  <Sparkles size={150} className="text-emerald-600" />
+                </div>
+                <h3 className="text-2xl font-black text-emerald-900 mb-12 flex items-center gap-4">
+                  <Clock className="text-emerald-600" />
+                  {t.ponjika?.auspicious}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-10">
+                    <div className="group/time">
+                      <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.brahmaMuhurta}</p>
+                      <p className="text-2xl font-black text-emerald-900">{ponjikaData.brahmaMuhurta}</p>
+                    </div>
+                    <div className="group/time">
+                      <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.abhijitMuhurta}</p>
+                      <p className="text-2xl font-black text-emerald-900">{ponjikaData.abhijitMuhurta}</p>
+                    </div>
                   </div>
-                  <div className="group/time">
-                    <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.abhijitMuhurta}</p>
-                    <p className="text-2xl font-black text-emerald-900">{ponjikaData.abhijitMuhurta}</p>
+                  <div className="space-y-10">
+                    <div className="group/time">
+                      <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.amritaYoga}</p>
+                      <p className="text-2xl font-black text-emerald-900 leading-tight">{ponjikaData.amritaYoga}</p>
+                    </div>
+                    <div className="group/time">
+                      <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.mahendraYoga}</p>
+                      <p className="text-2xl font-black text-emerald-900">{ponjikaData.mahendraYoga}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-10">
-                  <div className="group/time">
-                    <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.amritaYoga}</p>
-                    <p className="text-2xl font-black text-emerald-900 leading-tight">{ponjikaData.amritaYoga}</p>
+              </TiltCard>
+            </motion.div>
+
+            {/* Auspicious Marriage Dates & Lagna - Bento Grid Item */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="lg:col-span-12"
+            >
+              <TiltCard 
+                className="bg-gradient-to-br from-rose-50 to-pink-50/50 rounded-[4rem] p-12 md:p-16 border-2 border-rose-100 relative overflow-hidden group"
+                glowColor="rgba(244,63,94,0.15)"
+                intensity={1.0}
+              >
+                {/* Traditional Decorative element */}
+                <div className="absolute top-0 right-0 p-12 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform">
+                  <Heart size={200} className="text-rose-500 fill-rose-500" />
+                </div>
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 border-b border-rose-100/60 pb-8">
+                  <div>
+                    <div className="flex items-center gap-4 mb-2">
+                      <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+                        <Heart className="text-rose-600 fill-rose-600 animate-pulse" size={20} />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-[0.4em] text-rose-500">{language === 'bn' ? 'বিবাহ সংযোগ' : 'Matrimonial Conjunctions'}</span>
+                    </div>
+                    <h3 className="text-3xl font-black text-rose-950">
+                      {language === 'bn' ? `${bDate.month} মাসের শুভ বিবাহ দিন ও লগ্ন (২০২৬)` : `Auspicious Marriage Dates & Lagna for ${bDate.monthEn} (2026)`}
+                    </h3>
                   </div>
-                  <div className="group/time">
-                    <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.4em] mb-3">{t.ponjika?.mahendraYoga}</p>
-                    <p className="text-2xl font-black text-emerald-900">{ponjikaData.mahendraYoga}</p>
+                  <div className="bg-white/80 backdrop-blur-sm self-start md:self-auto px-6 py-3 rounded-2.5xl border border-rose-100 shadow-sm">
+                    <span className="text-xs font-bold text-rose-700/80 uppercase tracking-wider block mb-0.5">
+                      {language === 'bn' ? 'বাংলা মাস' : 'Bengali Month'}
+                    </span>
+                    <span className="text-lg font-black text-rose-900">
+                      {language === 'bn' ? bDate.month : bDate.monthEn}
+                    </span>
                   </div>
                 </div>
-              </div>
+
+                <p className="text-rose-900/80 font-medium text-lg leading-relaxed mb-10 max-w-3xl">
+                  {marriageInfo.message}
+                </p>
+
+                {marriageInfo.isAvoided ? (
+                  <div className="bg-white/60 rounded-[2.5rem] p-10 border border-rose-100 shadow-inner flex flex-col items-center text-center max-w-2xl mx-auto">
+                    <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 mb-6 font-sans">
+                      <Info className="text-amber-600" size={28} />
+                    </div>
+                    <h4 className="text-xl font-black text-rose-950 mb-4">
+                      {language === 'bn' ? 'শুভ বিবাহ বিহিত নয়' : 'No Solemnization Recommended'}
+                    </h4>
+                    <p className="text-rose-900/70 font-medium leading-relaxed mb-6">
+                      {language === 'bn' 
+                        ? 'স্মার্ত ও জ্যোতিষশাস্ত্র মতে এই সময়ে সূর্য সঞ্চার, মলমাস বা দেবশয়নের দরুণ বিবাহ ব্রত পালন অপশস্ত।' 
+                        : 'According to Hindu Astrological Shastras, marriages are not sanctified during this transit, Malamas, or when deities are at rest.'}
+                    </p>
+                    <div className="w-full h-px bg-rose-100/60 my-2" />
+                    <p className="text-xs font-black text-rose-500 uppercase tracking-widest mt-4">
+                      {language === 'bn' ? 'পরবর্তী বিবাহ মরশুম: অগ্রহায়ণ ও মাঘ মাস' : 'Next peak wedding months: Agrahayana & Magha'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {marriageInfo.dates.map((item) => (
+                      <TiltCard 
+                        key={item.id}
+                        className="bg-white rounded-[2.5rem] p-8 border border-rose-100/80 shadow-md shadow-rose-900/5 relative overflow-hidden flex flex-col justify-between group/item"
+                        glowColor="rgba(244,63,94,0.08)"
+                        intensity={1.1}
+                      >
+                        <div>
+                          {/* Saffron accent line */}
+                          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-400 to-amber-400" />
+                          
+                          <div className="flex items-start justify-between mb-6">
+                            <span className="text-rose-500 font-extrabold text-xs uppercase tracking-widest bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100/50">
+                              {item.bengaliDateString}
+                            </span>
+                            <div className="w-8 h-8 rounded-full bg-rose-55 flex items-center justify-center text-rose-500 group-hover/item:scale-110 transition-transform">
+                              <Heart size={14} className="fill-rose-500" />
+                            </div>
+                          </div>
+
+                          <h4 className="text-xl font-black text-zinc-800 mb-2 leading-tight">
+                            {item.gregorianDate}
+                          </h4>
+                          
+                          <div className="h-px bg-zinc-100 my-4" />
+
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                                {language === 'bn' ? 'বিবাহ লগ্ন ও সময়' : 'Auspicious Lagna Time'}
+                              </p>
+                              <p className="text-base font-bold text-zinc-900 leading-snug">
+                                {item.lagnaTime}
+                              </p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                              <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                                  {language === 'bn' ? 'নক্ষত্র' : 'Nakshatra'}
+                                </p>
+                                <p className="text-sm font-bold text-rose-700">
+                                  {item.nakshatra}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                                  {language === 'bn' ? 'তিথি' : 'Tithi'}
+                                </p>
+                                <p className="text-sm font-bold text-amber-600">
+                                  {item.tithi}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Subtle interactive footer decoration inside card */}
+                        <div className="mt-6 pt-4 border-t border-zinc-50 flex items-center justify-between text-[10px] font-black tracking-widest text-emerald-600 uppercase">
+                          <span>{language === 'bn' ? '● পরম শুভ যোগ' : '● Superb Yoga'}</span>
+                        </div>
+                      </TiltCard>
+                    ))}
+                  </div>
+                )}
+              </TiltCard>
             </motion.div>
 
             {/* Zodiac Predictions - Bento Grid Item */}
@@ -643,10 +896,15 @@ export const PonjikaPage = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {ponjikaData.zodiacPredictions.map((pred, idx) => (
-                  <div key={idx} className="p-8 rounded-[2.5rem] bg-zinc-50 border-2 border-zinc-100 hover:border-brand-500 hover:bg-white transition-all group/pred">
+                  <TiltCard 
+                    key={idx} 
+                    className="p-8 rounded-[2.5rem] bg-zinc-50 border-2 border-zinc-100 hover:border-brand-500 hover:bg-white transition-all group/pred"
+                    glowColor="rgba(242,125,38,0.08)"
+                    intensity={1.3}
+                  >
                     <p className="text-2xl font-black text-brand-600 mb-4 group-hover/pred:scale-110 transition-transform origin-left">{pred.sign}</p>
                     <p className="text-zinc-600 font-medium leading-relaxed">{pred.text}</p>
-                  </div>
+                  </TiltCard>
                 ))}
               </div>
             </motion.div>

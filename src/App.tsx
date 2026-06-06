@@ -47,6 +47,8 @@ import { TrackingProvider, useTracking } from './TrackingContext';
 import { RideProvider, useRide } from './RideContext';
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { InteractiveScrollEffects } from './components/InteractiveScrollEffects';
+import { FlyingLettersScrollEffect } from './components/FlyingLettersScrollEffect';
 
 const GlobalBookingAlert = () => {
   const { activeIncomingRequest, acceptRide, declineRide } = useRide();
@@ -157,10 +159,12 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
       <ScrollToTop />
+      <InteractiveScrollEffects />
       {/* Background Decorative Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-brand-300/10 blur-[120px] rounded-full" />
+        <FlyingLettersScrollEffect />
       </div>
 
       {/* Navigation */}

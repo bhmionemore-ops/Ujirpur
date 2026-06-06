@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon } from 'lucide-react';
+import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon, Lightbulb, Sparkles, Key, TrendingUp, Coins } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useLanguage } from '../LanguageContext';
@@ -9,6 +9,107 @@ import { useFirebase } from '../FirebaseContext';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { fetchLiveNews } from '../services/newsService';
+
+const ensureArray = (val: any): any[] => {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object') {
+    return Object.values(val);
+  }
+  return [];
+};
+
+const parseTrendContent = (content: string) => {
+  const keys = [
+    'Viral Strategy', 'Hook Idea', 'Creation Tips', 'Viral Secret', 'Engagement Booster', 'Monetization Tip', 'Hashtags',
+    'ভাইরাল কৌশল', 'হুক আইডিয়া', 'তৈরির টিপস', 'ভাইরাল সিক্রেট', 'এনগেজমেন্ট বুস্টার', 'মনিটাইজেশন টিপ', 'হ্যাশট্যাগ'
+  ];
+  
+  // Build a regex to split the text by any of these keys followed by colon (and optional spaces)
+  const pattern = new RegExp(`(${keys.join('|')})\\s*:`, 'gi');
+  
+  const matches = [...content.matchAll(pattern)];
+  if (matches.length === 0) {
+    return null;
+  }
+  
+  const sections: { key: string; value: string }[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const currentMatch = matches[i];
+    const key = currentMatch[1];
+    const startIndex = currentMatch.index! + currentMatch[0].length;
+    const endIndex = i + 1 < matches.length ? matches[i + 1].index : content.length;
+    const value = content.substring(startIndex, endIndex).trim();
+    sections.push({ key, value });
+  }
+  return sections;
+};
+
+const getTrendSectionConfig = (key: string, lang: string) => {
+  const normalized = key.toLowerCase().trim();
+  
+  if (normalized.includes('strategy') || normalized.includes('কৌশল')) {
+    return {
+      title: lang === 'bn' ? 'ভাইরাল কৌশল' : 'Viral Strategy',
+      bg: 'bg-blue-50/80 border border-blue-100 text-blue-950',
+      iconBg: 'bg-blue-600 shadow-md shadow-blue-500/20',
+      icon: <Zap size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('hook') || normalized.includes('হুক')) {
+    return {
+      title: lang === 'bn' ? 'হুক আইডিয়া' : 'Hook Idea',
+      bg: 'bg-amber-50/80 border border-amber-100 text-amber-950',
+      iconBg: 'bg-amber-600 shadow-md shadow-amber-500/20',
+      icon: <Lightbulb size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('tips') || normalized.includes('টিপস')) {
+    return {
+      title: lang === 'bn' ? 'তৈরির টিপস' : 'Creation Tips',
+      bg: 'bg-purple-50/80 border border-purple-100 text-purple-950',
+      iconBg: 'bg-purple-600 shadow-md shadow-purple-500/20',
+      icon: <Sparkles size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('secret') || normalized.includes('সিক্রেট')) {
+    return {
+      title: lang === 'bn' ? 'ভাইরাল সিক্রেট' : 'Viral Secret',
+      bg: 'bg-rose-50/80 border border-rose-100 text-rose-950',
+      iconBg: 'bg-rose-600 shadow-md shadow-rose-500/20',
+      icon: <Key size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('booster') || normalized.includes('বুস্টার')) {
+    return {
+      title: lang === 'bn' ? 'এনগেজমেন্ট বুস্টার' : 'Engagement Booster',
+      bg: 'bg-emerald-50/80 border border-emerald-100 text-emerald-950',
+      iconBg: 'bg-emerald-600 shadow-md shadow-emerald-500/20',
+      icon: <TrendingUp size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('monetization') || normalized.includes('মনিটাইজেশন')) {
+    return {
+      title: lang === 'bn' ? 'মনিটাইজেশন টিপ' : 'Monetization Tip',
+      bg: 'bg-yellow-50/80 border border-yellow-200 text-amber-950',
+      iconBg: 'bg-amber-600 shadow-md shadow-amber-500/20',
+      icon: <Coins size={14} className="text-white" />
+    };
+  }
+  if (normalized.includes('hashtag') || normalized.includes('হ্যাশট্যাগ')) {
+    return {
+      title: lang === 'bn' ? 'হ্যাশট্যাগ' : 'Hashtags',
+      bg: 'bg-zinc-50/90 border border-zinc-200 text-zinc-950',
+      iconBg: 'bg-zinc-600 shadow-md shadow-zinc-600/20',
+      icon: <Globe size={14} className="text-white" />
+    };
+  }
+  return {
+    title: key,
+    bg: 'bg-zinc-50/80 border border-zinc-150 text-zinc-950 w-full',
+    iconBg: 'bg-brand-500',
+    icon: <Zap size={14} className="text-white" />
+  };
+};
 
 export const LiveNews = () => {
   const { t, language } = useLanguage();
@@ -93,9 +194,9 @@ export const LiveNews = () => {
         const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
         setGenerating(false);
         return { 
-          local: (Array.isArray(generatedData.local) ? generatedData.local : []).map((item: any) => ({ ...item, date })),
-          fbTrends: (Array.isArray(generatedData.fbTrends) ? generatedData.fbTrends : []).map((item: any) => ({ ...item, date })),
-          igTrends: (Array.isArray(generatedData.igTrends) ? generatedData.igTrends : []).map((item: any) => ({ ...item, date })),
+          local: ensureArray(generatedData.local).map((item: any) => ({ ...item, date })),
+          fbTrends: ensureArray(generatedData.fbTrends).map((item: any) => ({ ...item, date })),
+          igTrends: ensureArray(generatedData.igTrends).map((item: any) => ({ ...item, date })),
           updatedAt: generatedData.updatedAt || new Date().toISOString(),
           isMock: generatedData.isMock,
           date 
@@ -119,9 +220,9 @@ export const LiveNews = () => {
         
         // Add date to each item for consistency
         const processedData = {
-          local: (Array.isArray(data.local) ? data.local : []).map((item: any) => ({ ...item, date })),
-          fbTrends: (Array.isArray(data.fbTrends) ? data.fbTrends : []).map((item: any) => ({ ...item, date })),
-          igTrends: (Array.isArray(data.igTrends) ? data.igTrends : []).map((item: any) => ({ ...item, date })),
+          local: ensureArray(data.local).map((item: any) => ({ ...item, date })),
+          fbTrends: ensureArray(data.fbTrends).map((item: any) => ({ ...item, date })),
+          igTrends: ensureArray(data.igTrends).map((item: any) => ({ ...item, date })),
           updatedAt: data.updatedAt || new Date().toISOString()
         };
         
@@ -152,9 +253,9 @@ export const LiveNews = () => {
             setGenerating(false);
             
             const processedData = {
-              local: (Array.isArray(generatedData.local) ? generatedData.local : []).map((item: any) => ({ ...item, date })),
-              fbTrends: (Array.isArray(generatedData.fbTrends) ? generatedData.fbTrends : []).map((item: any) => ({ ...item, date })),
-              igTrends: (Array.isArray(generatedData.igTrends) ? generatedData.igTrends : []).map((item: any) => ({ ...item, date })),
+              local: ensureArray(generatedData.local).map((item: any) => ({ ...item, date })),
+              fbTrends: ensureArray(generatedData.fbTrends).map((item: any) => ({ ...item, date })),
+              igTrends: ensureArray(generatedData.igTrends).map((item: any) => ({ ...item, date })),
               updatedAt: generatedData.updatedAt || new Date().toISOString(),
               isMock: generatedData.isMock
             };
@@ -173,9 +274,9 @@ export const LiveNews = () => {
           const frontendGenData = await fetchLiveNews(language as 'bn' | 'en', date);
           setGenerating(false);
           return {
-            local: (Array.isArray(frontendGenData.local) ? frontendGenData.local : []).map((item: any) => ({ ...item, date })),
-            fbTrends: (Array.isArray(frontendGenData.fbTrends) ? frontendGenData.fbTrends : []).map((item: any) => ({ ...item, date })),
-            igTrends: (Array.isArray(frontendGenData.igTrends) ? frontendGenData.igTrends : []).map((item: any) => ({ ...item, date })),
+            local: ensureArray(frontendGenData.local).map((item: any) => ({ ...item, date })),
+            fbTrends: ensureArray(frontendGenData.fbTrends).map((item: any) => ({ ...item, date })),
+            igTrends: ensureArray(frontendGenData.igTrends).map((item: any) => ({ ...item, date })),
             updatedAt: frontendGenData.updatedAt || new Date().toISOString(),
             isMock: frontendGenData.isMock,
             date
@@ -232,7 +333,8 @@ export const LiveNews = () => {
         try {
           // Check if we already have the news for this date
           const items = news[deepTab as keyof typeof news];
-          const foundItem = Array.isArray(items) ? items.find((item: any) => item.date === deepDate && items.indexOf(item) % 5 === parseInt(deepIndex)) : null;
+          const itemsList = ensureArray(items);
+          const foundItem = itemsList.length > 0 ? itemsList.find((item: any) => item.date === deepDate && itemsList.indexOf(item) % 5 === parseInt(deepIndex)) : null;
 
           if (foundItem) {
             setSelectedItem({ ...foundItem, index: parseInt(deepIndex) });
@@ -244,10 +346,11 @@ export const LiveNews = () => {
               const data = await response.json();
               if (data && !data.isError) {
                 const tabItems = data[deepTab as keyof typeof data];
-                if (Array.isArray(tabItems)) {
-                  const item = tabItems[parseInt(deepIndex)];
+                const tabItemsList = ensureArray(tabItems);
+                if (tabItemsList.length > 0) {
+                  const item = tabItemsList[parseInt(deepIndex)];
                   if (item) {
-                    const itemsWithDate = tabItems.map((it: any) => ({ ...it, date: deepDate }));
+                    const itemsWithDate = tabItemsList.map((it: any) => ({ ...it, date: deepDate }));
                     setNews((prev: any) => ({
                       ...prev,
                       [deepTab as string]: [...(prev[deepTab as keyof typeof prev] as any[] || []), ...itemsWithDate],
@@ -565,8 +668,13 @@ export const LiveNews = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: (i % 6) * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  className="bg-white rounded-[2.5rem] p-10 border border-zinc-100 hover:border-brand-200 transition-all group shadow-sm hover:shadow-2xl hover:shadow-brand-500/5 flex flex-col relative overflow-hidden"
+                  whileHover={{ scale: 1.01, y: -5 }}
+                  onClick={() => {
+                    setSelectedItem({...item, index: i % 5});
+                    logEvent('view_news_item', { title: item.title });
+                    window.history.pushState({}, '', shareUrl);
+                  }}
+                  className="bg-white rounded-[2.5rem] p-10 border border-zinc-100 hover:border-brand-200 cursor-pointer transition-all group shadow-sm hover:shadow-2xl hover:shadow-brand-500/5 flex flex-col relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-2 h-full bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
@@ -763,10 +871,51 @@ export const LiveNews = () => {
                   <h3 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
                     {selectedItem.title || selectedItem.Title || selectedItem.news || "News Detail"}
                   </h3>
-                  <div className="text-zinc-600 leading-relaxed space-y-4 text-lg">
-                    {((selectedItem.content || selectedItem.Content || selectedItem.description || selectedItem.summary || '') as string).split('\n').map((para: string, idx: number) => (
-                      <p key={idx}>{para}</p>
-                    ))}
+                  <div className="text-zinc-600 leading-relaxed text-lg pb-4">
+                    {(() => {
+                      const isTrend = activeTab === 'fbTrends' || activeTab === 'igTrends';
+                      const contentStr = (selectedItem.content || selectedItem.Content || selectedItem.description || selectedItem.summary || '') as string;
+                      
+                      if (isTrend) {
+                        const parsedSections = parseTrendContent(contentStr);
+                        if (parsedSections && parsedSections.length > 0) {
+                          return (
+                            <div className="grid grid-cols-1 gap-5 mt-2">
+                              {parsedSections.map((section, idx) => {
+                                const config = getTrendSectionConfig(section.key, language);
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    className={`p-6 rounded-[1.5rem] border ${config.bg} transition-all duration-300 hover:scale-[1.01] hover:shadow-md flex flex-col sm:flex-row sm:items-start gap-4`}
+                                  >
+                                    <div className={`p-2.5 rounded-2xl ${config.iconBg} self-start shrink-0 flex items-center justify-center`}>
+                                      {config.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4 className="font-black text-sm uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        {config.title}
+                                      </h4>
+                                      <p className="text-zinc-800 text-sm font-semibold leading-relaxed">
+                                        {section.value}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                      }
+                      
+                      // Default paragraph rendering
+                      return (
+                        <div className="space-y-4">
+                          {contentStr.split('\n').map((para: string, idx: number) => (
+                            <p key={idx}>{para}</p>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between text-sm text-zinc-400">
                     <div>

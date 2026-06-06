@@ -274,7 +274,7 @@ export const Banner = () => {
 
           {/* Facebook Group Button with Glowing Animation */}
           <motion.button 
-            onClick={() => handleNavigation('https://www.facebook.com/groups/barniabazar/', true)}
+            onClick={() => handleNavigation('https://www.facebook.com/groups/barniadigitalhub', true)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="relative p-[3px] overflow-hidden rounded-2xl group flex items-center justify-center"

@@ -48,3 +48,25 @@ export function parseGeminiJson(text: string, defaultValue: any = {}) {
     }
   }
 }
+
+export function getNewsPrompt(date: string, lang: 'bn' | 'en'): string {
+  const langName = lang === 'bn' ? 'Bengali' : 'English';
+  return `Find the latest news and trends for the date: ${date} for the following categories:
+  
+  1. Local News: 5 latest news items from Barnia, Nadia, West Bengal.
+  2. Facebook Trends: 5 latest VIRAL trends for Facebook in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  3. Instagram Trends: 5 latest VIRAL trends for Instagram in India and West Bengal. Provide a "Viral Content Blueprint" for influencers.
+  
+  For News items, provide: Title, Content (150-200 words), Source, Date.
+  For Trends, provide: Title (e.g., "Top 1 (WB): ..."), Content (Viral Strategy: Why it's trending, Hook Idea, Creation Tips, Viral Secret, Engagement Booster, Monetization Tip, Hashtags), Source, Date.
+  
+  Return the data in exactly this JSON format:
+  {
+    "local": [{"title": "...", "content": "...", "source": "...", "date": "${date}"}],
+    "fbTrends": [{"title": "...", "content": "...", "source": "...", "date": "${date}"}],
+    "igTrends": [{"title": "...", "content": "...", "source": "...", "date": "${date}"}]
+  }
+  
+  IMPORTANT: All text must be in ${langName}.
+  Return exactly 5 items per category. Ensure the news is relevant to ${date}.`;
+}
