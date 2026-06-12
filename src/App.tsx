@@ -157,7 +157,7 @@ function AppContent() {
   const isVamshavali = location.pathname.startsWith('/vamshavali');
 
   return (
-    <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden">
+    <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden scroll-snap-container">
       <ScrollToTop />
       <InteractiveScrollEffects />
       {/* Background Decorative Elements */}

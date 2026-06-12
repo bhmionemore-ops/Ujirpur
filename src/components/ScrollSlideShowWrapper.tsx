@@ -8,6 +8,7 @@ interface ScrollSlideSectionProps {
   className?: string;
   id?: string;
   index?: number;
+  snap?: boolean;
 }
 
 export const ScrollSlideSection = ({
@@ -16,7 +17,8 @@ export const ScrollSlideSection = ({
   delay = 0,
   className = "",
   id,
-  index = 0
+  index = 0,
+  snap = true
 }: ScrollSlideSectionProps) => {
   // Determine direction if 'alternate' is chosen
   const actualDirection = direction === 'alternate' 
@@ -115,7 +117,7 @@ export const ScrollSlideSection = ({
       whileInView="visible"
       viewport={{ once: false, margin: "-100px" }}
       variants={getVariants()}
-      className={`will-change-transform ${className}`}
+      className={`will-change-transform ${snap ? 'scroll-snap-section' : ''} ${className}`}
     >
       {children}
     </motion.div>

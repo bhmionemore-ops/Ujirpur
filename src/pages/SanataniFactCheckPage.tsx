@@ -7,6 +7,7 @@ import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
+import { ScrollSlideSection } from '../components/ScrollSlideShowWrapper';
 
 interface FactCheck {
   id: string;
@@ -236,9 +237,9 @@ export const SanataniFactCheckPage = () => {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-30">
-        <div id="sanatani-bot-section" className="mb-20">
+        <ScrollSlideSection direction="up" index={0} id="sanatani-bot-section" className="mb-20">
           <SanataniBot />
-        </div>
+        </ScrollSlideSection>
 
         {/* Header Section (Badges only) */}
         <motion.div 
@@ -380,12 +381,7 @@ export const SanataniFactCheckPage = () => {
         )}
 
         {/* Submit Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="bg-brand-600 rounded-[4rem] p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl shadow-brand-500/30"
-        >
+        <ScrollSlideSection direction="scale" index={1} className="bg-brand-600 rounded-[4rem] p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl shadow-brand-500/30">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
              <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
@@ -408,7 +404,7 @@ export const SanataniFactCheckPage = () => {
               Submit for Check
             </button>
           </div>
-        </motion.div>
+        </ScrollSlideSection>
       </div>
 
       {/* Basic Modal Implementation */}

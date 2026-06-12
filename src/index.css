@@ -103,6 +103,15 @@
     -ms-overflow-style: none !important;
     scrollbar-width: none !important;
   }
+  
+  .scroll-snap-container {
+    scroll-snap-type: y proximity;
+  }
+  
+  .scroll-snap-section {
+    scroll-snap-align: start;
+    scroll-margin-top: 96px;
+  }
 }
 
 @layer components {

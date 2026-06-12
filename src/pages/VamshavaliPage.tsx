@@ -331,118 +331,87 @@ const getSafeImageUrl = (url?: string) => {
 const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string; isKuldevta?: boolean }) => {
   const safeUrl = getSafeImageUrl(photo);
   return (
-    <div className="relative group mb-12 flex flex-col items-center">
+    <div className="relative group mb-4 flex flex-col items-center">
       {/* Divine Aura / Energy Field */}
-      <div className="absolute inset-0 bg-[#d4af37]/15 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute inset-0 bg-[#d4af37]/10 rounded-full blur-[80px] animate-pulse pointer-events-none" />
       
       {/* Floating Sparkles Decorating the Aura */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, scale: 0 }}
             animate={{ 
-              opacity: [0, 0.8, 0], 
-              scale: [0.5, 1.2, 0.8],
-              y: [0, -100 - (Math.random() * 100)],
-              x: [(Math.random() - 0.5) * 100, (Math.random() - 0.5) * 200]
+              opacity: [0, 0.7, 0], 
+              scale: [0.5, 1.1, 0.7],
+              y: [0, -60 - (Math.random() * 60)],
+              x: [(Math.random() - 0.5) * 60, (Math.random() - 0.5) * 120]
             }}
             transition={{ 
-              duration: 4 + Math.random() * 4, 
+              duration: 4 + Math.random() * 3, 
               repeat: Infinity, 
-              delay: i * 0.8,
+              delay: i * 0.9,
               ease: "easeOut"
             }}
             className="absolute top-1/2 left-1/2 text-[#d4af37]/40"
           >
-            <Sparkles size={8 + Math.random() * 8} />
+            <Sparkles size={6 + Math.random() * 6} />
           </motion.div>
         ))}
       </div>
 
       {/* The Ornate Frame */}
       <motion.div 
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 15, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative p-2 rounded-[2.5rem] bg-gradient-to-b from-[#f59e0b] via-[#d4af37] to-[#8a6821] shadow-[0_50px_120px_rgba(182,141,64,0.5)] border-4 border-[#fffbeb] z-20"
+        className="relative p-1.5 rounded-[2rem] bg-gradient-to-b from-[#f59e0b] via-[#d4af37] to-[#8a6821] shadow-[0_30px_70px_rgba(182,141,64,0.35)] border-2 border-[#fffbeb] z-25"
       >
-        <div className="absolute inset-0 border-[14px] border-[#064e3b]/5 pointer-events-none rounded-[2.3rem]" />
+        <div className="absolute inset-0 border-[10px] border-[#064e3b]/5 pointer-events-none rounded-[1.8rem]" />
         
         {/* Sacred Content */}
-        <div className="relative w-52 h-72 md:w-72 md:h-96 rounded-[2rem] overflow-hidden bg-[#064e3b] shadow-inner border-2 border-[#b68d40]/50">
+        <div className="relative w-40 h-56 md:w-56 md:h-76 rounded-[1.6rem] overflow-hidden bg-[#064e3b] shadow-inner border border-[#b68d40]/50">
           {safeUrl ? (
-            <img src={safeUrl} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={safeUrl} alt={name} className="w-full h-full object-cover animate-fade-in" referrerPolicy="no-referrer" />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/30 p-12 text-center space-y-6">
-              <Landmark size={80} strokeWidth={0.5} />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] leading-loose">Sacred Presence of<br/>The Divine {isKuldevta ? "Lord" : "Mother"}</p>
+            <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/35 p-6 text-center space-y-4">
+              <Landmark size={56} strokeWidth={0.5} />
+              <p className="text-[8px] font-black uppercase tracking-[0.25em] leading-relaxed">Sacred Presence of<br/>The Divine {isKuldevta ? "Lord" : "Mother"}</p>
             </div>
           )}
           
           {/* Spiritual Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#064e3b] via-[#064e3b]/20 to-transparent opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#064e3b] via-[#064e3b]/10 to-transparent opacity-85 pointer-events-none" />
           
           {/* Light Rays */}
-          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent skew-x-[-20deg] origin-top opacity-30" />
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/5 to-transparent skew-x-[-20deg] origin-top opacity-20 pointer-events-none" />
           
-          <div className="absolute bottom-8 left-0 right-0 text-center px-4">
-            <h5 className="text-[#d4af37] font-serif font-black text-2xl italic drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+          <div className="absolute bottom-5 left-0 right-0 text-center px-3">
+            <h5 className="text-[#d4af37] font-serif font-black text-lg md:text-xl italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight">
               {name || (isKuldevta ? "Deva" : "Mata")}
             </h5>
-            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.5em] mt-2">Protector of {name || (isKuldevta ? "Kuldevta" : "Kuldevi")} Lineage</p>
+            <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-[0.35em] mt-1.5">Protector of {name || (isKuldevta ? "Lord Shiva" : "Mata Rani")} Lineage</p>
           </div>
         </div>
 
         {/* Sacred Mantra Label */}
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#d4af37] text-[#064e3b] px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-[0_10px_20px_rgba(0,0,0,0.2)] border-2 border-white whitespace-nowrap">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#d4af37] text-[#064e3b] px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.25em] shadow-[0_5px_10px_rgba(0,0,0,0.15)] border border-white whitespace-nowrap">
           {isKuldevta ? "Om Deva Namah" : "Om Devi Namah"}
         </div>
       </motion.div>
-
-      {/* Energy Flowing Downward to the Tree */}
-      <div className="mt-8 flex flex-col items-center gap-2 relative">
-        <motion.div 
-          animate={{ scaleY: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 3, repeat: Infinity }}
-          className="w-1 h-32 bg-gradient-to-b from-[#d4af37] via-[#d4af37]/50 to-transparent rounded-full shadow-[0_0_15px_#d4af37]" 
-        />
-        
-        {/* Descending Light Particles (Blessings) */}
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ y: -40, opacity: 0 }}
-            animate={{ 
-              y: [0, 120], 
-              opacity: [0, 1, 0],
-              scale: [0.5, 1, 0.5]
-            }}
-            transition={{ 
-              duration: 2.5 + Math.random(), 
-              repeat: Infinity, 
-              delay: i * 0.5,
-              ease: "easeInOut"
-            }}
-            className="absolute top-0 text-[#d4af37]"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
-          </motion.div>
-        ))}
-      </div>
       
       {/* Traditional Ornaments side decorations */}
-      <div className="absolute -left-20 top-1/2 -translate-y-1/2 text-[#d4af37]/20 hidden xl:block">
-        <div className="flex flex-col gap-8 items-end">
-           <div className="w-16 h-px bg-current" />
-           <div className="w-32 h-px bg-current opacity-50" />
-           <div className="w-24 h-px bg-current" />
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 text-[#d4af37]/15 hidden lg:block">
+        <div className="flex flex-col gap-4 items-end">
+           <div className="w-8 h-px bg-current" />
+           <div className="w-16 h-px bg-current opacity-50" />
+           <div className="w-12 h-px bg-current" />
         </div>
       </div>
-      <div className="absolute -right-20 top-1/2 -translate-y-1/2 text-[#d4af37]/20 hidden xl:block rotate-180">
-        <div className="flex flex-col gap-8 items-end">
-           <div className="w-16 h-px bg-current" />
-           <div className="w-32 h-px bg-current opacity-50" />
-           <div className="w-24 h-px bg-current" />
+      <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-[#d4af37]/15 hidden lg:block rotate-180">
+        <div className="flex flex-col gap-4 items-end">
+           <div className="w-8 h-px bg-current" />
+           <div className="w-16 h-px bg-current opacity-50" />
+           <div className="w-12 h-px bg-current" />
         </div>
       </div>
     </div>
@@ -486,6 +455,8 @@ interface VamshavaliProfile {
   members: FamilyMember[];
 }
 
+let hasDraggedGlobal = false;
+
 export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => {
   const { shareId } = useParams();
   const navigate = useNavigate();
@@ -509,8 +480,12 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isPointerActive, setIsPointerActive] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const dragOffsetStart = useRef({ x: 0, y: 0 });
+  const activePointers = useRef<Map<number, { clientX: number; clientY: number }>>(new Map());
+  const initialDistance = useRef<number | null>(null);
+  const initialScale = useRef<number>(1);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -519,14 +494,29 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
       target.closest('button') || 
       target.closest('input') || 
       target.closest('textarea') || 
-      target.closest('select') || 
-      target.closest('.interactive-node')
+      target.closest('select')
     ) {
       return;
     }
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    dragOffsetStart.current = { ...panOffset };
+
+    setIsPointerActive(true);
+    hasDraggedGlobal = false;
+    activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+    if (activePointers.current.size === 1) {
+      dragStart.current = { x: e.clientX, y: e.clientY };
+      dragOffsetStart.current = { ...panOffset };
+    } else if (activePointers.current.size === 2) {
+      setIsDragging(false);
+      const pointers = Array.from(activePointers.current.values());
+      const dist = Math.hypot(
+        pointers[0].clientX - pointers[1].clientX,
+        pointers[0].clientY - pointers[1].clientY
+      );
+      initialDistance.current = dist;
+      initialScale.current = treeScale;
+    }
+
     if (treeRef.current) {
       try {
         treeRef.current.setPointerCapture(e.pointerId);
@@ -537,23 +527,65 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+    if (!activePointers.current.has(e.pointerId)) return;
+
+    activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
-    setPanOffset({
-      x: dragOffsetStart.current.x + dx,
-      y: dragOffsetStart.current.y + dy
-    });
+    const dragDistance = Math.hypot(dx, dy);
+
+    if (dragDistance > 6) {
+      hasDraggedGlobal = true;
+    }
+
+    if (activePointers.current.size === 1) {
+      if (isDragging) {
+        setPanOffset({
+          x: dragOffsetStart.current.x + dx,
+          y: dragOffsetStart.current.y + dy
+        });
+      } else if (dragDistance > 10) {
+        // Exceeded the touch stabilization threshold, start actual dragging
+        setIsDragging(true);
+        dragStart.current = { x: e.clientX, y: e.clientY };
+        dragOffsetStart.current = { ...panOffset };
+      }
+    } else if (activePointers.current.size === 2 && initialDistance.current !== null) {
+      const pointers = Array.from(activePointers.current.values());
+      const dist = Math.hypot(
+        pointers[0].clientX - pointers[1].clientX,
+        pointers[0].clientY - pointers[1].clientY
+      );
+      const factor = dist / initialDistance.current;
+      const newScale = Math.min(Math.max(initialScale.current * factor, 0.15), 2.2);
+      setTreeScale(newScale);
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setIsDragging(false);
+    activePointers.current.delete(e.pointerId);
+
+    if (activePointers.current.size < 2) {
+      initialDistance.current = null;
+    }
+
+    if (activePointers.current.size === 0) {
+      setIsDragging(false);
+      setIsPointerActive(false);
+    } else if (activePointers.current.size === 1) {
+      const remainingPointerId = Array.from(activePointers.current.keys())[0];
+      const remainingPointer = activePointers.current.get(remainingPointerId)!;
+      setIsDragging(false);
+      dragStart.current = { x: remainingPointer.clientX, y: remainingPointer.clientY };
+      dragOffsetStart.current = { ...panOffset };
+    }
+
     if (treeRef.current) {
       try {
         treeRef.current.releasePointerCapture(e.pointerId);
       } catch (err) {
-        console.warn(err);
+        // Safe check
       }
     }
   };
@@ -568,9 +600,11 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         const unscaledWidth = (scrollContent as HTMLElement).offsetWidth || 1;
         const unscaledHeight = (scrollContent as HTMLElement).offsetHeight || 1;
 
-        // Container dimensions with a generous styling padding margin of 80px
-        const containerWidth = container.clientWidth - (isFullScreen ? 120 : 80);
-        const containerHeight = container.clientHeight - (isFullScreen ? 120 : 80);
+        // Container dimensions with a snug responsive margin
+        const isMobile = window.innerWidth < 768;
+        const marginOffset = isMobile ? 12 : (isFullScreen ? 60 : 40);
+        const containerWidth = container.clientWidth - marginOffset;
+        const containerHeight = container.clientHeight - marginOffset;
 
         if (unscaledWidth > 1 && unscaledHeight > 1 && containerWidth > 0 && containerHeight > 0) {
           // If unscaled layout has not changed and we aren't forcing, skip resetting scale to protect manual zooms
@@ -579,6 +613,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
               unscaledHeight === lastLayoutHeight.current) {
             return;
           }
+
+          // If content size changed (meaning they added members/partners/etc.), reset pan to center!
+          const didContentSizeChange = lastLayoutWidth.current > 0 && 
+            (unscaledWidth !== lastLayoutWidth.current || unscaledHeight !== lastLayoutHeight.current);
 
           lastLayoutWidth.current = unscaledWidth;
           lastLayoutHeight.current = unscaledHeight;
@@ -590,12 +628,12 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
           // Fit the tree snugly in the layout. Allow it to scale down further if needed for large trees.
           const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
           
-          setTreeScale(prev => {
-            if (Math.abs(prev - finalScale) > 0.01) {
-              return finalScale;
-            }
-            return prev;
-          });
+          setTreeScale(finalScale);
+
+          if (didContentSizeChange) {
+            setPanOffset({ x: 0, y: 0 });
+            toast.success("Perspective refocused to center new family members");
+          }
         }
       };
 
@@ -662,8 +700,10 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
     lastLayoutWidth.current = unscaledWidth;
     lastLayoutHeight.current = unscaledHeight;
 
-    const containerWidth = container.clientWidth - (isFullScreen ? 120 : 80);
-    const containerHeight = container.clientHeight - (isFullScreen ? 120 : 80);
+    const isMobile = window.innerWidth < 768;
+    const marginOffset = isMobile ? 12 : (isFullScreen ? 60 : 40);
+    const containerWidth = container.clientWidth - marginOffset;
+    const containerHeight = container.clientHeight - marginOffset;
 
     const scaleX = containerWidth / unscaledWidth;
     const scaleY = containerHeight / unscaledHeight;
@@ -1438,7 +1478,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
         step === 'dashboard' && profile 
           ? (isFullScreen 
               ? 'max-w-none px-0 pt-0 fixed inset-0 z-[100] bg-[#fdfbf7] overflow-hidden' 
-              : 'max-w-7xl px-6 pb-20') 
+              : 'w-full max-w-none px-4 sm:px-6 md:px-8 pb-20') 
           : 'max-w-4xl px-6 pb-20'
       }`}>
         <AnimatePresence mode="wait">
@@ -1446,7 +1486,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8 flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-white rounded-3xl shadow-xl border-2 border-[#d4af37]/20"
+              className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-white rounded-3xl shadow-xl border-2 border-[#d4af37]/20"
             >
               <div className="flex items-center gap-4">
                 <div className={`p-4 rounded-2xl ${isEditing ? 'bg-[#064e3b] text-white' : 'bg-[#fff7ed] text-[#ea580c]'} shadow-lg transition-all`}>
@@ -1719,8 +1759,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
               className="space-y-12"
             >
               {/* Profile Card */}
-              <div className="bg-white p-10 rounded-[3rem] border-4 border-white shadow-2xl relative overflow-hidden">
-                <div className="space-y-12">
+              <div className="max-w-7xl mx-auto bg-white p-4 sm:p-6 md:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] md:rounded-[3rem] border-2 sm:border-4 border-white shadow-2xl relative overflow-hidden">
+                <div className="space-y-8 md:space-y-12">
                   {/* Grand Header Panel */}
                   <div className="bg-[#064e3b] rounded-[3.5rem] p-8 md:p-16 text-white shadow-2xl relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
                     {/* Decorative Background Pattern */}
@@ -1927,13 +1967,17 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                       </div>
                     </div>
 
-                    {/* Genealogy Map Container (Full Page Width) */}
-                    <div className="w-full space-y-8">
-                       <div className="flex items-center justify-between px-4">
-                          <div className="flex items-center gap-4">
-                             <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
-                                 <h3 className="text-xl font-serif font-black text-[#064e3b] italic">{vt.generationMapping}</h3>
-                          </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Genealogy Map Container (Full Page Width) */}
+              <div className="w-full space-y-8 mt-12">
+                 <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-4 sm:px-6 md:px-0">
+                    <div className="flex items-center gap-4">
+                       <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
+                       <h3 className="text-xl font-serif font-black text-[#064e3b] italic">{vt.generationMapping}</h3>
+                    </div>
                           {isEditing && (
                              <div className="flex gap-4">
                                 <button onClick={() => addMember(null)} className="px-6 py-2.5 bg-white border border-zinc-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#d4af37] transition-all flex items-center gap-2 text-zinc-600">
@@ -1949,7 +1993,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           )}
                        </div>
 
-                       <div className="relative group/canvas h-full flex flex-col">
+                       <div className="relative group/canvas h-full flex flex-col w-full">
                           {/* Tree Controls */}
                           <div id="tree-controls" className={`absolute z-30 flex gap-3 transition-all duration-500 ${isFullScreen ? 'top-10 left-1/2 -translate-x-1/2 flex-row bg-white/40 p-2 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl' : 'top-10 right-10 flex-col'}`}>
                              <button 
@@ -1994,15 +2038,15 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
                             onPointerCancel={handlePointerUp}
-                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat flex items-center justify-center transition-all duration-700 ease-in-out ${
+                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat flex items-center justify-center transition-all duration-700 ease-in-out w-full ${
                               isFullScreen 
-                                ? 'h-screen w-screen rounded-none border-0 p-6 md:p-12' 
-                                : 'rounded-[1.5rem] md:rounded-[4rem] border-[3px] md:border-[12px] border-[#d4af37] h-[600px] lg:h-[750px] p-6 md:p-12'
+                                ? 'h-screen w-screen rounded-none border-0 p-4 md:p-12' 
+                                : 'rounded-[0.5rem] sm:rounded-[1.5rem] md:rounded-[3rem] border-y-[3px] md:border-[10px] md:border-x-[10px] border-[#d4af37] h-[650px] lg:h-[800px] p-2 sm:p-4 md:p-12'
                             }`}
                             style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
                           >
-                            <div className="absolute inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[2.8rem]" />
-                            <div className="absolute inset-6 border-2 border-[#d4af37]/10 pointer-events-none rounded-[2.3rem]" />
+                            <div className="absolute inset-2 sm:inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[0.4rem] sm:rounded-[2.3rem]" />
+                            <div className="absolute inset-3 sm:inset-6 border-2 border-[#d4af37]/10 pointer-events-none rounded-[0.2rem] sm:rounded-[1.8rem]" />
                             
                             {/* Decorative Corner Ornaments */}
                             <div className="absolute top-10 left-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
@@ -2011,22 +2055,51 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
                             
                             <div 
-                              className={`relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-12 pb-32 origin-center flex-shrink-0 select-none ${isDragging ? '' : 'transition-transform duration-300 ease-out'}`}
+                              className={`relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-4 pb-12 sm:pt-12 sm:pb-32 origin-center flex-shrink-0 select-none ${isDragging || isPointerActive ? '' : 'transition-transform duration-300 ease-out'}`}
                               style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${treeScale})` }}
                             >
-                               <div className="mb-24 flex flex-col items-center">
-                                  {(profile.kuldevi || profile.kuldeviPhoto) && (
-                                    <div className="mb-16">
+                               <div className="mb-6 md:mb-10 flex flex-col items-center flex-shrink-0">
+                                  {/* Deities Rendered Side-by-Side in a row on tablet/desktop, stacked with custom snug gap on mobile */}
+                                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 md:gap-16 mb-4 md:mb-8">
+                                    {(profile.kuldevi || profile.kuldeviPhoto) && (
                                       <DeityFrame photo={profile.kuldeviPhoto} name={profile.kuldevi} />
-                                    </div>
-                                  )}
-                                  {(profile.kuldevta || profile.kuldevtaPhoto) && (
-                                    <div className="mb-16">
+                                    )}
+                                    {(profile.kuldevta || profile.kuldevtaPhoto) && (
                                       <DeityFrame photo={profile.kuldevtaPhoto} name={profile.kuldevta} isKuldevta />
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
+                                  
+                                  {/* Sacred Blessing Beam connecting the Divine to the scroll */}
+                                  <div className="flex flex-col items-center relative mb-4 md:mb-8">
+                                    <motion.div 
+                                      animate={{ scaleY: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                                      transition={{ duration: 3, repeat: Infinity }}
+                                      className="w-0.5 h-8 md:h-16 bg-gradient-to-b from-[#d4af37] via-[#d4af37]/50 to-transparent rounded-full shadow-[0_0_8px_#d4af37]" 
+                                    />
+                                    {[...Array(3)].map((_, i) => (
+                                      <motion.div
+                                        key={i}
+                                        initial={{ y: -10, opacity: 0 }}
+                                        animate={{ 
+                                          y: [0, 60], 
+                                          opacity: [0, 0.8, 0],
+                                          scale: [0.6, 1, 0.6]
+                                        }}
+                                        transition={{ 
+                                          duration: 2.5 + Math.random(), 
+                                          repeat: Infinity, 
+                                          delay: i * 0.7,
+                                          ease: "easeInOut"
+                                        }}
+                                        className="absolute top-0 text-[#d4af37]"
+                                      >
+                                        <div className="w-1 h-1 rounded-full bg-current shadow-[0_0_4px_currentColor]" />
+                                      </motion.div>
+                                    ))}
+                                  </div>
+
                                   <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
-                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-8 flex items-center gap-2">
+                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-4 flex items-center gap-2">
                                      <Fingerprint size={12} /> ID: {profile.shareId || profile.id}
                                   </div>
                                   <RoyalOrnament />
@@ -2046,16 +2119,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                                  />
                                </div>
                                
-                               <div className="mt-48 opacity-30 italic text-[#8a6821] text-xs font-serif">
+                               <div className="mt-12 md:mt-24 opacity-30 italic text-[#8a6821] text-xs font-serif">
                                   Records maintained by {profile.name} via {vt.archives}
                                </div>
                             </div>
                           </div>
                        </div>
                     </div>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -2226,19 +2296,20 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
 const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onAddChild, onGetNumerology }: any) => {
   return (
-    <div className="flex justify-center gap-8 md:gap-24 px-4 md:px-8">
+    <div className="flex justify-center gap-6 sm:gap-10 md:gap-24 px-2 sm:px-4 md:px-8">
       {members.map((member: FamilyMember, index: number) => (
         <div key={member.id} className="relative flex flex-col items-center">
           {/* Node Wrapper */}
           <div className="flex flex-col items-center group relative z-20">
             {/* Elegant Royal Card Wrapper */}
-            <div className={`relative flex items-center justify-center p-5 md:p-6 rounded-[2.5rem] bg-gradient-to-b from-[#fffefb] to-[#fdfaf2] border-[3px] border-[#d4af37] shadow-[0_15px_30px_rgba(182,141,64,0.12)] ring-8 ring-white/60 transition-all duration-500 hover:shadow-[0_25px_60px_rgba(182,141,64,0.25)] hover:-translate-y-1 z-20 interactive-node ${member.partner ? 'gap-6 md:gap-8 min-w-[340px] md:min-w-[440px]' : 'min-w-[170px] md:min-w-[210px]'}`}>
+            <div className={`relative flex items-center justify-center p-3.5 sm:p-5 md:p-6 rounded-[1.6rem] sm:rounded-[2.2rem] md:rounded-[2.5rem] bg-gradient-to-b from-[#fffefb] to-[#fdfaf2] border-2 sm:border-[3px] border-[#d4af37] shadow-[0_10px_20px_rgba(182,141,64,0.08)] md:shadow-[0_15px_30px_rgba(182,141,64,0.12)] ring-4 sm:ring-8 ring-white/60 transition-all duration-300 md:hover:shadow-[0_25px_60px_rgba(182,141,64,0.25)] md:hover:-translate-y-1 z-20 interactive-node ${member.partner ? 'gap-3 sm:gap-6 md:gap-8 min-w-[260px] sm:min-w-[340px] md:min-w-[440px]' : 'min-w-[110px] sm:min-w-[170px] md:min-w-[210px]'}`}>
               
               {/* Member */}
               <div className="flex flex-col items-center text-center">
                 <div 
-                  className="relative transition-all duration-500 ease-out cursor-pointer hover:scale-105 active:scale-95"
+                  className="relative transition-all duration-300 ease-out cursor-pointer md:hover:scale-105 active:scale-95"
                   onClick={() => {
+                    if (hasDraggedGlobal) return;
                     if (isEditing) {
                       onEdit(member);
                     } else if (onViewDetail) {
@@ -2254,16 +2325,16 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                   )}
                 </div>
                 
-                <div className="mt-4 flex flex-col items-center">
-                  <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
+                <div className="mt-3 sm:mt-4 flex flex-col items-center">
+                  <h4 className="font-serif font-black text-[#58441c] text-xs sm:text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
                     {member.name}
                   </h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="h-px w-2 bg-[#d4af37]/45" />
-                    <p className="text-[10px] md:text-xs text-[#ea580c] font-bold italic font-mono">{member.birthYear || "—"}</p>
-                    <div className="h-px w-2 bg-[#d4af37]/45" />
+                  <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                    <div className="h-px w-1.5 sm:w-2 bg-[#d4af37]/45" />
+                    <p className="text-[9px] sm:text-[10px] md:text-xs text-[#ea580c] font-bold italic font-mono">{member.birthYear || "—"}</p>
+                    <div className="h-px w-1.5 sm:w-2 bg-[#d4af37]/45" />
                   </div>
-                  <div className="px-3 py-1 bg-[#064e3b] text-[#d4af37] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-2.5 rounded-full shadow-sm">
+                  <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-[#064e3b] text-[#d4af37] text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-2 rounded-full shadow-sm">
                     {member.role || "Member"}
                   </div>
                 </div>
@@ -2273,17 +2344,19 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
               {member.partner && (
                 <>
                   {/* Union Symbol */}
-                  <div className="flex flex-col items-center relative py-6 shrink-0 select-none">
-                     <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-[#fdfbf7] border-2 border-[#d4af37]/35 flex items-center justify-center shadow-sm">
-                        <Heart size={14} className="text-[#fb7185]" fill="currentColor" />
+                  <div className="flex flex-col items-center relative py-4 sm:py-6 shrink-0 select-none">
+                     <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 rounded-full bg-[#fdfbf7] border border-[#d4af37]/35 flex items-center justify-center shadow-sm">
+                        <Heart size={10} className="text-[#fb7185] sm:hidden" fill="currentColor" />
+                        <Heart size={14} className="text-[#fb7185] hidden sm:block" fill="currentColor" />
                      </div>
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 md:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent pointer-events-none" />
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 sm:w-16 md:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent pointer-events-none" />
                   </div>
 
                   <div className="flex flex-col items-center text-center">
                     <div 
-                      className="relative transition-all duration-500 ease-out cursor-pointer hover:scale-105 active:scale-95"
+                      className="relative transition-all duration-350 ease-out cursor-pointer md:hover:scale-105 active:scale-95"
                       onClick={() => {
+                        if (hasDraggedGlobal) return;
                         if (isEditing) {
                           onEdit(member);
                         } else if (onViewDetail) {
@@ -2298,12 +2371,12 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                       <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" gender={(member.partner as any).gender || 'female'} />
                     </div>
                     
-                    <div className="mt-4 flex flex-col items-center">
-                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
+                    <div className="mt-3 sm:mt-4 flex flex-col items-center">
+                      <h4 className="font-serif font-black text-[#58441c] text-xs sm:text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
                         {member.partner.name}
                       </h4>
-                      <p className="text-[10px] md:text-xs text-[#ea580c] font-bold italic mt-2">{member.partner.birthYear || "—"}</p>
-                      <p className="text-[#b68d40] text-[8px] md:text-[9px] font-black uppercase tracking-widest mt-2 px-2 py-0.5 bg-white rounded-md border border-[#8a6821]/20">Partner</p>
+                      <p className="text-[9px] sm:text-[10px] md:text-xs text-[#ea580c] font-bold italic mt-1.5">{member.partner.birthYear || "—"}</p>
+                      <p className="text-[#b68d40] text-[6px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-widest mt-2 px-1.5 py-0.5 bg-white rounded-md border border-[#8a6821]/20">Partner</p>
                     </div>
                   </div>
                 </>
@@ -2350,10 +2423,10 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
             
             {/* View Numerology Reading Button */}
             {!isEditing && (
-              <div className="mt-5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-30 interactive-node">
+              <div className="mt-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 z-30 interactive-node">
                 <button 
-                  onClick={() => onGetNumerology(member)}
-                  className="px-5 py-2 bg-gradient-to-r from-[#064e3b] to-[#065f46] text-[#d4af37] rounded-full text-[9px] font-black uppercase tracking-[0.25em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-[#d4af37]/30"
+                  onClick={() => { if (hasDraggedGlobal) return; onGetNumerology(member); }}
+                  className="px-5 py-2 bg-gradient-to-r from-[#064e3b] to-[#065f46] text-[#d4af37] rounded-full text-[9px] font-black uppercase tracking-[0.25em] shadow-lg md:hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-[#d4af37]/30"
                 >
                   <Sparkles size={12} /> Reveal Divine Path
                 </button>
@@ -2363,9 +2436,9 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
 
           {/* Children / Recursive Section */}
           {member.children.length > 0 && (
-            <div className="pt-20 relative w-full">
+            <div className="pt-10 md:pt-12 relative w-full">
               {/* Connector from parent DOWN to the sibling line level */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center h-12 w-full">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center h-6 w-full">
                  <div className="w-1 bg-[#d4af37] h-full shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
                  {/* Connection Point Ornament */}
                  <div className="w-4 h-4 rounded-full bg-[#064e3b] border-2 border-[#d4af37] -mt-2 shadow-md z-20 flex items-center justify-center">
@@ -2373,13 +2446,13 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                  </div>
               </div>
               
-              <div className="flex justify-center gap-12 md:gap-24 relative mt-12 overflow-visible">
+              <div className="flex justify-center gap-12 md:gap-24 relative mt-6 overflow-visible">
                 {member.children.map((child, index) => (
                   <div key={child.id} className="relative">
                     {/* Horizontal Line Segment to connect siblings */}
                     {member.children.length > 1 && (
                       <div 
-                        className="absolute -top-12 h-1 bg-[#d4af37]"
+                        className="absolute -top-6 h-1 bg-[#d4af37]"
                         style={{
                           left: index === 0 ? '50%' : '0',
                           right: index === member.children.length - 1 ? '50%' : '0',
@@ -2389,11 +2462,11 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                     )}
                     {/* Vertical line from sibling bar DOWN to child */}
                     {member.children.length > 1 && (
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-1 h-6 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
                     )}
                     {/* If single child, direct line down */}
                     {member.children.length === 1 && (
-                       <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
+                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-1 h-6 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
                     )}
                     
                     <TreeStructure 

@@ -53,7 +53,7 @@ export const Home = () => {
         </ScrollSlideSection>
 
         {/* Dynamic Flying Letters Interactive Assembly Showcase */}
-        <div className="mt-16 mb-4 text-center px-4 max-w-4xl mx-auto">
+        <ScrollSlideSection direction="down" index={2} className="mt-16 mb-4 text-center px-4 max-w-4xl mx-auto">
           <ScrollAssembleText 
             text={language === 'bn' ? "বার্নিয়া ডিজিটাল হাব • মানুষের মেলবন্ধন" : "BARNIA DIGITAL HUB • CONNECTING VILLAGES"} 
             className="text-2xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-orange-500 to-rose-600 tracking-tighter"
@@ -61,23 +61,24 @@ export const Home = () => {
           <p className="text-[10px] md:text-xs font-black text-zinc-400 uppercase tracking-[0.3em] mt-3 block animate-pulse">
             {language === 'bn' ? "★ স্ক্রোল করুন এবং বর্ণমালার যাদু দেখুন ★" : "★ SCROLL TO ASSEMBLE THE ALPHABET MAGIC ★"}
           </p>
-        </div>
+        </ScrollSlideSection>
         
         {/* Bento Grid with staggered reveal on scroll */}
-        <motion.div 
-          variants={{
-            hidden: {},
-            show: {
-              transition: {
-                staggerChildren: 0.12
+        <ScrollSlideSection direction="up" index={3} className="mt-12 mb-20">
+          <motion.div 
+            variants={{
+              hidden: {},
+              show: {
+                transition: {
+                  staggerChildren: 0.12
+                }
               }
-            }
-          }}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12 mb-20"
-        >
+            }}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+          >
           {/* Influencer Box */}
           <motion.div
             variants={{
@@ -295,6 +296,7 @@ export const Home = () => {
             </div>
           </motion.div>
         </motion.div>
+        </ScrollSlideSection>
 
         {/* Facebook Group Section */}
         <ScrollSlideSection direction="scale" className="mt-20 mb-20 text-center">
