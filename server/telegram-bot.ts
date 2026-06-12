@@ -3,7 +3,13 @@ import admin from "firebase-admin";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { parseGeminiJson } from "./utils";
 
+let cachedBotToken: string | null = null;
+
 export async function getTelegramBotToken(): Promise<string | null> {
+  if (cachedBotToken) {
+    return cachedBotToken;
+  }
+
   const allEnvKeys = Object.keys(process.env);
   let botTokenKey: string | undefined = allEnvKeys.find(k => k === 'TELEGRAM_BOT_TOKEN') || 
                     allEnvKeys.find(k => k === 'VITE_TELEGRAM_BOT_TOKEN');
@@ -23,7 +29,9 @@ export async function getTelegramBotToken(): Promise<string | null> {
   }
   
   const token = botTokenKey ? process.env[botTokenKey] : null;
-  return token ? token.trim() : null;
+  const result = token ? token.trim() : null;
+  cachedBotToken = result;
+  return result;
 }
 
 async function getTelegramFileUrl(fileId: string, botToken: string): Promise<string | null> {
@@ -80,32 +88,68 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     }
   };
 
-  // 1. Fetch Telegram state database & bootstrap if missing
+  // 1. Fetch Telegram state database & bootstrap if missing (or use memory cache)
   let linkedProfileId: string | null = null;
   let linkedEmail: string | null = null;
+  let linkedShareId: string | null = null;
   let currentCredits = 10;
+  let linkedProfile: any = null;
+  let isNewUser = false;
 
-  if (adminDb) {
-    try {
-      const userRef = adminDb.collection("telegram_users").doc(chatId.toString());
-      const userSnap = await userRef.get();
-      if (userSnap.exists) {
-        const udata = userSnap.data();
-        currentCredits = udata.credits !== undefined ? udata.credits : 10;
-        linkedProfileId = udata.linkedProfileId || null;
-        linkedEmail = udata.linkedEmail || null;
-      } else {
-        await userRef.set({
-          id: chatId.toString(),
-          name: `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || `Chat ${chatId}`,
-          username: from.username || null,
-          credits: 10,
-          role: "user",
-          createdAt: new Date().toISOString()
+  const cachedUser = telegramLinkCache.get(chatId);
+  const cacheAge = cachedUser ? (Date.now() - cachedUser.timestamp) : Infinity;
+
+  if (cachedUser && cacheAge < 10 * 60 * 1000) { // 10 minutes cache
+    linkedProfileId = cachedUser.linkedProfileId || null;
+    linkedEmail = cachedUser.linkedEmail || null;
+    linkedShareId = cachedUser.linkedShareId || null;
+    currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
+    linkedProfile = cachedUser.linkedProfile || null;
+    console.log(`[Telegram Cache Hit] User: ${chatId}, LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
+  } else {
+    if (adminDb) {
+      try {
+        const userRef = adminDb.collection("telegram_users").doc(chatId.toString());
+        const userSnap = await userRef.get();
+        if (userSnap.exists) {
+          const udata = userSnap.data();
+          currentCredits = udata.credits !== undefined ? udata.credits : 10;
+          linkedProfileId = udata.linkedProfileId || null;
+          linkedEmail = udata.linkedEmail || null;
+          linkedShareId = udata.linkedShareId || null;
+        } else {
+          isNewUser = true;
+          await userRef.set({
+            id: chatId.toString(),
+            name: `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || `Chat ${chatId}`,
+            username: from.username || null,
+            credits: 10,
+            role: "user",
+            createdAt: new Date().toISOString()
+          });
+        }
+
+        // Fetch linked tree profile
+        if (linkedProfileId) {
+          const snap = await adminDb.collection("vamshavali_profiles").doc(linkedProfileId).get();
+          if (snap.exists) {
+            linkedProfile = { id: snap.id, ...snap.data() };
+            linkedShareId = linkedProfile.shareId || null;
+          }
+        }
+
+        // Save to cache
+        telegramLinkCache.set(chatId, {
+          linkedProfileId,
+          linkedEmail,
+          linkedShareId,
+          currentCredits,
+          linkedProfile,
+          timestamp: Date.now()
         });
+      } catch (err) {
+        console.error("[Telegram] State retrieval / bootstrap error:", err);
       }
-    } catch (err) {
-      console.error("[Telegram] State retrieval / bootstrap error:", err);
     }
   }
 
@@ -146,6 +190,17 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             updatedAt: new Date().toISOString()
           }, { merge: true });
         }
+
+        // Update memory cache
+        telegramLinkCache.set(chatId, {
+          linkedProfileId: foundProfile.id,
+          linkedEmail: foundProfile.email || null,
+          linkedShareId: foundProfile.shareId || null,
+          currentCredits,
+          linkedProfile: foundProfile,
+          timestamp: Date.now()
+        });
+
         await sendMessage(
           `💖 *Connected Automatically!*\n\n` +
           `I have automatically linked your Telegram chat to the family tree of *"${foundProfile.name}"* (ID: \`${foundProfile.shareId || foundProfile.id}\`).\n\n` +
@@ -170,6 +225,17 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
                   updatedAt: new Date().toISOString()
                 }, { merge: true });
               }
+
+              // Update memory cache
+              telegramLinkCache.set(chatId, {
+                linkedProfileId: newProfile.id,
+                linkedEmail: newProfile.email || null,
+                linkedShareId: newProfile.shareId || null,
+                currentCredits,
+                linkedProfile: newProfile,
+                timestamp: Date.now()
+              });
+
               await sendMessage(
                 `✨ *Tree Initialized & Connected!*\n\n` +
                 `I have initialized a fresh family tree for *"${startParam.toLowerCase().trim()}"* and automatically linked it to this chat.\n\n` +
@@ -195,15 +261,47 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         return;
       }
     } else {
-      await sendMessage(
-        "Hello! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n" +
-        "I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n" +
-        "🔗 *Link Your Family Tree:*\n" +
-        "To enable tree updates, please link your profile first by typing:\n" +
-        "`/link <your-email>` or `/link <shareId>` (or say: 'link my tree with xyz@gmail.com').\n\n" +
-        "Let me know how I can assist you today with the *barnia.in* app!",
-        { parse_mode: "Markdown" }
-      );
+      const userFirstName = from.first_name || from.username || "Friend";
+      
+      if (linkedProfile) {
+        // Welcoming back a linked returning user
+        const treeLink = linkedProfile.shareId 
+          ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId})`
+          : `[My Family Tree](https://barnia.in/vamshavali)`;
+          
+        await sendMessage(
+          `🌸 *Welcome back, ${userFirstName}!* 🌸\n\n` +
+          `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+          `💖 *Active Connection:*\n` +
+          `• *Linked Tree:* *"${linkedProfile.name}"*\n` +
+          `• *Linked Email:* \`${linkedEmail || "N/A"}\`\n` +
+          `• *Tree Link:* ${treeLink}\n\n` +
+          `I remember you and your family tree! Tell me or send me a photo to update it, or ask me anything about the local Bazar or Ponjika!`,
+          { parse_mode: "Markdown" }
+        );
+      } else if (!isNewUser) {
+        // Welcoming back an unlinked returning user
+        await sendMessage(
+          `🌸 *Welcome back, ${userFirstName}!* 🌸\n\n` +
+          `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+          `🔗 *Link Your Family Tree:*\n` +
+          `To enable tree updates, please link your profile first by typing:\n` +
+          `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
+          `Let me know how I can assist you today with the *barnia.in* app!`,
+          { parse_mode: "Markdown" }
+        );
+      } else {
+        // First-time start
+        await sendMessage(
+          `Hello ${userFirstName}! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+          `I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n` +
+          `🔗 *Link Your Family Tree:*\n` +
+          `To enable tree updates, please link your profile first by typing:\n` +
+          `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
+          `Let me know how I can assist you today with the *barnia.in* app!`,
+          { parse_mode: "Markdown" }
+        );
+      }
       return;
     }
   }
@@ -216,6 +314,17 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail: null,
           linkedShareId: null
         }, { merge: true });
+
+        // Update memory cache
+        telegramLinkCache.set(chatId, {
+          linkedProfileId: null,
+          linkedEmail: null,
+          linkedShareId: null,
+          currentCredits,
+          linkedProfile: null,
+          timestamp: Date.now()
+        });
+
         await sendMessage("🔓 *Successfully unlinked your family tree.* You can link to another account anytime using `/link <email>`!", { parse_mode: "Markdown" });
       } catch (e: any) {
         await sendMessage("Could not complete unlinking. Please try again later.");
@@ -228,7 +337,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
   const emailMatch = text.match(emailRegex);
   const isLinkCmd = textLower.startsWith("/link");
-  const isLinkMention = textLower.includes("link") && (emailMatch || textLower.match(/\b([A-Z0-9]{8})\b/i));
+  const isLinkMention = (textLower.includes("link") && (emailMatch || textLower.match(/\b([A-Z0-9]{8})\b/i))) || (!linkedProfileId && emailMatch);
 
   // If customer credit is 0, they should not be able to do anything except start, link, or unlink commands.
   if (currentCredits <= 0 && textLower !== "/start" && !isLinkCmd && !isLinkMention && textLower !== "/unlink") {
@@ -280,8 +389,19 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail: foundProfile.email || null,
           linkedShareId: foundProfile.shareId || null,
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }, { merge: merge => true });
       }
+
+      // Update memory cache
+      telegramLinkCache.set(chatId, {
+        linkedProfileId: foundProfile.id,
+        linkedEmail: foundProfile.email || null,
+        linkedShareId: foundProfile.shareId || null,
+        currentCredits,
+        linkedProfile: foundProfile,
+        timestamp: Date.now()
+      });
+
       await sendMessage(
         `💖 *Connected Successfully!*\n\n` +
         `I have linked your Telegram chat to the family tree of *"${foundProfile.name}"*.\n\n` +
@@ -304,6 +424,17 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
                 updatedAt: new Date().toISOString()
               }, { merge: true });
             }
+
+            // Update memory cache
+            telegramLinkCache.set(chatId, {
+              linkedProfileId: newProfile.id,
+              linkedEmail: newProfile.email || null,
+              linkedShareId: newProfile.shareId || null,
+              currentCredits,
+              linkedProfile: newProfile,
+              timestamp: Date.now()
+            });
+
             await sendMessage(
               `✨ *Tree Initialized & Connected!*\n\n` +
               `I couldn't find an existing family tree for *"${linkArg.toLowerCase().trim()}"*, so I have initialized a fresh tree for you and linked it to this chat.\n\n` +
@@ -349,13 +480,23 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     }
   }
 
-  // 4. Fetch the linked family tree data if exists
-  let linkedProfile: any = null;
-  if (adminDb && linkedProfileId) {
+  // 4. Fetch the linked family tree data if exists (already fetched in step 1 or cached, but fallback just in case)
+  if (!linkedProfile && adminDb && linkedProfileId) {
     try {
       const snap = await adminDb.collection("vamshavali_profiles").doc(linkedProfileId).get();
       if (snap.exists) {
         linkedProfile = { id: snap.id, ...snap.data() };
+        linkedShareId = linkedProfile.shareId || null;
+        
+        // Update memory cache
+        telegramLinkCache.set(chatId, {
+          linkedProfileId,
+          linkedEmail,
+          linkedShareId,
+          currentCredits,
+          linkedProfile,
+          timestamp: Date.now()
+        });
       }
     } catch (err) {
       console.error("[Telegram] Error fetching linked tree profile:", err);
@@ -394,10 +535,13 @@ STRICT COMPLIANCE RULES:
    - **Village Transport**: Transits and booking directories for Barnia.
 2. If the user's inquiry is unrelated to barnia.in, Barnia village, or their linked lineage, you MUST politely decline and ground yourself. Example: "I am Barnali, dedicated specifically to helping you on barnia.in. I can only assist with platform modules, community directories, or linked genealogy trees."
 
-FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION:
+FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION & LINK SHARING:
 The user's currently linked Vamshavali profile is:
 ${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
 
+${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '${linkedProfile.shareId}' and their public tree link is 'https://barnia.in/vamshavali/v/${linkedProfile.shareId}'.` : "The user does not have a fully linked active tree share ID yet."}
+
+- If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
 - If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
   1. Produce a structured JSON payload response matching this exact shape:
   {
@@ -447,8 +591,22 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
           
           // Clear cached state photo
           lastPhotos.delete(chatId);
+
+          // Update memory cache
+          telegramLinkCache.set(chatId, {
+            linkedProfileId,
+            linkedEmail,
+            linkedShareId: finalizedProfile.shareId || linkedShareId || null,
+            currentCredits,
+            linkedProfile: finalizedProfile,
+            timestamp: Date.now()
+          });
           
-          await sendMessage(`✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`, { parse_mode: "Markdown" });
+          const traceLink = finalizedProfile.shareId 
+            ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](https://barnia.in/vamshavali/v/${finalizedProfile.shareId}).`
+            : `\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`;
+
+          await sendMessage(`✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`, { parse_mode: "Markdown" });
           isTreeUpdated = true;
         }
       } catch (err: any) {

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { shareContent } from '../utils';
 import { getBengaliDate, toBengaliNumber, getAlmanacData, getAuspiciousMarriageDates } from '../utils/bengaliDate';
 import { TiltCard } from '../components/TiltCard';
+import { ScrollSlideSection } from '../components/ScrollSlideShowWrapper';
 
 const Swastika = ({ size = 16, className = "" }) => (
   <svg 
@@ -470,9 +471,9 @@ export const PonjikaPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Today's Main Info - Bento Large */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+            <ScrollSlideSection 
+              direction="left"
+              index={0}
               className="lg:col-span-8"
             >
               <TiltCard 
@@ -535,7 +536,7 @@ export const PonjikaPage = () => {
                     </div>
                     <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex flex-col justify-between">
                       <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{language === 'bn' ? 'বারাধিপতি' : 'Day Lord'}</span>
-                      <span className="text-base font-black text-emerald-950 truncate">{ponjikaData.dayLord}</span>
+                      <span className="text-base font-black text-emerald-900 truncate">{ponjikaData.dayLord}</span>
                     </div>
                   </div>
 
@@ -583,23 +584,21 @@ export const PonjikaPage = () => {
                   </div>
                 </div>
               </TiltCard>
-            </motion.div>
+            </ScrollSlideSection>
 
             {/* Calendar - Bento Grid Item */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
+            <ScrollSlideSection 
+              direction="right"
+              index={1}
               className="lg:col-span-4"
             >
               <CalendarComponent />
-            </motion.div>
+            </ScrollSlideSection>
 
             {/* Sun & Moon - Bento Grid Item */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15 }}
+            <ScrollSlideSection 
+              direction="right"
+              index={2}
               className="lg:col-span-4"
             >
               <TiltCard 
@@ -671,7 +670,7 @@ export const PonjikaPage = () => {
                   </p>
                 </div>
               </TiltCard>
-            </motion.div>
+            </ScrollSlideSection>
 
             {/* Monthly Highlights - Bento Grid Item */}
             <motion.div 

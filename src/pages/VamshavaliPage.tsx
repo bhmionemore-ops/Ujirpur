@@ -289,26 +289,32 @@ const EditMemberModal = ({
 };
 
 const GoldenFrame = ({ photo, name, pulse = false, size = "md", gender = "male" }: { photo?: string; name: string; pulse?: boolean; size?: "sm" | "md"; gender?: "male" | "female" }) => {
-  const sizeClasses = size === "sm" ? "w-20 md:w-24" : "w-24 md:w-36";
-  const frameGradient = gender === "female" 
-    ? "bg-gradient-to-tr from-[#9d174d] via-[#f43f5e] to-[#fbcfe8] shadow-[0_20px_50px_rgba(244,63,94,0.3)] border border-[#9d174d]/80" 
-    : "bg-gradient-to-tr from-[#8a6821] via-[#d4af37] to-[#f4e4bc] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[#8a6821]";
+  const sizeClasses = size === "sm" ? "w-16 h-16 md:w-20 md:h-20" : "w-20 h-20 md:w-28 md:h-28";
+  const frameRingColor = gender === "female"
+    ? "from-[#be185d] via-[#f43f5e] to-[#fecdd3]"
+    : "from-[#8a6821] via-[#d4af37] to-[#f4e4bc]";
   
   return (
-    <div className={`relative p-1 rounded-[45%] ${frameGradient} ${pulse ? 'animate-pulse' : ''} group-hover:scale-110 transition-all duration-700 ease-out z-10`}>
-      <div className="absolute inset-0 rounded-[45%] border-2 border-white/10 pointer-events-none" />
-      {/* Ornate inner border */}
-      <div className="absolute inset-1 rounded-[45%] border border-[#8a6821]/40 pointer-events-none" />
+    <div className={`relative p-1 rounded-full bg-gradient-to-tr ${frameRingColor} shadow-[0_10px_25px_rgba(0,0,0,0.15)] ${pulse ? 'animate-pulse' : ''} group-hover:scale-105 transition-all duration-500 ease-out z-10 flex-shrink-0`}>
+      {/* Decorative concentric gap ring inside */}
+      <div className="absolute inset-[2px] rounded-full bg-white z-10 pointer-events-none" />
+      {/* Ornate inner frame ring */}
+      <div className="absolute inset-[4px] rounded-full bg-gradient-to-b from-transparent to-[#8a6821]/20 z-10 pointer-events-none border border-[#8a6821]/35" />
       
-      <div className={`relative aspect-[4/5] ${sizeClasses} rounded-[43%] overflow-hidden bg-[#0f172a] ring-4 ring-[#0f172a]`}>
+      <div className={`relative ${sizeClasses} rounded-full overflow-hidden bg-[#0a2f1d] z-20 flex items-center justify-center`}>
         {photo ? (
-          <img src={photo} alt={name} className="w-full h-full object-cover transition-all duration-[1500ms] group-hover:scale-125" />
+          <img 
+            src={getSafeImageUrl(photo)} 
+            alt={name} 
+            className="w-full h-full object-cover transition-all duration-[1000ms] group-hover:scale-115"
+            referrerPolicy="no-referrer"
+          />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[#1e293b] text-[#d4af37]/40">
-            <User size={size === "sm" ? 32 : 48} strokeWidth={1} />
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[#0d3c26] text-[#d4af37]/65">
+            <User size={size === "sm" ? 22 : 32} strokeWidth={1.5} />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/90 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
       </div>
     </div>
   );
@@ -501,6 +507,57 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
   const lastLayoutWidth = useRef<number>(0);
   const lastLayoutHeight = useRef<number>(0);
 
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragOffsetStart = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') || 
+      target.closest('input') || 
+      target.closest('textarea') || 
+      target.closest('select') || 
+      target.closest('.interactive-node')
+    ) {
+      return;
+    }
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    dragOffsetStart.current = { ...panOffset };
+    if (treeRef.current) {
+      try {
+        treeRef.current.setPointerCapture(e.pointerId);
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setPanOffset({
+      x: dragOffsetStart.current.x + dx,
+      y: dragOffsetStart.current.y + dy
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (treeRef.current) {
+      try {
+        treeRef.current.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  };
+
   useEffect(() => {
     if (step === 'dashboard' && profile && treeRef.current) {
       const container = treeRef.current;
@@ -614,6 +671,7 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
     const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
     setTreeScale(finalScale);
+    setPanOffset({ x: 0, y: 0 });
     toast.success("Perspective adjusted to fit your screen");
   };
 
@@ -1932,11 +1990,16 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                           <div 
                             ref={treeRef}
                             id="genealogy_container"
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerCancel={handlePointerUp}
                             className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat flex items-center justify-center transition-all duration-700 ease-in-out ${
                               isFullScreen 
                                 ? 'h-screen w-screen rounded-none border-0 p-6 md:p-12' 
                                 : 'rounded-[1.5rem] md:rounded-[4rem] border-[3px] md:border-[12px] border-[#d4af37] h-[600px] lg:h-[750px] p-6 md:p-12'
                             }`}
+                            style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
                           >
                             <div className="absolute inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[2.8rem]" />
                             <div className="absolute inset-6 border-2 border-[#d4af37]/10 pointer-events-none rounded-[2.3rem]" />
@@ -1948,8 +2011,8 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
                             <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
                             
                             <div 
-                              className="relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-12 pb-32 transition-transform duration-300 ease-out origin-center flex-shrink-0"
-                              style={{ transform: `scale(${treeScale})` }}
+                              className={`relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-12 pb-32 origin-center flex-shrink-0 select-none ${isDragging ? '' : 'transition-transform duration-300 ease-out'}`}
+                              style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${treeScale})` }}
                             >
                                <div className="mb-24 flex flex-col items-center">
                                   {(profile.kuldevi || profile.kuldeviPhoto) && (
@@ -2163,13 +2226,13 @@ export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => 
 
 const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onAddChild, onGetNumerology }: any) => {
   return (
-    <div className="flex justify-center gap-8 md:gap-32 px-4 md:px-10">
+    <div className="flex justify-center gap-8 md:gap-24 px-4 md:px-8">
       {members.map((member: FamilyMember, index: number) => (
         <div key={member.id} className="relative flex flex-col items-center">
           {/* Node Wrapper */}
           <div className="flex flex-col items-center group relative z-20">
-            {/* Couple/Individual Container */}
-            <div className={`relative flex items-center gap-3 md:gap-8 p-3 md:p-6 rounded-[2rem] md:rounded-[4rem] transition-all duration-700 ${member.partner ? 'bg-white/40 backdrop-blur-sm border-2 border-[#d4af37]/30 shadow-[0_30px_60px_-15px_rgba(182,141,64,0.2)]' : 'bg-transparent'}`}>
+            {/* Elegant Royal Card Wrapper */}
+            <div className={`relative flex items-center justify-center p-5 md:p-6 rounded-[2.5rem] bg-gradient-to-b from-[#fffefb] to-[#fdfaf2] border-[3px] border-[#d4af37] shadow-[0_15px_30px_rgba(182,141,64,0.12)] ring-8 ring-white/60 transition-all duration-500 hover:shadow-[0_25px_60px_rgba(182,141,64,0.25)] hover:-translate-y-1 z-20 interactive-node ${member.partner ? 'gap-6 md:gap-8 min-w-[340px] md:min-w-[440px]' : 'min-w-[170px] md:min-w-[210px]'}`}>
               
               {/* Member */}
               <div className="flex flex-col items-center text-center">
@@ -2185,23 +2248,23 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                 >
                   <GoldenFrame photo={member.photo} name={member.name} gender={member.gender || (member.role?.toLowerCase().includes('daughter') || member.role?.toLowerCase().includes('mother') || member.role?.toLowerCase().includes('matriarch') ? 'female' : 'male')} />
                   {isEditing && (
-                    <div className="absolute -top-3 -right-3 w-10 h-10 bg-[#059669] text-white rounded-full flex items-center justify-center shadow-2xl z-30 border-2 border-white animate-bounce-slow">
-                      <Edit2 size={16} />
+                    <div className="absolute -top-1 -right-1 w-8 h-8 bg-[#059669] text-white rounded-full flex items-center justify-center shadow-md z-30 border-2 border-white animate-bounce-slow">
+                      <Edit2 size={12} />
                     </div>
                   )}
                 </div>
                 
-                <div className="mt-6 flex flex-col items-center">
-                  <h4 className="font-serif font-black text-[#58441c] text-base md:text-xl uppercase tracking-tight leading-none whitespace-nowrap drop-shadow-sm">
+                <div className="mt-4 flex flex-col items-center">
+                  <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
                     {member.name}
                   </h4>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="h-px w-3 bg-[#d4af37]/40" />
-                    <p className="text-[10px] md:text-xs text-[#71717a] font-bold italic">{member.birthYear}</p>
-                    <div className="h-px w-3 bg-[#d4af37]/40" />
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-px w-2 bg-[#d4af37]/45" />
+                    <p className="text-[10px] md:text-xs text-[#ea580c] font-bold italic font-mono">{member.birthYear || "—"}</p>
+                    <div className="h-px w-2 bg-[#d4af37]/45" />
                   </div>
-                  <div className="px-3 py-1 bg-[#064e3b] text-[#d4af37] text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-3 rounded-full shadow-md">
-                    {member.role}
+                  <div className="px-3 py-1 bg-[#064e3b] text-[#d4af37] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-2.5 rounded-full shadow-sm">
+                    {member.role || "Member"}
                   </div>
                 </div>
               </div>
@@ -2210,11 +2273,11 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
               {member.partner && (
                 <>
                   {/* Union Symbol */}
-                  <div className="flex flex-col items-center relative py-10">
-                     <div className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-[#fdfbf7] border-2 border-[#d4af37]/20 flex items-center justify-center shadow-lg transform rotate-45 group-hover:rotate-[225deg] transition-transform duration-1000">
-                        <Heart size={20} className="text-[#fb7185] -rotate-45" fill="currentColor" />
+                  <div className="flex flex-col items-center relative py-6 shrink-0 select-none">
+                     <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-[#fdfbf7] border-2 border-[#d4af37]/35 flex items-center justify-center shadow-sm">
+                        <Heart size={14} className="text-[#fb7185]" fill="currentColor" />
                      </div>
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-px bg-gradient-to-r from-transparent via-[#d4af37]/40 to-transparent pointer-events-none" />
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 md:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent pointer-events-none" />
                   </div>
 
                   <div className="flex flex-col items-center text-center">
@@ -2235,12 +2298,12 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
                       <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" gender={(member.partner as any).gender || 'female'} />
                     </div>
                     
-                    <div className="mt-6 flex flex-col items-center">
-                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-lg uppercase tracking-tight leading-none whitespace-nowrap drop-shadow-sm">
+                    <div className="mt-4 flex flex-col items-center">
+                      <h4 className="font-serif font-black text-[#58441c] text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
                         {member.partner.name}
                       </h4>
-                      <p className="text-[10px] md:text-xs text-[#71717a] font-bold italic mt-2">{member.partner.birthYear}</p>
-                      <p className="text-[#b68d40]/60 text-[8px] md:text-[10px] font-black uppercase tracking-widest mt-2 px-2 py-0.5 bg-white rounded-md border border-[#f4f4f5]">Partner</p>
+                      <p className="text-[10px] md:text-xs text-[#ea580c] font-bold italic mt-2">{member.partner.birthYear || "—"}</p>
+                      <p className="text-[#b68d40] text-[8px] md:text-[9px] font-black uppercase tracking-widest mt-2 px-2 py-0.5 bg-white rounded-md border border-[#8a6821]/20">Partner</p>
                     </div>
                   </div>
                 </>
@@ -2252,47 +2315,47 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex gap-3 mt-10 p-3 bg-white/80 backdrop-blur-md rounded-2xl shadow-2xl border border-[#d4af37]/20 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                className="flex gap-2.5 mt-6 p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#d4af37]/25 z-30 pointer-events-auto interactive-node"
               >
                 <button 
                   onClick={(e) => { e.stopPropagation(); onAddChild(member.id); }}
-                  className="w-12 h-12 bg-[#064e3b] text-[#d4af37] rounded-xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-lg"
+                  className="w-10 h-10 bg-[#064e3b] text-[#d4af37] rounded-xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-md animate-fade-in"
                   title="Add Generation"
                 >
-                  <Plus size={24}/>
+                  <Plus size={20}/>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onRemove(member.id); }}
-                  className="w-12 h-12 bg-white text-red-600 rounded-xl border-2 border-red-50 hover:bg-red-50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-md"
+                  className="w-10 h-10 bg-white text-red-600 rounded-xl border-2 border-red-50 hover:bg-red-50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
                   title="Remove Lineage"
                 >
-                  <Trash2 size={24}/>
+                  <Trash2 size={20}/>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onEdit(member); }}
-                  className="w-12 h-12 bg-white text-[#064e3b] rounded-xl border-2 border-zinc-100 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-md"
+                  className="w-10 h-10 bg-white text-[#064e3b] rounded-xl border-2 border-zinc-100 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
                   title="Registry Editor"
                 >
-                  <Settings size={22}/>
+                  <Settings size={18}/>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onGetNumerology(member); }}
-                  className="w-12 h-12 bg-[#fdfbf7] text-[#d4af37] rounded-xl border-2 border-[#fef3c7] hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-md"
+                  className="w-10 h-10 bg-[#fdfbf7] text-[#d4af37] rounded-xl border-2 border-[#fef3c7] hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
                   title="Vedic Insight"
                 >
-                  <BookOpen size={22}/>
+                  <BookOpen size={18}/>
                 </button>
               </motion.div>
             )}
             
             {/* View Numerology Reading Button */}
             {!isEditing && (
-              <div className="mt-8 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+              <div className="mt-5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-30 interactive-node">
                 <button 
                   onClick={() => onGetNumerology(member)}
-                  className="px-6 py-2.5 bg-gradient-to-r from-[#064e3b] to-[#065f46] text-[#d4af37] rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border border-[#d4af37]/30"
+                  className="px-5 py-2 bg-gradient-to-r from-[#064e3b] to-[#065f46] text-[#d4af37] rounded-full text-[9px] font-black uppercase tracking-[0.25em] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-[#d4af37]/30"
                 >
-                  <Sparkles size={14} /> Reveal Divine Path
+                  <Sparkles size={12} /> Reveal Divine Path
                 </button>
               </div>
             )}
@@ -2300,36 +2363,37 @@ const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onA
 
           {/* Children / Recursive Section */}
           {member.children.length > 0 && (
-            <div className="pt-24 relative w-full">
+            <div className="pt-20 relative w-full">
               {/* Connector from parent DOWN to the sibling line level */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center h-12 w-full">
-                 <div className="w-1 bg-gradient-to-b from-[#d4af37] to-[#d4af37]/40 h-full shadow-[0_0_10px_rgba(212,175,55,0.2)]" />
+                 <div className="w-1 bg-[#d4af37] h-full shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
                  {/* Connection Point Ornament */}
-                 <div className="w-5 h-5 rounded-full bg-[#064e3b] border-2 border-[#d4af37] -mt-2.5 shadow-xl z-20 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#d4af37] shadow-[0_0_8px_gold]" />
+                 <div className="w-4 h-4 rounded-full bg-[#064e3b] border-2 border-[#d4af37] -mt-2 shadow-md z-20 flex items-center justify-center">
+                    <div className="w-1 h-1 rounded-full bg-[#d4af37] shadow-[0_0_5px_gold]" />
                  </div>
               </div>
               
-              <div className="flex justify-center gap-16 md:gap-32 relative mt-12">
+              <div className="flex justify-center gap-12 md:gap-24 relative mt-12 overflow-visible">
                 {member.children.map((child, index) => (
                   <div key={child.id} className="relative">
                     {/* Horizontal Line Segment to connect siblings */}
                     {member.children.length > 1 && (
                       <div 
-                        className="absolute -top-12 h-1 bg-[#d4af37]/40"
+                        className="absolute -top-12 h-1 bg-[#d4af37]"
                         style={{
                           left: index === 0 ? '50%' : '0',
                           right: index === member.children.length - 1 ? '50%' : '0',
+                          boxShadow: '0 0 6px rgba(212,175,55,0.2)'
                         }}
                       />
                     )}
                     {/* Vertical line from sibling bar DOWN to child */}
                     {member.children.length > 1 && (
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]/40" />
+                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
                     )}
                     {/* If single child, direct line down */}
                     {member.children.length === 1 && (
-                       <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]/40" />
+                       <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-1 h-12 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
                     )}
                     
                     <TreeStructure 

@@ -5,6 +5,7 @@ import { Store, ChevronLeft } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { Banner } from '../components/Banner';
+import { ScrollSlideSection } from '../components/ScrollSlideShowWrapper';
 
 export const BarniaBazarPage = () => {
   const navigate = useNavigate();
@@ -55,9 +56,9 @@ export const BarniaBazarPage = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border border-zinc-100">
+        <ScrollSlideSection direction="up" index={0} className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border border-zinc-100">
           <BarniaBazar />
-        </div>
+        </ScrollSlideSection>
 
         {/* Hidden SEO Section for Google Indexing */}
         <div className="sr-only" aria-hidden="true">

@@ -183,7 +183,7 @@ class LocalDocumentRef {
   async get() {
     const store = this.db.getRawStore();
     const docData = store[this.collectionName]?.[this.id];
-    return new LocalDocumentSnapshot(this.id, docData);
+    return new LocalDocumentSnapshot(this.id, docData, this);
   }
 
   async set(data: any, options?: { merge?: boolean }) {
@@ -204,7 +204,11 @@ class LocalDocumentRef {
 
 class LocalDocumentSnapshot {
   public exists: boolean;
-  constructor(public id: string, private docData: any) {
+  constructor(
+    public id: string,
+    private docData: any,
+    public ref: LocalDocumentRef
+  ) {
     this.exists = !!docData;
   }
 
@@ -294,7 +298,8 @@ class LocalQuery {
 
     const docSnapshots = docs.map(doc => {
       const { id, ...data } = doc;
-      return new LocalDocumentSnapshot(id, data);
+      const ref = new LocalDocumentRef(this.collectionName, id, this.db);
+      return new LocalDocumentSnapshot(id, data, ref);
     });
 
     return new LocalQuerySnapshot(docSnapshots);

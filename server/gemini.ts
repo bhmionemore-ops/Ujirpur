@@ -64,19 +64,20 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
     } catch (error: any) {
       lastError = error;
       const errorStr = (error?.message || String(error)).toLowerCase();
-      console.error(`[Gemini] Error with ${currentModel}:`, errorStr);
-
+      
       const isQuotaExceeded = errorStr.includes("429") || errorStr.includes("quota") || errorStr.includes("resource_exhausted");
       const isUnavailable = errorStr.includes("503") || errorStr.includes("overloaded") || errorStr.includes("unavailable");
       const isNotFoundError = errorStr.includes("404") || errorStr.includes("not found");
 
+      // Log transient tries as warnings to avoid triggering global error assertions on recoverable issues
       if (i < totalAttempts - 1) {
+        console.warn(`[Gemini] Transient error with ${currentModel}: ${errorStr}. Retrying...`);
+        
         let delay = 0;
         if (isQuotaExceeded) {
           // Check for retryDelay in the error details if available
           let retryAfter = 0;
           try {
-            // Some versions of the SDK or direct API responses include structured error data
             const match = errorStr.match(/retrydelay["\s:]+["'](\d+)s/);
             if (match && match[1]) {
               retryAfter = parseInt(match[1]) * 1000;
@@ -84,8 +85,6 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
             }
           } catch (e) {}
 
-          // Robust backoff for quota
-          // If we have a retryAfter, we use it, otherwise use cycle-based backoff
           const cycleDelay = cycle === 0 ? 500 : backoffDelays[Math.min(cycle - 1, backoffDelays.length - 1)];
           delay = Math.max(cycleDelay, retryAfter > 0 && retryAfter < 10000 ? retryAfter : 0);
           
@@ -93,7 +92,11 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
             console.log(`[Gemini] Quota exceeded. Waiting ${delay}ms before trying ${modelsToTry[(i + 1) % modelsToTry.length]}.`);
           }
         } else if (isUnavailable || isNotFoundError) {
-          delay = isNotFoundError ? 0 : 1000;
+          const cycleDelay = cycle === 0 ? 1000 : backoffDelays[Math.min(cycle - 1, backoffDelays.length - 1)];
+          delay = isNotFoundError ? 0 : cycleDelay;
+          if (delay > 0) {
+            console.log(`[Gemini] Model high demand/unavailable. Waiting ${delay}ms before trying ${modelsToTry[(i + 1) % modelsToTry.length]}.`);
+          }
         } else {
           delay = 1000;
         }
@@ -102,6 +105,9 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         continue;
+      } else {
+        // This is the final absolute failure after exhausting all falls back, log as error
+        console.error(`[Gemini] Final error with ${currentModel} (exhausted all ${totalAttempts} attempts):`, errorStr);
       }
     }
   }
@@ -122,7 +128,13 @@ export function setupGeminiRoute(app: express.Application) {
   });
 }
 
+let cachedApiKey: string | null = null;
+
 export async function getGeminiApiKey(firebaseConfig?: any): Promise<string> {
+  if (cachedApiKey) {
+    return cachedApiKey;
+  }
+
   const keyNames = [
     'GOOGLE_API_KEY',
     'GEMINI_API_KEY',
@@ -173,5 +185,6 @@ export async function getGeminiApiKey(firebaseConfig?: any): Promise<string> {
     throw new Error("Gemini API key is missing.");
   }
 
+  cachedApiKey = apiKey;
   return apiKey;
 }

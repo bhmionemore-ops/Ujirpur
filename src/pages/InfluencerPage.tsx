@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { Banner } from '../components/Banner';
 import { CollaborationTools } from '../components/CollaborationTools';
+import { ScrollSlideSection } from '../components/ScrollSlideShowWrapper';
 
 export const InfluencerPage = () => {
   const navigate = useNavigate();
@@ -57,11 +58,15 @@ export const InfluencerPage = () => {
         </div>
 
         <div className="space-y-20">
-          <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border-4 border-brand-600">
-            <InfluencerSection />
-          </div>
+          <ScrollSlideSection direction="left" index={0}>
+            <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-brand-500/5 border-4 border-brand-600">
+              <InfluencerSection />
+            </div>
+          </ScrollSlideSection>
 
-          <CollaborationTools />
+          <ScrollSlideSection direction="right" index={1}>
+            <CollaborationTools />
+          </ScrollSlideSection>
         </div>
 
         {/* Hidden SEO Section for Google Indexing */}

@@ -28,6 +28,7 @@ import { useLanguage } from '../LanguageContext';
 import { useTracking } from '../TrackingContext';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { ScrollAssembleText } from '../components/FlyingLettersScrollEffect';
+import { ScrollSlideSection } from '../components/ScrollSlideShowWrapper';
 
 export const Home = () => {
   const { t, language } = useLanguage();
@@ -43,11 +44,13 @@ export const Home = () => {
       <Banner />
       
       <div className="max-w-7xl mx-auto px-4">
-        <LiveNews />
+        <ScrollSlideSection direction="left" index={0}>
+          <LiveNews />
+        </ScrollSlideSection>
         
-        <div className="mt-12">
+        <ScrollSlideSection direction="right" index={1} className="mt-12">
           <WeatherWidget />
-        </div>
+        </ScrollSlideSection>
 
         {/* Dynamic Flying Letters Interactive Assembly Showcase */}
         <div className="mt-16 mb-4 text-center px-4 max-w-4xl mx-auto">
@@ -294,11 +297,8 @@ export const Home = () => {
         </motion.div>
 
         {/* Facebook Group Section */}
-        <div className="mt-20 mb-20 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+        <ScrollSlideSection direction="scale" className="mt-20 mb-20 text-center">
+          <div
             className="p-12 rounded-[3rem] bg-white border border-zinc-100 shadow-2xl shadow-zinc-200/50 relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-500 via-brand-200 to-brand-500"></div>
@@ -332,8 +332,8 @@ export const Home = () => {
                 </span>
               </motion.a>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </ScrollSlideSection>
 
         {/* Hidden SEO Keywords Section */}
         <div className="sr-only" aria-hidden="true">
