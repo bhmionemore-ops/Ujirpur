@@ -4,6 +4,37 @@ import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { parseGeminiJson } from "./utils";
 
 let cachedBotToken: string | null = null;
+let commandsRegistered = false;
+
+async function registerBotCommands(botToken: string) {
+  if (commandsRegistered) return;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        commands: [
+          { command: "start", description: "Start or status check of Barnali AI" },
+          { command: "bazar", description: "Browse Barnia Local Bazar directory" },
+          { command: "ponjika", description: "Check auspicious days & Ponjika dates" },
+          { command: "credits", description: "Check remaining AI credits" },
+          { command: "link", description: "Connect family tree: /link <email>" },
+          { command: "unlink", description: "Disconnect connected family tree" },
+          { command: "help", description: "View commands details and manual" }
+        ]
+      })
+    });
+    const resData = await response.json() as any;
+    if (resData && resData.ok) {
+      console.log("[Telegram] Client command shortcut menus registered successfully.");
+      commandsRegistered = true;
+    } else {
+      console.error("[Telegram] setMyCommands failed:", resData);
+    }
+  } catch (error) {
+    console.error("[Telegram] Error registering Telegram client commands:", error);
+  }
+}
 
 export async function getTelegramBotToken(): Promise<string | null> {
   if (cachedBotToken) {
@@ -68,19 +99,35 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     return;
   }
 
+  // Register modern quick command shortcut menus dynamically to the user's client app
+  registerBotCommands(botToken).catch(console.error);
+
+  const quickChatMenuMarkup = {
+    keyboard: [
+      [{ text: "🌳 My Family Tree" }, { text: "🌽 Barnia Bazar" }],
+      [{ text: "📅 Local Ponjika" }, { text: "💳 Check Credits" }, { text: "❓ Help" }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false
+  };
+
   const sendMessage = async (msg: string, options: any = {}) => {
     try {
+      const payloadOptions = {
+        reply_markup: quickChatMenuMarkup,
+        ...options
+      };
       const rawRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: msg, ...options })
+        body: JSON.stringify({ chat_id: chatId, text: msg, ...payloadOptions })
       });
       if (!rawRes.ok && options.parse_mode) {
         // Fallback to plain text if markdown formatting failed
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: msg })
+          body: JSON.stringify({ chat_id: chatId, text: msg, reply_markup: quickChatMenuMarkup })
         });
       }
     } catch (e) {
@@ -95,6 +142,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   let currentCredits = 10;
   let linkedProfile: any = null;
   let isNewUser = false;
+  let telegramName = `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || "Friend";
 
   const cachedUser = telegramLinkCache.get(chatId);
   const cacheAge = cachedUser ? (Date.now() - cachedUser.timestamp) : Infinity;
@@ -105,7 +153,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     linkedShareId = cachedUser.linkedShareId || null;
     currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
     linkedProfile = cachedUser.linkedProfile || null;
-    console.log(`[Telegram Cache Hit] User: ${chatId}, LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
+    telegramName = cachedUser.telegramName || telegramName;
+    console.log(`[Telegram Cache Hit] User: ${chatId} (${telegramName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
   } else {
     if (adminDb) {
       try {
@@ -117,11 +166,12 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedProfileId = udata.linkedProfileId || null;
           linkedEmail = udata.linkedEmail || null;
           linkedShareId = udata.linkedShareId || null;
+          telegramName = udata.name || telegramName;
         } else {
           isNewUser = true;
           await userRef.set({
             id: chatId.toString(),
-            name: `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || `Chat ${chatId}`,
+            name: telegramName,
             username: from.username || null,
             credits: 10,
             role: "user",
@@ -145,6 +195,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedShareId,
           currentCredits,
           linkedProfile,
+          telegramName,
           timestamp: Date.now()
         });
       } catch (err) {
@@ -153,11 +204,91 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     }
   }
 
-  // Standard static command routing
-  const textLower = text.toLowerCase().trim();
+  // Support quick menu buttons mapping: map quick buttons text to clean actions
+  let cleanText = text.trim();
+  if (cleanText.startsWith("🌳 ") || cleanText.startsWith("🌽 ") || cleanText.startsWith("📅 ") || cleanText.startsWith("💳 ") || cleanText.startsWith("❓ ") || cleanText.startsWith("⚙️ ")) {
+    const rawNoEmoji = cleanText.substring(2).trim();
+    if (rawNoEmoji.toLowerCase().includes("family tree")) {
+      cleanText = "view my family tree";
+    } else if (rawNoEmoji.toLowerCase().includes("bazar")) {
+      cleanText = "tell me about barnia bazar";
+    } else if (rawNoEmoji.toLowerCase().includes("ponjika")) {
+      cleanText = "check local ponjika";
+    } else if (rawNoEmoji.toLowerCase().includes("credits")) {
+      cleanText = "/credits";
+    } else if (rawNoEmoji.toLowerCase().includes("help")) {
+      cleanText = "/help";
+    }
+  }
+
+  // Handle explicit non-slash commands that came from menus in lower case
+  let textLower = cleanText.toLowerCase().trim();
+
+  if (textLower === "view my family tree" || textLower === "/tree") {
+    if (linkedProfile && linkedProfile.shareId) {
+      const treeLink = `https://barnia.in/vamshavali/v/${linkedProfile.shareId}`;
+      await sendMessage(
+        `🌳 *Your Connected Family Tree* 🌳\n\n` +
+        `👤 *Name:* ${linkedProfile.name}\n` +
+        `🔗 *Public Link:* [My Family Tree Link](${treeLink})\n\n` +
+        `You can easily view or link other family relatives by chatting with me directly here!`,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    } else {
+      await sendMessage(
+        `⚠️ *No Family Tree Connected*\n\n` +
+        `To link your family tree to this Telegram chat, please type:\n` +
+        `/link <your-email> (for example: \`/link contact@barnia.in\`).`,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+  }
+
+  if (textLower === "/credits" || textLower === "check credits") {
+    await sendMessage(
+      `💳 *AI Assistant Credits Check* 💳\n\n` +
+      `👤 *User:* ${telegramName}\n` +
+      `✨ *Current Credit Balance:* \`${currentCredits}\`\n\n` +
+      `Every query or custom tree update uses 1 credit.\n` +
+      `Need more? Visit [barnia.in/ai-router](https://barnia.in/ai-router) to recharge!`,
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
+
+  if (textLower === "/help" || textLower === "help") {
+    const linkStatus = linkedProfile 
+      ? `✅ Linked to *"${linkedProfile.name}"*`
+      : `❌ Not connected yet. Use \`/link <email>\` to link.`;
+      
+    await sendMessage(
+      `🌸 *Barnali AI Bot Help Manual* 🌸\n\n` +
+      `I am Barnali, your conversational AI companion for **Barnia Digital Hub** (\`barnia.in\`).\n\n` +
+      `🚦 *Current Connection Status:*\n` +
+      `• *User Profile:* ${linkStatus}\n` +
+      `• *Your Balance:* \`${currentCredits}\` credits\n\n` +
+      `🛠️ *Available Commands:*\n` +
+      `• \`/start\` - Boot/status check\n` +
+      `• \`/link <email>\` - Connect tree via registered email\n` +
+      `• \`/unlink\` - Disconnect tree from Telegram\n` +
+      `• \`/credits\` - Check remaining AI credits\n` +
+      `• \`/help\` - Show helpful commands manual\n\n` +
+      `✨ *Quick Chat Menu Buttons:*\n` +
+      `Use the simple buttons at the bottom of your screen to trigger immediate actions:\n` +
+      `• *🌳 My Family Tree* - Display your registered Vamshavali page link\n` +
+      `• *🌽 Barnia Bazar* - Check market items, local prices & shops\n` +
+      `• *📅 Local Ponjika* - Check rural Hindu calendars & auspicious timings\n` +
+      `• *💳 Check Credits* - Show remaining assistant credits\n\n` +
+      `Type any general queries about Barnia village, directories, or your lineage, and I'll assist!`,
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
 
   // Support /start and /start <param> (deeplink)
-  const startParts = text.trim().split(/\s+/);
+  const startParts = cleanText.trim().split(/\s+/);
   const isStartCmd = startParts[0].toLowerCase() === "/start";
 
   if (isStartCmd) {
@@ -198,6 +329,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedShareId: foundProfile.shareId || null,
           currentCredits,
           linkedProfile: foundProfile,
+          telegramName,
           timestamp: Date.now()
         });
 
@@ -233,6 +365,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
                 linkedShareId: newProfile.shareId || null,
                 currentCredits,
                 linkedProfile: newProfile,
+                telegramName,
                 timestamp: Date.now()
               });
 
@@ -322,6 +455,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedShareId: null,
           currentCredits,
           linkedProfile: null,
+          telegramName,
           timestamp: Date.now()
         });
 
@@ -389,7 +523,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail: foundProfile.email || null,
           linkedShareId: foundProfile.shareId || null,
           updatedAt: new Date().toISOString()
-        }, { merge: merge => true });
+        }, { merge: true });
       }
 
       // Update memory cache
@@ -399,6 +533,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         linkedShareId: foundProfile.shareId || null,
         currentCredits,
         linkedProfile: foundProfile,
+        telegramName,
         timestamp: Date.now()
       });
 
@@ -432,6 +567,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
               linkedShareId: newProfile.shareId || null,
               currentCredits,
               linkedProfile: newProfile,
+              telegramName,
               timestamp: Date.now()
             });
 
@@ -460,7 +596,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   // 3. Process Photo upload (caching / capturing URL)
   let activePhotoUrl: string | null = null;
-  const unifiedPrompt = message.caption || message.text || "";
+  const unifiedPrompt = message.caption || cleanText || "";
 
   if (message.photo) {
     const photo = message.photo[message.photo.length - 1]; // maximum size
@@ -495,6 +631,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedShareId,
           currentCredits,
           linkedProfile,
+          telegramName,
           timestamp: Date.now()
         });
       }
@@ -523,6 +660,10 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
     const systemPrompt = `You are Barnali 🌸, the smart, friendly, and helpful AI assistant for the barnia.in app (Barnia Digital Hub).
 
+The user you are chatting with is named: ${telegramName}.
+When greeting them or welcoming them, ALWAYS make sure to treat them with warmth and refer to them as "${telegramName}".
+If they are starting, returning, or continuing the conversation, you should naturally greet them with a polite phrase like "Welcome back, ${telegramName}!" or "Hello again, ${telegramName}!".
+
 STRICT COMPLIANCE RULES:
 1. **Scope Limits**: You MUST ONLY answer questions about the barnia.in application, its features, and Barnia village. 
    Features of barnia.in include:
@@ -543,7 +684,7 @@ ${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '
 
 - If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
 - If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
-  1. Produce a structured JSON payload response matching this exact shape:
+  1. Produce a structured JSON payload response matching this exact shape ONLY if the required files or metadata are actually supplied:
   {
     "isUpdate": true,
     "updatedProfile": { <insert the FULL updated profile JSON incorporating all original details with the newly requested modifications applied> },
@@ -553,12 +694,13 @@ ${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '
   3. Generating member additions: generate unique IDs (e.g., 'member_id_xyz123') for new children/spouses.
   4. PICTURE/PHOTO UPDATES INSTRUCTIONS:
      - The user has provided an image/picture URL to associate: "${activePhotoUrl || ""}"
-     - **Kuldevi / Kuldavi (Deity)**: If they express the intent to upload or set the image of "Kuldevi" or "Kuldavi" (or family goddess/deity), set the root-level property 'kuldeviPhoto' of the profile to "${activePhotoUrl || ""}".
-     - **Specific Relative by Name**: If they name a member (e.g., "upload this picture of Abhay", "this is Abhay's picture", "update Abhay's picture"), recursively find a member whose name is "Abhay" (case-insensitive, fuzzy or partial match) and update their 'photo' property to "${activePhotoUrl || ""}".
+     - **CRITICAL - Handling Missing Photos**: If the user asks or expresses the intent to set, change, add, or update a photo/picture/avatar for themselves, Kuldevi, or any relative (e.g., "add my kuldavi picture", "update Abhay's picture", "set a photo of Abhay") but they HAVE NOT attached any image/photo in their message (and the image/picture URL provided above is empty/blank: "${activePhotoUrl || ""}"), you MUST NOT perform a tree update or output JSON. Instead, you MUST directly respond with friendly standard human-readable text (not JSON) in Bengali or English politely instructing them to attach/upload the actual picture file along with their message in Telegram so that you can receive the image and apply it to their tree.
+     - **Kuldevi / Kuldavi (Deity)**: If they express the intent to upload or set the image of "Kuldevi" or "Kuldavi" (or family goddess/deity) AND they have provided a valid non-empty photo URL, set the root-level property 'kuldeviPhoto' of the profile to "${activePhotoUrl || ""}".
+     - **Specific Relative by Name**: If they name a member (e.g., "upload this picture of Abhay", "this is Abhay's picture", "update Abhay's picture") and have provided a photo URL, recursively find a member whose name is "Abhay" (case-insensitive, fuzzy or partial match) and update their 'photo' property to "${activePhotoUrl || ""}".
      - **Spouse / Wife / "viva" / Partner**:
-       - If they say "upload this picture of [Name]'s wife / partner / sponsor / spouse / viva", locate the member with that name (e.g., "Abhay") and set their 'partner.photo' property to "${activePhotoUrl || ""}". If the 'partner' object is missing or null under that member, initialize it like 'partner: { name: "Spouse of " + Name, photo: "${activePhotoUrl || ""}" }'.
-       - If they say "upload this picture of my partner / wife / viva / spouse", locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
-     - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo", trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".
+       - If they say "upload this picture of [Name]'s wife / partner / sponsor / spouse / viva" and have provided a photo URL, locate the member with that name (e.g., "Abhay") and set their 'partner.photo' property to "${activePhotoUrl || ""}". If the 'partner' object is missing or null under that member, initialize it like 'partner: { name: "Spouse of " + Name, photo: "${activePhotoUrl || ""}" }'.
+       - If they say "upload this picture of my partner / wife / viva / spouse" and have provided a photo URL, locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
+     - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo" and have provided a photo URL, trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".
 - If the request is NOT a family tree modification (e.g., just general help, asking about Bazar, asking about auspicious dates, or querying details from their tree), proceed by returning standard human-readable text directly (do NOT wrap inside JSON structure).
 
 Format answers beautifully. Speak in Bengali or English based on the user's language. Keep answers concise.`;
@@ -599,6 +741,7 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
             linkedShareId: finalizedProfile.shareId || linkedShareId || null,
             currentCredits,
             linkedProfile: finalizedProfile,
+            telegramName,
             timestamp: Date.now()
           });
           
