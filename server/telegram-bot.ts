@@ -36,6 +36,74 @@ async function registerBotCommands(botToken: string) {
   }
 }
 
+export function inferGenderByName(rawName: string): "male" | "female" {
+  const clean = (rawName || "").trim().toLowerCase();
+  
+  const femaleSuffixes = [
+    "devi", "devi ji", "kumari", "didi", "srimati", "shrimati", "mrs", "ms", "miss", 
+    "di", "lata", "asha", "rekha", "savitri", "sita", "gita", "rita", "barnali", 
+    "anita", "priya", "kiran", "pooja", "neha", "reena", "meena", "sunita", "geeta",
+    "sharda", "preeti", "jyoti", "mamta", "babita", "kavita", "savita", "meera",
+    "radha", "laxmi", "saraswati", "gouri", "umavati", "parvati", "durga"
+  ];
+  
+  const isFemale = femaleSuffixes.some(sf => clean.includes(sf));
+  if (isFemale) return "female";
+  
+  const endsWithFemaleVowel = clean.endsWith("i") || clean.endsWith("a") || clean.endsWith("ee");
+  if (endsWithFemaleVowel) {
+    return "female";
+  }
+  
+  return "male";
+}
+
+export function formatRespectfulName(rawName: string, linkedProfile: any = null, lang: "ben" | "hin" | "eng" = "eng"): string {
+  const clean = (rawName || "").trim();
+  if (!clean || clean.toLowerCase() === "friend") {
+    if (lang === "ben") return "শ্রদ্ধেয় সুধী";
+    if (lang === "hin") return "आदरणीय महानुभाव";
+    return "Respected Friend";
+  }
+
+  // Determine gender
+  let gender: "male" | "female" = "male";
+  if (linkedProfile) {
+    if (linkedProfile.gender === "female") {
+      gender = "female";
+    } else if (linkedProfile.gender === "male") {
+      gender = "male";
+    } else {
+      const nameVal = linkedProfile.name || "";
+      gender = inferGenderByName(nameVal);
+    }
+  } else {
+    gender = inferGenderByName(clean);
+  }
+
+  const isFemale = gender === "female";
+
+  if (lang === "ben") {
+    if (isFemale) {
+      return `${clean} Didi`;
+    } else {
+      return `${clean} Babu`;
+    }
+  } else if (lang === "hin") {
+    if (isFemale) {
+      return `${clean} Devi Ji`;
+    } else {
+      return `${clean} Ji`;
+    }
+  } else {
+    if (isFemale) {
+      return "Madam";
+    } else {
+      return "Sir";
+    }
+  }
+}
+
 export async function getTelegramBotToken(): Promise<string | null> {
   if (cachedBotToken) {
     return cachedBotToken;
@@ -144,6 +212,16 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   let isNewUser = false;
   let telegramName = `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || "Friend";
 
+  const telegramLangCode = (from.language_code || "en").toLowerCase();
+  let userLang: "ben" | "hin" | "eng" = "eng";
+  if (telegramLangCode.startsWith("bn")) {
+    userLang = "ben";
+  } else if (telegramLangCode.startsWith("hi")) {
+    userLang = "hin";
+  }
+
+  let respectfulName = formatRespectfulName(telegramName, null, userLang);
+
   const cachedUser = telegramLinkCache.get(chatId);
   const cacheAge = cachedUser ? (Date.now() - cachedUser.timestamp) : Infinity;
 
@@ -154,7 +232,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
     linkedProfile = cachedUser.linkedProfile || null;
     telegramName = cachedUser.telegramName || telegramName;
-    console.log(`[Telegram Cache Hit] User: ${chatId} (${telegramName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
+    respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
+    console.log(`[Telegram Cache Hit] User: ${chatId} (${respectfulName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
   } else {
     if (adminDb) {
       try {
@@ -167,6 +246,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail = udata.linkedEmail || null;
           linkedShareId = udata.linkedShareId || null;
           telegramName = udata.name || telegramName;
+          respectfulName = formatRespectfulName(telegramName, null, userLang);
         } else {
           isNewUser = true;
           await userRef.set({
@@ -185,6 +265,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           if (snap.exists) {
             linkedProfile = { id: snap.id, ...snap.data() };
             linkedShareId = linkedProfile.shareId || null;
+            respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
           }
         }
 
@@ -249,7 +330,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   if (textLower === "/credits" || textLower === "check credits") {
     await sendMessage(
       `💳 *AI Assistant Credits Check* 💳\n\n` +
-      `👤 *User:* ${telegramName}\n` +
+      `👤 *User:* ${respectfulName}\n` +
       `✨ *Current Credit Balance:* \`${currentCredits}\`\n\n` +
       `Every query or custom tree update uses 1 credit.\n` +
       `Need more? Visit [barnia.in/ai-router](https://barnia.in/ai-router) to recharge!`,
@@ -395,45 +476,114 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       }
     } else {
       const userFirstName = from.first_name || from.username || "Friend";
+      const userRespectful = formatRespectfulName(userFirstName, linkedProfile, userLang);
       
       if (linkedProfile) {
         // Welcoming back a linked returning user
-        const treeLink = linkedProfile.shareId 
-          ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId})`
-          : `[My Family Tree](https://barnia.in/vamshavali)`;
-          
-        await sendMessage(
-          `🌸 *Welcome back, ${userFirstName}!* 🌸\n\n` +
-          `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
-          `💖 *Active Connection:*\n` +
-          `• *Linked Tree:* *"${linkedProfile.name}"*\n` +
-          `• *Linked Email:* \`${linkedEmail || "N/A"}\`\n` +
-          `• *Tree Link:* ${treeLink}\n\n` +
-          `I remember you and your family tree! Tell me or send me a photo to update it, or ask me anything about the local Bazar or Ponjika!`,
-          { parse_mode: "Markdown" }
-        );
+        const treeLinkVal = `https://barnia.in/vamshavali/v/${linkedProfile.shareId || linkedProfile.id}`;
+        
+        if (userLang === "ben") {
+          await sendMessage(
+            `🌸 *স্বাগতম, ${userRespectful}!* 🌸\n\n` +
+            `আমি বর্ণালী, আপনার বার্নীয়া ডিজিটাল হাব (*barnia.in*) AI সহকারী।\n\n` +
+            `💖 *সরাসরি সংযোগ:*\n` +
+            `• *যুক্ত বংশাবলী:* *"${linkedProfile.name}"*\n` +
+            `• *যুক্ত ইমেইল:* \`${linkedEmail || "নেই"}\`\n` +
+            `• *বংশাবলী লিংক:* [এখানে দেখুন](${treeLinkVal})\n\n` +
+            `আমি আপনার বংশাবলী তথ্য মনে রেখেছি! কোনো তথ্য বা ছবি আপডেট করতে আমাকে লিখুন, অথবা বার্নীয়া বাজার এবং পঞ্জিকা সম্পর্কে জিজ্ঞেস করুন।`,
+            { parse_mode: "Markdown" }
+          );
+        } else if (userLang === "hin") {
+          await sendMessage(
+            `🌸 *स्वागत है, ${userRespectful}!* 🌸\n\n` +
+            `मैं बर्नाली हूँ, बर्निया डिजिटल हब (*barnia.in*) की आपकी AI सहायक।\n\n` +
+            `💖 *सक्रिय कनेक्शन:*\n` +
+            `• *लिंक्ड वंशावली:* *"${linkedProfile.name}"*\n` +
+            `• *लिंक्ड ईमेल:* \`${linkedEmail || "एन/ए"}\`\n` +
+            `• *वंशावली लिंक:* [यहाँ देखें](${treeLinkVal})\n\n` +
+            `मुझे आपका वंशावली विवरण याद है! जानकारी अपडेट करने या फोटो जोड़ने के लिए मुझे संदेश भेजें, या बर्निया बाजार/पंजिका के बारे में पूछें।`,
+            { parse_mode: "Markdown" }
+          );
+        } else {
+          const treeLink = linkedProfile.shareId 
+            ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId})`
+            : `[My Family Tree](https://barnia.in/vamshavali)`;
+            
+          await sendMessage(
+            `🌸 *Welcome back, ${userRespectful}!* 🌸\n\n` +
+            `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+            `💖 *Active Connection:*\n` +
+            `• *Linked Tree:* *"${linkedProfile.name}"*\n` +
+            `• *Linked Email:* \`${linkedEmail || "N/A"}\`\n` +
+            `• *Tree Link:* ${treeLink}\n\n` +
+            `I remember you and your family tree! Tell me or send me a photo to update it, or ask me anything about the local Bazar or Ponjika!`,
+            { parse_mode: "Markdown" }
+          );
+        }
       } else if (!isNewUser) {
         // Welcoming back an unlinked returning user
-        await sendMessage(
-          `🌸 *Welcome back, ${userFirstName}!* 🌸\n\n` +
-          `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
-          `🔗 *Link Your Family Tree:*\n` +
-          `To enable tree updates, please link your profile first by typing:\n` +
-          `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
-          `Let me know how I can assist you today with the *barnia.in* app!`,
-          { parse_mode: "Markdown" }
-        );
+        if (userLang === "ben") {
+          await sendMessage(
+            `🌸 *স্বাগতম, ${userRespectful}!* 🌸\n\n` +
+            `আমি বর্ণালী, আপনার বার্নীয়া ডিজিটাল হাব (*barnia.in*) AI সহকারী।\n\n` +
+            `🔗 *আপনার বংশাবলী লিংক করুন:*\n` +
+            `ব্যক্তিগত লিংক পাওয়ার জন্য অনুগ্রহ করে আপনার বংশাবলীটি লিংক করুন। সেজন্য এভাবে লিখুন:\n` +
+            `\`/link <আপনার-ইমেইল>\` অথবা \`/link <শেয়ার আইডি>\` (উদাহরণ: \`/link contact@barnia.in\`)।\n\n` +
+            `আমাকে বলুন আজকে আপনাকে কীভাবে সাহায্য করতে পারি!`,
+            { parse_mode: "Markdown" }
+          );
+        } else if (userLang === "hin") {
+          await sendMessage(
+            `🌸 *स्वागत है, ${userRespectful}!* 🌸\n\n` +
+            `मैं बर्नाली हूँ, बर्निया डिजिटल हब (*barnia.in*) की आपकी AI सहायक।\n\n` +
+            `🔗 *अपनी वंशावली लिंक करें:*\n` +
+            `अपनी वंशावली से सीधे जुड़ने के लिए, कृपया पहले अपना ईमेल या शेयर आईडी लिखकर लिंक करें:\n` +
+            `\`/link <आपका-ईमेल>\` या \`/link <शेयर_आईडी>\` (उदाहरण: \`/link contact@barnia.in\`)।\n\n` +
+            `मुझे बताएं कि मैं आज आपकी कैसे सहायता कर सकती हूँ!`,
+            { parse_mode: "Markdown" }
+          );
+        } else {
+          await sendMessage(
+            `🌸 *Welcome back, ${userRespectful}!* 🌸\n\n` +
+            `I am Barnali, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+            `🔗 *Link Your Family Tree:*\n` +
+            `To enable tree updates, please link your profile first by typing:\n` +
+            `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
+            `Let me know how I can assist you today with the *barnia.in* app!`,
+            { parse_mode: "Markdown" }
+          );
+        }
       } else {
         // First-time start
-        await sendMessage(
-          `Hello ${userFirstName}! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
-          `I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n` +
-          `🔗 *Link Your Family Tree:*\n` +
-          `To enable tree updates, please link your profile first by typing:\n` +
-          `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
-          `Let me know how I can assist you today with the *barnia.in* app!`,
-          { parse_mode: "Markdown" }
-        );
+        if (userLang === "ben") {
+          await sendMessage(
+            `নমস্কার ${userRespectful}! আমি বর্ণালী 🌸, আপনার বার্নীয়া ডিজিটাল হাব (*barnia.in*) AI সহকারী।\n\n` +
+            `আমি আপনাকে আপনার বংশাবলী (Vamshavali) পরিচালনা করতে, স্থানীয় বাজার দেখতে, এবং পঞ্জিকা সম্পর্কে তথ্য পেতে সাহায্য করার জন্য নিবেদিত।\n\n` +
+            `🔗 *আপনার বংশাবলী লিংক করুন:*\n` +
+            `শুরু করতে প্রথমে আপনার অ্যাকাউন্ট লিংক করুন:\n` +
+            `\`/link <আপনার-ইমেইল>\` (যেমন \`/link contact@barnia.in\`)।`,
+            { parse_mode: "Markdown" }
+          );
+        } else if (userLang === "hin") {
+          await sendMessage(
+            `नमस्ते ${userRespectful}! मैं बर्नाली 🌸 हूँ, बर्निया डिजिटल हब (*barnia.in*) की आपकी AI सहायक।\n\n` +
+            `मैं वंशावली (Vamshavali) को प्रबंधित करने, स्थानीय बाज़ार की वस्तुओं और पंजिका की शुभ तिथियाँ देखने में आपकी सहायता करने के लिए समर्पित हूँ।\n\n` +
+            `🔗 *अपनी वंशावली लिंक करें:*\n` +
+            `प्रारंभ करने के लिए, कृपया पहले टाइप करके अपनी वंशावली जोड़ें:\n` +
+            `\`/link <आपका-ईमेल>\` (जैसे \`/link contact@barnia.in\`)।`,
+            { parse_mode: "Markdown" }
+          );
+        } else {
+          await sendMessage(
+            `Hello ${userRespectful}! I am Barnali 🌸, your AI assistant for Barnia Digital Hub (*barnia.in*).\n\n` +
+            `I am dedicated specifically to helping you manage your village profile, browse the local marketplace (Bazar), see auspicious dates on the Ponjika calendar, and view or edit your family tree (*Vamshavali*).\n\n` +
+            `🔗 *Link Your Family Tree:*\n` +
+            `To enable tree updates, please link your profile first by typing:\n` +
+            `\`/link <your-email>\` or \`/link <shareId>\` (or say: 'link my tree with xyz@gmail.com').\n\n` +
+            `Let me know how I can assist you today with the *barnia.in* app!`,
+            { parse_mode: "Markdown" }
+          );
+        }
       }
       return;
     }
@@ -526,13 +676,19 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         }, { merge: true });
       }
 
+      linkedProfileId = foundProfile.id;
+      linkedEmail = foundProfile.email || null;
+      linkedShareId = foundProfile.shareId || null;
+      linkedProfile = foundProfile;
+      respectfulName = formatRespectfulName(telegramName, foundProfile, userLang);
+
       // Update memory cache
       telegramLinkCache.set(chatId, {
-        linkedProfileId: foundProfile.id,
-        linkedEmail: foundProfile.email || null,
-        linkedShareId: foundProfile.shareId || null,
+        linkedProfileId,
+        linkedEmail,
+        linkedShareId,
         currentCredits,
-        linkedProfile: foundProfile,
+        linkedProfile,
         telegramName,
         timestamp: Date.now()
       });
@@ -560,13 +716,19 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
               }, { merge: true });
             }
 
+            linkedProfileId = newProfile.id;
+            linkedEmail = newProfile.email || null;
+            linkedShareId = newProfile.shareId || null;
+            linkedProfile = newProfile;
+            respectfulName = formatRespectfulName(telegramName, newProfile, userLang);
+
             // Update memory cache
             telegramLinkCache.set(chatId, {
-              linkedProfileId: newProfile.id,
-              linkedEmail: newProfile.email || null,
-              linkedShareId: newProfile.shareId || null,
+              linkedProfileId,
+              linkedEmail,
+              linkedShareId,
               currentCredits,
-              linkedProfile: newProfile,
+              linkedProfile,
               telegramName,
               timestamp: Date.now()
             });
@@ -658,30 +820,59 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   try {
     const apiKey = await getGeminiApiKey();
 
+    let userGender = "male";
+    if (linkedProfile) {
+      if (linkedProfile.gender === "female") userGender = "female";
+      else if (linkedProfile.gender === "male") userGender = "male";
+      else userGender = inferGenderByName(linkedProfile.name || telegramName);
+    } else {
+      userGender = inferGenderByName(telegramName);
+    }
+
     const systemPrompt = `You are Barnali 🌸, the smart, friendly, and helpful AI assistant for the barnia.in app (Barnia Digital Hub).
+ 
+The user you are chatting with is: ${telegramName}.
+Their registered gender is: ${userGender}.
 
-The user you are chatting with is named: ${telegramName}.
-When greeting them or welcoming them, ALWAYS make sure to treat them with warmth and refer to them as "${telegramName}".
-If they are starting, returning, or continuing the conversation, you should naturally greet them with a polite phrase like "Welcome back, ${telegramName}!" or "Hello again, ${telegramName}!".
+STRICT COMPLIANCE RULES ON POLITENESS & RESPECT:
+1. You MUST NEVER address the user bluntly by their direct first name or naked surname (e.g., do NOT say "Hello Uttam!" or "Dear Uttam").
+2. You MUST ALWAYS address them with full courtesy and formal respect depending on the language you are outputting:
+   - If you respond in BENGALI (Bangla):
+     * If male: You MUST ALWAYS address them as "${telegramName} Babu" (e.g., "Uttam Babu").
+     * If female: You MUST ALWAYS address them as "${telegramName} Didi" (e.g., "Sushma Didi").
+   - If you respond in HINDI:
+     * If male: You MUST ALWAYS address them as "${telegramName} Ji" (e.g., "Uttam Ji").
+     * If female: You MUST ALWAYS address them as "${telegramName} Devi Ji" or "${telegramName} Ji" (e.g., "Sushma Devi Ji").
+   - If you respond in ENGLISH:
+     * If male: You MUST ALWAYS address or refer to them as "Sir".
+     * If female: You MUST ALWAYS address or refer to them as "Madam" (or "Ma'am").
+3. Your tone MUST carry premium Indian village hospitality, high warmth, humility, and polite honorific phrasing at all times.
 
-STRICT COMPLIANCE RULES:
-1. **Scope Limits**: You MUST ONLY answer questions about the barnia.in application, its features, and Barnia village. 
-   Features of barnia.in include:
-   - **Vamshavali (Family Tree)**: Interactive digital family lineage mapping.
-   - **AI Router Hub**: SaaS API and AI Tiers playground (optimizing cost details and model routing).
-   - **Barnia Bazar**: Local market retailer and vendor directory.
-   - **Barnia Influencers**: Local digital content creators registry.
-   - **Ponjika Calendar**: Pure Hindu astrological panchanga & rural lunar calendar.
-   - **Sanatani Fact Check**: Dedicated Vedic references validation engine.
-   - **Village Transport**: Transits and booking directories for Barnia.
-2. If the user's inquiry is unrelated to barnia.in, Barnia village, or their linked lineage, you MUST politely decline and ground yourself. Example: "I am Barnali, dedicated specifically to helping you on barnia.in. I can only assist with platform modules, community directories, or linked genealogy trees."
+STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:
+1. Multiple people in Barnia share the same name and surname (e.g., multiple people are named Uttam). To prevent critical data exposure, privacy breaches, and mixing up unrelated family histories, you are STRICTLY FORBIDDEN from guessing, looking up, or suggesting potential family links based on fuzzy name-matching.
+2. Under no circumstance should you share link paths of other people’s trees, or provide details of different lineages with similar names.
+3. Once a user has securely linked their chat to a family tree via their Telegram ID, that linkage is permanently remembered in our Firestore cloud database so they never have to link it again unless they type /unlink.
+4. If they are already linked (their credentials are provided below), confidently guide them and offer updates.
+5. If they are NOT linked, and ask "Where is my family tree?" or "You don't have my family tree link?", you MUST politely explain that you cannot search by name due to overlapping names/surnames in the village. Instruct them to connect their chat securely to their specific family tree by typing "/link <registered_email>" or "/link <Vamshavali_Share_ID>" (e.g., "/link contact@barnia.in" or "/link AB12CD34").
 
+STRICT SCOPE LIMITS:
+- You MUST ONLY answer questions about the barnia.in application, its features, and Barnia village. 
+- Features of barnia.in include:
+  - **Vamshavali (Family Tree)**: Interactive digital family lineage mapping.
+  - **AI Router Hub**: SaaS API and AI Tiers playground (optimizing cost details and model routing).
+  - **Barnia Bazar**: Local market retailer and vendor directory.
+  - **Barnia Influencers**: Local digital content creators registry.
+  - **Ponjika Calendar**: Pure Hindu astrological panchanga & rural lunar calendar.
+  - **Sanatani Fact Check**: Dedicated Vedic references validation engine.
+  - **Village Transport**: Transits and booking directories for Barnia.
+- If the user's inquiry is unrelated to barnia.in, Barnia village, or their linked lineage, you MUST politely decline and ground yourself. Example: "I am Barnali, dedicated specifically to helping you on barnia.in. I can only assist with platform modules, community directories, or linked genealogy trees."
+ 
 FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION & LINK SHARING:
 The user's currently linked Vamshavali profile is:
 ${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
-
+ 
 ${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '${linkedProfile.shareId}' and their public tree link is 'https://barnia.in/vamshavali/v/${linkedProfile.shareId}'.` : "The user does not have a fully linked active tree share ID yet."}
-
+ 
 - If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
 - If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
   1. Produce a structured JSON payload response matching this exact shape ONLY if the required files or metadata are actually supplied:
@@ -702,6 +893,12 @@ ${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '
        - If they say "upload this picture of my partner / wife / viva / spouse" and have provided a photo URL, locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
      - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo" and have provided a photo URL, trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".
 - If the request is NOT a family tree modification (e.g., just general help, asking about Bazar, asking about auspicious dates, or querying details from their tree), proceed by returning standard human-readable text directly (do NOT wrap inside JSON structure).
+- Conversational linking triggers: If the user says "link me to <email_or_share_id>", or you ask them to and they provide an email or Share ID/Code explicitly, you can respond with this JSON to link them:
+{
+  "isLink": true,
+  "shareId": "<the exact share ID or email specified by the user>",
+  "summary": "Linking your Telegram profile..."
+}
 
 Format answers beautifully. Speak in Bengali or English based on the user's language. Keep answers concise.`;
 
@@ -715,11 +912,58 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
     const replyText = (response.text || "").trim();
     let isTreeUpdated = false;
 
-    // Detect and parse JSON payloads for tree updates
-    if (replyText.startsWith("{") || replyText.includes('"isUpdate"')) {
+    // Detect and parse JSON payloads for tree updates or database linking
+    if (replyText.startsWith("{") || replyText.includes('"isUpdate"') || replyText.includes('"isLink"')) {
       try {
         const payload = parseGeminiJson(replyText);
-        if (payload && payload.isUpdate && payload.updatedProfile && linkedProfileId) {
+        if (payload && payload.isLink && (payload.shareId || payload.email)) {
+          const searchArg = (payload.shareId || payload.email || "").trim();
+          let matchedProf: any = null;
+          if (adminDb) {
+            const queryEmail = await adminDb.collection("vamshavali_profiles").where("email", "==", searchArg.toLowerCase()).limit(1).get();
+            if (!queryEmail.empty) {
+              matchedProf = { id: queryEmail.docs[0].id, ...queryEmail.docs[0].data() };
+            } else {
+              const queryShare = await adminDb.collection("vamshavali_profiles").where("shareId", "==", searchArg.toUpperCase()).limit(1).get();
+              if (!queryShare.empty) {
+                matchedProf = { id: queryShare.docs[0].id, ...queryShare.docs[0].data() };
+              }
+            }
+          }
+          if (matchedProf) {
+            if (adminDb) {
+              await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+                linkedProfileId: matchedProf.id,
+                linkedEmail: matchedProf.email || null,
+                linkedShareId: matchedProf.shareId || null,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+            // Update local memory variables
+            linkedProfileId = matchedProf.id;
+            linkedEmail = matchedProf.email || null;
+            linkedShareId = matchedProf.shareId || null;
+            linkedProfile = matchedProf;
+
+            telegramLinkCache.set(chatId, {
+              linkedProfileId,
+              linkedEmail,
+              linkedShareId,
+              currentCredits,
+              linkedProfile,
+              telegramName,
+              timestamp: Date.now()
+            });
+
+            await sendMessage(`✅ *Family Tree Connected Conversationaly!*\n\n` +
+              `I have successfully linked your Telegram chat to the family tree of *"${matchedProf.name}"* 🎉.\n\n` +
+              `You can now view/manage your tree at any time here, or via the live link: [My Family Tree](https://barnia.in/vamshavali/v/${matchedProf.shareId || matchedProf.id}).`, { parse_mode: "Markdown" });
+            isTreeUpdated = true;
+          } else {
+            await sendMessage(`❌ *Could not find that family tree.* Please verify your Email or Share ID and try again!`);
+            isTreeUpdated = true;
+          }
+        } else if (payload && payload.isUpdate && payload.updatedProfile && linkedProfileId) {
           const profileRef = adminDb.collection("vamshavali_profiles").doc(linkedProfileId);
           
           const finalizedProfile = {
