@@ -61,6 +61,45 @@ async function startServer() {
     handleTelegramWebhook(req, res, lastPhotos, telegramLinkCache, DB.db, DB.adminDb);
   });
 
+  // Telegram Image Local Proxy to prevent token leakage and allow secure browser rendering
+  app.get("/api/telegram-image/*", async (req, res) => {
+    try {
+      const filePath = req.params[0];
+      if (!filePath) {
+        return res.status(400).send("File path is required.");
+      }
+
+      // Dynamically locate the telegram bot token exactly like we do in the bot code
+      const botTokenKey = Object.keys(process.env).find(k => {
+        const uk = k.toUpperCase();
+        return uk.includes('TELEGRAM') && uk.includes('BOT') && !uk.includes('USER');
+      });
+      const token = botTokenKey ? process.env[botTokenKey]?.trim() : null;
+
+      if (!token) {
+        console.error("[Telegram Image Proxy] Bot token missing from env variables.");
+        return res.status(500).send("Telegram bot token not configured.");
+      }
+
+      const telegramUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+      const response = await fetch(telegramUrl);
+      
+      if (!response.ok) {
+        return res.status(response.status).send("Failed to retrieve image from Telegram.");
+      }
+
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400"); // cache for 1 day
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return res.end(buffer);
+    } catch (err: any) {
+      console.error("[Telegram Image Proxy] Error proxying file:", err);
+      return res.status(500).send("Internal server error proxying file.");
+    }
+  });
+
   // Setup Routes
   setupRoutes(app, DB.db, DB.adminDb, DB.firebaseConfig, newsLocks);
   setupGeminiRoute(app);

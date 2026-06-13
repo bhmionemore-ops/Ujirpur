@@ -138,7 +138,7 @@ async function getTelegramFileUrl(fileId: string, botToken: string): Promise<str
     const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
     const fileData = await fileRes.json() as any;
     if (fileData && fileData.ok && fileData.result && fileData.result.file_path) {
-      return `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
+      return `/api/telegram-image/${fileData.result.file_path}`;
     }
   } catch (e) {
     console.error("[Telegram Bot] Error getting file path:", e);
@@ -232,8 +232,11 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
     linkedProfile = cachedUser.linkedProfile || null;
     telegramName = cachedUser.telegramName || telegramName;
+    if (cachedUser.userLang) {
+      userLang = cachedUser.userLang;
+    }
     respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
-    console.log(`[Telegram Cache Hit] User: ${chatId} (${respectfulName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}`);
+    console.log(`[Telegram Cache Hit] User: ${chatId} (${respectfulName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}, Lang: ${userLang}`);
   } else {
     if (adminDb) {
       try {
@@ -246,6 +249,9 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail = udata.linkedEmail || null;
           linkedShareId = udata.linkedShareId || null;
           telegramName = udata.name || telegramName;
+          if (udata.language) {
+            userLang = udata.language;
+          }
           respectfulName = formatRespectfulName(telegramName, null, userLang);
         } else {
           isNewUser = true;
@@ -255,6 +261,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             username: from.username || null,
             credits: 10,
             role: "user",
+            language: userLang,
             createdAt: new Date().toISOString()
           });
         }
@@ -277,12 +284,50 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           currentCredits,
           linkedProfile,
           telegramName,
+          userLang,
           timestamp: Date.now()
         });
       } catch (err) {
         console.error("[Telegram] State retrieval / bootstrap error:", err);
       }
     }
+  }
+
+  // Auto-detect and switch conversation language on Bengali or Hindi script input
+  let autoDetectedLang: "ben" | "hin" | "eng" | null = null;
+  if (/[\u0980-\u09FF]/.test(text)) {
+    autoDetectedLang = "ben";
+  } else if (/[\u0900-\u097F]/.test(text)) {
+    autoDetectedLang = "hin";
+  }
+
+  if (autoDetectedLang && autoDetectedLang !== userLang) {
+    userLang = autoDetectedLang;
+    respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
+    if (adminDb) {
+      try {
+        await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+          language: userLang,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error("[Telegram] Error saving auto-detected language:", err);
+      }
+    }
+    // Update local cache
+    const latestCache = telegramLinkCache.get(chatId) || {};
+    telegramLinkCache.set(chatId, {
+      ...latestCache,
+      linkedProfileId,
+      linkedEmail,
+      linkedShareId,
+      currentCredits,
+      linkedProfile,
+      telegramName,
+      userLang,
+      timestamp: Date.now()
+    });
+    console.log(`[Telegram] Instantly switched user ${chatId} language to ${userLang} based on script input.`);
   }
 
   // Support quick menu buttons mapping: map quick buttons text to clean actions
@@ -354,6 +399,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       `• \`/start\` - Boot/status check\n` +
       `• \`/link <email>\` - Connect tree via registered email\n` +
       `• \`/unlink\` - Disconnect tree from Telegram\n` +
+      `• \`/lang <bn/hi/en>\` - Set language (Bengali, Hindi, English)\n` +
       `• \`/credits\` - Check remaining AI credits\n` +
       `• \`/help\` - Show helpful commands manual\n\n` +
       `✨ *Quick Chat Menu Buttons:*\n` +
@@ -365,6 +411,76 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       `Type any general queries about Barnia village, directories, or your lineage, and I'll assist!`,
       { parse_mode: "Markdown" }
     );
+    return;
+  }
+
+  // Language setting command handler
+  if (textLower.startsWith("/lang") || textLower.startsWith("/language")) {
+    const parts = textLower.split(/\s+/);
+    let newLang: "ben" | "hin" | "eng" = "eng";
+    let langNameStr = "English 🇬🇧";
+    
+    if (parts.length > 1) {
+      const arg = parts[1].trim();
+      if (arg.startsWith("bn") || arg.startsWith("ba") || arg.includes("beng") || arg.includes("bang")) {
+        newLang = "ben";
+        langNameStr = "বাংলা 🇧🇩/🇮🇳";
+      } else if (arg.startsWith("hi") || arg.includes("hind")) {
+        newLang = "hin";
+        langNameStr = "हिंदी 🇮🇳";
+      } else if (arg.startsWith("en") || arg.includes("eng")) {
+        newLang = "eng";
+        langNameStr = "English 🇬🇧";
+      }
+    } else {
+      await sendMessage(
+        `ℹ️ *Preferred Language Settings*\n\n` +
+        `Specify your desired language:\n` +
+        `• \`/lang bn\` - Bengali / বাংলা\n` +
+        `• \`/lang hi\` - Hindi / हिंदी\n` +
+        `• \`/lang en\` - English / English\n\n` +
+        `Current language: *${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English"}*`,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+    
+    // Save in firestore
+    if (adminDb) {
+      try {
+        await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+          language: newLang,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error("[Telegram] Error updating language command in Firestore:", err);
+      }
+    }
+    
+    // Update local cache
+    const latestCache = telegramLinkCache.get(chatId) || {};
+    telegramLinkCache.set(chatId, {
+      ...latestCache,
+      linkedProfileId,
+      linkedEmail,
+      linkedShareId,
+      currentCredits,
+      linkedProfile,
+      telegramName,
+      userLang: newLang,
+      timestamp: Date.now()
+    });
+
+    userLang = newLang;
+    respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
+
+    if (newLang === "ben") {
+      await sendMessage(`✅ আপনার ভাষা পরিবর্তন করে *বাংলা* করা হয়েছে! এখন থেকে আমি বাংলায় উত্তর দেব।`, { parse_mode: "Markdown" });
+    } else if (newLang === "hin") {
+      await sendMessage(`✅ आपकी भाषा बदलकर *हिंदी* कर दी गई है! अब से मैं हिंदी में उत्तर दूँगी।`, { parse_mode: "Markdown" });
+    } else {
+      await sendMessage(`✅ Language successfully updated to *English*! I will reply in English from now on.`, { parse_mode: "Markdown" });
+    }
     return;
   }
 
@@ -963,38 +1079,50 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
             await sendMessage(`❌ *Could not find that family tree.* Please verify your Email or Share ID and try again!`);
             isTreeUpdated = true;
           }
-        } else if (payload && payload.isUpdate && payload.updatedProfile && linkedProfileId) {
-          const profileRef = adminDb.collection("vamshavali_profiles").doc(linkedProfileId);
-          
-          const finalizedProfile = {
-            ...payload.updatedProfile,
-            id: linkedProfileId,
-            updatedAt: new Date().toISOString()
-          };
-          delete finalizedProfile.serverKey; // ensure clean persistence
-          
-          await profileRef.set(finalizedProfile, { merge: true });
-          
-          // Clear cached state photo
-          lastPhotos.delete(chatId);
+        } else if (payload && payload.isUpdate && payload.updatedProfile) {
+          if (!linkedProfileId) {
+            await sendMessage(
+              `⚠️ *Could not apply updates*\n\n` +
+              `I formulated the updates for your family tree, but I cannot save them because your Telegram chat is not linked to any profile.\n\n` +
+              `To save these updates, please link your profile first by typing:\n` +
+              `\`/link <your-registered-email>\` (e.g. \`/link contact@barnia.in\`)`, 
+              { parse_mode: "Markdown" }
+            );
+            isTreeUpdated = true;
+          } else {
+            const profileRef = adminDb.collection("vamshavali_profiles").doc(linkedProfileId);
+            
+            const finalizedProfile = {
+              ...payload.updatedProfile,
+              id: linkedProfileId,
+              updatedAt: new Date().toISOString()
+            };
+            delete finalizedProfile.serverKey; // ensure clean persistence
+            
+            await profileRef.set(finalizedProfile, { merge: true });
+            
+            // Clear cached state photo
+            lastPhotos.delete(chatId);
 
-          // Update memory cache
-          telegramLinkCache.set(chatId, {
-            linkedProfileId,
-            linkedEmail,
-            linkedShareId: finalizedProfile.shareId || linkedShareId || null,
-            currentCredits,
-            linkedProfile: finalizedProfile,
-            telegramName,
-            timestamp: Date.now()
-          });
-          
-          const traceLink = finalizedProfile.shareId 
-            ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](https://barnia.in/vamshavali/v/${finalizedProfile.shareId}).`
-            : `\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`;
+            // Update memory cache
+            telegramLinkCache.set(chatId, {
+              linkedProfileId,
+              linkedEmail,
+              linkedShareId: finalizedProfile.shareId || linkedShareId || null,
+              currentCredits,
+              linkedProfile: finalizedProfile,
+              telegramName,
+              userLang,
+              timestamp: Date.now()
+            });
+            
+            const traceLink = finalizedProfile.shareId 
+              ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](https://barnia.in/vamshavali/v/${finalizedProfile.shareId}).`
+              : `\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`;
 
-          await sendMessage(`✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`, { parse_mode: "Markdown" });
-          isTreeUpdated = true;
+            await sendMessage(`✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`, { parse_mode: "Markdown" });
+            isTreeUpdated = true;
+          }
         }
       } catch (err: any) {
         console.error("[Telegram Bot] JSON update logic failed:", err.message);
