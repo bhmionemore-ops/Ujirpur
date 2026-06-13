@@ -271,68 +271,7 @@ export const InteractiveScrollEffects = () => {
         </div>
       )}
 
-      {/* 4. MODERN HUD SIDE TRACKER DOCK */}
-      <AnimatePresence>
-        {(isVisible || scrollProgress > 4) && (
-          <motion.div 
-            initial={{ opacity: 0, x: 50, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 30, scale: 0.9 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="fixed right-6 top-[55%] -translate-y-1/2 z-[45] hidden md:flex flex-col items-center gap-4 bg-white/70 backdrop-blur-xl px-4 py-6.5 rounded-full border border-zinc-200/55 shadow-2xl shadow-zinc-500/10 select-none"
-          >
-            <div className="flex flex-col items-center gap-3">
-              {/* Scroll Up Button */}
-              <motion.button
-                onClick={handleScrollToTop}
-                whileHover={{ scale: 1.2, y: -2 }}
-                whileTap={{ scale: 0.9 }}
-                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-brand-500 hover:text-white flex items-center justify-center text-zinc-500 transition-colors shadow-sm outline-none"
-                title={language === 'bn' ? 'উপরে যান' : 'Scroll To Top'}
-              >
-                <ArrowUp size={14} className="stroke-[2.5]" />
-              </motion.button>
-
-              {/* Progress Tube Bar */}
-              <div className="relative w-2.5 h-32 bg-zinc-200/60 rounded-full overflow-hidden border border-zinc-100 shadow-inner">
-                <motion.div 
-                  className={`absolute bottom-0 left-0 w-full bg-gradient-to-t ${config.gradient} rounded-full`}
-                  style={{ height: `${scrollProgress}%` }}
-                />
-              </div>
-
-              {/* Live speed/direction visual feedback & Badge */}
-              <div className="w-8 h-8 rounded-full bg-zinc-100/80 flex items-center justify-center shadow-sm relative group">
-                {config.badgeIcon}
-                <div className="absolute right-10 top-1/2 -translate-y-1/2 hidden group-hover:block bg-zinc-900 text-white text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider whitespace-nowrap">
-                  {config.metric}
-                </div>
-              </div>
-
-              {/* Monospace numerical percent reading */}
-              <div className="flex flex-col items-center">
-                <span className="font-mono text-[11px] font-black text-zinc-800 tracking-tighter leading-none bg-zinc-100 px-1.5 py-1 rounded-md border border-zinc-200/50">
-                  {scrollProgress}%
-                </span>
-                <span className="text-[7px] font-black tracking-widest text-zinc-400 uppercase mt-1.5 leading-none text-center max-w-[48px]">
-                  {config.label}
-                </span>
-              </div>
-
-              {/* Scroll Down Button */}
-              <motion.button
-                onClick={handleScrollToBottom}
-                whileHover={{ scale: 1.2, y: 2 }}
-                whileTap={{ scale: 0.9 }}
-                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-brand-500 hover:text-white flex items-center justify-center text-zinc-500 transition-colors shadow-sm outline-none"
-                title={language === 'bn' ? 'নিচে যান' : 'Scroll To Bottom'}
-              >
-                <ArrowDown size={14} className="stroke-[2.5]" />
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 4. MODERN HUD SIDE TRACKER DOCK (Removed on user request) */}
 
       {/* 5. HIGH INTERACTION CORNER GREETING WATERMARK */}
       <AnimatePresence>

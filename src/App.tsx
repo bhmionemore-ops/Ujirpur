@@ -160,19 +160,31 @@ function AppContent() {
     <div className="min-h-screen bg-culture-bg font-sans text-zinc-900 selection:bg-brand-100 selection:text-brand-900 relative overflow-x-hidden scroll-snap-container">
       <ScrollToTop />
       <InteractiveScrollEffects />
-      {/* Background Decorative Elements */}
+      {/* Background Decorative Elements with Glowing Platinum Saffron Theme */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-200/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-brand-300/10 blur-[120px] rounded-full" />
+        {/* Deep Glowing Saffron Centerpieces */}
+        <div className="absolute top-[-5%] left-[-5%] w-[60%] h-[60%] bg-[#F58E27]/20 blur-[140px] rounded-full animate-saffron-pulse" />
+        <div className="absolute top-[30%] right-[-10%] w-[50%] h-[50%] bg-[#E05608]/15 blur-[150px] rounded-full animate-saffron-pulse-delayed" />
+        <div className="absolute bottom-[-10%] left-[10%] w-[55%] h-[55%] bg-[#FFA43A]/20 blur-[165px] rounded-full animate-saffron-pulse" />
+        
+        {/* Shimmering Premium Platinum-Silver Layers */}
+        <div className="absolute top-[15%] right-[20%] w-[40%] h-[40%] bg-slate-100/35 blur-[130px] rounded-full animate-platinum-pulse" />
+        <div className="absolute bottom-[20%] right-[-5%] w-[45%] h-[45%] bg-slate-200/25 blur-[140px] rounded-full animate-platinum-pulse-delayed" />
+        <div className="absolute top-[50%] left-[-10%] w-[35%] h-[35%] bg-zinc-100/30 blur-[120px] rounded-full animate-platinum-pulse" />
+
+        {/* Dynamic Overlays for Liquid Gold & Metallic Platinum Finish */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(245,142,39,0.14),transparent_65%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.4),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(250,240,230,0.15),transparent_80%)]" />
         <FlyingLettersScrollEffect />
       </div>
 
       {/* Navigation */}
       {!isVamshavali && (
-        <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-zinc-200/50 shadow-sm">
+        <nav className="sticky top-0 z-50 bg-[#FFF5EC]/45 dark:bg-[#1C0D02]/45 backdrop-blur-3xl border-b border-orange-500/25 shadow-[0_10px_40px_rgba(245,142,39,0.15)]">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-4 group cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>
-            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(245,142,39,0.3)] border border-white/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-[0_8px_20px_rgba(245,142,39,0.4)] border border-orange-400/30 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
               <img 
                 src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
                 alt="Barnia Logo" 
@@ -181,8 +193,8 @@ function AppContent() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-600">Barnia</span>
-              <span className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
+              <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-zinc-950 via-brand-900 to-zinc-900">Barnia</span>
+              <span className="text-[10px] font-black text-brand-700 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
             </div>
           </Link>
           
@@ -227,13 +239,13 @@ function AppContent() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-2xl bg-zinc-100/80 hover:bg-white hover:shadow-md transition-all text-xs font-bold text-zinc-700 border border-transparent hover:border-zinc-200"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-2xl bg-white/45 backdrop-blur-md hover:bg-white hover:shadow-lg transition-all text-xs font-bold text-zinc-900 border border-orange-400/20"
               >
-                <Languages size={14} className="text-brand-600" />
+                <Languages size={14} className="text-[#FF5E00]" />
                 <div className="flex items-center gap-1">
-                  <span className={language === 'en' ? 'text-brand-600' : 'text-zinc-400'}>EN</span>
-                  <span className="text-zinc-300">/</span>
-                  <span className={language === 'bn' ? 'text-brand-600' : 'text-zinc-400'}>BN</span>
+                  <span className={language === 'en' ? 'text-[#FF5E00] font-black' : 'text-zinc-500'}>EN</span>
+                  <span className="text-zinc-400">/</span>
+                  <span className={language === 'bn' ? 'text-[#FF5E00] font-black' : 'text-zinc-500'}>BN</span>
                 </div>
               </button>
 
@@ -241,7 +253,7 @@ function AppContent() {
                 <div className="relative">
                   <button 
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2.5 p-1.5 pr-4 rounded-2xl bg-white border border-zinc-200 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-500/5 transition-all"
+                    className="flex items-center gap-2.5 p-1.5 pr-4 rounded-2xl bg-white/45 backdrop-blur-md border border-orange-400/25 hover:border-brand-500 hover:shadow-lg hover:bg-white transition-all animate-slow-pulse"
                   >
                     <div className="relative">
                       {user.photoURL ? (
@@ -314,7 +326,7 @@ function AppContent() {
 
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2.5 rounded-2xl bg-zinc-100 text-zinc-600 hover:bg-white hover:shadow-md transition-all"
+                className="lg:hidden p-2.5 rounded-2xl bg-white/45 text-zinc-800 hover:bg-white hover:shadow-md transition-all border border-orange-400/20"
               >
                 {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -324,7 +336,7 @@ function AppContent() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-b border-zinc-100 py-6 px-4 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="lg:hidden bg-gradient-to-b from-[#FFF5EC]/95 to-[#FFE9D3]/95 backdrop-blur-3xl border-b border-orange-500/20 py-6 px-4 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
             {[
               { to: '/', label: t.nav.news, sectionId: 'news' },
               { to: '/bazar', label: t.nav.bazar },
@@ -396,16 +408,16 @@ function AppContent() {
 
       {/* Footer */}
       {!isVamshavali && (
-        <footer className="bg-zinc-950 text-white pt-24 pb-12 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+        <footer className="bg-gradient-to-b from-orange-950/40 via-zinc-950/90 to-black backdrop-blur-xl border-t border-orange-500/20 text-white pt-24 pb-12 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #FFA000 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-16 mb-20">
             <div className="md:col-span-5">
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg border border-white/10">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg border border-orange-400/20">
                   <img 
                     src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
                     alt="Barnia Logo" 
@@ -414,43 +426,43 @@ function AppContent() {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold tracking-tight text-xl leading-none">Barnia</span>
-                  <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
+                  <span className="font-bold tracking-tight text-xl leading-none bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-amber-200">Barnia</span>
+                  <span className="text-[10px] font-black text-brand-400 uppercase tracking-[0.2em] mt-1">Digital Hub</span>
                 </div>
               </div>
-              <p className="text-zinc-400 max-w-md leading-relaxed text-sm font-medium">
+              <p className="text-zinc-300 max-w-md leading-relaxed text-sm font-medium">
                 {t.footer.about}
               </p>
               <div className="flex gap-4 mt-10">
-                <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-zinc-900 border border-white/5 rounded-2xl flex items-center justify-center hover:bg-[#1877F2] hover:scale-110 hover:-rotate-6 transition-all duration-300 group">
-                  <Facebook size={22} className="text-zinc-400 group-hover:text-white transition-colors" />
+                <a href="https://www.facebook.com/share/r/1HbN6N3EBa/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-white/10 hover:bg-[#1877F2]/80 border border-white/10 rounded-2xl flex items-center justify-center hover:scale-110 hover:-rotate-6 transition-all duration-300 group">
+                  <Facebook size={22} className="text-zinc-300 group-hover:text-white transition-colors" />
                 </a>
-                <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-zinc-900 border border-white/5 rounded-2xl flex items-center justify-center hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:scale-110 hover:rotate-6 transition-all duration-300 group">
-                  <Instagram size={22} className="text-zinc-400 group-hover:text-white transition-colors" />
+                <a href="https://www.instagram.com/ujirpur_barnia_nadia?igsh=Z2tqc3RvNTc1aHV5" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-white/10 hover:bg-gradient-to-tr hover:from-[#f9ce34]/80 hover:via-[#ee2a7b]/80 hover:to-[#6228d7]/80 border border-white/10 rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 group">
+                  <Instagram size={22} className="text-zinc-300 group-hover:text-white transition-colors" />
                 </a>
               </div>
             </div>
             
             <div className="md:col-span-3">
-              <h4 className="font-black mb-8 uppercase text-[11px] tracking-[0.2em] text-brand-500">{t.footer.contact}</h4>
+              <h4 className="font-black mb-8 uppercase text-[11px] tracking-[0.2em] text-brand-400">{t.footer.contact}</h4>
               <ul className="space-y-6 text-sm">
                 <li className="flex items-start gap-4 group">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
-                    <MapPin size={18} className="text-brand-500" />
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center group-hover:border-brand-400/55 transition-colors">
+                    <MapPin size={18} className="text-brand-400" />
                   </div>
-                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156</span>
+                  <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors pt-1">Vill + PO - Barnia, PS - Pallashi Para, Dist - Nadia, State - West Bengal, Pin - 741156</span>
                 </li>
                 <li className="flex items-start gap-4 group">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
-                    <Mail size={18} className="text-brand-500" />
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center group-hover:border-brand-400/55 transition-colors">
+                    <Mail size={18} className="text-[#FFA000]" />
                   </div>
-                  <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors pt-1">info@barnia.in</span>
+                  <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors pt-1">info@barnia.in</span>
                 </li>
               </ul>
             </div>
 
             <div className="md:col-span-4">
-              <h4 className="font-black mb-8 uppercase text-[11px] tracking-[0.2em] text-brand-500">{t.footer.links}</h4>
+              <h4 className="font-black mb-8 uppercase text-[11px] tracking-[0.2em] text-brand-400">{t.footer.links}</h4>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { to: '/', label: t.nav.news },
@@ -465,16 +477,16 @@ function AppContent() {
                   <Link 
                     key={link.to}
                     to={link.to} 
-                    className="text-sm text-zinc-400 hover:text-brand-500 transition-all flex items-center gap-2 group"
+                    className="text-sm text-zinc-300 hover:text-brand-400 transition-all flex items-center gap-2 group"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-800 group-hover:bg-brand-500 transition-colors" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-brand-400 transition-colors" />
                     {link.label}
                   </Link>
                 ))}
               </div>
               
-              <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-950 border border-white/5">
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">{t.footer.visitorCount}</p>
+              <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-white/10 to-transparent border border-white/20 backdrop-blur-md">
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">{t.footer.visitorCount}</p>
                 <VisitorCounter />
               </div>
             </div>

@@ -1,7 +1,7 @@
 /**
  * Mock news data as a last resort fallback
  */
-function getMockNews(language: 'bn' | 'en', date: string) {
+export function getMockNews(language: 'bn' | 'en', date: string) {
   const isBn = language === 'bn';
   return {
     local: [

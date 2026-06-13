@@ -27,7 +27,7 @@
   --color-luxury-gold: #D4AF37;
   --color-luxury-black: #0A0A0A;
   --color-luxury-cream: #F5F2ED;
-  --color-culture-bg: #FFFAF0;
+  --color-culture-bg: transparent;
 }
 
 @layer base {
@@ -38,7 +38,11 @@
   }
   
   body {
-    @apply bg-culture-bg text-zinc-900 antialiased selection:bg-brand-200 selection:text-brand-900;
+    background: linear-gradient(135deg, #FF5E00 0%, #FFA000 35%, #FFD54F 60%, #FFA000 85%, #FF3D00 100%);
+    background-size: 200% 200%;
+    animation: goldSaffronFlow 20s ease-in-out infinite alternate;
+    background-attachment: fixed;
+    @apply text-zinc-900 antialiased selection:bg-brand-200 selection:text-brand-900;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -227,4 +231,47 @@
   h1, h2, h3, .text-\[\#064e3b\] {
     color: #064e3b !important;
   }
+}
+
+@keyframes saffronPulse {
+  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.75; filter: blur(120px); }
+  33% { transform: scale(1.15) translate(50px, -70px); opacity: 0.95; filter: blur(140px); }
+  66% { transform: scale(0.9) translate(-40px, 40px); opacity: 0.85; filter: blur(110px); }
+}
+
+@keyframes saffronPulseDelayed {
+  0%, 100% { transform: scale(1.1) translate(0px, 0px); opacity: 0.85; filter: blur(130px); }
+  50% { transform: scale(0.9) translate(-60px, 60px); opacity: 0.65; filter: blur(150px); }
+}
+
+@keyframes platinumPulse {
+  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.65; filter: blur(140px); }
+  50% { transform: scale(1.2) translate(30px, -30px); opacity: 0.9; filter: blur(160px); }
+}
+
+@keyframes platinumPulseDelayed {
+  0%, 100% { transform: scale(1.1) translate(0px, 0px); opacity: 0.7; filter: blur(150px); }
+  50% { transform: scale(0.85) translate(-40px, 40px); opacity: 0.5; filter: blur(130px); }
+}
+
+.animate-saffron-pulse {
+  animation: saffronPulse 14s ease-in-out infinite alternate;
+}
+
+.animate-saffron-pulse-delayed {
+  animation: saffronPulseDelayed 16s ease-in-out infinite alternate;
+}
+
+.animate-platinum-pulse {
+  animation: platinumPulse 18s ease-in-out infinite alternate;
+}
+
+.animate-platinum-pulse-delayed {
+  animation: platinumPulseDelayed 20s ease-in-out infinite alternate;
+}
+
+@keyframes goldSaffronFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

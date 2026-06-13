@@ -135,7 +135,7 @@ export const Banner = () => {
         duration: 0.8, 
         ease: [0.4, 0, 0.2, 1] 
       }}
-      className="relative h-[600px] md:h-[700px] w-full overflow-hidden bg-zinc-950 group/banner" 
+      className="relative h-[600px] md:h-[700px] w-full overflow-hidden bg-gradient-to-b from-[#1C0D02]/85 via-orange-950/75 to-[#1C0D02]/90 group/banner border-b border-orange-500/20 shadow-[0_15px_50px_rgba(245,142,39,0.25)]" 
       id="main-banner"
     >
       <AnimatePresence mode="wait">
@@ -150,10 +150,11 @@ export const Banner = () => {
           <img
             src={SLIDES[current].url}
             alt={SLIDES[current].title}
-            className="h-full w-full object-cover opacity-50 brightness-75 transition-all duration-1000"
+            className="h-full w-full object-cover opacity-85 brightness-95 transition-all duration-1000"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950/30"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/45"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(245,142,39,0.2),transparent_75%)] pointer-events-none"></div>
         </motion.div>
       </AnimatePresence>
       
@@ -166,7 +167,7 @@ export const Banner = () => {
           transition={{ delay: 0.2 }}
           className="mb-6"
         >
-          <span className="inline-block px-6 py-2 rounded-full bg-zinc-950/40 border border-white/20 text-brand-400 text-base md:text-sm font-black uppercase tracking-[0.4em] backdrop-blur-md shadow-lg">
+          <span className="inline-block px-6 py-2 rounded-full bg-zinc-950/50 border border-orange-500/35 text-brand-400 text-base md:text-sm font-black uppercase tracking-[0.4em] backdrop-blur-md shadow-lg">
             {"Welcome to our community".split("").map((letter, index) => (
               <motion.span
                 key={index}
@@ -183,7 +184,7 @@ export const Banner = () => {
                   times: [0, 0.2, 0.8, 1],
                   ease: "easeInOut"
                 }}
-                className="inline-block"
+                className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-amber-200 font-extrabold"
               >
                 {letter === " " ? "\u00A0" : letter}
               </motion.span>
@@ -198,7 +199,7 @@ export const Banner = () => {
           transition={{ delay: 0.4 }}
           className="max-w-5xl mx-auto"
         >
-          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.9] text-shadow-lg md:text-3d-colorful">
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-200 to-amber-400 mb-6 leading-[0.9] text-shadow-lg md:text-3d-colorful">
             {language === 'bn' ? (
               current === 0 ? 'লাইভ নিউজ হাব' : 
               current === 1 ? 'গ্রাম্য পরিবহন' : 
@@ -208,15 +209,15 @@ export const Banner = () => {
               'বাংলা পঞ্জিকা'
             ) : SLIDES[current].title}
           </h1>
-          <div className="bg-zinc-950/40 backdrop-blur-sm p-6 rounded-[2rem] border border-white/10 max-w-2xl mx-auto">
-            <p className="text-xl md:text-xl text-white font-bold leading-relaxed drop-shadow-md">
+          <div className="max-w-2xl mx-auto px-4">
+            <p className="text-xl md:text-2xl text-zinc-100 font-black leading-relaxed drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">
               {language === 'bn' ? (
                 current === 0 ? 'উজিরপুর বার্নিয়া এবং তার বাইরের সর্বশেষ খবরের সাথে আপডেট থাকুন।' : 
                 current === 1 ? 'সহজেই গ্রামের মধ্যে রাইড বুক করুন এবং স্থানীয় পরিবহন ট্র্যাক করুন।' : 
                 current === 2 ? 'স্থানীয় দোকানগুলি অন্বেষণ করুন এবং অনলাইনে প্রতিদিনের বাজার দর পরীক্ষা করুন।' : 
                 current === 3 ? 'স্থানীয় প্রতিভাদের সাথে সংযোগ করুন এবং সৃজনশীল প্রকল্পে সহযোগিতা করুন।' :
                 current === 4 ? 'ক্রিয়েটরদের মধ্যে নিরবচ্ছিন্ন অংশীদারিত্বের জন্য ডিজাইন করা টুল।' :
-                'আমাদের ডিজিটাল পঞ্জিকায় প্রতিদিনের তিথি, নক্ষত্র এবং বিশেষ উৎসবগুলি দেখুন।'
+                'আমাদের ডিজিটাল পঞ্জিকায় প্রতিদিনের তিথি, নক্ষत्र এবং বিশেষ উৎসবগুলি দেখুন।'
               ) : SLIDES[current].subtitle}
             </p>
           </div>
@@ -231,43 +232,43 @@ export const Banner = () => {
         >
           <button 
             onClick={() => handleNavigation('/')}
-            className="group relative px-8 py-4 rounded-2xl bg-brand-600 text-white font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 hover:scale-105 transition-all flex items-center gap-3"
+            className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white font-bold text-lg shadow-[0_8px_30px_rgba(255,94,0,0.45)] hover:shadow-[0_12px_40px_rgba(255,94,0,0.6)] hover:scale-105 transition-all duration-300 flex items-center gap-3 border border-orange-400/30"
           >
-            <Newspaper size={20} />
+            <Newspaper size={20} className="group-hover:rotate-12 transition-transform duration-300" />
             {t.banner.news}
           </button>
 
           <button 
             onClick={() => handleNavigation('/transport')}
-            className="group relative px-8 py-4 rounded-2xl bg-emerald-600 text-white font-bold text-lg shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-3"
+            className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-[#FFA000] text-white font-bold text-lg shadow-[0_8px_30px_rgba(16,185,129,0.35)] hover:shadow-[0_12px_40px_rgba(255,160,0,0.4)] hover:scale-105 transition-all duration-300 flex items-center gap-3 border border-emerald-400/30"
           >
-            <Car size={20} />
+            <Car size={20} className="group-hover:-translate-y-1 transition-transform" />
             {language === 'bn' ? 'পরিবহন' : 'Ride'}
           </button>
 
           <button 
             onClick={() => handleNavigation('/bazar')}
-            className="group relative px-8 py-4 rounded-2xl bg-white/10 text-white font-bold text-lg backdrop-blur-md border border-white/20 hover:bg-white/20 hover:scale-105 transition-all flex items-center gap-3"
+            className="group relative px-8 py-4 rounded-2xl bg-white/15 text-white font-bold text-lg backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(255,255,255,0.15)] hover:bg-white/25 hover:shadow-[0_12px_40px_rgba(255,255,255,0.25)] hover:scale-105 transition-all duration-300 flex items-center gap-3"
           >
-            <ShoppingBag size={20} />
+            <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />
             {t.banner.bazar}
           </button>
           
           <button 
             onClick={() => handleNavigation('/influencers')}
-            className="group relative px-8 py-4 rounded-2xl bg-zinc-900 text-white font-bold text-lg hover:bg-black hover:scale-105 transition-all flex items-center gap-3"
+            className="group relative px-8 py-4 rounded-2xl bg-[#1C0D02]/85 text-zinc-100 font-bold text-lg border border-orange-500/25 shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:bg-black hover:scale-105 transition-all duration-300 flex items-center gap-3"
           >
-            <Users size={20} />
+            <Users size={20} className="group-hover:translate-x-1 transition-transform" />
             {t.banner.influencer}
           </button>
 
           <button 
             onClick={() => handleNavigation('/ponjika')}
-            className="group relative px-8 py-4 rounded-2xl bg-brand-50 text-brand-600 font-bold text-lg hover:bg-brand-100 hover:scale-105 transition-all flex items-center gap-4 border border-brand-200 overflow-hidden"
+            className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-[#FFF9F2] to-[#FFEBD6] text-orange-950 font-black text-lg hover:from-white hover:to-[#FFF1E0] hover:scale-105 transition-all duration-300 flex items-center gap-4 border-2 border-[#FFA000]/60 overflow-hidden shadow-xl"
           >
-            <div className="relative flex items-center justify-center">
-              <div className="absolute inset-0 border border-brand-500/30 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
-              <Swastika size={20} className="text-brand-600" />
+            <div className="relative flex items-center justify-center bg-orange-500/10 p-2 rounded-full">
+              <div className="absolute inset-0 border border-orange-500/30 rounded-full animate-spin-slow scale-150" style={{ borderStyle: 'dashed' }} />
+              <Swastika size={20} className="text-[#FF5E00]" />
             </div>
             {t.nav.ponjika}
           </button>
@@ -281,7 +282,7 @@ export const Banner = () => {
           >
             <div className="absolute inset-[-1000%] animate-spin-slow bg-[conic-gradient(from_90deg_at_50%_50%,#F58E27_0%,#F58E27_50%,#FFFFFF_100%)]" />
             <span className="relative inline-flex h-full w-full cursor-pointer items-center justify-center rounded-2xl bg-zinc-950 px-8 py-4 text-lg font-bold text-white backdrop-blur-3xl group-hover:bg-zinc-900 transition-all gap-3">
-              <Facebook size={24} className="text-brand-500" />
+              <Facebook size={24} className="text-[#FF5E00]" />
               {t.banner.facebookGroup}
             </span>
           </motion.button>
@@ -301,7 +302,7 @@ export const Banner = () => {
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center backdrop-blur-sm group-hover:border-brand-500/50 group-hover:bg-brand-500/10 transition-all"
+            className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md group-hover:border-orange-500/50 group-hover:bg-orange-500/10 transition-all"
           >
             <ChevronDown size={20} />
           </motion.div>
@@ -311,13 +312,13 @@ export const Banner = () => {
       {/* Navigation Arrows */}
       <button 
         onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/20 hover:bg-brand-600 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/40 hover:bg-[#FF5E00] text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
       >
         <ChevronLeft size={24} />
       </button>
       <button 
         onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/20 hover:bg-brand-600 text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-4 rounded-2xl bg-black/40 hover:bg-[#FF5E00] text-white backdrop-blur-md border border-white/10 transition-all opacity-0 group-hover/banner:opacity-100 hidden md:block"
       >
         <ChevronRight size={24} />
       </button>
@@ -329,7 +330,7 @@ export const Banner = () => {
             key={i}
             onClick={() => setCurrent(i)}
             className={`h-1.5 rounded-full transition-all duration-500 ${
-              current === i ? 'w-8 bg-brand-500' : 'w-2 bg-white/20 hover:bg-white/40'
+              current === i ? 'w-8 bg-gradient-to-r from-[#FF5E00] to-[#FFA000]' : 'w-2 bg-white/30 hover:bg-white/60'
             }`}
           />
         ))}

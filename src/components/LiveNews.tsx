@@ -8,7 +8,7 @@ import { useTracking } from '../TrackingContext';
 import { useFirebase } from '../FirebaseContext';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { fetchLiveNews } from '../services/newsService';
+import { fetchLiveNews, getMockNews } from '../services/newsService';
 
 const SLIDESHOW_IMAGES = [
   "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
@@ -276,20 +276,33 @@ export const LiveNews = () => {
           await new Promise(resolve => setTimeout(resolve, 3000));
           return fetchDayNews(offset, retries - 1);
         }
-        // If it's a persistent network error, we can try to generate it locally as a fallback
-        // If it's a persistent network error, we can try to generate it locally as a fallback
-        // instead of giving up, assuming it's a backend connectivity issue
+        // If it's a persistent network error, we can try to generate it locally as a fallback, 
+        // with safety catcher to fall back to mock news directly on failures
         console.warn(`[LiveNews] Persistent network error for ${date}. Attempting local generation fallback...`);
-        const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
-        setGenerating(false);
-        return { 
-          local: ensureArray(generatedData.local).map((item: any) => ({ ...item, date })),
-          fbTrends: ensureArray(generatedData.fbTrends).map((item: any) => ({ ...item, date })),
-          igTrends: ensureArray(generatedData.igTrends).map((item: any) => ({ ...item, date })),
-          updatedAt: generatedData.updatedAt || new Date().toISOString(),
-          isMock: generatedData.isMock,
-          date 
-        };
+        try {
+          const generatedData = await fetchLiveNews(language as 'bn' | 'en', date);
+          setGenerating(false);
+          return { 
+            local: ensureArray(generatedData.local).map((item: any) => ({ ...item, date })),
+            fbTrends: ensureArray(generatedData.fbTrends).map((item: any) => ({ ...item, date })),
+            igTrends: ensureArray(generatedData.igTrends).map((item: any) => ({ ...item, date })),
+            updatedAt: generatedData.updatedAt || new Date().toISOString(),
+            isMock: generatedData.isMock,
+            date 
+          };
+        } catch (apiErr: any) {
+          console.warn(`[LiveNews] Frontend API fallback failed, returning local mock data instead.`, apiErr);
+          const mock = getMockNews(language as 'bn' | 'en', date);
+          setGenerating(false);
+          return {
+            local: ensureArray(mock.local).map((item: any) => ({ ...item, date })),
+            fbTrends: ensureArray(mock.fbTrends).map((item: any) => ({ ...item, date })),
+            igTrends: ensureArray(mock.igTrends).map((item: any) => ({ ...item, date })),
+            updatedAt: new Date().toISOString(),
+            isMock: true,
+            date
+          };
+        }
       }
       
       if (response.ok) {
@@ -360,16 +373,30 @@ export const LiveNews = () => {
         } catch (genErr: any) {
           console.warn(`[LiveNews] Server generation failed for ${date}, trying frontend fallback...`, genErr.message);
           // Fallback to frontend generation if server generation fails
-          const frontendGenData = await fetchLiveNews(language as 'bn' | 'en', date);
-          setGenerating(false);
-          return {
-            local: ensureArray(frontendGenData.local).map((item: any) => ({ ...item, date })),
-            fbTrends: ensureArray(frontendGenData.fbTrends).map((item: any) => ({ ...item, date })),
-            igTrends: ensureArray(frontendGenData.igTrends).map((item: any) => ({ ...item, date })),
-            updatedAt: frontendGenData.updatedAt || new Date().toISOString(),
-            isMock: frontendGenData.isMock,
-            date
-          };
+          try {
+            const frontendGenData = await fetchLiveNews(language as 'bn' | 'en', date);
+            setGenerating(false);
+            return {
+              local: ensureArray(frontendGenData.local).map((item: any) => ({ ...item, date })),
+              fbTrends: ensureArray(frontendGenData.fbTrends).map((item: any) => ({ ...item, date })),
+              igTrends: ensureArray(frontendGenData.igTrends).map((item: any) => ({ ...item, date })),
+              updatedAt: frontendGenData.updatedAt || new Date().toISOString(),
+              isMock: frontendGenData.isMock,
+              date
+            };
+          } catch (frontErr: any) {
+            console.warn(`[LiveNews] Frontend generation also failed, returning local mock data.`, frontErr);
+            const mock = getMockNews(language as 'bn' | 'en', date);
+            setGenerating(false);
+            return {
+              local: ensureArray(mock.local).map((item: any) => ({ ...item, date })),
+              fbTrends: ensureArray(mock.fbTrends).map((item: any) => ({ ...item, date })),
+              igTrends: ensureArray(mock.igTrends).map((item: any) => ({ ...item, date })),
+              updatedAt: new Date().toISOString(),
+              isMock: true,
+              date
+            };
+          }
         }
       }
 
@@ -378,14 +405,15 @@ export const LiveNews = () => {
       setGenerating(false);
       console.error(`Error fetching/generating news for ${date}:`, err);
       // Last resort: If absolutely everything fails, return mock data directly to keep UI alive
-      console.warn(`[LiveNews] Complete failure for ${date}. Using emergency mock data.`);
+      console.warn(`[LiveNews] Complete failure for ${date}. Using emergency mock/template news.`);
+      const lastMock = getMockNews(language as 'bn' | 'en', date);
       return {
-        local: [],
-        fbTrends: [],
-        igTrends: [],
+        local: ensureArray(lastMock.local).map((item: any) => ({ ...item, date })),
+        fbTrends: ensureArray(lastMock.fbTrends).map((item: any) => ({ ...item, date })),
+        igTrends: ensureArray(lastMock.igTrends).map((item: any) => ({ ...item, date })),
         date,
-        isError: true,
-        errorMessage: err.message
+        isMock: true,
+        updatedAt: new Date().toISOString()
       };
     }
   };

@@ -24,12 +24,10 @@ const getWeatherCondition = (code: number, isDay: boolean = true): WeatherCondit
       return {
         label: isDay ? "Sunny" : "Clear Sky",
         bnLabel: isDay ? "রৌদ্রোজ্জ্বল" : "পরিষ্কার আকাশ",
-        hiLabel: isDay ? "धूप" : "साफ आसमान",
+        hiLabel: isDay ? "धूप" : "साফ आसमान",
         icon: Sun,
         colorClass: "text-amber-500",
-        bgGradient: isDay 
-          ? "from-amber-50 via-orange-50/40 to-amber-100/50" 
-          : "from-slate-900 to-zinc-950"
+        bgGradient: "from-amber-50/90 via-orange-50/60 to-amber-100/70"
       };
     case 1:
     case 2:
@@ -39,9 +37,7 @@ const getWeatherCondition = (code: number, isDay: boolean = true): WeatherCondit
         hiLabel: "आंशिक रूप से बादल",
         icon: CloudSun,
         colorClass: "text-sky-500",
-        bgGradient: isDay
-          ? "from-sky-50 via-blue-50/45 to-sky-100/40"
-          : "from-slate-800 to-slate-900"
+        bgGradient: "from-sky-50/90 via-blue-50/45 to-sky-100/60"
       };
     case 3:
       return {
@@ -484,33 +480,33 @@ export const WeatherWidget = () => {
             </div>
 
             {/* Quick stats grid */}
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-zinc-200/40">
-              <div className="p-3 bg-white/55 rounded-2xl border border-zinc-100 flex flex-col items-center text-center">
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-zinc-200/50">
+              <div className="p-3 bg-white rounded-2xl border border-zinc-200/60 flex flex-col items-center text-center shadow-xs">
                 <Thermometer size={16} className="text-rose-500 mb-1" />
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                <span className="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider block mb-0.5">
                   {labelText.feelsLike}
                 </span>
-                <span className="text-sm font-extrabold text-zinc-800">
+                <span className="text-sm font-black text-zinc-900">
                   {weather!.apparentTemp}°C
                 </span>
               </div>
 
-              <div className="p-3 bg-white/55 rounded-2xl border border-zinc-100 flex flex-col items-center text-center">
+              <div className="p-3 bg-white rounded-2xl border border-zinc-200/60 flex flex-col items-center text-center shadow-xs">
                 <Droplets size={16} className="text-blue-500 mb-1" />
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                <span className="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider block mb-0.5">
                   {labelText.humidity}
                 </span>
-                <span className="text-sm font-extrabold text-zinc-800">
+                <span className="text-sm font-black text-zinc-900">
                   {weather!.humidity}%
                 </span>
               </div>
 
-              <div className="p-3 bg-white/55 rounded-2xl border border-zinc-100 flex flex-col items-center text-center">
+              <div className="p-3 bg-white rounded-2xl border border-zinc-200/60 flex flex-col items-center text-center shadow-xs">
                 <Wind size={16} className="text-emerald-500 mb-1" />
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                <span className="text-[10px] font-extrabold text-zinc-500 uppercase tracking-wider block mb-0.5">
                   {labelText.windSpeed}
                 </span>
-                <span className="text-sm font-extrabold text-zinc-800 leading-none flex items-baseline gap-0.5 justify-center">
+                <span className="text-sm font-black text-zinc-900 leading-none flex items-baseline gap-0.5 justify-center">
                   {weather!.windSpeed}
                   <small className="text-[8px] font-black text-zinc-500">
                     {langCode === 'bn' ? 'কিমি' : 'km'}
@@ -523,8 +519,8 @@ export const WeatherWidget = () => {
           {/* RIGHT: Daily Forecast */}
           <div className="flex-1 flex flex-col justify-between lg:pl-4 lg:border-l border-zinc-200/50">
             <div>
-              <span className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-zinc-500 mb-4 h-8">
-                <Calendar size={14} className="text-brand-500" />
+              <span className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-zinc-600 mb-4 h-8">
+                <Calendar size={14} className="text-brand-600" />
                 {labelText.forecast}
               </span>
             </div>
@@ -537,23 +533,23 @@ export const WeatherWidget = () => {
                 return (
                   <div 
                     key={day.date}
-                    className="flex justify-between items-center px-4 py-3 bg-white/60 hover:bg-white rounded-2xl border border-zinc-100 transition-all hover:translate-x-1 group/item flex-row h-[52px]"
+                    className="flex justify-between items-center px-4 py-3 bg-white hover:bg-zinc-50/80 rounded-2xl border border-zinc-200/70 shadow-xs transition-all hover:translate-x-1 group/item flex-row h-[52px]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-xl bg-white/90 flex items-center justify-center border border-zinc-100 group-hover/item:scale-105 transition-all text-xs ${dayCond.colorClass}`}>
+                      <div className={`w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center border border-zinc-200/50 group-hover/item:scale-105 transition-all text-xs ${dayCond.colorClass}`}>
                         <DayIcon size={16} />
                       </div>
-                      <span className="text-sm font-black text-zinc-700 capitalize w-14">
+                      <span className="text-sm font-black text-zinc-800 capitalize w-14">
                         {day.dayName}
                       </span>
                     </div>
 
-                    <span className="text-xs font-bold text-zinc-400 max-w-[110px] truncate text-right capitalize hidden sm:block">
+                    <span className="text-xs font-extrabold text-zinc-500 max-w-[110px] truncate text-right capitalize hidden sm:block">
                       {getTranslatedCondition(day.weatherCode, true)}
                     </span>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-zinc-800">
+                      <span className="text-sm font-black text-zinc-900">
                         {day.tempMax}°
                       </span>
                       <span className="text-xs font-bold text-zinc-400">
