@@ -31,16 +31,23 @@ export function setupSSR(app: any, vite: any) {
       const newsMatch = req.path.match(/^\/news\/([^\/]+)\/([^\/]+)\/([0-9]+)/i);
       if (newsMatch) {
         const [_, date, tab, index] = newsMatch;
+        console.log(`[SSR] News route matched for Date: ${date}, Tab: ${tab}, Index: ${index}`);
         try {
           const newsData = await getNewsItem(date, decodeURIComponent(tab), index, "", "");
           if (newsData) {
+            console.log(`[SSR] News item metadata successfully resolved: "${newsData.title}"`);
             metadata.title = `${newsData.title} | Barnia Daily News 🌸`;
             metadata.description = newsData.content.substring(0, 160) + (newsData.content.length > 160 ? "..." : "");
             if (newsData.image) {
               metadata.image = newsData.image;
             } else {
-              metadata.image = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?fm=jpg&fit=crop&q=80&w=1200&h=630";
+              metadata.image = "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png";
             }
+          } else {
+            console.warn(`[SSR] News item for ${date}/${tab}/${index} not found in database. Using default news banner.`);
+            metadata.title = "Barnia Daily News | Community Updates 🌸";
+            metadata.description = "Get the latest, real-time local updates, Facebook and Instagram trends, and community reports directly on Barnia Digital Hub.";
+            metadata.image = "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png";
           }
         } catch (e) {
           console.error("[SSR] Error getting news metadata:", e);

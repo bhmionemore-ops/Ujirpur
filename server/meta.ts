@@ -1,6 +1,6 @@
 import { collection, query, where, limit, getDocs, doc, getDocFromServer } from "firebase/firestore";
 import fetch from "node-fetch";
-import { db, adminDb, firebaseConfig } from "./db";
+import * as DB from "./db";
 import { CACHE_TTL } from "./constants";
 import { slugify, escapeHtml } from "./utils";
 
@@ -17,14 +17,14 @@ export async function getShopItem(idOrSlug: string, projectId: string, databaseI
     let data: any = null;
     const decodedId = decodeURIComponent(idOrSlug);
     
-    if (adminDb) {
+    if (DB.adminDb) {
       try {
-        let shopsBySlug = await adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
-        if (shopsBySlug.empty) shopsBySlug = await adminDb.collection("shops").where("slug", "==", decodedId).limit(1).get();
+        let shopsBySlug = await DB.adminDb.collection("shops").where("slug", "==", idOrSlug).limit(1).get();
+        if (shopsBySlug.empty) shopsBySlug = await DB.adminDb.collection("shops").where("slug", "==", decodedId).limit(1).get();
         if (shopsBySlug.empty) {
           const serverSlug = slugify(decodedId);
           if (serverSlug !== decodedId) {
-            shopsBySlug = await adminDb.collection("shops").where("slug", "==", serverSlug).limit(1).get();
+            shopsBySlug = await DB.adminDb.collection("shops").where("slug", "==", serverSlug).limit(1).get();
           }
         }
 
@@ -33,7 +33,7 @@ export async function getShopItem(idOrSlug: string, projectId: string, databaseI
           data = doc.data();
           data.id = doc.id;
         } else {
-          const shopById = await adminDb.collection("shops").doc(idOrSlug).get();
+          const shopById = await DB.adminDb.collection("shops").doc(idOrSlug).get();
           if (shopById.exists) {
             data = shopById.data();
             data.id = shopById.id;
@@ -42,12 +42,12 @@ export async function getShopItem(idOrSlug: string, projectId: string, databaseI
       } catch (e) {}
     }
 
-    if (!data && db) {
+    if (!data && DB.db) {
       try {
-        let q = query(collection(db, "shops"), where("slug", "==", idOrSlug), limit(1));
+        let q = query(collection(DB.db, "shops"), where("slug", "==", idOrSlug), limit(1));
         let shopsBySlug = await getDocs(q);
         if (shopsBySlug.empty) {
-          const qDecoded = query(collection(db, "shops"), where("slug", "==", decodedId), limit(1));
+          const qDecoded = query(collection(DB.db, "shops"), where("slug", "==", decodedId), limit(1));
           shopsBySlug = await getDocs(qDecoded);
         }
         if (!shopsBySlug.empty) {
@@ -55,7 +55,7 @@ export async function getShopItem(idOrSlug: string, projectId: string, databaseI
           data = docSnap.data();
           data.id = docSnap.id;
         } else {
-          const shopById = await getDocFromServer(doc(db, "shops", idOrSlug));
+          const shopById = await getDocFromServer(doc(DB.db, "shops", idOrSlug));
           if (shopById.exists()) {
             data = shopById.data();
             data.id = shopById.id;
@@ -92,14 +92,14 @@ export async function getProfileItem(idOrSlug: string, projectId: string, databa
     let data: any = null;
     const decodedId = decodeURIComponent(idOrSlug);
 
-    if (adminDb) {
+    if (DB.adminDb) {
       try {
-        let influencersBySlug = await adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
-        if (influencersBySlug.empty) influencersBySlug = await adminDb.collection("influencers").where("slug", "==", decodedId).limit(1).get();
+        let influencersBySlug = await DB.adminDb.collection("influencers").where("slug", "==", idOrSlug).limit(1).get();
+        if (influencersBySlug.empty) influencersBySlug = await DB.adminDb.collection("influencers").where("slug", "==", decodedId).limit(1).get();
         if (influencersBySlug.empty) {
           const serverSlug = slugify(decodedId);
           if (serverSlug !== decodedId) {
-            influencersBySlug = await adminDb.collection("influencers").where("slug", "==", serverSlug).limit(1).get();
+            influencersBySlug = await DB.adminDb.collection("influencers").where("slug", "==", serverSlug).limit(1).get();
           }
         }
 
@@ -108,7 +108,7 @@ export async function getProfileItem(idOrSlug: string, projectId: string, databa
           data = doc.data();
           data.id = doc.id;
         } else {
-          const influencerById = await adminDb.collection("influencers").doc(idOrSlug).get();
+          const influencerById = await DB.adminDb.collection("influencers").doc(idOrSlug).get();
           if (influencerById.exists) {
             data = influencerById.data();
             data.id = influencerById.id;
@@ -117,16 +117,16 @@ export async function getProfileItem(idOrSlug: string, projectId: string, databa
       } catch (e) {}
     }
 
-    if (!data && db) {
+    if (!data && DB.db) {
       try {
-        let q = query(collection(db, "influencers"), where("slug", "==", idOrSlug), limit(1));
+        let q = query(collection(DB.db, "influencers"), where("slug", "==", idOrSlug), limit(1));
         let influencersBySlug = await getDocs(q);
         if (!influencersBySlug.empty) {
           const docSnap = influencersBySlug.docs[0];
           data = docSnap.data();
           data.id = docSnap.id;
         } else {
-          const influencerById = await getDocFromServer(doc(db, "influencers", idOrSlug));
+          const influencerById = await getDocFromServer(doc(DB.db, "influencers", idOrSlug));
           if (influencerById.exists()) {
             data = influencerById.data();
             data.id = influencerById.id;
@@ -165,9 +165,9 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
     let data: any = null;
     const docIdsToTry = [date, `${date}-en`, `${date}-bn`];
     
-    if (adminDb) {
+    if (DB.adminDb) {
       for (const docId of docIdsToTry) {
-        const docSnap = await adminDb.collection("news").doc(docId).get();
+        const docSnap = await DB.adminDb.collection("news").doc(docId).get();
         if (docSnap.exists) {
           data = docSnap.data();
           break;
@@ -175,9 +175,9 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
       }
     }
 
-    if (!data && db) {
+    if (!data && DB.db) {
       for (const docId of docIdsToTry) {
-        const docRef = doc(db, "news", docId);
+        const docRef = doc(DB.db, "news", docId);
         const docSnap = await getDocFromServer(docRef);
         if (docSnap.exists()) {
           data = docSnap.data();
@@ -199,7 +199,7 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
     const result = {
       title: item.title || "Barnia News",
       content: item.content || "Latest news from our community.",
-      image: item.image || ""
+      image: item.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"
     };
 
     metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
@@ -220,9 +220,9 @@ export async function getVamshavaliItem(shareId: string) {
     let data: any = null;
     const cleanId = shareId.toUpperCase().trim();
 
-    if (adminDb) {
+    if (DB.adminDb) {
       try {
-        const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", cleanId).limit(1).get();
+        const snap = await DB.adminDb.collection("vamshavali_profiles").where("shareId", "==", cleanId).limit(1).get();
         if (!snap.empty) {
           const doc = snap.docs[0];
           data = doc.data();
@@ -231,9 +231,9 @@ export async function getVamshavaliItem(shareId: string) {
       } catch (e) {}
     }
 
-    if (!data && db) {
+    if (!data && DB.db) {
       try {
-        const q = query(collection(db, "vamshavali_profiles"), where("shareId", "==", cleanId), limit(1));
+        const q = query(collection(DB.db, "vamshavali_profiles"), where("shareId", "==", cleanId), limit(1));
         const snap = await getDocs(q);
         if (!snap.empty) {
           const docSnap = snap.docs[0];
