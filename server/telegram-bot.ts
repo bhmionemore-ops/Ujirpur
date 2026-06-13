@@ -97,9 +97,9 @@ export function formatRespectfulName(rawName: string, linkedProfile: any = null,
     }
   } else {
     if (isFemale) {
-      return "Madam";
+      return `${clean} Madam`;
     } else {
-      return "Sir";
+      return `${clean} Sir`;
     }
   }
 }
@@ -960,8 +960,8 @@ STRICT COMPLIANCE RULES ON POLITENESS & RESPECT:
      * If male: You MUST ALWAYS address them as "${telegramName} Ji" (e.g., "Uttam Ji").
      * If female: You MUST ALWAYS address them as "${telegramName} Devi Ji" or "${telegramName} Ji" (e.g., "Sushma Devi Ji").
    - If you respond in ENGLISH:
-     * If male: You MUST ALWAYS address or refer to them as "Sir".
-     * If female: You MUST ALWAYS address or refer to them as "Madam" (or "Ma'am").
+     * If male: You MUST ALWAYS address or refer to them as "${telegramName} Sir".
+     * If female: You MUST ALWAYS address or refer to them as "${telegramName} Madam" (or "${telegramName} Ma'am").
 3. Your tone MUST carry premium Indian village hospitality, high warmth, humility, and polite honorific phrasing at all times.
 
 STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon, Lightbulb, Sparkles, Key, TrendingUp, Coins } from 'lucide-react';
+import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon, Lightbulb, Sparkles, Key, TrendingUp, Coins, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useLanguage } from '../LanguageContext';
@@ -9,6 +9,15 @@ import { useFirebase } from '../FirebaseContext';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { fetchLiveNews } from '../services/newsService';
+
+const SLIDESHOW_IMAGES = [
+  "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
+  "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png",
+  "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png",
+  "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png",
+  "https://i.postimg.cc/3RXK5xb8/Gemini-Generated-Image-3luc943luc943luc.png",
+  "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png"
+];
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -127,6 +136,86 @@ export const LiveNews = () => {
     fbTrends: 0,
     igTrends: 0
   });
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    setSavingEdit(true);
+    const toastId = toast.loading('Saving changes...');
+
+    try {
+      const docId = `${editingItem.date}-${language}`;
+      const docRef = doc(db, 'news', docId);
+      
+      let existingData: any = {};
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          existingData = docSnap.data();
+        }
+      } catch (e) {
+        console.warn('[LiveNews Edit] Could not fetch existing doc, doing clean set instead.');
+      }
+
+      const localList = ensureArray(existingData.local || news.local);
+      const fbList = ensureArray(existingData.fbTrends || news.fbTrends);
+      const igList = ensureArray(existingData.igTrends || news.igTrends);
+
+      const targetList = editingItem.tab === 'local' ? localList 
+                     : editingItem.tab === 'fbTrends' ? fbList 
+                     : igList;
+
+      targetList[editingItem.index] = {
+        ...targetList[editingItem.index],
+        title: editingItem.title,
+        content: editingItem.content,
+        image: editingItem.image,
+        source: editingItem.source || targetList[editingItem.index]?.source || "Official News"
+      };
+
+      const finalDoc = {
+        ...existingData,
+        local: localList,
+        fbTrends: fbList,
+        igTrends: igList,
+        date: editingItem.date,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(docRef, finalDoc);
+      } catch (firestoreErr: any) {
+        handleFirestoreError(firestoreErr, OperationType.WRITE, `news/${docId}`);
+      }
+
+      setNews((prev: any) => ({
+        ...prev,
+        local: editingItem.tab === 'local' ? targetList : prev.local,
+        fbTrends: editingItem.tab === 'fbTrends' ? targetList : prev.fbTrends,
+        igTrends: editingItem.tab === 'igTrends' ? targetList : prev.igTrends,
+        updatedAt: finalDoc.updatedAt
+      }));
+
+      if (selectedItem && selectedItem.date === editingItem.date && activeTab === editingItem.tab && selectedItem.index === editingItem.index) {
+        setSelectedItem({
+          ...selectedItem,
+          title: editingItem.title,
+          content: editingItem.content,
+          image: editingItem.image,
+          source: editingItem.source || selectedItem.source
+        });
+      }
+
+      toast.success(language === 'bn' ? 'সংবাদ সফলভাবে আপডেট করা হয়েছে!' : 'News updated successfully!', { id: toastId });
+      setEditingItem(null);
+    } catch (err: any) {
+      console.error('[LiveNews Edit] Save failed:', err);
+      toast.error(`Save failed: ${err.message}`, { id: toastId });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const { date: deepDate, tab: deepTab, index: deepIndex } = useParams();
 
@@ -681,7 +770,7 @@ export const LiveNews = () => {
                   {/* News Image */}
                   <div className="relative h-48 -mx-10 -mt-10 mb-8 overflow-hidden rounded-t-[2.5rem]">
                     <img 
-                      src="https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png" 
+                      src={item.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"} 
                       alt={item.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       referrerPolicy="no-referrer"
@@ -690,9 +779,29 @@ export const LiveNews = () => {
                   </div>
 
                   <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-[10px] font-black text-brand-600 uppercase tracking-widest">
-                      <Clock size={12} />
-                      {item.date}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-[10px] font-black text-brand-600 uppercase tracking-widest">
+                        <Clock size={12} />
+                        {item.date}
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem({
+                              ...item,
+                              index: i,
+                              tab: activeTab,
+                              date: item.date || getNewsDate()
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded-full bg-red-50 hover:bg-red-600 hover:text-white text-[10px] font-black text-red-600 uppercase tracking-widest transition-all flex items-center gap-1.5 border border-red-100"
+                          title="Edit Post"
+                        >
+                          <Edit3 size={10} />
+                          {language === 'bn' ? 'এডিট' : 'Edit'}
+                        </button>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-all md:translate-x-4 md:group-hover:translate-x-0">
                       <a 
@@ -861,7 +970,7 @@ export const LiveNews = () => {
                   {/* Modal Image */}
                   <div className="relative h-64 -mx-8 -mt-8 mb-8 overflow-hidden">
                     <img 
-                      src="https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png" 
+                      src={selectedItem.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"} 
                       alt={selectedItem.title}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
@@ -923,6 +1032,168 @@ export const LiveNews = () => {
                       {selectedItem.source || "Official News"}
                     </div>
                   </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Admin Edit Modal */}
+        <AnimatePresence>
+          {editingItem && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setEditingItem(null)}
+                className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-brand-500/20"
+              >
+                {/* Header */}
+                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+                  <div>
+                    <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">
+                      {language === 'bn' ? "পোস্ট এডিট ও স্টাইল" : "Edit & Style Post"}
+                    </h3>
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
+                      {editingItem.tab} • Index {editingItem.index} • {editingItem.date}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setEditingItem(null)}
+                    type="button"
+                    className="p-3 hover:bg-zinc-200 rounded-2xl transition-colors text-zinc-400 hover:text-zinc-700"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                      {language === 'bn' ? "শিরোনাম" : "Title / Headline"}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingItem.title}
+                      onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="Enter title..."
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                      {language === 'bn' ? "বিষয়বস্তু" : "Content / Description"}
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={editingItem.content}
+                      onChange={(e) => setEditingItem({ ...editingItem, content: e.target.value })}
+                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm leading-relaxed"
+                      placeholder="Enter content details..."
+                    />
+                  </div>
+
+                  {/* Source input */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                      {language === 'bn' ? "উৎস" : "Source"}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingItem.source || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, source: e.target.value })}
+                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="Enter news source..."
+                    />
+                  </div>
+
+                  {/* Image Slideshow Selector */}
+                  <div className="space-y-4">
+                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-2">
+                      {language === 'bn' ? "স্লাইডশো থেকে একটি ছবি নির্বাচন করুন" : "Select an Image from Slideshow"}
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {SLIDESHOW_IMAGES.map((imgUrl, idx) => {
+                        const isSelected = editingItem.image === imgUrl;
+                        const slideLabels = [
+                          "News Hub", "Transport", "Barnia Bazar", "Influencers", "Collab Hub", "Bengali Ponjika"
+                        ];
+
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => setEditingItem({ ...editingItem, image: imgUrl })}
+                            className={`relative cursor-pointer group rounded-2xl overflow-hidden border-4 transition-all ${
+                              isSelected 
+                                ? 'border-brand-500 scale-[1.03] shadow-lg shadow-brand-500/20' 
+                                : 'border-zinc-100 hover:border-zinc-300'
+                            }`}
+                          >
+                            <img 
+                              src={imgUrl} 
+                              alt={`Slide option ${idx + 1}`}
+                              className="h-24 w-full object-cover group-hover:scale-105 transition-transform"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-end p-2 justify-center">
+                              <span className="text-[10px] font-black text-white text-center tracking-tight leading-tight uppercase bg-zinc-950/60 px-2 py-1 rounded-md">
+                                {slideLabels[idx]}
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 p-1.5 bg-brand-500 text-white rounded-full">
+                                <Check size={10} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Custom URL Option */}
+                    <div className="pt-2">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block mb-1">
+                        {language === 'bn' ? "অথবা কাস্টম চিত্র ইউআরএল" : "Or Custom Image URL"}
+                      </label>
+                      <input
+                        type="text"
+                        value={editingItem.image || ""}
+                        onChange={(e) => setEditingItem({ ...editingItem, image: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-600 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        placeholder="https://example.com/image.png"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-8 border-t border-zinc-100 flex justify-end gap-4 bg-zinc-50">
+                  <button
+                    onClick={() => setEditingItem(null)}
+                    type="button"
+                    className="px-6 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-500 hover:bg-zinc-100 transition-all"
+                  >
+                    {language === 'bn' ? "বাতিল" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={savingEdit}
+                    type="button"
+                    className="px-8 py-3 bg-brand-600 text-white font-black text-sm uppercase tracking-widest rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all shadow-md shadow-brand-500/10 flex items-center gap-2"
+                  >
+                    {savingEdit ? 'Saving...' : (language === 'bn' ? "সংরক্ষণ করুন" : "Save Changes")}
+                  </button>
                 </div>
               </motion.div>
             </div>

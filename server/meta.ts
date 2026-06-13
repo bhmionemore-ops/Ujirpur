@@ -158,8 +158,11 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
   const cacheKey = `news:${date}:${tab}:${index}`;
   const cached = metadataCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[getNewsItem] Returning cached metadata for ${cacheKey}`);
     return cached.data;
   }
+
+  console.log(`[getNewsItem] Fetching news item - Date: ${date}, Tab: ${tab}, Index: ${index}`);
 
   try {
     let data: any = null;
@@ -167,44 +170,84 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
     
     if (DB.adminDb) {
       for (const docId of docIdsToTry) {
-        const docSnap = await DB.adminDb.collection("news").doc(docId).get();
-        if (docSnap.exists) {
-          data = docSnap.data();
-          break;
+        try {
+          console.log(`[getNewsItem] Trying DB.adminDb for docId: ${docId}`);
+          const docSnap = await DB.adminDb.collection("news").doc(docId).get();
+          if (docSnap.exists) {
+            data = docSnap.data();
+            console.log(`[getNewsItem] Found news document in DB.adminDb: ${docId}`);
+            break;
+          }
+        } catch (e: any) {
+          console.warn(`[getNewsItem] DB.adminDb error looking up doc ${docId}:`, e.message);
         }
       }
     }
 
     if (!data && DB.db) {
       for (const docId of docIdsToTry) {
-        const docRef = doc(DB.db, "news", docId);
-        const docSnap = await getDocFromServer(docRef);
-        if (docSnap.exists()) {
-          data = docSnap.data();
-          break;
+        try {
+          console.log(`[getNewsItem] Trying DB.db for docId: ${docId}`);
+          const docRef = doc(DB.db, "news", docId);
+          const docSnap = await getDocFromServer(docRef);
+          if (docSnap.exists()) {
+            data = docSnap.data();
+            console.log(`[getNewsItem] Found news document in DB.db: ${docId}`);
+            break;
+          }
+        } catch (e: any) {
+          console.warn(`[getNewsItem] DB.db error looking up doc ${docId}:`, e.message);
         }
       }
     }
 
-    if (!data) return null;
+    if (!data) {
+      console.warn(`[getNewsItem] Critical: No news document found in either DB/fallback for date: ${date}`);
+      return null;
+    }
     
     const tabKey = Object.keys(data).find(k => k.toLowerCase() === tab.toLowerCase());
     const tabData = tabKey ? data[tabKey] : null;
-    if (!tabData) return null;
+    if (!tabData) {
+      console.warn(`[getNewsItem] Tab ${tab} not found under categories:`, Object.keys(data));
+      return null;
+    }
     
     const idx = parseInt(index);
-    const item = tabData[idx];
-    if (!item) return null;
+    let item: any = null;
+    if (Array.isArray(tabData)) {
+      item = tabData[idx];
+    } else if (tabData && typeof tabData === 'object') {
+      item = tabData[idx] || tabData[index] || Object.values(tabData)[idx];
+    }
+
+    if (!item) {
+      console.warn(`[getNewsItem] Index ${index} not resolved in tab ${tabKey}. Tab data size/keys:`, 
+        Array.isArray(tabData) ? tabData.length : Object.keys(tabData || {}));
+      return null;
+    }
     
-    const result = {
-      title: item.title || "Barnia News",
-      content: item.content || "Latest news from our community.",
-      image: item.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"
-    };
+    let result;
+    if (typeof item === 'string') {
+      console.log(`[getNewsItem] Item is string: "${item}"`);
+      result = {
+        title: item,
+        content: item,
+        image: "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"
+      };
+    } else {
+      console.log(`[getNewsItem] Item is object. Title: "${item.title || item.Title}"`);
+      result = {
+        title: item.title || item.Title || "Barnia News",
+        content: item.content || item.Content || item.description || item.summary || "Latest news from our community.",
+        image: item.image || item.Image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"
+      };
+    }
 
     metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
     return result;
-  } catch (error) {
+  } catch (error: any) {
+    console.error(`[getNewsItem] Exception occurred resolving news item:`, error.message);
     return null;
   }
 }
