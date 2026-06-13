@@ -13,7 +13,8 @@ export function setupSSR(app: any, vite: any) {
         html = await vite.transformIndexHtml(req.originalUrl, html);
       }
       
-      const baseUrl = isProd ? "https://barnia.in" : `http://${req.headers.host}`;
+      const protocol = req.headers["x-forwarded-proto"] || "http";
+      const baseUrl = `${protocol}://${req.headers.host}`;
       
       const metadata: any = {
         title: "Barnia Digital Hub | Community Platform",

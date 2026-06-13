@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { Newspaper, MapPin, Globe, Clock, RefreshCw, ChevronRight, X, Share2, Facebook, Twitter, MessageCircle, Link, Check, Instagram, Plus, ShieldCheck, Zap, Moon, Lightbulb, Sparkles, Key, TrendingUp, Coins, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -425,12 +426,16 @@ export const LiveNews = () => {
       try {
         const todayNews = await fetchDayNews(0);
         if (todayNews) {
-          setNews({
-            local: todayNews.local || [],
-            fbTrends: todayNews.fbTrends || [],
-            igTrends: todayNews.igTrends || [],
-            dates: [todayNews.date],
-            updatedAt: todayNews.updatedAt || new Date().toISOString()
+          setNews((prev: any) => {
+            const hasToday = prev.dates.includes(todayNews.date);
+            const mergedDates = hasToday ? prev.dates : [...prev.dates, todayNews.date];
+            return {
+              local: hasToday ? prev.local : [...prev.local, ...(todayNews.local || [])],
+              fbTrends: hasToday ? prev.fbTrends : [...prev.fbTrends, ...(todayNews.fbTrends || [])],
+              igTrends: hasToday ? prev.igTrends : [...prev.igTrends, ...(todayNews.igTrends || [])],
+              dates: mergedDates,
+              updatedAt: todayNews.updatedAt || prev.updatedAt || new Date().toISOString()
+            };
           });
         }
       } catch (err: any) {
@@ -924,309 +929,315 @@ export const LiveNews = () => {
         </div>
 
         {/* Modal for full news */}
-        <AnimatePresence>
-          {selectedItem && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => {
-                  setSelectedItem(null);
-                  window.history.pushState({}, '', '/');
-                }}
-                className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-              >
-                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-culture-bg">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-brand-600 uppercase tracking-widest">
-                      <Clock size={12} />
-                      {selectedItem.date}
+        {typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
+            {selectedItem && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => {
+                    setSelectedItem(null);
+                    window.history.pushState({}, '', '/');
+                  }}
+                  className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                >
+                  <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-culture-bg">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-brand-600 uppercase tracking-widest">
+                        <Clock size={12} />
+                        {selectedItem.date}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1877F2]/10 text-[#1877F2] text-[10px] font-bold hover:bg-[#1877F2] hover:text-white transition-all"
+                        >
+                          <Facebook size={12} />
+                          Facebook
+                        </a>
+                        <a 
+                          href={`https://wa.me/?text=${encodeURIComponent(selectedItem.title + ' ' + `${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] text-[10px] font-bold hover:bg-[#25D366] hover:text-white transition-all"
+                        >
+                          <MessageCircle size={12} />
+                          WhatsApp
+                        </a>
+                        <button 
+                          onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E4405F]/10 text-[#E4405F] text-[10px] font-bold hover:bg-[#E4405F] hover:text-white transition-all"
+                        >
+                          <Instagram size={12} />
+                          Instagram
+                        </button>
+                        <button 
+                          onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10px] font-bold hover:bg-zinc-800 hover:text-white transition-all"
+                        >
+                          {copied ? <Check size={12} className="text-green-600" /> : <Link size={12} />}
+                          {copied ? t.news.copied : t.news.copyLink}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <a 
-                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1877F2]/10 text-[#1877F2] text-[10px] font-bold hover:bg-[#1877F2] hover:text-white transition-all"
-                      >
-                        <Facebook size={12} />
-                        Facebook
-                      </a>
-                      <a 
-                        href={`https://wa.me/?text=${encodeURIComponent(selectedItem.title + ' ' + `${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] text-[10px] font-bold hover:bg-[#25D366] hover:text-white transition-all"
-                      >
-                        <MessageCircle size={12} />
-                        WhatsApp
-                      </a>
-                      <button 
-                        onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E4405F]/10 text-[#E4405F] text-[10px] font-bold hover:bg-[#E4405F] hover:text-white transition-all"
-                      >
-                        <Instagram size={12} />
-                        Instagram
-                      </button>
-                      <button 
-                        onClick={() => copyToClipboard(`${window.location.origin}/news/${selectedItem.date}/${activeTab}/${selectedItem.index}`, selectedItem)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10px] font-bold hover:bg-zinc-800 hover:text-white transition-all"
-                      >
-                        {copied ? <Check size={12} className="text-green-600" /> : <Link size={12} />}
-                        {copied ? t.news.copied : t.news.copyLink}
-                      </button>
+                    <button 
+                      onClick={() => {
+                        setSelectedItem(null);
+                        window.history.pushState({}, '', '/');
+                      }}
+                      className="p-2 hover:bg-zinc-200 rounded-full transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="p-8 overflow-y-auto custom-scrollbar">
+                    {/* Modal Image */}
+                    <div className="relative h-64 -mx-8 -mt-8 mb-8 overflow-hidden">
+                      <img 
+                        src={selectedItem.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"} 
+                        alt={selectedItem.title}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                     </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setSelectedItem(null);
-                      window.history.pushState({}, '', '/');
-                    }}
-                    className="p-2 hover:bg-zinc-200 rounded-full transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="p-8 overflow-y-auto custom-scrollbar">
-                  {/* Modal Image */}
-                  <div className="relative h-64 -mx-8 -mt-8 mb-8 overflow-hidden">
-                    <img 
-                      src={selectedItem.image || "https://i.postimg.cc/0yWk2Xsf/Gemini-Generated-Image-sykjx4sykjx4sykj.png"} 
-                      alt={selectedItem.title}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                  </div>
-                  <h3 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
-                    {selectedItem.title || selectedItem.Title || selectedItem.news || "News Detail"}
-                  </h3>
-                  <div className="text-zinc-600 leading-relaxed text-lg pb-4">
-                    {(() => {
-                      const isTrend = activeTab === 'fbTrends' || activeTab === 'igTrends';
-                      const contentStr = (selectedItem.content || selectedItem.Content || selectedItem.description || selectedItem.summary || '') as string;
-                      
-                      if (isTrend) {
-                        const parsedSections = parseTrendContent(contentStr);
-                        if (parsedSections && parsedSections.length > 0) {
-                          return (
-                            <div className="grid grid-cols-1 gap-5 mt-2">
-                              {parsedSections.map((section, idx) => {
-                                const config = getTrendSectionConfig(section.key, language);
-                                return (
-                                  <div 
-                                    key={idx} 
-                                    className={`p-6 rounded-[1.5rem] border ${config.bg} transition-all duration-300 hover:scale-[1.01] hover:shadow-md flex flex-col sm:flex-row sm:items-start gap-4`}
-                                  >
-                                    <div className={`p-2.5 rounded-2xl ${config.iconBg} self-start shrink-0 flex items-center justify-center`}>
-                                      {config.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h4 className="font-black text-sm uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                        {config.title}
-                                      </h4>
-                                      <p className="text-zinc-800 text-sm font-semibold leading-relaxed">
-                                        {section.value}
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        }
-                      }
-                      
-                      // Default paragraph rendering
-                      return (
-                        <div className="space-y-4">
-                          {contentStr.split('\n').map((para: string, idx: number) => (
-                            <p key={idx}>{para}</p>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between text-sm text-zinc-400">
-                    <div>
-                      <span className="font-bold uppercase mr-2">{t.news.source}:</span>
-                      {selectedItem.source || "Official News"}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Admin Edit Modal */}
-        <AnimatePresence>
-          {editingItem && (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setEditingItem(null)}
-                className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-brand-500/20"
-              >
-                {/* Header */}
-                <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
-                  <div>
-                    <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">
-                      {language === 'bn' ? "পোস্ট এডিট ও স্টাইল" : "Edit & Style Post"}
+                    <h3 className="text-3xl font-bold text-zinc-900 mb-6 leading-tight">
+                      {selectedItem.title || selectedItem.Title || selectedItem.news || "News Detail"}
                     </h3>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
-                      {editingItem.tab} • Index {editingItem.index} • {editingItem.date}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => setEditingItem(null)}
-                    type="button"
-                    className="p-3 hover:bg-zinc-200 rounded-2xl transition-colors text-zinc-400 hover:text-zinc-700"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                {/* Scrollable Content */}
-                <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
-                  {/* Title */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
-                      {language === 'bn' ? "শিরোনাম" : "Title / Headline"}
-                    </label>
-                    <input
-                      type="text"
-                      value={editingItem.title}
-                      onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
-                      placeholder="Enter title..."
-                    />
-                  </div>
-
-                  {/* Content */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
-                      {language === 'bn' ? "বিষয়বস্তু" : "Content / Description"}
-                    </label>
-                    <textarea
-                      rows={5}
-                      value={editingItem.content}
-                      onChange={(e) => setEditingItem({ ...editingItem, content: e.target.value })}
-                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm leading-relaxed"
-                      placeholder="Enter content details..."
-                    />
-                  </div>
-
-                  {/* Source input */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
-                      {language === 'bn' ? "উৎস" : "Source"}
-                    </label>
-                    <input
-                      type="text"
-                      value={editingItem.source || ""}
-                      onChange={(e) => setEditingItem({ ...editingItem, source: e.target.value })}
-                      className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
-                      placeholder="Enter news source..."
-                    />
-                  </div>
-
-                  {/* Image Slideshow Selector */}
-                  <div className="space-y-4">
-                    <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-2">
-                      {language === 'bn' ? "স্লাইডশো থেকে একটি ছবি নির্বাচন করুন" : "Select an Image from Slideshow"}
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {SLIDESHOW_IMAGES.map((imgUrl, idx) => {
-                        const isSelected = editingItem.image === imgUrl;
-                        const slideLabels = [
-                          "News Hub", "Transport", "Barnia Bazar", "Influencers", "Collab Hub", "Bengali Ponjika"
-                        ];
-
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setEditingItem({ ...editingItem, image: imgUrl })}
-                            className={`relative cursor-pointer group rounded-2xl overflow-hidden border-4 transition-all ${
-                              isSelected 
-                                ? 'border-brand-500 scale-[1.03] shadow-lg shadow-brand-500/20' 
-                                : 'border-zinc-100 hover:border-zinc-300'
-                            }`}
-                          >
-                            <img 
-                              src={imgUrl} 
-                              alt={`Slide option ${idx + 1}`}
-                              className="h-24 w-full object-cover group-hover:scale-105 transition-transform"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className="absolute inset-0 bg-black/40 flex items-end p-2 justify-center">
-                              <span className="text-[10px] font-black text-white text-center tracking-tight leading-tight uppercase bg-zinc-950/60 px-2 py-1 rounded-md">
-                                {slideLabels[idx]}
-                              </span>
-                            </div>
-                            {isSelected && (
-                              <div className="absolute top-2 right-2 p-1.5 bg-brand-500 text-white rounded-full">
-                                <Check size={10} />
+                    <div className="text-zinc-600 leading-relaxed text-lg pb-4">
+                      {(() => {
+                        const isTrend = activeTab === 'fbTrends' || activeTab === 'igTrends';
+                        const contentStr = (selectedItem.content || selectedItem.Content || selectedItem.description || selectedItem.summary || '') as string;
+                        
+                        if (isTrend) {
+                          const parsedSections = parseTrendContent(contentStr);
+                          if (parsedSections && parsedSections.length > 0) {
+                            return (
+                              <div className="grid grid-cols-1 gap-5 mt-2">
+                                {parsedSections.map((section, idx) => {
+                                  const config = getTrendSectionConfig(section.key, language);
+                                  return (
+                                    <div 
+                                      key={idx} 
+                                      className={`p-6 rounded-[1.5rem] border ${config.bg} transition-all duration-300 hover:scale-[1.01] hover:shadow-md flex flex-col sm:flex-row sm:items-start gap-4`}
+                                    >
+                                      <div className={`p-2.5 rounded-2xl ${config.iconBg} self-start shrink-0 flex items-center justify-center`}>
+                                        {config.icon}
+                                      </div>
+                                      <div className="flex-1">
+                                        <h4 className="font-black text-sm uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                          {config.title}
+                                        </h4>
+                                        <p className="text-zinc-800 text-sm font-semibold leading-relaxed">
+                                          {section.value}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            )}
+                            );
+                          }
+                        }
+                        
+                        // Default paragraph rendering
+                        return (
+                          <div className="space-y-4">
+                            {contentStr.split('\n').map((para: string, idx: number) => (
+                              <p key={idx}>{para}</p>
+                            ))}
                           </div>
                         );
-                      })}
+                      })()}
                     </div>
-                    
-                    {/* Custom URL Option */}
-                    <div className="pt-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block mb-1">
-                        {language === 'bn' ? "অথবা কাস্টম চিত্র ইউআরএল" : "Or Custom Image URL"}
+                    <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between text-sm text-zinc-400">
+                      <div>
+                        <span className="font-bold uppercase mr-2">{t.news.source}:</span>
+                        {selectedItem.source || "Official News"}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+        {/* Admin Edit Modal */}
+        {typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
+            {editingItem && (
+              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setEditingItem(null)}
+                  className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-brand-500/20"
+                >
+                  {/* Header */}
+                  <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+                    <div>
+                      <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tight">
+                        {language === 'bn' ? "পোস্ট এডিট ও স্টাইল" : "Edit & Style Post"}
+                      </h3>
+                      <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
+                        {editingItem.tab} • Index {editingItem.index} • {editingItem.date}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setEditingItem(null)}
+                      type="button"
+                      className="p-3 hover:bg-zinc-200 rounded-2xl transition-colors text-zinc-400 hover:text-zinc-700"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Scrollable Content */}
+                  <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+                    {/* Title */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                        {language === 'bn' ? "শিরোনাম" : "Title / Headline"}
                       </label>
                       <input
                         type="text"
-                        value={editingItem.image || ""}
-                        onChange={(e) => setEditingItem({ ...editingItem, image: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-600 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        placeholder="https://example.com/image.png"
+                        value={editingItem.title}
+                        onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                        className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        placeholder="Enter title..."
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* Footer Actions */}
-                <div className="p-8 border-t border-zinc-100 flex justify-end gap-4 bg-zinc-50">
-                  <button
-                    onClick={() => setEditingItem(null)}
-                    type="button"
-                    className="px-6 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-500 hover:bg-zinc-100 transition-all"
-                  >
-                    {language === 'bn' ? "বাতিল" : "Cancel"}
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    disabled={savingEdit}
-                    type="button"
-                    className="px-8 py-3 bg-brand-600 text-white font-black text-sm uppercase tracking-widest rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all shadow-md shadow-brand-500/10 flex items-center gap-2"
-                  >
-                    {savingEdit ? 'Saving...' : (language === 'bn' ? "সংরক্ষণ করুন" : "Save Changes")}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+                    {/* Content */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                        {language === 'bn' ? "বিষয়বস্তু" : "Content / Description"}
+                      </label>
+                      <textarea
+                        rows={5}
+                        value={editingItem.content}
+                        onChange={(e) => setEditingItem({ ...editingItem, content: e.target.value })}
+                        className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm leading-relaxed"
+                        placeholder="Enter content details..."
+                      />
+                    </div>
+
+                    {/* Source input */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block">
+                        {language === 'bn' ? "উৎস" : "Source"}
+                      </label>
+                      <input
+                        type="text"
+                        value={editingItem.source || ""}
+                        onChange={(e) => setEditingItem({ ...editingItem, source: e.target.value })}
+                        className="w-full px-5 py-4 rounded-xl border border-zinc-200 text-zinc-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        placeholder="Enter news source..."
+                      />
+                    </div>
+
+                    {/* Image Slideshow Selector */}
+                    <div className="space-y-4">
+                      <label className="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-2">
+                        {language === 'bn' ? "স্লাইডশো থেকে একটি ছবি নির্বাচন করুন" : "Select an Image from Slideshow"}
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {SLIDESHOW_IMAGES.map((imgUrl, idx) => {
+                          const isSelected = editingItem.image === imgUrl;
+                          const slideLabels = [
+                            "News Hub", "Transport", "Barnia Bazar", "Influencers", "Collab Hub", "Bengali Ponjika"
+                          ];
+
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setEditingItem({ ...editingItem, image: imgUrl })}
+                              className={`relative cursor-pointer group rounded-2xl overflow-hidden border-4 transition-all ${
+                                isSelected 
+                                  ? 'border-brand-500 scale-[1.03] shadow-lg shadow-brand-500/20' 
+                                  : 'border-zinc-100 hover:border-zinc-300'
+                              }`}
+                            >
+                              <img 
+                                src={imgUrl} 
+                                alt={`Slide option ${idx + 1}`}
+                                className="h-24 w-full object-cover group-hover:scale-105 transition-transform"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-end p-2 justify-center">
+                                <span className="text-[10px] font-black text-white text-center tracking-tight leading-tight uppercase bg-zinc-950/60 px-2 py-1 rounded-md">
+                                  {slideLabels[idx]}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 p-1.5 bg-brand-500 text-white rounded-full">
+                                  <Check size={10} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Custom URL Option */}
+                      <div className="pt-2">
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block mb-1">
+                          {language === 'bn' ? "অথবা কাস্টম চিত্র ইউআরএল" : "Or Custom Image URL"}
+                        </label>
+                        <input
+                          type="text"
+                          value={editingItem.image || ""}
+                          onChange={(e) => setEditingItem({ ...editingItem, image: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-600 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          placeholder="https://example.com/image.png"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="p-8 border-t border-zinc-100 flex justify-end gap-4 bg-zinc-50">
+                    <button
+                      onClick={() => setEditingItem(null)}
+                      type="button"
+                      className="px-6 py-3 border border-zinc-200 rounded-xl font-bold text-sm text-zinc-500 hover:bg-zinc-100 transition-all"
+                    >
+                      {language === 'bn' ? "বাতিল" : "Cancel"}
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={savingEdit}
+                      type="button"
+                      className="px-8 py-3 bg-brand-600 text-white font-black text-sm uppercase tracking-widest rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all shadow-md shadow-brand-500/10 flex items-center gap-2"
+                    >
+                      {savingEdit ? 'Saving...' : (language === 'bn' ? "সংরক্ষণ করুন" : "Save Changes")}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
         {/* Last Updated */}
         <div className="mt-12 text-center text-[10px] text-zinc-400 flex items-center justify-center gap-2">
