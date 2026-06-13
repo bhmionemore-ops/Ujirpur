@@ -53,6 +53,39 @@ interface CollabRequest {
   toUid?: string;
 }
 
+const SLIDESHOW_IMAGES = [
+  {
+    url: "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
+    title: "News",
+    titleBn: "খবর"
+  },
+  {
+    url: "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png",
+    title: "Transport",
+    titleBn: "পরিবহন"
+  },
+  {
+    url: "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png",
+    title: "Bazar",
+    titleBn: "বাজার"
+  },
+  {
+    url: "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png",
+    title: "Influencer",
+    titleBn: "ইনফ্লুয়েন্সার"
+  },
+  {
+    url: "https://i.postimg.cc/3RXK5xb8/Gemini-Generated-Image-3luc943luc943luc.png",
+    title: "Collab",
+    titleBn: "সহযোগিতা"
+  },
+  {
+    url: "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png",
+    title: "Ponjika",
+    titleBn: "পঞ্জিকা"
+  }
+];
+
 export const InfluencerSection = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -784,7 +817,7 @@ export const InfluencerSection = () => {
                     </div>
                     <div className="flex-1 w-full space-y-4">
                       <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
+                        <div className="flex-1 col-span-1">
                           <label className="block text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1">
                             {language === 'bn' ? 'ছবির লিঙ্ক' : 'Image URL'}
                           </label>
@@ -810,6 +843,34 @@ export const InfluencerSection = () => {
                               className="hidden"
                             />
                           </label>
+                        </div>
+                      </div>
+
+                      {/* Slideshow Selector for avatar image */}
+                      <div className="pt-1">
+                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
+                          {language === 'bn' ? 'স্লাইডশো ছবি থেকে প্রোফাইল পিকচার সিলেক্ট করুন:' : 'Choose Profile Picture from Slideshow:'}
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto py-1 px-0.5 scrollbar-none">
+                          {SLIDESHOW_IMAGES.map((img, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setNewInfluencer({ ...newInfluencer, avatarUrl: img.url })}
+                              className={`relative flex-shrink-0 w-20 h-12 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                                newInfluencer.avatarUrl === img.url 
+                                  ? 'border-brand-500 scale-95 shadow-md' 
+                                  : 'border-zinc-200 hover:border-zinc-400'
+                              }`}
+                            >
+                              <img 
+                                src={img.url} 
+                                alt={img.title} 
+                                className="w-full h-full object-cover" 
+                                referrerPolicy="no-referrer" 
+                              />
+                            </button>
+                          ))}
                         </div>
                       </div>
                       
@@ -844,6 +905,37 @@ export const InfluencerSection = () => {
                     className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-100 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
                     placeholder="https://example.com/cover.jpg (Optional)"
                   />
+
+                  {/* Slideshow Selector for cover image */}
+                  <div className="pt-1">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
+                      {language === 'bn' ? 'স্লাইডশো ছবি থেকে কভার পিকচার সিলেক্ট করুন:' : 'Choose Cover Picture from Slideshow:'}
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto py-1 px-0.5 scrollbar-none">
+                      {SLIDESHOW_IMAGES.map((img, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setNewInfluencer({ ...newInfluencer, coverUrl: img.url })}
+                          className={`relative flex-shrink-0 w-24 h-14 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                            newInfluencer.coverUrl === img.url 
+                              ? 'border-brand-500 scale-95 shadow-md' 
+                              : 'border-zinc-200 hover:border-zinc-400'
+                          }`}
+                        >
+                          <img 
+                            src={img.url} 
+                            alt={img.title} 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer" 
+                          />
+                          <div className="absolute bottom-0.5 right-0.5 bg-black/60 px-1 rounded text-[8px] font-black text-white">
+                            {language === 'bn' ? img.titleBn : img.title}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 md:col-span-2">

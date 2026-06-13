@@ -209,6 +209,72 @@ export async function getNewsItem(date: string, tab: string, index: string, proj
   }
 }
 
+export async function getVamshavaliItem(shareId: string) {
+  const cacheKey = `vamshavali:${shareId}`;
+  const cached = metadataCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  try {
+    let data: any = null;
+    const cleanId = shareId.toUpperCase().trim();
+
+    if (adminDb) {
+      try {
+        const snap = await adminDb.collection("vamshavali_profiles").where("shareId", "==", cleanId).limit(1).get();
+        if (!snap.empty) {
+          const doc = snap.docs[0];
+          data = doc.data();
+          data.id = doc.id;
+        }
+      } catch (e) {}
+    }
+
+    if (!data && db) {
+      try {
+        const q = query(collection(db, "vamshavali_profiles"), where("shareId", "==", cleanId), limit(1));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          data = docSnap.data();
+          data.id = docSnap.id;
+        }
+      } catch (e) {}
+    }
+
+    if (!data) return null;
+
+    const gotraStr = data.gotra ? `Gotra: ${data.gotra}` : "";
+    const deityStr = data.kuldevi ? `Kuldevi: ${data.kuldevi}` : "";
+    const nameStr = data.name || "A Sacred Lineage";
+    
+    const descParts = [gotraStr, deityStr].filter(Boolean);
+    const descPrefix = descParts.length > 0 ? `${descParts.join(" | ")}. ` : "";
+    const description = `${descPrefix}Explore the secure, digitized ancestral family tree, lineage records, and heritage records of the ${nameStr} family on Barnia Vamshavali.`;
+
+    let coverPhoto = data.kuldeviPhoto || "";
+    if (!coverPhoto && data.members && data.members.length > 0) {
+      coverPhoto = data.members[0].photo || "";
+    }
+    if (!coverPhoto) {
+      coverPhoto = "https://images.unsplash.com/photo-1448375240586-882707db888b?fm=jpg&fit=crop&q=80&w=1200&h=630";
+    }
+
+    const result = {
+      id: data.id || shareId,
+      name: nameStr,
+      description: description,
+      image: coverPhoto
+    };
+
+    metadataCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function injectMetaTags(html: string, metadata: any) {
   const safeUrl = metadata.url || '';
   const images = Array.isArray(metadata.image) ? metadata.image : [metadata.image].filter(Boolean);

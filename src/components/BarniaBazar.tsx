@@ -35,6 +35,39 @@ interface Shop {
   uid?: string;
 }
 
+const SLIDESHOW_IMAGES = [
+  {
+    url: "https://i.postimg.cc/SRnmvf8Y/Gemini-Generated-Image-ley1tyley1tyley1.png",
+    title: "News",
+    titleBn: "খবর"
+  },
+  {
+    url: "https://i.postimg.cc/Bnncj8x2/Gemini-Generated-Image-rwzq46rwzq46rwzq.png",
+    title: "Transport",
+    titleBn: "পরিবহন"
+  },
+  {
+    url: "https://i.postimg.cc/Hn0RkJQ8/Gemini-Generated-Image-4uqd304uqd304uqd.png",
+    title: "Bazar",
+    titleBn: "বাজার"
+  },
+  {
+    url: "https://i.postimg.cc/XXMmVfZf/Gemini-Generated-Image-z1gyayz1gyayz1gy.png",
+    title: "Influencer",
+    titleBn: "ইনফ্লুয়েন্সার"
+  },
+  {
+    url: "https://i.postimg.cc/3RXK5xb8/Gemini-Generated-Image-3luc943luc943luc.png",
+    title: "Collab",
+    titleBn: "সহযোগিতা"
+  },
+  {
+    url: "https://i.postimg.cc/Pfy63krN/Gemini-Generated-Image-9komwk9komwk9kom.png",
+    title: "Ponjika",
+    titleBn: "পঞ্জিকা"
+  }
+];
+
 export const BarniaBazar = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -788,6 +821,42 @@ export const BarniaBazar = () => {
                               className="flex-1 p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-brand-500 outline-none"
                               placeholder={t.bazar.imagePlaceholder}
                             />
+                          </div>
+
+                          {/* Slideshow Quick Selector */}
+                          <div className="pt-2">
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">
+                              {language === 'bn' ? 'স্লাইডশো ছবি থেকে নির্বাচন করুন:' : 'Choose from Slideshow Images:'}
+                            </p>
+                            <div className="flex gap-2 overflow-x-auto py-1 px-0.5 scrollbar-none">
+                              {SLIDESHOW_IMAGES.map((img, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setNewShop({ ...newShop, imageUrl: img.url })}
+                                  className={`relative flex-shrink-0 w-24 h-14 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                                    newShop.imageUrl === img.url 
+                                      ? 'border-brand-500 scale-95 shadow-md' 
+                                      : 'border-zinc-200 hover:border-zinc-400'
+                                  }`}
+                                >
+                                  <img 
+                                    src={img.url} 
+                                    alt={img.title} 
+                                    className="w-full h-full object-cover" 
+                                    referrerPolicy="no-referrer" 
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                    <span className="text-[8px] font-bold text-white text-center truncate px-1">
+                                      {language === 'bn' ? img.titleBn : img.title}
+                                    </span>
+                                  </div>
+                                  <div className="absolute bottom-0.5 right-0.5 bg-black/60 px-1 rounded text-[8px] font-black text-white">
+                                    {language === 'bn' ? img.titleBn : img.title}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
 
