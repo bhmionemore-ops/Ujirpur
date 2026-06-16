@@ -2,6 +2,10 @@ import fetch from "node-fetch";
 import admin from "firebase-admin";
 import { getGeminiApiKey, callGeminiWithRetry } from "./gemini";
 import { parseGeminiJson } from "./utils";
+import { db as sqliteDb } from "./lineage-db";
+import { lineageStore } from "./lineage-core";
+import { GoogleGenAI } from "@google/genai";
+import { randomUUID, randomBytes } from "crypto";
 
 let cachedBotToken: string | null = null;
 let commandsRegistered = false;
@@ -15,11 +19,9 @@ async function registerBotCommands(botToken: string) {
       body: JSON.stringify({
         commands: [
           { command: "start", description: "Start or status check of Barnali AI" },
-          { command: "bazar", description: "Browse Barnia Local Bazar directory" },
-          { command: "ponjika", description: "Check auspicious days & Ponjika dates" },
-          { command: "credits", description: "Check remaining AI credits" },
           { command: "link", description: "Connect family tree: /link <email>" },
           { command: "unlink", description: "Disconnect connected family tree" },
+          { command: "credits", description: "Check remaining AI credits" },
           { command: "help", description: "View commands details and manual" }
         ]
       })
@@ -146,6 +148,214 @@ async function getTelegramFileUrl(fileId: string, botToken: string): Promise<str
   return null;
 }
 
+async function transcribeVoice(audioBuffer: Buffer, geminiApiKey: string): Promise<string> {
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: geminiApiKey,
+      apiVersion: 'v1beta',
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: [
+        {
+          inlineData: {
+            mimeType: "audio/ogg",
+            data: audioBuffer.toString("base64")
+          }
+        },
+        { text: "Accurately transcribe other speech or instructions in the voice note. Return ONLY the final transcription transcript in Indian vernacular (Bengali, Hindi, or English). Be extremely faithful, do not summarize, and output nothing but the verified transcription. Return empty if no voice or message is present." }
+      ]
+    });
+
+    return (response.text || "").trim();
+  } catch (err) {
+    console.error("[Telegram Bot] Error during voice transcription in transcribeVoice helper:", err);
+    throw err;
+  }
+}
+
+function getSqliteTreeDescription(treeId: string): string {
+  try {
+    const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(treeId) as any;
+    if (!tree) return "Tree not found.";
+
+    const people = sqliteDb.prepare("SELECT * FROM lineage_people WHERE tree_id = ?").all(treeId) as any[];
+    const spouses = sqliteDb.prepare("SELECT * FROM lineage_spouses WHERE tree_id = ?").all(treeId) as any[];
+
+    return JSON.stringify({
+      tree: {
+        id: tree.id,
+        name: tree.name,
+        account_holder_name: tree.account_holder_name,
+        gotra: tree.gotra,
+        kuladevi: tree.kuladevi,
+        kuladevata: tree.kuladevata,
+        gramadevata: tree.gramadevata,
+        family_surname: tree.family_surname,
+        notes: tree.notes
+      },
+      people: people.map(p => ({
+        id: p.id,
+        displayName: p.display_name,
+        gender: p.gender,
+        lifeStatus: p.life_status,
+        maritalStatus: p.marital_status,
+        dateOfBirth: p.date_of_birth,
+        dateOfDeath: p.date_of_death,
+        deathAnniversary: p.death_anniversary,
+        rashi: p.rashi,
+        gotra: p.gotra,
+        photoUrl: p.photo_url,
+        notes: p.notes,
+        fatherId: p.father_id,
+        motherId: p.mother_id
+      })),
+      spouses: spouses.map(s => ({
+        id: s.id,
+        personAId: s.person_a_id,
+        personBId: s.person_b_id,
+        status: s.status
+      }))
+    }, null, 2);
+  } catch (err) {
+    console.error("[Telegram Bot] Error formatting SQLite tree description:", err);
+    return "Error fetching tree database details.";
+  }
+}
+
+function addWavHeader(pcmBuffer: Buffer, sampleRate: number = 24000): Buffer {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = pcmBuffer.length;
+  const chunkSize = 36 + dataSize;
+
+  const header = Buffer.alloc(44);
+
+  // RIFF identifier
+  header.write("RIFF", 0);
+  // file length minus 8 bytes
+  header.writeUInt32LE(chunkSize, 4);
+  // RIFF type
+  header.write("WAVE", 8);
+  // Format chunk identifier
+  header.write("fmt ", 12);
+  // Format chunk length (16 bytes)
+  header.writeUInt32LE(16, 16);
+  // Sample format (1 is PCM)
+  header.writeUInt16LE(1, 20);
+  // Number of channels
+  header.writeUInt16LE(numChannels, 22);
+  // Sample rate
+  header.writeUInt32LE(sampleRate, 24);
+  // Byte rate
+  header.writeUInt32LE(byteRate, 28);
+  // Block align
+  header.writeUInt16LE(blockAlign, 32);
+  // Bits per sample
+  header.writeUInt16LE(bitsPerSample, 34);
+  // Data chunk identifier
+  header.write("data", 36);
+  // Data chunk length
+  header.writeUInt32LE(dataSize, 40);
+
+  return Buffer.concat([header, pcmBuffer]);
+}
+
+async function generateSpeech(textToSpeak: string, geminiApiKey: string): Promise<Buffer | null> {
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: geminiApiKey,
+      apiVersion: 'v1beta',
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    // Clean up textToSpeak for clean reading
+    let cleanedText = textToSpeak
+      .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, "") // Emojis
+      .replace(/https?:\/\/\S+/g, "") // URLs
+      .replace(/[\*\_`#~\[\]\(\)]/g, " ") // Markdown spec characters
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleanedText || cleanedText.length < 2) return null;
+
+    // Limit length for synthesis to avoid excessive generation
+    if (cleanedText.length > 400) {
+      cleanedText = cleanedText.substring(0, 400) + "...";
+    }
+
+    console.log(`[Telegram Bot TTS] Synthesizing speech for text: "${cleanedText}"`);
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-flash-tts-preview",
+      contents: [{ parts: [{ text: cleanedText }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Aoede' }, // Aoede is an incredibly beautiful, warm, expressive, and human-sounding female voice
+          },
+        },
+      },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (base64Audio) {
+      const rawPcm = Buffer.from(base64Audio, "base64");
+      return addWavHeader(rawPcm, 24000);
+    }
+  } catch (err) {
+    console.error("[Telegram Bot TTS] Error during speech synthesis:", err);
+  }
+  return null;
+}
+
+async function sendTelegramVoice(botToken: string, chatId: number, audioBuffer: Buffer) {
+  try {
+    const boundary = "----TelegramBotAudioBoundary" + Math.random().toString(16).substring(2);
+    const parts: Buffer[] = [];
+
+    // Part: chat_id
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`));
+
+    // Part: voice file
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`));
+    parts.push(audioBuffer);
+    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+
+    const bodyBuffer = Buffer.concat(parts);
+
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
+      method: "POST",
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`
+      },
+      body: bodyBuffer
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("[Telegram sendVoice Error]", errText);
+    } else {
+      console.log(`[Telegram] Voice note sent successfully to chatId ${chatId}`);
+    }
+  } catch (err) {
+    console.error("[Telegram] Error sending voice note:", err);
+  }
+}
+
 export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<number, any>, telegramLinkCache: Map<number, any>, db: any, adminDb: any) {
   const body = req.body;
   if (!body || !body.message) {
@@ -154,7 +364,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   const { message } = body;
   const chatId = message.chat.id;
-  const text = message.text || "";
+  let text = message.text || "";
   const from = message.from || {};
 
   console.log(`[Telegram] Message from ${from?.first_name} (${chatId}): ${text.substring(0, 55)}`);
@@ -202,6 +412,38 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       console.error("[Telegram] sendMessage failed:", e);
     }
   };
+
+  let isFromVoice = false;
+  if (message.voice) {
+    await sendMessage("🎤 *Barnali is listening to your voice note...* 🎧");
+    try {
+      const apiKey = await getGeminiApiKey();
+      const voiceFileId = message.voice.file_id;
+      const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${voiceFileId}`);
+      const fileData = await fileRes.json() as any;
+      if (fileData && fileData.ok && fileData.result && fileData.result.file_path) {
+        const filePath = fileData.result.file_path;
+        const voiceUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
+        const voiceRes = await fetch(voiceUrl);
+        if (voiceRes.ok) {
+          const buffer = await voiceRes.buffer();
+          text = await transcribeVoice(buffer, apiKey);
+          isFromVoice = true;
+          console.log(`[Telegram Bot] Voice transcribed: "${text}"`);
+          if (!text) {
+            await sendMessage("🔇 The voice note was empty or silent. Please speak clearly.");
+            return;
+          }
+        } else {
+          console.error("[Telegram] Fetching voice file failed");
+        }
+      }
+    } catch (err: any) {
+      console.error("[Telegram Bot] Voice transcription failed:", err);
+      await sendMessage("⚠️ Sorry, I could not transcribe or process your voice message. Please try sending text instead.");
+      return;
+    }
+  }
 
   // 1. Fetch Telegram state database & bootstrap if missing (or use memory cache)
   let linkedProfileId: string | null = null;
@@ -268,11 +510,27 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
         // Fetch linked tree profile
         if (linkedProfileId) {
-          const snap = await adminDb.collection("vamshavali_profiles").doc(linkedProfileId).get();
-          if (snap.exists) {
+          let snap: any = null;
+          if (adminDb) {
+            snap = await adminDb.collection("vamshavali_profiles").doc(linkedProfileId).get();
+          }
+          if (snap && snap.exists) {
             linkedProfile = { id: snap.id, ...snap.data() };
             linkedShareId = linkedProfile.shareId || null;
             respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
+          } else {
+            // Check SQLite database!
+            try {
+              const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkedProfileId) as any;
+              if (tree) {
+                linkedProfile = tree;
+                linkedShareId = tree.id;
+                respectfulName = formatRespectfulName(telegramName, tree, userLang);
+                console.log(`[Telegram] Loaded SQLite tree: ${tree.id} (${tree.name})`);
+              }
+            } catch (sqliteErr) {
+              console.error("[Telegram] Error fetching SQLite tree:", sqliteErr);
+            }
           }
         }
 
@@ -765,10 +1023,14 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       return;
     }
 
+    const emailVal = linkArg.toLowerCase().trim();
     let foundProfile: any = null;
+    let foundSqliteTree: any = null;
+
+    // Check Firestore first:
     if (adminDb) {
       try {
-        const queryEmail = await adminDb.collection("vamshavali_profiles").where("email", "==", linkArg.toLowerCase().trim()).limit(1).get();
+        const queryEmail = await adminDb.collection("vamshavali_profiles").where("email", "==", emailVal).limit(1).get();
         if (!queryEmail.empty) {
           foundProfile = { id: queryEmail.docs[0].id, ...queryEmail.docs[0].data() };
         } else {
@@ -778,10 +1040,73 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           }
         }
       } catch (err) {
-        console.error("[Telegram] Error searching family tree:", err);
+        console.error("[Telegram] Error searching family tree in Firestore:", err);
       }
     }
 
+    // Check SQLite:
+    try {
+      const account = sqliteDb.prepare("SELECT * FROM accounts WHERE email = ?").get(emailVal) as any;
+      if (account) {
+        const membership = sqliteDb.prepare("SELECT * FROM account_tree_memberships WHERE account_id = ?").get(account.id) as any;
+        if (membership) {
+          const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(membership.tree_id) as any;
+          if (tree) {
+            foundSqliteTree = tree;
+            console.log(`[Telegram] Found SQLite tree ${tree.id} for account email ${emailVal}`);
+          }
+        }
+      } else {
+        const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkArg.trim()) as any;
+        if (tree) {
+          foundSqliteTree = tree;
+          console.log(`[Telegram] Found SQLite tree ${tree.id} directly by ID`);
+        }
+      }
+    } catch (sqliteErr) {
+      console.error("[Telegram] Error searching SQLite tree:", sqliteErr);
+    }
+
+    // Execute linkage if found in SQLite:
+    if (foundSqliteTree) {
+      if (adminDb) {
+        await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+          linkedProfileId: foundSqliteTree.id,
+          linkedEmail: linkArg.match(emailRegex) ? emailVal : null,
+          linkedShareId: foundSqliteTree.id,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      linkedProfileId = foundSqliteTree.id;
+      linkedEmail = linkArg.match(emailRegex) ? emailVal : null;
+      linkedShareId = foundSqliteTree.id;
+      linkedProfile = foundSqliteTree;
+      respectfulName = formatRespectfulName(telegramName, foundSqliteTree, userLang);
+
+      // Update memory cache
+      telegramLinkCache.set(chatId, {
+        linkedProfileId,
+        linkedEmail,
+        linkedShareId,
+        currentCredits,
+        linkedProfile,
+        telegramName,
+        timestamp: Date.now()
+      });
+
+      const treeLink = `https://barnia.in/vamshavali/v/${foundSqliteTree.id}`;
+      await sendMessage(
+        `🌳 *Vamshavali Connected Successfully!* 🌳\n\n` +
+        `I have linked your Telegram chat to your family tree: *"${foundSqliteTree.name}"* 🎉.\n\n` +
+        `🔗 *Your Live Family Tree Link:* [View My Tree](${treeLink})\n\n` +
+        `You can speak or send voice notes to me here, and I will instantly update your tree in real-time!`,
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+
+    // Execute linkage if found in Firestore:
     if (foundProfile) {
       if (adminDb) {
         await adminDb.collection("telegram_users").doc(chatId.toString()).set({
@@ -816,60 +1141,84 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         { parse_mode: "Markdown" }
       );
       return;
-    } else {
-      // Let's check if the linkArg looks like a valid email. If so, we can auto-bootstrap a profile for them!
-      if (linkArg.match(emailRegex)) {
-        try {
-          const { bootstrapProfile } = await import("./vamshavali-logic");
-          const newProfile = await bootstrapProfile(linkArg.toLowerCase().trim(), db, adminDb, admin);
-          if (newProfile) {
-            if (adminDb) {
-              await adminDb.collection("telegram_users").doc(chatId.toString()).set({
-                linkedProfileId: newProfile.id,
-                linkedEmail: newProfile.email || null,
-                linkedShareId: newProfile.shareId || null,
-                updatedAt: new Date().toISOString()
-              }, { merge: true });
-            }
-
-            linkedProfileId = newProfile.id;
-            linkedEmail = newProfile.email || null;
-            linkedShareId = newProfile.shareId || null;
-            linkedProfile = newProfile;
-            respectfulName = formatRespectfulName(telegramName, newProfile, userLang);
-
-            // Update memory cache
-            telegramLinkCache.set(chatId, {
-              linkedProfileId,
-              linkedEmail,
-              linkedShareId,
-              currentCredits,
-              linkedProfile,
-              telegramName,
-              timestamp: Date.now()
-            });
-
-            await sendMessage(
-              `✨ *Tree Initialized & Connected!*\n\n` +
-              `I couldn't find an existing family tree for *"${linkArg.toLowerCase().trim()}"*, so I have initialized a fresh tree for you and linked it to this chat.\n\n` +
-              `You can view/edit it on [barnia.in/vamshavali](https://barnia.in/vamshavali) or make updates directly here in this chat!`,
-              { parse_mode: "Markdown" }
-            );
-            return;
-          }
-        } catch (bootstrapErr: any) {
-          console.error("[Telegram] Auto-bootstrap error during linking:", bootstrapErr);
-        }
-      }
-
-      await sendMessage(
-        `❌ *Family Tree Not Found*\n\n` +
-        `I couldn't find any family tree under the email or share ID: *"${linkArg}"*.\n\n` +
-        `Make sure the email is registered in the *Vamshavali* section of [barnia.in](https://barnia.in) or supply a valid email to bootstrap a fresh tree!`,
-        { parse_mode: "Markdown" }
-      );
-      return;
     }
+
+    // Auto-bootstrap fresh SQLite account & tree if email provided but not found anywhere!
+    if (linkArg.match(emailRegex)) {
+      try {
+        const { authStore } = await import("./lineage-auth.js");
+
+        let account = sqliteDb.prepare("SELECT * FROM accounts WHERE email = ?").get(emailVal) as any;
+        if (!account) {
+          const tempPass = randomBytes(8).toString("hex");
+          const session = authStore.registerPassword(emailVal, telegramName, tempPass);
+          account = session.account;
+        }
+
+        let membership = sqliteDb.prepare("SELECT * FROM account_tree_memberships WHERE account_id = ?").get(account.id) as any;
+        let tree: any;
+        if (!membership) {
+          const treeState = lineageStore.createTree({
+            name: `${telegramName}'s Vamshavali`,
+            familySurname: telegramName.split(/\s+/).pop() || "",
+            seedAccountHolder: true,
+            accountHolderName: telegramName
+          }, account.id);
+          tree = treeState.trees.find((t: any) => t.id === treeState.activeTreeId);
+        } else {
+          tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(membership.tree_id);
+        }
+
+        if (tree) {
+          if (adminDb) {
+            await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+              linkedProfileId: tree.id,
+              linkedEmail: emailVal,
+              linkedShareId: tree.id,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          }
+
+          linkedProfileId = tree.id;
+          linkedEmail = emailVal;
+          linkedShareId = tree.id;
+          linkedProfile = tree;
+          respectfulName = formatRespectfulName(telegramName, tree, userLang);
+
+          // Update memory cache
+          telegramLinkCache.set(chatId, {
+            linkedProfileId,
+            linkedEmail,
+            linkedShareId,
+            currentCredits,
+            linkedProfile,
+            telegramName,
+            timestamp: Date.now()
+          });
+
+          const treeLink = `https://barnia.in/vamshavali/v/${tree.id}`;
+          await sendMessage(
+            `✨ *Vamshavali Tree Initialized & Connected!* ✨\n\n` +
+            `I have successfully initialized your account for *"${emailVal}"* and bootstrapped your unique Vamshavali page! 🌳\n\n` +
+            `🔗 *Your Live family tree link is:* \n` +
+            `${treeLink}\n\n` +
+            `You can talk or send voice notes to me here, and I will instantly update your tree in real-time!`,
+            { parse_mode: "Markdown" }
+          );
+          return;
+        }
+      } catch (bootstrapErr) {
+        console.error("[Telegram] Error auto-bootstrapping SQLite tree:", bootstrapErr);
+      }
+    }
+
+    await sendMessage(
+      `❌ *Family Tree Not Found*\n\n` +
+      `I couldn't find any family tree under the email or share ID: *"${linkArg}"*.\n\n` +
+      `Make sure the email is registered in the *Vamshavali* section of [barnia.in](https://barnia.in) or supply a valid email to bootstrap a fresh tree!`,
+      { parse_mode: "Markdown" }
+    );
+    return;
   }
 
   // 3. Process Photo upload (caching / capturing URL)
@@ -931,8 +1280,6 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     );
     return;
   }
-
-  // 5. Construct Gemini Grounding & Task Prompt
   try {
     const apiKey = await getGeminiApiKey();
 
@@ -943,6 +1290,109 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       else userGender = inferGenderByName(linkedProfile.name || telegramName);
     } else {
       userGender = inferGenderByName(telegramName);
+    }
+
+    let isSqliteTree = false;
+    let sqliteTreeDescription = "";
+    if (linkedProfile && linkedProfileId) {
+      const dbRow = sqliteDb.prepare("SELECT 1 FROM lineage_trees WHERE id = ?").get(linkedProfileId);
+      if (dbRow) {
+        isSqliteTree = true;
+        sqliteTreeDescription = getSqliteTreeDescription(linkedProfileId);
+      }
+    }
+
+    let treePromptSection = "";
+    if (isSqliteTree) {
+      treePromptSection = `FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION (SQLITE MANUAL):
+The user is currently linked to a high-perf SQLITE-backed lineage ledger:
+${sqliteTreeDescription}
+
+To perform any interactive tree mutation (e.g., adding a relative/child/spouse, updating fields, deleting entries, linking spouses, changing Gotra/Kuldevi), you MUST return a payload in this exact JSON schema:
+{
+  "isUpdate": true,
+  "sqliteOperations": [
+    {
+      "type": "create_person",
+      "data": {
+        "displayName": "Full name of person",
+        "gender": "male" or "female",
+        "lifeStatus": "living" or "deceased",
+        "maritalStatus": "married" or "unmarried" or "widowed",
+        "fatherId": "IdOfFather" (only if father is already in the tree),
+        "motherId": "IdOfMother" (only if mother is already in the tree and linked to the father),
+        "dateOfBirth": "YYYY-MM-DD" (optional),
+        "dateOfDeath": "YYYY-MM-DD" (optional),
+        "deathAnniversary": "string description" (optional),
+        "rashi": "Zodiac/Rashi" (optional),
+        "gotra": "Gotra" (optional),
+        "photoUrl": "URL reference" (optional),
+        "notes": "string notes" (optional)
+      }
+    },
+    {
+      "type": "update_person",
+      "id": "person_id",
+      "data": { <only fields to update> }
+    },
+    {
+      "type": "delete_person",
+      "id": "person_id"
+    },
+    {
+      "type": "link_spouses",
+      "personAId": "husband_id",
+      "personBId": "wife_id",
+      "status": "married"
+    },
+    {
+      "type": "update_tree",
+      "data": {
+        "name": "Lineage Tree Name" (optional),
+        "familySurname": "Surname" (optional),
+        "gotra": "Gotra" (optional),
+        "kuladevi": "Kuldevi Name" (optional),
+        "kuladevata": "Kuladevata Name" (optional),
+        "gramadevata": "Gramadevata Name" (optional),
+        "notes": "notes" (optional)
+      }
+    }
+  ],
+  "summary": "Friendly scannable Markdown summary of what you did (English, Bengali or Hindi depending on language user queried in)."
+}
+
+Strict Rules:
+1. When adding a child, locate public parents in the database description. Assign "fatherId" to father's ID, and "motherId" to mother's ID.
+2. Spouses are added as separate people first (if not in tree), followed by a "link_spouses" operation.
+3. If assigning a photo, use exactly: "${activePhotoUrl || ""}" for "photoUrl" or "photoUrl" updates. Only do this if they attached a picture (e.g. check if the URL is not empty).
+4. If they want to upload a photo but "${activePhotoUrl || ""}" is empty, DO NOT output any JSON operation; instead, output standard text asking them to attach/upload the image/photo in the Telegram message.
+5. In SQLite, only male lineage members are allowed to link children or continue generations. Married daughters can stand as female elements but cannot continue generations under their own branch. Keep this in mind when mapping family lines.`;
+    } else {
+      treePromptSection = `FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION (FIRESTORE LEGACY):
+The user's currently linked legacy Firestore Vamshavali profile is:
+${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
+ 
+${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '${linkedProfile.shareId}' and their public tree link is 'https://barnia.in/vamshavali/v/${linkedProfile.shareId}'.` : "The user does not have a fully linked active tree share ID yet."}
+ 
+- If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
+- If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
+  1. Produce a structured JSON payload response matching this exact shape ONLY if the required files or metadata are actually supplied:
+  {
+    "isUpdate": true,
+    "updatedProfile": { <insert the FULL updated profile JSON incorporating all original details with the newly requested modifications applied> },
+    "summary": "A friendly scannable summary in Markdown describing exactly what changes you performed (e.g. 'Updated Savitri Devi\\'s birth year to 1944.')."
+  }
+  2. Each member has properties: id, name, role, birthYear, photo, partner { name, birthYear, photo }, and children []. For nested member array updates, traverse and modify the recursive 'members' list.
+  3. Generating member additions: generate unique IDs (e.g., 'member_id_xyz123') for new children/spouses.
+  4. PICTURE/PHOTO UPDATES INSTRUCTIONS:
+     - The user has provided an image/picture URL to associate: "${activePhotoUrl || ""}"
+     - **CRITICAL - Handling Missing Photos**: If the user asks or expresses the intent to set, change, add, or update a photo/picture/avatar for themselves, Kuldevi, or any relative (e.g., "add my kuldavi picture", "update Abhay's picture", "set a photo of Abhay") but they HAVE NOT attached any image/photo in their message (and the image/picture URL provided above is empty/blank: "${activePhotoUrl || ""}"), you MUST NOT perform a tree update or output JSON. Instead, you MUST directly respond with friendly standard human-readable text (not JSON) in Bengali or English politely instructing them to attach/upload the actual picture file along with their message in Telegram so that you can receive the image and apply it to their tree.
+     - **Kuldevi / Kuldavi (Deity)**: If they express the intent to upload or set the image of "Kuldevi" or "Kuldavi" (or family goddess/deity) AND they have provided a valid non-empty photo URL, set the root-level property 'kuldeviPhoto' of the profile to "${activePhotoUrl || ""}".
+     - **Specific Relative by Name**: If they name a member (e.g., "upload this picture of Abhay", "this is Abhay's picture", "update Abhay's picture") and have provided a photo URL, recursively find a member whose name is "Abhay" (case-insensitive, fuzzy or partial match) and update their 'photo' property to "${activePhotoUrl || ""}".
+     - **Spouse / Wife / "viva" / Partner**:
+       - If they say "upload this picture of [Name]'s wife / partner / sponsor / spouse / viva" and have provided a photo URL, locate the member with that name (e.g., "Abhay") and set their 'partner.photo' property to "${activePhotoUrl || ""}". If the 'partner' object is missing or null under that member, initialize it like 'partner: { name: "Spouse of " + Name, photo: "${activePhotoUrl || ""}" }'.
+       - If they say "upload this picture of my partner / wife / viva / spouse" and have provided a photo URL, locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
+     - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo" and have provided a photo URL, trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".`;
     }
 
     const systemPrompt = `You are Barnali 🌸, the smart, friendly, and helpful AI assistant for the barnia.in app (Barnia Digital Hub).
@@ -983,31 +1433,8 @@ STRICT SCOPE LIMITS:
   - **Village Transport**: Transits and booking directories for Barnia.
 - If the user's inquiry is unrelated to barnia.in, Barnia village, or their linked lineage, you MUST politely decline and ground yourself. Example: "I am Barnali, dedicated specifically to helping you on barnia.in. I can only assist with platform modules, community directories, or linked genealogy trees."
  
-FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION & LINK SHARING:
-The user's currently linked Vamshavali profile is:
-${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
- 
-${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '${linkedProfile.shareId}' and their public tree link is 'https://barnia.in/vamshavali/v/${linkedProfile.shareId}'.` : "The user does not have a fully linked active tree share ID yet."}
- 
-- If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
-- If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
-  1. Produce a structured JSON payload response matching this exact shape ONLY if the required files or metadata are actually supplied:
-  {
-    "isUpdate": true,
-    "updatedProfile": { <insert the FULL updated profile JSON incorporating all original details with the newly requested modifications applied> },
-    "summary": "A friendly scannable summary in Markdown describing exactly what changes you performed (e.g. 'Updated Savitri Devi\\'s birth year to 1944.')."
-  }
-  2. Each member has properties: id, name, role, birthYear, photo, partner { name, birthYear, photo }, and children []. For nested member array updates, traverse and modify the recursive 'members' list.
-  3. Generating member additions: generate unique IDs (e.g., 'member_id_xyz123') for new children/spouses.
-  4. PICTURE/PHOTO UPDATES INSTRUCTIONS:
-     - The user has provided an image/picture URL to associate: "${activePhotoUrl || ""}"
-     - **CRITICAL - Handling Missing Photos**: If the user asks or expresses the intent to set, change, add, or update a photo/picture/avatar for themselves, Kuldevi, or any relative (e.g., "add my kuldavi picture", "update Abhay's picture", "set a photo of Abhay") but they HAVE NOT attached any image/photo in their message (and the image/picture URL provided above is empty/blank: "${activePhotoUrl || ""}"), you MUST NOT perform a tree update or output JSON. Instead, you MUST directly respond with friendly standard human-readable text (not JSON) in Bengali or English politely instructing them to attach/upload the actual picture file along with their message in Telegram so that you can receive the image and apply it to their tree.
-     - **Kuldevi / Kuldavi (Deity)**: If they express the intent to upload or set the image of "Kuldevi" or "Kuldavi" (or family goddess/deity) AND they have provided a valid non-empty photo URL, set the root-level property 'kuldeviPhoto' of the profile to "${activePhotoUrl || ""}".
-     - **Specific Relative by Name**: If they name a member (e.g., "upload this picture of Abhay", "this is Abhay's picture", "update Abhay's picture") and have provided a photo URL, recursively find a member whose name is "Abhay" (case-insensitive, fuzzy or partial match) and update their 'photo' property to "${activePhotoUrl || ""}".
-     - **Spouse / Wife / "viva" / Partner**:
-       - If they say "upload this picture of [Name]'s wife / partner / sponsor / spouse / viva" and have provided a photo URL, locate the member with that name (e.g., "Abhay") and set their 'partner.photo' property to "${activePhotoUrl || ""}". If the 'partner' object is missing or null under that member, initialize it like 'partner: { name: "Spouse of " + Name, photo: "${activePhotoUrl || ""}" }'.
-       - If they say "upload this picture of my partner / wife / viva / spouse" and have provided a photo URL, locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
-     - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo" and have provided a photo URL, trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".
+${treePromptSection}
+
 - If the request is NOT a family tree modification (e.g., just general help, asking about Bazar, asking about auspicious dates, or querying details from their tree), proceed by returning standard human-readable text directly (do NOT wrap inside JSON structure).
 - Conversational linking triggers: If the user says "link me to <email_or_share_id>", or you ask them to and they provide an email or Share ID/Code explicitly, you can respond with this JSON to link them:
 {
@@ -1079,6 +1506,64 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
             await sendMessage(`❌ *Could not find that family tree.* Please verify your Email or Share ID and try again!`);
             isTreeUpdated = true;
           }
+        } else if (payload && payload.isUpdate && payload.sqliteOperations) {
+          if (!linkedProfileId) {
+            await sendMessage("⚠️ Your Telegram chat is not linked to any profile yet.");
+            isTreeUpdated = true;
+          } else {
+            try {
+              sqliteDb.transaction(() => {
+                for (const op of payload.sqliteOperations) {
+                  if (op.type === "create_person") {
+                    lineageStore.createPerson({
+                      treeId: linkedProfileId,
+                      ...op.data
+                    });
+                  } else if (op.type === "update_person" && op.id) {
+                    lineageStore.updatePerson(op.id, op.data);
+                  } else if (op.type === "delete_person" && op.id) {
+                    lineageStore.deletePerson(op.id);
+                  } else if (op.type === "link_spouses" && op.personAId && op.personBId) {
+                    lineageStore.linkSpouses(linkedProfileId, op.personAId, op.personBId, op.status || "married");
+                  } else if (op.type === "update_tree" && op.data) {
+                    lineageStore.updateTree(linkedProfileId, op.data);
+                  }
+                }
+              })();
+
+              // Clear photostate cache
+              lastPhotos.delete(chatId);
+
+              // Update cached profile memory
+              const updatedTree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkedProfileId) as any;
+              telegramLinkCache.set(chatId, {
+                linkedProfileId,
+                linkedEmail,
+                linkedShareId: linkedProfileId,
+                currentCredits,
+                linkedProfile: updatedTree,
+                telegramName,
+                userLang,
+                timestamp: Date.now()
+              });
+
+              const traceLink = `\n\nLive preview updated on [barnia.in/vamshavali/v/${linkedProfileId}](https://barnia.in/vamshavali/v/${linkedProfileId}).`;
+              const updateText = `✅ *Vamshavali Ledger Updated!* 🌳\n\n${payload.summary || "Updates successfully applied."}${traceLink}`;
+              await sendMessage(updateText, { parse_mode: "Markdown" });
+              isTreeUpdated = true;
+
+              // Generate and send a sweet voice confirmation
+              const speakText = `Vamshavali updated! ${payload.summary || "All your changes have been securely saved to the family tree."}`;
+              const audioBuffer = await generateSpeech(speakText, apiKey);
+              if (audioBuffer) {
+                await sendTelegramVoice(botToken, chatId, audioBuffer);
+              }
+            } catch (err: any) {
+              console.error("[Telegram Bot] SQLite mutation failed:", err);
+              await sendMessage(`⚠️ *Could not apply those changes:* ${err.message || err}`);
+              isTreeUpdated = true;
+            }
+          }
         } else if (payload && payload.isUpdate && payload.updatedProfile) {
           if (!linkedProfileId) {
             await sendMessage(
@@ -1120,8 +1605,16 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
               ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](https://barnia.in/vamshavali/v/${finalizedProfile.shareId}).`
               : `\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`;
 
-            await sendMessage(`✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`, { parse_mode: "Markdown" });
+            const updateMsg = `✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`;
+            await sendMessage(updateMsg, { parse_mode: "Markdown" });
             isTreeUpdated = true;
+
+            // Generate and send a sweet voice confirmation
+            const speakText = `Family Tree updated! ${payload.summary || "Changes successfully written to your Cloud family tree."}`;
+            const audioBuffer = await generateSpeech(speakText, apiKey);
+            if (audioBuffer) {
+              await sendTelegramVoice(botToken, chatId, audioBuffer);
+            }
           }
         }
       } catch (err: any) {
@@ -1140,6 +1633,12 @@ Format answers beautifully. Speak in Bengali or English based on the user's lang
       } catch (e) {}
 
       await sendMessage(finalMsg, { parse_mode: "Markdown" });
+
+      // Generate and send the natural spoken Voice Note alongside the text response!
+      const audioBuffer = await generateSpeech(finalMsg, apiKey);
+      if (audioBuffer) {
+        await sendTelegramVoice(botToken, chatId, audioBuffer);
+      }
     }
 
   } catch (error: any) {

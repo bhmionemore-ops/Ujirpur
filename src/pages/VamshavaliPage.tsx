@@ -1,2492 +1,1938 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Users, Mail, ArrowRight, ShieldCheck, Save, Share2, 
-  Download, Copy, Plus, Trash2, ChevronDown, ChevronRight,
-  User, Home, Landmark, BookOpen, MapPin, Edit3, LogOut, FileText, Globe,
-  CheckCircle2, AlertCircle, Loader2, X, Heart, Settings, Edit2, Sparkles,
-  Maximize, Minimize2, ScreenShare, Facebook, MessageCircle, Fingerprint
-} from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { jsPDF } from 'jspdf';
-import * as htmlToImage from 'html-to-image';
-import Markdown from 'react-markdown';
-import { useFirebase } from '../FirebaseContext';
-import { useLanguage } from '../LanguageContext';
-import { Language } from '../i18n';
-import { useTracking } from '../TrackingContext';
-import { db, onSnapshot, doc } from '../firebase';
+import React from "react";
+import { useParams } from "react-router-dom";
+import {
+  Baby,
+  Check,
+  ChevronsUpDown,
+  CircleDot,
+  FileText,
+  Heart,
+  Home as HomeIcon,
+  KeyRound,
+  Landmark,
+  LocateFixed,
+  LogOut,
+  Mail,
+  Menu,
+  MessageCircle,
+  Mic,
+  Plus,
+  Save,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  UserRound,
+  Users,
+  Trash2,
+  X,
+  ZoomIn,
+  ZoomOut
+} from "lucide-react";
+import "../styles-vamshavali.css";
 
-interface FamilyMember {
-  id: string;
-  name: string;
-  role: string;
-  photo?: string;
-  birthYear?: string;
-  gender?: 'male' | 'female';
-  partner?: {
-    name: string;
-    photo?: string;
-    birthYear?: string;
-    gender?: 'male' | 'female';
-  };
-  children: FamilyMember[];
-}
+type Gender = "male" | "female" | "other" | "unknown";
+type LifeStatus = "living" | "deceased" | "unknown";
+type MaritalStatus = "unmarried" | "married" | "widowed" | "divorced" | "separated" | "unknown";
+type AppView = "overview" | "tree" | "people" | "traditions" | "import" | "account";
 
-const EditMemberModal = ({ 
-  isOpen, 
-  onClose, 
-  member, 
-  onSave, 
-  handlePhotoUpload 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  member: any; 
-  onSave: (updates: any) => void;
-  handlePhotoUpload: any;
-}) => {
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    birthYear: '', 
-    role: '', 
-    gender: 'male' as 'male' | 'female',
-    photo: '',
-    partnerName: '',
-    partnerBirthYear: '',
-    partnerPhoto: '',
-    partnerGender: 'female' as 'male' | 'female',
-    hasPartner: false
-  });
-
-  useEffect(() => {
-    if (member) {
-      setFormData({
-        name: member.name || '',
-        birthYear: member.birthYear || '',
-        role: member.role || '',
-        gender: member.gender || (member.role?.toLowerCase().includes('daughter') || member.role?.toLowerCase().includes('mother') || member.role?.toLowerCase().includes('matriarch') ? 'female' : 'male'),
-        photo: member.photo || '',
-        partnerName: member.partner?.name || '',
-        partnerBirthYear: member.partner?.birthYear || '',
-        partnerPhoto: member.partner?.photo || '',
-        partnerGender: member.partner?.gender || 'female',
-        hasPartner: !!member.partner
-      });
-    }
-  }, [member, isOpen]);
-
-  if (!isOpen || !member) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#064e3b]/40 backdrop-blur-md">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.4)] border-4 border-[#d4af37] relative"
-      >
-        {/* Background Texture */}
-        <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] pointer-events-none" />
-
-        <div className="p-10 border-b border-zinc-100 flex justify-between items-center bg-[#fdfbf7] relative">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-[#064e3b] rounded-2xl text-[#d4af37] shadow-xl">
-               <Edit3 size={32} />
-            </div>
-            <div>
-              <h3 className="text-3xl font-serif font-black text-[#064e3b] tracking-tight italic">Registry Editor</h3>
-              <p className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.4em] mt-1">Preserving Eternal Records</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-3 hover:bg-[#f4f4f5] rounded-full transition-colors text-[#a1a1aa]">
-            <X size={28} />
-          </button>
-        </div>
-
-        <div className="p-10 max-h-[70vh] overflow-y-auto space-y-12 relative z-10">
-          {/* Primary Member */}
-          <div className="space-y-8">
-            <div className="flex items-center gap-4 text-[#064e3b]">
-              <div className="w-8 h-px bg-[rgba(6,78,59,0.2)]" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Individual Identity</span>
-              <div className="w-8 h-px bg-[rgba(6,78,59,0.2)]" />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Full Legal Name</label>
-                <input 
-                  value={formData.name}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    setFormData({...formData, name: caps});
-                  }}
-                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Historical Period / Birth</label>
-                <input 
-                  value={formData.birthYear}
-                  onChange={(e) => setFormData({...formData, birthYear: e.target.value})}
-                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
-                  placeholder="e.g. 1920 - 2005"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Vedas / Relationship Role</label>
-                <input 
-                  value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
-                  placeholder="e.g. patriarch, mother, daughter, son"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Gender Identification</label>
-                <div className="flex gap-4">
-                  {['male', 'female'].map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setFormData({...formData, gender: g as any})}
-                      className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.gender === g ? 'bg-[#064e3b] text-white border-[#064e3b]' : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#d4af37]/30'}`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-8 p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[rgba(212,175,55,0.1)] shadow-inner">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-[45%] bg-gradient-to-tr from-[#d4af37] to-[#f4e4bc] p-1 shadow-lg">
-                  <div className="w-full h-full rounded-[43%] bg-[#064e3b] overflow-hidden flex items-center justify-center">
-                    {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <User className="text-[rgba(212,175,55,0.3)]" size={32} />}
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 space-y-3">
-                <p className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">Portrait Archives</p>
-                <div className="flex items-center gap-4">
-                  <label className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#065f46] transition-colors">
-                    Upload Portrait
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => handlePhotoUpload(e, (base64: string) => setFormData({...formData, photo: base64}))}
-                      className="hidden"
-                    />
-                  </label>
-                  {formData.photo && <button onClick={() => setFormData({...formData, photo: ''})} className="text-[#ef4444] text-[10px] font-black uppercase">Remove</button>}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Union Section */}
-          <div className="pt-8 border-t border-[#f4f4f5]">
-            <button 
-              onClick={() => setFormData({...formData, hasPartner: !formData.hasPartner})}
-              className={`w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all ${formData.hasPartner ? 'bg-[#d4af37] text-[#064e3b] shadow-xl' : 'bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]'}`}
-            >
-              <Heart size={18} fill={formData.hasPartner ? 'currentColor' : 'none'} />
-              {formData.hasPartner ? 'Formal Union Recorded' : 'Establish Union Partner'}
-            </button>
-          </div>
-
-          {formData.hasPartner && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              className="space-y-8 pt-4 overflow-hidden"
-            >
-               <div className="flex items-center gap-4 text-[#8a6821]">
-                <div className="w-8 h-px bg-[rgba(138,104,33,0.2)]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Partner Archive</span>
-                <div className="w-8 h-px bg-[rgba(138,104,33,0.2)]" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Full Name</label>
-                  <input 
-                    value={formData.partnerName}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                      setFormData({...formData, partnerName: caps});
-                    }}
-                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Period Details</label>
-                  <input 
-                    value={formData.partnerBirthYear}
-                    onChange={(e) => setFormData({...formData, partnerBirthYear: e.target.value})}
-                    className="w-full px-6 py-4 bg-[#fafafa] border-2 border-[#f4f4f5] rounded-2xl font-bold focus:border-[#d4af37] outline-none transition-all text-[#18181b]"
-                  />
-                </div>
-
-                <div className="space-y-3 md:col-span-2">
-                  <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-1">Partner Gender Identification</label>
-                  <div className="flex gap-4">
-                    {['male', 'female'].map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setFormData({...formData, partnerGender: g as any})}
-                        className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.partnerGender === g ? 'bg-[#064e3b] text-white border-[#064e3b]' : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#d4af37]/30'}`}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-6 p-6 bg-[#fdfbf7] rounded-3xl border border-[rgba(212,175,55,0.2)] shadow-sm">
-                <div className="w-16 h-16 rounded-[45%] bg-gradient-to-tr from-[rgba(212,175,55,0.4)] to-[#f4e4bc] p-0.5">
-                  <div className="w-full h-full rounded-[43%] bg-white overflow-hidden flex items-center justify-center">
-                    {formData.partnerPhoto ? <img src={formData.partnerPhoto} className="w-full h-full object-cover" /> : <User className="text-[rgba(212,175,55,0.2)]" size={20} />}
-                  </div>
-                </div>
-                <label className="px-6 py-2 bg-white border-2 border-[#f4f4f5] text-[#71717a] rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer hover:border-[#d4af37] transition-all">
-                  Change Photo
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={(e) => handlePhotoUpload(e, (base64: string) => setFormData({...formData, partnerPhoto: base64}))}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        <div className="p-10 bg-[#fdfbf7] border-t border-zinc-100 flex gap-6 relative z-10">
-          <button 
-            onClick={() => onSave(formData)}
-            className="flex-1 py-5 bg-[#064e3b] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-emerald-900 transition-all shadow-[0_20px_40px_rgba(6,78,59,0.2)] active:scale-95"
-          >
-            Update Chronicle
-          </button>
-          <button onClick={onClose} className="px-10 py-5 bg-white text-[#a1a1aa] rounded-[2rem] font-black text-xs uppercase tracking-widest border-2 border-[#f4f4f5] hover:bg-[#fafafa] transition-all">
-            Refuse
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-const GoldenFrame = ({ photo, name, pulse = false, size = "md", gender = "male" }: { photo?: string; name: string; pulse?: boolean; size?: "sm" | "md"; gender?: "male" | "female" }) => {
-  const sizeClasses = size === "sm" ? "w-16 h-16 md:w-20 md:h-20" : "w-20 h-20 md:w-28 md:h-28";
-  const frameRingColor = gender === "female"
-    ? "from-[#be185d] via-[#f43f5e] to-[#fecdd3]"
-    : "from-[#8a6821] via-[#d4af37] to-[#f4e4bc]";
-  
-  return (
-    <div className={`relative p-1 rounded-full bg-gradient-to-tr ${frameRingColor} shadow-[0_10px_25px_rgba(0,0,0,0.15)] ${pulse ? 'animate-pulse' : ''} group-hover:scale-105 transition-all duration-500 ease-out z-10 flex-shrink-0`}>
-      {/* Decorative concentric gap ring inside */}
-      <div className="absolute inset-[2px] rounded-full bg-white z-10 pointer-events-none" />
-      {/* Ornate inner frame ring */}
-      <div className="absolute inset-[4px] rounded-full bg-gradient-to-b from-transparent to-[#8a6821]/20 z-10 pointer-events-none border border-[#8a6821]/35" />
-      
-      <div className={`relative ${sizeClasses} rounded-full overflow-hidden bg-[#0a2f1d] z-20 flex items-center justify-center`}>
-        {photo ? (
-          <img 
-            src={getSafeImageUrl(photo)} 
-            alt={name} 
-            className="w-full h-full object-cover transition-all duration-[1000ms] group-hover:scale-115"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[#0d3c26] text-[#d4af37]/65">
-            <User size={size === "sm" ? 22 : 32} strokeWidth={1.5} />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-      </div>
-    </div>
-  );
-};
-
-const getSafeImageUrl = (url?: string) => {
-  if (!url) return undefined;
-  if (url.includes("telegram.org")) {
-    return `/api/telegram-proxy?url=${encodeURIComponent(url)}`;
-  }
-  return url;
-};
-
-const DeityFrame = ({ photo, name, isKuldevta }: { photo?: string; name: string; isKuldevta?: boolean }) => {
-  const safeUrl = getSafeImageUrl(photo);
-  return (
-    <div className="relative group mb-4 flex flex-col items-center">
-      {/* Divine Aura / Energy Field */}
-      <div className="absolute inset-0 bg-[#d4af37]/10 rounded-full blur-[80px] animate-pulse pointer-events-none" />
-      
-      {/* Floating Sparkles Decorating the Aura */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(4)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ 
-              opacity: [0, 0.7, 0], 
-              scale: [0.5, 1.1, 0.7],
-              y: [0, -60 - (Math.random() * 60)],
-              x: [(Math.random() - 0.5) * 60, (Math.random() - 0.5) * 120]
-            }}
-            transition={{ 
-              duration: 4 + Math.random() * 3, 
-              repeat: Infinity, 
-              delay: i * 0.9,
-              ease: "easeOut"
-            }}
-            className="absolute top-1/2 left-1/2 text-[#d4af37]/40"
-          >
-            <Sparkles size={6 + Math.random() * 6} />
-          </motion.div>
-        ))}
-      </div>
-
-      {/* The Ornate Frame */}
-      <motion.div 
-        initial={{ y: 15, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="relative p-1.5 rounded-[2rem] bg-gradient-to-b from-[#f59e0b] via-[#d4af37] to-[#8a6821] shadow-[0_30px_70px_rgba(182,141,64,0.35)] border-2 border-[#fffbeb] z-25"
-      >
-        <div className="absolute inset-0 border-[10px] border-[#064e3b]/5 pointer-events-none rounded-[1.8rem]" />
-        
-        {/* Sacred Content */}
-        <div className="relative w-40 h-56 md:w-56 md:h-76 rounded-[1.6rem] overflow-hidden bg-[#064e3b] shadow-inner border border-[#b68d40]/50">
-          {safeUrl ? (
-            <img src={safeUrl} alt={name} className="w-full h-full object-cover animate-fade-in" referrerPolicy="no-referrer" />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/35 p-6 text-center space-y-4">
-              <Landmark size={56} strokeWidth={0.5} />
-              <p className="text-[8px] font-black uppercase tracking-[0.25em] leading-relaxed">Sacred Presence of<br/>The Divine {isKuldevta ? "Lord" : "Mother"}</p>
-            </div>
-          )}
-          
-          {/* Spiritual Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#064e3b] via-[#064e3b]/10 to-transparent opacity-85 pointer-events-none" />
-          
-          {/* Light Rays */}
-          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/5 to-transparent skew-x-[-20deg] origin-top opacity-20 pointer-events-none" />
-          
-          <div className="absolute bottom-5 left-0 right-0 text-center px-3">
-            <h5 className="text-[#d4af37] font-serif font-black text-lg md:text-xl italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight">
-              {name || (isKuldevta ? "Deva" : "Mata")}
-            </h5>
-            <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-[0.35em] mt-1.5">Protector of {name || (isKuldevta ? "Lord Shiva" : "Mata Rani")} Lineage</p>
-          </div>
-        </div>
-
-        {/* Sacred Mantra Label */}
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#d4af37] text-[#064e3b] px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.25em] shadow-[0_5px_10px_rgba(0,0,0,0.15)] border border-white whitespace-nowrap">
-          {isKuldevta ? "Om Deva Namah" : "Om Devi Namah"}
-        </div>
-      </motion.div>
-      
-      {/* Traditional Ornaments side decorations */}
-      <div className="absolute -left-12 top-1/2 -translate-y-1/2 text-[#d4af37]/15 hidden lg:block">
-        <div className="flex flex-col gap-4 items-end">
-           <div className="w-8 h-px bg-current" />
-           <div className="w-16 h-px bg-current opacity-50" />
-           <div className="w-12 h-px bg-current" />
-        </div>
-      </div>
-      <div className="absolute -right-12 top-1/2 -translate-y-1/2 text-[#d4af37]/15 hidden lg:block rotate-180">
-        <div className="flex flex-col gap-4 items-end">
-           <div className="w-8 h-px bg-current" />
-           <div className="w-16 h-px bg-current opacity-50" />
-           <div className="w-12 h-px bg-current" />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const RoyalOrnament = () => (
-  <div className="flex items-center gap-4 text-[#d4af37]/40 my-8">
-    <div className="h-px w-24 bg-gradient-to-r from-transparent to-current" />
-    <Landmark size={24} className="animate-pulse" />
-    <div className="h-px w-24 bg-gradient-to-l from-transparent to-current" />
-  </div>
-);
-
-const VintageScroll = ({ title }: { title: string }) => (
-  <div className="relative inline-block px-16 py-4 pt-8">
-    {/* Grand Parchment */}
-    <div className="absolute inset-0 bg-[#fdfbf7] border-y-4 border-[#b68d40] rounded-sm shadow-xl" />
-    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-20 bg-[#8a6821] rounded-r-lg shadow-2xl" />
-    <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-20 bg-[#8a6821] rounded-l-lg shadow-2xl" />
-    <span className="relative z-10 font-serif font-black text-[#58441c] uppercase tracking-[0.4em] text-xs md:text-lg italic whitespace-nowrap drop-shadow-sm">
-      {title}
-    </span>
-  </div>
-);
-
-interface VamshavaliProfile {
+type Account = {
   id: string;
   email: string;
-  shareId: string;
   name: string;
-  parents: string;
-  grandparents: string;
+  hasPassword: boolean;
+};
+
+type Session = {
+  token: string;
+  account: Account;
+  maxTreesPerAccount: number;
+  treeId: string | null;
+};
+
+type LineageTree = {
+  id: string;
+  name: string;
+  accountHolderName: string | null;
+  gotra: string | null;
+  pravara: string | null;
+  kuladevi: string | null;
+  kuladevata: string | null;
+  kulapurohit: string | null;
+  gramadevata: string | null;
+  nativeVillage: string | null;
+  familySurname: string | null;
+  notes: string | null;
+  updatedAt?: string;
+};
+
+type Person = {
+  id: string;
+  treeId: string;
+  displayName: string;
+  gender: Gender;
+  lifeStatus: LifeStatus;
+  maritalStatus: MaritalStatus;
+  dateOfBirth: string | null;
+  dateOfDeath: string | null;
+  deathAnniversary: string | null;
+  rashi: string | null;
+  gotra: string | null;
+  photoUrl: string | null;
+  notes: string | null;
+  fatherId: string | null;
+  motherId: string | null;
+};
+
+type SpouseLink = {
+  id: string;
+  treeId: string;
+  personAId: string;
+  personBId: string;
+  status: string;
+};
+
+type ImportPerson = {
+  clientKey: string;
+  displayName: string;
+  gender: Gender;
+  lifeStatus: LifeStatus;
+  maritalStatus: MaritalStatus;
+  fatherKey?: string | null;
+  motherKey?: string | null;
+  spouseKeys?: string[];
+};
+
+type ImportProposal = {
+  treeId: string;
+  people: ImportPerson[];
+  warnings: string[];
+  familyMetadata?: Partial<LineageTree>;
+  source: string;
+};
+
+type Proposal = {
+  id: string;
+  treeId: string;
+  sourceType: "telegram_text" | "telegram_voice" | "csv";
+  rawText: string;
+  proposal: ImportProposal;
+  status: "pending" | "committed" | "dismissed";
+  createdAt: string;
+};
+
+type LineageState = {
+  trees: LineageTree[];
+  activeTreeId: string | null;
+  activeRole: "owner" | "admin" | "contributor" | "viewer" | null;
+  people: Person[];
+  spouses: SpouseLink[];
+  proposals: Proposal[];
+};
+
+type TreeAccessMember = {
+  accountId: string;
+  email: string;
+  name: string;
+  role: "owner" | "admin" | "contributor" | "viewer";
+  createdAt: string;
+};
+
+type TreeInvitation = {
+  id: string;
+  treeId: string;
+  email: string;
+  role: "admin" | "contributor" | "viewer";
+  status: "pending" | "accepted" | "revoked";
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+};
+
+type TreeAccess = {
+  members: TreeAccessMember[];
+  invitations: TreeInvitation[];
+};
+
+type PersonForm = {
+  displayName: string;
+  gender: Gender;
+  lifeStatus: LifeStatus;
+  maritalStatus: MaritalStatus;
+  spouseId: string;
+  dateOfBirth: string;
+  dateOfDeath: string;
+  deathAnniversary: string;
+  rashi: string;
   gotra: string;
-  kuldevi: string;
-  kuldevta: string;
-  kuldeviPhoto?: string;
-  kuldevtaPhoto?: string;
-  nativePlace: string;
-  additionalNotes: string;
-  members: FamilyMember[];
+  photoUrl: string;
+  notes: string;
+  fatherId: string;
+  motherId: string;
+};
+
+const sessionKey = "vanshavali-session";
+
+function inviteTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("invite");
 }
 
-let hasDraggedGlobal = false;
+function clearInviteTokenFromUrl() {
+  if (!inviteTokenFromUrl()) return;
+  window.history.replaceState({}, "", window.location.pathname);
+}
 
-export const VamshavaliPage = ({ isPublic = false }: { isPublic?: boolean }) => {
-  const { shareId } = useParams();
-  const navigate = useNavigate();
-  const [step, setStep] = useState<'login' | 'otp' | 'dashboard'>('login');
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [debugOtp, setDebugOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<VamshavaliProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingNode, setEditingNode] = useState<any>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [numerologyReading, setNumerologyReading] = useState<{name: string, reading: string} | null>(null);
-  const [isCalculatingNumerology, setIsCalculatingNumerology] = useState(false);
-  const [treeScale, setTreeScale] = useState(1);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [activeLightboxMember, setActiveLightboxMember] = useState<any>(null);
-  const treeRef = useRef<HTMLDivElement>(null);
-  const lastLayoutWidth = useRef<number>(0);
-  const lastLayoutHeight = useRef<number>(0);
+const emptyPersonForm: PersonForm = {
+  displayName: "",
+  gender: "unknown",
+  lifeStatus: "living",
+  maritalStatus: "unknown",
+  spouseId: "",
+  dateOfBirth: "",
+  dateOfDeath: "",
+  deathAnniversary: "",
+  rashi: "",
+  gotra: "",
+  photoUrl: "",
+  notes: "",
+  fatherId: "",
+  motherId: ""
+};
 
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [isPointerActive, setIsPointerActive] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const dragOffsetStart = useRef({ x: 0, y: 0 });
-  const activePointers = useRef<Map<number, { clientX: number; clientY: number }>>(new Map());
-  const initialDistance = useRef<number | null>(null);
-  const initialScale = useRef<number>(1);
+const sampleCsv = `person_id,name,gender,is_living,dob,dod,rashi,gotra,father_id,mother_id,spouse_ids,marital_status,photo_url,notes
+P1,Harish Rao,male,false,1932-01-10,2009-04-22,Mesha,Vasishta,,,P2,married,,Oldest known ancestor
+P2,Lakshmi Rao,female,false,1938-05-08,2018-11-02,Karka,Vasishta,,,P1,married,,
+P3,Suresh Rao,male,true,1964-09-12,,Simha,Vasishta,P1,P2,P4,married,,
+P4,Geeta Rao,female,true,1968-07-14,,Tula,,,P3,married,,
+P5,Nikhil Rao,male,true,1995-02-20,,Kanya,Vasishta,P3,P4,,unmarried,,`;
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('button') || 
-      target.closest('input') || 
-      target.closest('textarea') || 
-      target.closest('select')
-    ) {
+function loadSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(sessionKey);
+    const parsed = raw ? JSON.parse(raw) as Partial<Session> : null;
+    return parsed?.token && parsed.account?.email ? parsed as Session : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session: Session | null) {
+  if (!session) localStorage.removeItem(sessionKey);
+  else localStorage.setItem(sessionKey, JSON.stringify(session));
+}
+
+function personToForm(person: Person): PersonForm {
+  return {
+    displayName: person.displayName,
+    gender: person.gender,
+    lifeStatus: person.lifeStatus,
+    maritalStatus: person.maritalStatus,
+    spouseId: "",
+    dateOfBirth: person.dateOfBirth ?? "",
+    dateOfDeath: person.dateOfDeath ?? "",
+    deathAnniversary: person.deathAnniversary ?? "",
+    rashi: person.rashi ?? "",
+    gotra: person.gotra ?? "",
+    photoUrl: person.photoUrl ?? "",
+    notes: person.notes ?? "",
+    fatherId: person.fatherId ?? "",
+    motherId: person.motherId ?? ""
+  };
+}
+
+function formToBody(form: PersonForm, treeId: string) {
+  return {
+    treeId,
+    displayName: form.displayName.trim(),
+    gender: form.gender,
+    lifeStatus: form.lifeStatus,
+    maritalStatus: form.maritalStatus,
+    dateOfBirth: form.dateOfBirth.trim() || null,
+    dateOfDeath: form.dateOfDeath.trim() || null,
+    deathAnniversary: form.deathAnniversary.trim() || null,
+    rashi: form.rashi.trim() || null,
+    gotra: form.gotra.trim() || null,
+    photoUrl: form.photoUrl.trim() || null,
+    notes: form.notes.trim() || null,
+    fatherId: form.fatherId || null,
+    motherId: form.motherId || null
+  };
+}
+
+function useLineage(session: Session | null, treeId: string | null, enabled: boolean, isPublic = false) {
+  const [state, setState] = React.useState<LineageState | null>(null);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    if (!enabled) return;
+    if (isPublic && treeId) {
+      const response = await fetch(`/api/lineage/public/trees/${encodeURIComponent(treeId)}`);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error ?? "Could not load lineage.");
+      setState(json);
+      setError(null);
       return;
     }
+    if (!session) return;
+    const query = treeId ? `?treeId=${encodeURIComponent(treeId)}` : "";
+    const response = await fetch(`/api/lineage/state${query}`, {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.error ?? "Could not load lineage.");
+    setState(json);
+    setError(null);
+  }, [session?.token, treeId, enabled, isPublic]);
 
-    setIsPointerActive(true);
-    hasDraggedGlobal = false;
-    activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+  React.useEffect(() => {
+    setState(null);
+    refresh().catch((reason) => setError((reason as Error).message));
+  }, [refresh]);
 
-    if (activePointers.current.size === 1) {
-      dragStart.current = { x: e.clientX, y: e.clientY };
-      dragOffsetStart.current = { ...panOffset };
-    } else if (activePointers.current.size === 2) {
-      setIsDragging(false);
-      const pointers = Array.from(activePointers.current.values());
-      const dist = Math.hypot(
-        pointers[0].clientX - pointers[1].clientX,
-        pointers[0].clientY - pointers[1].clientY
-      );
-      initialDistance.current = dist;
-      initialScale.current = treeScale;
-    }
-
-    if (treeRef.current) {
-      try {
-        treeRef.current.setPointerCapture(e.pointerId);
-      } catch (err) {
-        console.warn(err);
-      }
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!activePointers.current.has(e.pointerId)) return;
-
-    activePointers.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
-
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    const dragDistance = Math.hypot(dx, dy);
-
-    if (dragDistance > 6) {
-      hasDraggedGlobal = true;
-    }
-
-    if (activePointers.current.size === 1) {
-      if (isDragging) {
-        setPanOffset({
-          x: dragOffsetStart.current.x + dx,
-          y: dragOffsetStart.current.y + dy
-        });
-      } else if (dragDistance > 10) {
-        // Exceeded the touch stabilization threshold, start actual dragging
-        setIsDragging(true);
-        dragStart.current = { x: e.clientX, y: e.clientY };
-        dragOffsetStart.current = { ...panOffset };
-      }
-    } else if (activePointers.current.size === 2 && initialDistance.current !== null) {
-      const pointers = Array.from(activePointers.current.values());
-      const dist = Math.hypot(
-        pointers[0].clientX - pointers[1].clientX,
-        pointers[0].clientY - pointers[1].clientY
-      );
-      const factor = dist / initialDistance.current;
-      const newScale = Math.min(Math.max(initialScale.current * factor, 0.15), 2.2);
-      setTreeScale(newScale);
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    activePointers.current.delete(e.pointerId);
-
-    if (activePointers.current.size < 2) {
-      initialDistance.current = null;
-    }
-
-    if (activePointers.current.size === 0) {
-      setIsDragging(false);
-      setIsPointerActive(false);
-    } else if (activePointers.current.size === 1) {
-      const remainingPointerId = Array.from(activePointers.current.keys())[0];
-      const remainingPointer = activePointers.current.get(remainingPointerId)!;
-      setIsDragging(false);
-      dragStart.current = { x: remainingPointer.clientX, y: remainingPointer.clientY };
-      dragOffsetStart.current = { ...panOffset };
-    }
-
-    if (treeRef.current) {
-      try {
-        treeRef.current.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // Safe check
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (step === 'dashboard' && profile && treeRef.current) {
-      const container = treeRef.current;
-      const scrollContent = container.querySelector('.inline-block');
-      if (!container || !scrollContent) return;
-
-      const runAutoFit = (force = false) => {
-        const unscaledWidth = (scrollContent as HTMLElement).offsetWidth || 1;
-        const unscaledHeight = (scrollContent as HTMLElement).offsetHeight || 1;
-
-        // Container dimensions with a snug responsive margin
-        const isMobile = window.innerWidth < 768;
-        const marginOffset = isMobile ? 12 : (isFullScreen ? 60 : 40);
-        const containerWidth = container.clientWidth - marginOffset;
-        const containerHeight = container.clientHeight - marginOffset;
-
-        if (unscaledWidth > 1 && unscaledHeight > 1 && containerWidth > 0 && containerHeight > 0) {
-          // If unscaled layout has not changed and we aren't forcing, skip resetting scale to protect manual zooms
-          if (!force && 
-              unscaledWidth === lastLayoutWidth.current && 
-              unscaledHeight === lastLayoutHeight.current) {
-            return;
-          }
-
-          // If content size changed (meaning they added members/partners/etc.), reset pan to center!
-          const didContentSizeChange = lastLayoutWidth.current > 0 && 
-            (unscaledWidth !== lastLayoutWidth.current || unscaledHeight !== lastLayoutHeight.current);
-
-          lastLayoutWidth.current = unscaledWidth;
-          lastLayoutHeight.current = unscaledHeight;
-
-          const scaleX = containerWidth / unscaledWidth;
-          const scaleY = containerHeight / unscaledHeight;
-          const idealScale = Math.min(scaleX, scaleY);
-          
-          // Fit the tree snugly in the layout. Allow it to scale down further if needed for large trees.
-          const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
-          
-          setTreeScale(finalScale);
-
-          if (didContentSizeChange) {
-            setPanOffset({ x: 0, y: 0 });
-            toast.success("Perspective refocused to center new family members");
-          }
-        }
-      };
-
-      // Create resize observer to handle viewport frame changes and content changes automatically
-      const resizeObserver = new ResizeObserver((entries) => {
-        let shouldFit = false;
-        for (const entry of entries) {
-          if (entry.target === container) {
-            shouldFit = true;
-          } else if (entry.target === scrollContent) {
-            const currentW = (scrollContent as HTMLElement).offsetWidth;
-            const currentH = (scrollContent as HTMLElement).offsetHeight;
-            if (currentW !== lastLayoutWidth.current || currentH !== lastLayoutHeight.current) {
-              shouldFit = true;
-            }
-          }
-        }
-        if (shouldFit) {
-          runAutoFit(true);
-        }
-      });
-
-      resizeObserver.observe(container);
-      resizeObserver.observe(scrollContent);
-
-      // Trigger initial layout checks with staggered delays to ensure complete image/font rendering
-      const t1 = setTimeout(() => runAutoFit(true), 50);
-      const t2 = setTimeout(() => runAutoFit(true), 300);
-      const t3 = setTimeout(() => runAutoFit(true), 800);
-
-      return () => {
-        resizeObserver.disconnect();
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
-    }
-  }, [step, profile?.id, isFullScreen, profile?.members]);
-
-  useEffect(() => {
-    if (isFullScreen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isFullScreen]);
-
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-  };
-
-  const autoFitTree = () => {
-    if (!treeRef.current) return;
-    const container = treeRef.current;
-    const scrollContent = container.querySelector('.inline-block');
-    if (!scrollContent) return;
-
-    const unscaledWidth = (scrollContent as HTMLElement).offsetWidth || 1;
-    const unscaledHeight = (scrollContent as HTMLElement).offsetHeight || 1;
-
-    lastLayoutWidth.current = unscaledWidth;
-    lastLayoutHeight.current = unscaledHeight;
-
-    const isMobile = window.innerWidth < 768;
-    const marginOffset = isMobile ? 12 : (isFullScreen ? 60 : 40);
-    const containerWidth = container.clientWidth - marginOffset;
-    const containerHeight = container.clientHeight - marginOffset;
-
-    const scaleX = containerWidth / unscaledWidth;
-    const scaleY = containerHeight / unscaledHeight;
-    const idealScale = Math.min(scaleX, scaleY);
-
-    const finalScale = Math.min(Math.max(idealScale, 0.08), 1.05);
-    setTreeScale(finalScale);
-    setPanOffset({ x: 0, y: 0 });
-    toast.success("Perspective adjusted to fit your screen");
-  };
-
-  const getVedicNumerology = async (member: FamilyMember) => {
-    setIsCalculatingNumerology(true);
-    setNumerologyReading(null);
+  async function request(label: string, url: string, options: RequestInit = {}) {
+    setBusy(label);
+    setError(null);
     try {
-      const response = await fetch('/api/ai/numerology', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: member.name,
-          birthYear: member.birthYear,
-          relationship: member.role,
-          profileContext: profile?.name
-        })
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
+          ...(options.headers ?? {})
+        }
       });
-      let data: any = null;
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const textResponse = await response.text();
-        console.warn("[VamshavaliPage] Numerology response is not JSON:", textResponse.slice(0, 300));
-      }
-      if (!response.ok) {
-        throw new Error(data?.error || `Request failed with status ${response.status}`);
-      }
-      if (!data || !data.reading) {
-        throw new Error("Invalid or empty reading returned.");
-      }
-      setNumerologyReading({ name: member.name, reading: data.reading });
-      toast.success("Divine insights revealed.");
-    } catch (error: any) {
-      toast.error("The stars are clouded right now. Try again later.");
-      console.error(error);
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error ?? "Action failed.");
+      if (json.trees && json.people) setState(json);
+      else if (json.state) setState(json.state);
+      else await refresh();
+      return json;
+    } catch (reason) {
+      setError((reason as Error).message);
+      throw reason;
     } finally {
-      setIsCalculatingNumerology(false);
+      setBusy(null);
     }
-  };
-  const { language, setLanguage, t: globalT } = useLanguage();
-  const { user, signIn, signInWithFacebook, setAuthModalOpen } = useFirebase();
-  const { logEvent } = useTracking();
+  }
 
-  useEffect(() => {
-    // If the authenticated user changes, and we are in login step, we can try to fetch their profile
-    const syncProfile = async () => {
-      if (user && step === 'login' && user.email) {
-        setIsLoading(true);
-        try {
-          const res = await fetch(`/api/vamshavali/profile/${encodeURIComponent(user.email)}`);
-            if (res.ok) {
-              const data = await res.json();
-              setProfile(data);
-              setStep('dashboard');
-              logEvent('vamshavali_social_login', { email: user.email, profileId: data.id });
-              toast.success("Welcome to your Vamshavali Dashboard");
-            } else {
-              // Profile doesn't exist yet, auto-create a basic one for social users
-              setEmail(user.email);
-              const basicProfile = {
-                id: `v_${user.uid}`,
-                email: user.email,
-                name: user.displayName || user.email.split('@')[0],
-                ownerName: user.displayName || user.email.split('@')[0],
-                shareId: Math.random().toString(36).substring(2, 10).toUpperCase(),
-                members: [],
-                metadata: {
-                  history: "",
-                  description: "Family heritage chronicle created via Social Login",
-                  traditions: []
-                },
-                updatedAt: new Date().toISOString()
-              };
-              
-              // We'll save it to state so they can use it immediately
-              setProfile(basicProfile as any);
-              setStep('dashboard');
-              toast.success("Created a new chronicle for you!");
-              
-              // Also try to persist it if they save later
-            }
-        } catch (error) {
-          console.error("Error fetching social profile:", error);
-          setEmail(user.email);
-          setStep('dashboard');
-        } finally {
-          setIsLoading(false);
-        }
-      }
+  return { state, busy, error, refresh, request };
+}
+
+function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
+  const pendingInvite = Boolean(inviteTokenFromUrl());
+  const [mode, setMode] = React.useState<"code" | "password" | "create">("code");
+  const [email, setEmail] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [currentCode, setCurrentCode] = React.useState("");
+  const [developmentCode, setDevelopmentCode] = React.useState("");
+  const [codeRequested, setCodeRequested] = React.useState(false);
+  const [message, setMessage] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  function buildSession(json: {
+    token: string;
+    account: Account;
+    maxTreesPerAccount: number;
+    state?: LineageState;
+  }): Session {
+    return {
+      token: json.token,
+      account: json.account,
+      maxTreesPerAccount: json.maxTreesPerAccount,
+      treeId: json.state?.activeTreeId ?? null
     };
-    syncProfile();
-  }, [user]);
+  }
 
-  // Real-time synchronization listener
-  useEffect(() => {
-    if (profile?.id && db) {
-      console.log(`[Vamshavali] Activating real-time sync for profile: ${profile.id}`);
-      try {
-        const profileRef = doc(db, 'vamshavali_profiles', profile.id);
-        const unsubscribe = onSnapshot(profileRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const newData = snapshot.data() as any;
-            // We update state only if it differs from the current profile and we're NOT in a local edit mode
-            // (To prevent overwriting local changes if someone happened to be editing)
-            if (!isEditing) {
-              console.log(`[Vamshavali] Remote update detected for ${profile.id}. Syncing...`);
-              setProfile(prev => {
-                // Deep compare simple check to avoid unnecessary state updates
-                if (JSON.stringify(prev) !== JSON.stringify(newData)) {
-                  return { ...newData, id: snapshot.id };
-                }
-                return prev;
-              });
-            }
-          }
-        }, (error) => {
-          console.error("[Vamshavali] Sync listener error:", error.message);
-        });
-        return () => {
-          console.log(`[Vamshavali] Deactivating real-time sync for ${profile.id}`);
-          unsubscribe();
-        };
-      } catch (err: any) {
-        console.error("[Vamshavali] Snapshot attachment failed:", err.message);
-      }
-    }
-  }, [profile?.id, isEditing]);
-
-  const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
+  async function authRequest(url: string, body: Record<string, string>) {
+    setBusy(true);
+    setMessage("");
     try {
-      if (provider === 'google') {
-        const isIframe = window.self !== window.top;
-        if (isIframe) {
-          toast.warning("Google login is restricted inside preview iframes by browser security policies. Opening in a new tab for you...", {
-            duration: 6000
-          });
-          setTimeout(() => {
-            window.open(window.location.href, '_blank');
-          }, 1500);
-          return;
-        }
-        await signIn();
-      } else {
-        await signInWithFacebook();
-      }
-    } catch (error: any) {
-      console.error("Social sign-in error:", error);
-      const errorCode = error?.code || 'unknown';
-      const errorMessage = error?.message || 'Authentication failed';
-      
-      if (errorCode === 'auth/popup-blocked') {
-        toast.error("Sign-in popup was blocked by your browser. Please allow popups for this site or open in a new tab.", {
-          duration: 8000,
-          action: {
-            label: "Open in Tab",
-            onClick: () => window.open(window.location.href, '_blank')
-          }
-        });
-      } else if (errorCode === 'auth/unauthorized-domain' || errorMessage.includes('unauthorized-domain')) {
-        const hostname = window.location.hostname;
-        toast.error(`Unauthorized Domain: ${hostname} is not registered in Firebase. Please add this domain under Firebase Console > Auth > Settings > Authorized Domains, or sign in using email OTP.`, {
-          duration: 10000
-        });
-      } else if (errorCode === 'auth/web-storage-unsupported') {
-        toast.error("Third-party cookies/storage are blocked by your browser. Please allow cookies or open the app in a new tab.", {
-          duration: 8000,
-          action: {
-            label: "Open in Tab",
-            onClick: () => window.open(window.location.href, '_blank')
-          }
-        });
-      } else {
-        toast.error(`Google Sign-In failed: ${errorMessage} (${errorCode}). Try opening inside a new tab or use the Email OTP.`, {
-          duration: 8000,
-          action: {
-            label: "Open in Tab",
-            onClick: () => window.open(window.location.href, '_blank')
-          }
-        });
-      }
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error ?? "Authentication failed.");
+      return json;
+    } catch (reason) {
+      setMessage((reason as Error).message);
+      throw reason;
+    } finally {
+      setBusy(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    // Force English as default for this page specifically as per user request
-    if (language !== 'en') {
-      setLanguage('en');
-    }
-  }, []);
-  const vt = globalT.vamshavali;
-
-  const downloadManual = async () => {
-    const toastId = toast.loading(vt.downloadManual + "...");
+  async function requestCode() {
     try {
-      // For Hindi/Bangla, we use a hidden HTML element and html2canvas to ensure font rendering
-      const manualElement = document.createElement('div');
-      manualElement.style.padding = '80px';
-      manualElement.style.width = '800px';
-      manualElement.style.backgroundColor = 'white';
-      manualElement.style.position = 'fixed';
-      manualElement.style.left = '-9999px';
-      manualElement.style.top = '-9999px';
-      manualElement.className = 'font-sans';
-      
-      manualElement.innerHTML = `
-        <div style="color: #064e3b; font-size: 32px; font-weight: 900; margin-bottom: 30px; font-family: serif; border-bottom: 2px solid #d4af37; padding-bottom: 15px;">${vt.manualPdfTitle}</div>
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualIntro}</h3>
-          <p style="color: #52525b; line-height: 1.6; margin-top: 10px;">${vt.manualIntroDesc}</p>
-          <p style="color: #52525b; line-height: 1.6;">${vt.manualIntroDesch2}</p>
+      const json = await authRequest("/api/auth/request-code", { email, name });
+      setDevelopmentCode(json.developmentCode ?? "");
+      setCodeRequested(true);
+      setMessage(json.developmentCode ? `Access code sent. For local testing, use ${json.developmentCode}.` : "Access code sent successfully! Please check your email inbox.");
+    } catch {
+      setCodeRequested(false);
+    }
+  }
+
+  async function verifyCode() {
+    const json = await authRequest("/api/auth/verify-code", { email, code: currentCode });
+    onAuth(buildSession(json));
+  }
+
+  async function passwordLogin() {
+    const json = await authRequest("/api/auth/login-password", { email, password });
+    onAuth(buildSession(json));
+  }
+
+  async function createPasswordAccount() {
+    const json = await authRequest("/api/auth/register-password", { email, name, password });
+    onAuth(buildSession(json));
+  }
+
+  return (
+    <main className="auth-screen">
+      <section className="auth-card">
+        <div className="auth-story">
+          <span className="small-rule" />
+          <h1>Preserve Your Roots, Grow Your Legacy.</h1>
+          <p>A secure digital Vanshavali for family history, spiritual identity, and verified lineage records.</p>
+          <div className="auth-feature"><Landmark size={18} /><div><strong>Historical Identity</strong><span>Keep Gotra, Kuladevata, village, and elder records together.</span></div></div>
+          <div className="auth-feature"><Users size={18} /><div><strong>Lineage Mapping</strong><span>Connect ancestors, spouses, children, and branches clearly.</span></div></div>
+          <div className="auth-feature"><ShieldCheck size={18} /><div><strong>Private Legacy</strong><span>Your family archive stays visible only to invited members.</span></div></div>
         </div>
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualTree}</h3>
-          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualTreeList.join('\n')}</div>
+        <div className="auth-form">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <div className="brand-logo-container" style={{ width: "40px", height: "40px", borderRadius: "10px" }}>
+              <img 
+                src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                alt="Barnia Logo" 
+                className="brand-logo-img"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <span className="secure-pill"><ShieldCheck size={13} /> Secure access</span>
+          </div>
+          <h2>Digital Vanshavali</h2>
+          <p>Sign in to view an existing lineage, or create a new account to begin a family record.</p>
+          {pendingInvite && <p className="busy">You have a family tree invite. Sign in or create an account with the invited email to accept it.</p>}
+          <div className="segmented auth-tabs">
+            <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={15} />Access code</button>
+            <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={15} />Password</button>
+          </div>
+          <label>
+            Email address
+            <div className="input-with-icon">
+              <Mail size={18} />
+              <input value={email} placeholder="name@family.com" onChange={(event) => setEmail(event.target.value)} />
+            </div>
+          </label>
+          {mode === "create" && (
+            <label>
+              Account holder name
+              <div className="input-with-icon">
+                <UserRound size={18} />
+                <input value={name} placeholder="e.g. Aarav Sharma" onChange={(event) => setName(event.target.value)} />
+              </div>
+            </label>
+          )}
+          {(mode === "password" || mode === "create") && (
+            <label>
+              Password
+              <div className="input-with-icon">
+                <KeyRound size={18} />
+                <input type="password" value={password} placeholder="Minimum 8 characters" onChange={(event) => setPassword(event.target.value)} />
+              </div>
+            </label>
+          )}
+          {mode === "code" && (
+            <>
+              <button className="auth-primary" disabled={busy || !email.trim()} onClick={requestCode}>Generate access code <span>{"->"}</span></button>
+              {(codeRequested || developmentCode) && (
+                <label>
+                  Access code
+                  <div className="input-with-icon">
+                    <ShieldCheck size={18} />
+                    <input value={currentCode} placeholder="6 digit code" onChange={(event) => setCurrentCode(event.target.value)} />
+                  </div>
+                </label>
+              )}
+              <button disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}><Check size={16} />Verify and sign in</button>
+            </>
+          )}
+          {mode === "password" && (
+            <button className="auth-primary" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>Sign in with password <span>{"->"}</span></button>
+          )}
+          {mode === "create" && (
+            <button className="auth-primary" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>Create account <span>{"->"}</span></button>
+          )}
+          {message && <p className={codeRequested ? "busy" : "error"}>{message}</p>}
+          <div className="new-account">
+            <span>New to digital lineage?</span>
+            <button onClick={() => setMode(mode === "create" ? "code" : "create")}><Plus size={15} /> {mode === "create" ? "Use existing account" : "Create your own account"}</button>
+          </div>
+          <small>Privacy first: your data is only visible to people you invite.</small>
         </div>
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualEdit}</h3>
-          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualEditList.join('\n')}</div>
+      </section>
+    </main>
+  );
+}
+
+function createEmptyTreeBody(session: Session, mode: "manual" | "import") {
+  const familyName = session.account.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+  return {
+    name: mode === "manual" ? `${familyName || "My"} Family Lineage` : "Imported Family Lineage",
+    accountHolderName: familyName || "Account Holder",
+    seedAccountHolder: mode === "manual",
+    notes: "Created from account onboarding."
+  };
+}
+
+function Onboarding({
+  session,
+  onTreeCreated,
+  request,
+  onLogout
+}: {
+  session: Session;
+  onTreeCreated: (treeId: string) => void;
+  request: ReturnType<typeof useLineage>["request"];
+  onLogout: () => void;
+}) {
+  const [csv, setCsv] = React.useState(sampleCsv);
+  const [importOpen, setImportOpen] = React.useState(false);
+
+  async function startManual() {
+    const state = await request("create-tree", "/api/lineage/trees", {
+      method: "POST",
+      body: JSON.stringify(createEmptyTreeBody(session, "manual"))
+    });
+    onTreeCreated(state.activeTreeId);
+  }
+
+  async function importCsv() {
+    const state = await request("create-import-tree", "/api/lineage/trees", {
+      method: "POST",
+      body: JSON.stringify(createEmptyTreeBody(session, "import"))
+    });
+    await request("commit-csv", "/api/lineage/import/commit", {
+      method: "POST",
+      body: JSON.stringify({ treeId: state.activeTreeId, csv })
+    });
+    onTreeCreated(state.activeTreeId);
+  }
+
+  return (
+    <main className="onboarding">
+      <div className="onboarding-topbar">
+        <div className="brand-mark">
+          <div className="brand-logo-container">
+            <img 
+              src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+              alt="Barnia Logo" 
+              className="brand-logo-img"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <strong>Vanshavali</strong>
         </div>
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualExport}</h3>
-          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualExportList.join('\n')}</div>
-        </div>
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #d4af37; font-size: 20px; font-weight: 800; border-bottom: 1px solid #fef3c7; padding-bottom: 5px;">${vt.manualSecurity}</h3>
-          <div style="color: #52525b; white-space: pre-line; margin-top: 10px; line-height: 1.6;">${vt.manualSecurityList.join('\n')}</div>
-        </div>
-        <div style="color: #a1a1aa; font-size: 12px; margin-top: 50px; text-align: center; border-top: 1px solid #f4f4f5; padding-top: 20px;">
-          ${vt.manualFooter}
-        </div>
-      `;
-      document.body.appendChild(manualElement);
-
-      const dataUrl = await htmlToImage.toPng(manualElement, {
-        backgroundColor: 'white',
-        pixelRatio: 1.5,
-        cacheBust: true
-      });
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const img = new Image();
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.src = dataUrl;
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (img.height * pdfWidth) / img.width;
-      
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Vamshavali_Manual_${language.toUpperCase()}.pdf`);
-      
-      document.body.removeChild(manualElement);
-      toast.dismiss(toastId);
-      toast.success(vt.manual + " downloaded!");
-    } catch (error) {
-      console.error("Manual Download Error:", error);
-      toast.dismiss(toastId);
-      toast.error("Failed to generate manual.");
-    }
-  };
-
-  useEffect(() => {
-    if (isPublic && shareId) {
-      fetchPublicProfile();
-    }
-  }, [isPublic, shareId]);
-
-  const fetchPublicProfile = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/vamshavali/p/${shareId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        setStep('dashboard');
-      } else {
-        toast.error("Profile not found");
-      }
-    } catch (error) {
-      toast.error("Failed to load profile");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/vamshavali/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStep('otp');
-        if (data.debugOtp) {
-          setDebugOtp(data.debugOtp);
-        }
-        toast.success("OTP sent to your email");
-      } else {
-        if (data.diagnostic) {
-          console.error("Vamshavali OTP Diagnostic Report:", data.diagnostic);
-        }
-        toast.error(data.details || data.error || "Failed to send OTP");
-      }
-    } catch (error) {
-      toast.error("Network error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp) return;
-
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/vamshavali/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setProfile(data.profile);
-        setStep('dashboard');
-        logEvent('vamshavali_otp_login', { email, profileId: data.profile.id });
-        toast.success("Welcome to your Vamshavali Dashboard");
-      } else {
-        toast.error(data.error || "Invalid OTP");
-      }
-    } catch (error) {
-      toast.error("Network error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!profile) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/vamshavali/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
-      });
-      if (res.ok) {
-        toast.success("Data saved successfully");
-        setIsEditing(false);
-      } else {
-        const data = await res.json();
-        toast.error(data.details || "Failed to save data");
-      }
-    } catch (error) {
-      toast.error("Network error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSyncProfile = async (targetProfile: any) => {
-    try {
-      console.log("[Vamshavali] Force syncing profile with server...", targetProfile.shareId);
-      const res = await fetch('/api/vamshavali/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetProfile)
-      });
-      if (!res.ok) throw new Error("Sync rejected by server");
-      const data = await res.json();
-      return data.shareId || targetProfile.shareId;
-    } catch (e) {
-      console.error("[Vamshavali] Sync error:", e);
-      return null;
-    }
-  };
-
-  const validateShareIdForLink = (id: any): string => {
-    let sid = String(id || '').trim();
-    const invalid = !sid || 
-                   sid.toLowerCase() === 'undefined' || 
-                   sid.toLowerCase() === 'null' || 
-                   sid.length < 4;
-    
-    if (invalid) {
-      const newsid = 'V' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
-      console.log("[Vamshavali] ID was invalid, generated:", newsid);
-      return newsid;
-    }
-    return sid.toUpperCase();
-  };
-
-  const handleLinkTelegram = async () => {
-    if (!profile) {
-      toast.error("Please create a profile first.");
-      return;
-    }
-    
-    // 1. Get/Generate a strictly valid ID
-    let finalShareId = validateShareIdForLink((profile as any).shareId || (profile as any).share_id);
-    
-    // Double check - we should NEVER have "undefined" string here
-    if (finalShareId.toLowerCase().includes('undefined')) {
-       finalShareId = 'V' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    }
-
-    const updatedProfile = { ...profile, shareId: finalShareId };
-    setIsLoading(true);
-
-    try {
-      // 2. Synchronize with DB first
-      const serverShareId = await handleSyncProfile(updatedProfile);
-      
-      if (!serverShareId || String(serverShareId).toLowerCase().includes('undefined')) {
-        throw new Error("Server returned an invalid ID after sync");
-      }
-
-      const verifiedProfile = { ...updatedProfile, shareId: serverShareId };
-      setProfile(verifiedProfile as any);
-      
-      // 3. Setup webhook before opening link and add small propagation delay
-      try {
-        await fetch('/api/webhooks/telegram/setup');
-      } catch (e) {
-        console.warn("[Telegram] Webhook setup background call failed:", e);
-      }
-      await new Promise(r => setTimeout(r, 1000));
-
-      // 4. Final verification BEFORE building URL
-      const safeId = String(serverShareId).trim().toUpperCase();
-      if (safeId === 'UNDEFINED' || safeId === 'NULL' || safeId === '' || safeId.length < 4) {
-        throw new Error(`Critical Error: ShareID is still invalid after sync ("${safeId}")`);
-      }
-
-      let botUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || '').trim().replace('@', '');
-      if (!botUsername || botUsername.toLowerCase() === 'undefined' || botUsername.toLowerCase() === 'null') {
-        botUsername = 'Vamshavali_bot';
-      }
-      const telegramUrl = `https://t.me/${botUsername}?start=${safeId}`;
-      
-      console.log("[Vamshavali] Linking Launch ->", telegramUrl);
-      
-      // Last-second check for "undefined" in the string itself
-      if (telegramUrl.toLowerCase().includes('undefined')) {
-        throw new Error(`URL contains 'undefined' string: ${telegramUrl}`);
-      }
-
-      window.open(telegramUrl, '_blank');
-      toast.success(language === 'bn' ? 'টেলিগ্রাম খোলা হচ্ছে...' : "Opening Telegram...");
-    } catch (error) {
-      console.error("[Vamshavali] Link aborted:", error);
-      toast.error(`System Error: ${error instanceof Error ? error.message : "Could not generate link properly"}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const exportImage = async () => {
-    if (!profile) return;
-    setIsLoading(true);
-    const toastId = toast.loading("Forging Royal Portrait...");
-    
-    try {
-      const element = document.getElementById('genealogy_container');
-      if (!element) throw new Error("Genealogy container not found");
-      
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // DEEP SANITIZATION: We clone the element and force-reset every style that could break the capture
-      const clone = element.cloneNode(true) as HTMLElement;
-      clone.style.position = 'fixed';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.width = (element.scrollWidth) + 'px'; // Use scrollWidth to capture everything
-      clone.style.height = 'auto';
-      clone.style.overflow = 'visible';
-      clone.style.backgroundColor = '#fcf8f1';
-      clone.style.transform = 'none'; // Force 1:1 for capture
-      document.body.appendChild(clone);
-
-      try {
-        // Hide UI elements in clone
-        const controls = clone.querySelector('#tree-controls');
-        if (controls) (controls as HTMLElement).style.display = 'none';
-        
-        const noPrints = clone.querySelectorAll('.no-print');
-        noPrints.forEach((el: any) => el.style.display = 'none');
-
-        // Color Conversion & Shadow Removal Layer
-        const allNodes = clone.querySelectorAll('*');
-        allNodes.forEach((node: any) => {
-          try {
-            const style = window.getComputedStyle(node);
-            
-            // 1. Force convert colors to absolute HEX/RGB to prevent oklab failures
-            // Most capture libraries fail on modern CSS color functions like oklab(), display-p3, etc.
-            const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke', 'background'];
-            colorProps.forEach(p => {
-              const val = style[p as any];
-              if (val && (val.includes('okl') || val.includes('var(') || val.includes('color('))) {
-                let hex = '#064e3b'; // Default Forest Green
-                if (val.includes('255, 255, 255') || val.includes('white')) hex = '#ffffff';
-                if (val.includes('d4af37') || val.includes('gold')) hex = '#d4af37'; // Heritage Gold
-                if (val.includes('fcf8f1') || val.includes('parchment')) hex = '#fcf8f1';
-                
-                node.style.setProperty(p === 'backgroundColor' ? 'background-color' : (p === 'borderColor' ? 'border-color' : p), hex, 'important');
-                if (p === 'background') node.style.backgroundImage = 'none';
-              }
-            });
-
-            // 2. Clear problematic filters and shadows
-            node.style.boxShadow = 'none';
-            node.style.textShadow = 'none';
-            node.style.backdropFilter = 'none';
-            node.style.filter = 'none';
-            node.style.transition = 'none';
-            node.style.animation = 'none';
-            
-            // 3. Ensure visibility
-            node.style.opacity = '1';
-            node.style.visibility = 'visible';
-          } catch (e) {}
-        });
-
-        // Use toPng for maximum fidelity if Jpeg fails
-        const dataUrl = await htmlToImage.toJpeg(clone, {
-          backgroundColor: '#fcf8f1',
-          quality: 0.9,
-          pixelRatio: isMobile ? 1.0 : 1.5, // High resolution
-          skipFonts: false
-        });
-        
-        if (!dataUrl) throw new Error("Processing timed out");
-
-        const link = document.createElement('a');
-        link.download = `Heritage_Scroll_${profile.name.replace(/\s+/g, '_')}.jpg`;
-        link.href = dataUrl;
-        link.click();
-        
-        toast.dismiss(toastId);
-        toast.success("Golden Portrait Saved");
-      } finally {
-        document.body.removeChild(clone);
-      }
-    } catch (error: any) {
-      console.error("Export Error Detail:", error);
-      toast.dismiss(toastId);
-      toast.error("Export failed. The tree might be too vast for this device. Please use 'Export Scroll' (PDF).");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadPDF = () => {
-    // Native print is now styled specifically in index.css to produce a high-quality PDF scroll
-    const toastId = toast.loading("Engraving digital scroll...");
-    setTimeout(() => {
-      window.print();
-      toast.dismiss(toastId);
-    }, 400);
-  };
-
-  const copyLink = () => {
-    if (!profile) return;
-    const link = `${window.location.origin}/vamshavali/v/${profile.shareId}`;
-    navigator.clipboard.writeText(link);
-    toast.success("Shareable link copied!");
-  };
-
-  const logout = () => {
-    setStep('login');
-    setProfile(null);
-    setEmail('');
-    setOtp('');
-  };
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    if (file.size > 200 * 1024) { // 200KB limit for base64 storage efficiency
-      toast.error("Image too large. Please use an image under 200KB.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      callback(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Tree management helpers
-  const updateMemberFromModal = (formData: any) => {
-    if (!editingNode || !profile) return;
-    
-    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      return members.map(m => {
-        if (m.id === editingNode.id) {
-          const updated: FamilyMember = {
-            ...m,
-            name: formData.name,
-            birthYear: formData.birthYear,
-            role: formData.role,
-            gender: formData.gender,
-            photo: formData.photo,
-          };
-          
-          if (formData.hasPartner) {
-            updated.partner = {
-              name: formData.partnerName,
-              birthYear: formData.partnerBirthYear,
-              photo: formData.partnerPhoto,
-              gender: formData.partnerGender
-            };
-          } else {
-            delete updated.partner;
-          }
-          
-          return updated;
-        }
-        return { ...m, children: updateRecursive(m.children) };
-      });
-    };
-
-    setProfile({ ...profile, members: updateRecursive(profile.members) });
-    setIsEditModalOpen(false);
-    setEditingNode(null);
-  };
-
-  const addMember = (parentId: string | null) => {
-    if (!profile) return;
-    const newMember: FamilyMember = {
-      id: Math.random().toString(36).substring(7),
-      name: "Full Name",
-      role: "Generation Node",
-      birthYear: "b. 1900",
-      children: []
-    };
-
-    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      if (parentId === null) return [...members, newMember];
-      return members.map(m => {
-        if (m.id === parentId) {
-          return { ...m, children: [...m.children, newMember] };
-        }
-        return { ...m, children: updateRecursive(m.children) };
-      });
-    };
-
-    setProfile({ ...profile, members: updateRecursive(profile.members) });
-  };
-
-  const addPartner = (id: string) => {
-    if (!profile) return;
-    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      return members.map(m => {
-        if (m.id === id) {
-          return { ...m, partner: { name: "Partner Name", birthYear: "b. 1900" } };
-        }
-        return { ...m, children: updateRecursive(m.children) };
-      });
-    };
-    setProfile({ ...profile, members: updateRecursive(profile.members) });
-  };
-
-  const removeMember = (id: string) => {
-    if (!profile) return;
-    const filterRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      return members
-        .filter(m => m.id !== id)
-        .map(m => ({ ...m, children: filterRecursive(m.children) }));
-    };
-    setProfile({ ...profile, members: filterRecursive(profile.members) });
-  };
-
-  const updateMember = (id: string, updates: Partial<FamilyMember>) => {
-    if (!profile) return;
-    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      return members.map(m => {
-        if (m.id === id) return { ...m, ...updates };
-        return { ...m, children: updateRecursive(m.children) };
-      });
-    };
-    setProfile({ ...profile, members: updateRecursive(profile.members) });
-  };
-
-  const updatePartner = (id: string, updates: any) => {
-    if (!profile) return;
-    const updateRecursive = (members: FamilyMember[]): FamilyMember[] => {
-      return members.map(m => {
-        if (m.id === id && m.partner) return { ...m, partner: { ...m.partner, ...updates } };
-        return { ...m, children: updateRecursive(m.children) };
-      });
-    };
-    setProfile({ ...profile, members: updateRecursive(profile.members) });
-  };
-
-  if (isLoading && step === 'login') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <Loader2 className="w-12 h-12 text-brand-600 animate-spin" />
+        <button onClick={onLogout}><LogOut size={16} />Sign out</button>
       </div>
+      <section className="welcome-panel">
+        <p className="eyebrow">Welcome, {session.account.name}</p>
+        <h1>Start your family lineage</h1>
+        <p>Create your Vanshavali manually, or import a prepared spreadsheet and review it inside the app.</p>
+      </section>
+      <section className="choice-grid">
+        <button className="choice-card" onClick={startManual}>
+          <UserRound size={24} />
+          <strong>Create manually</strong>
+          <span>Add yourself first, then connect parents, spouses, children, and ancestors.</span>
+        </button>
+        <button className="choice-card" onClick={() => setImportOpen((value) => !value)}>
+          <Upload size={24} />
+          <strong>Import from CSV</strong>
+          <span>Paste a spreadsheet export with person IDs, parents, spouses, and details.</span>
+        </button>
+        <button className="choice-card muted-choice">
+          <MessageCircle size={24} />
+          <strong>Telegram intake</strong>
+          <span>Available after a lineage exists, so proposals can be reviewed safely.</span>
+        </button>
+      </section>
+      {importOpen && (
+        <section className="onboarding-import">
+          <header>
+            <div>
+              <p className="eyebrow">Spreadsheet import</p>
+              <h2>Paste CSV lineage data</h2>
+            </div>
+            <button onClick={importCsv}><Check size={16} /> Create lineage from CSV</button>
+          </header>
+          <textarea value={csv} onChange={(event) => setCsv(event.target.value)} />
+        </section>
+      )}
+    </main>
+  );
+}
+
+function generationMap(people: Person[], spouses: SpouseLink[]) {
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const map = new Map(people.map((person) => [person.id, 0]));
+  let changed = true;
+  let guard = 0;
+  while (changed && guard < people.length + spouses.length + 10) {
+    changed = false;
+    guard += 1;
+    for (const person of people) {
+      const parents = [person.fatherId, person.motherId].map((id) => (id ? peopleById.get(id) : null)).filter(Boolean) as Person[];
+      if (!parents.length) continue;
+      const next = Math.max(...parents.map((parent) => map.get(parent.id) ?? 0)) + 1;
+      if ((map.get(person.id) ?? 0) < next) {
+        map.set(person.id, next);
+        changed = true;
+      }
+    }
+    for (const spouse of spouses) {
+      const a = map.get(spouse.personAId);
+      const b = map.get(spouse.personBId);
+      if (a === undefined || b === undefined) continue;
+      const next = Math.max(a, b);
+      if (a !== next) {
+        map.set(spouse.personAId, next);
+        changed = true;
+      }
+      if (b !== next) {
+        map.set(spouse.personBId, next);
+        changed = true;
+      }
+    }
+  }
+  return map;
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function statusLabel(person: Person) {
+  const life = person.lifeStatus === "deceased" ? "Deceased" : person.lifeStatus === "living" ? "Living" : "Unknown";
+  const married = person.maritalStatus === "married" ? "Married" : person.maritalStatus === "unmarried" ? "Unmarried" : person.maritalStatus;
+  return `${life} - ${married}`;
+}
+
+function displayPersonName(person: Person | null | undefined) {
+  if (!person) return "Unknown";
+  if (person.lifeStatus !== "deceased") return person.displayName;
+  return /^late\s+/i.test(person.displayName) ? person.displayName : `Late ${person.displayName}`;
+}
+
+function spouseNamesFor(person: Person, peopleById: Map<string, Person>, spouses: SpouseLink[]) {
+  return spouses
+    .filter((link) => link.personAId === person.id || link.personBId === person.id)
+    .map((link) => peopleById.get(link.personAId === person.id ? link.personBId : link.personAId))
+    .filter((spouse): spouse is Person => Boolean(spouse))
+    .map(displayPersonName);
+}
+
+function parentSummary(person: Person, peopleById: Map<string, Person>) {
+  const father = person.fatherId ? peopleById.get(person.fatherId) : null;
+  const mother = person.motherId ? peopleById.get(person.motherId) : null;
+  if (father && mother) return `Child of ${displayPersonName(father)} and ${displayPersonName(mother)}`;
+  if (father) return `Child of ${displayPersonName(father)}`;
+  if (mother) return `Child of ${displayPersonName(mother)}`;
+  return "Oldest known / parent link not recorded";
+}
+
+function FamilyTreeCanvas({
+  people,
+  spouses,
+  selectedId,
+  onSelect
+}: {
+  people: Person[];
+  spouses: SpouseLink[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const viewportRef = React.useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = React.useState(0.6);
+  const [offset, setOffset] = React.useState({ x: 24, y: 24 });
+  const [drag, setDrag] = React.useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const layout = React.useMemo(() => {
+    const generations = generationMap(people, spouses);
+    const grouped = new Map<number, Person[]>();
+    for (const person of people) {
+      const gen = generations.get(person.id) ?? 0;
+      grouped.set(gen, [...(grouped.get(gen) ?? []), person]);
+    }
+    const rows = [...grouped.entries()].sort(([a], [b]) => a - b);
+    const nodeWidth = 198;
+    const rowHeight = 176;
+    const gap = 48;
+    const maxRow = Math.max(1, ...rows.map(([, row]) => row.length));
+    const canvasWidth = Math.max(850, maxRow * (nodeWidth + gap) + 160);
+    const canvasHeight = Math.max(560, rows.length * rowHeight + 190);
+    const nodes = rows.flatMap(([generation, row]) => {
+      const sorted = [...row].sort((a, b) => displayPersonName(a).localeCompare(displayPersonName(b)));
+      const rowWidth = sorted.length * nodeWidth + Math.max(0, sorted.length - 1) * gap;
+      const startX = (canvasWidth - rowWidth) / 2;
+      return sorted.map((person, index) => ({
+        person,
+        generation,
+        x: startX + index * (nodeWidth + gap),
+        y: 92 + generation * rowHeight
+      }));
+    });
+    return { nodes, canvasWidth, canvasHeight, nodeWidth };
+  }, [people, spouses]);
+
+  const nodeById = new Map(layout.nodes.map((node) => [node.person.id, node]));
+  const parentLines = people.flatMap((person) =>
+    [person.fatherId, person.motherId]
+      .map((parentId) => {
+        const parent = parentId ? nodeById.get(parentId) : null;
+        const child = nodeById.get(person.id);
+        return parent && child ? { parent, child } : null;
+      })
+      .filter(Boolean)
+  ) as Array<{ parent: (typeof layout.nodes)[number]; child: (typeof layout.nodes)[number] }>;
+  const spouseLines = spouses
+    .map((spouse) => {
+      const a = nodeById.get(spouse.personAId);
+      const b = nodeById.get(spouse.personBId);
+      return a && b ? { a, b } : null;
+    })
+    .filter(Boolean) as Array<{ a: (typeof layout.nodes)[number]; b: (typeof layout.nodes)[number] }>;
+
+  function fit() {
+    const box = viewportRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const nextScale = Math.min(1, Math.max(0.22, Math.min(box.width / layout.canvasWidth, box.height / layout.canvasHeight) * 0.92));
+    setScale(nextScale);
+    setOffset({
+      x: Math.max(16, (box.width - layout.canvasWidth * nextScale) / 2),
+      y: Math.max(16, (box.height - layout.canvasHeight * nextScale) / 2)
+    });
+  }
+
+  React.useEffect(() => {
+    fit();
+  }, [people.length]);
+
+  if (!people.length) {
+    return (
+      <section className="empty-tree">
+        <Users size={34} />
+        <h2>No family members yet</h2>
+        <p>Add the account holder or import a CSV to begin the lineage map.</p>
+      </section>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans selection:bg-brand-100 selection:text-brand-900 pb-20">
-      {/* Mini Header */}
-      <header className="bg-white border-b border-zinc-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg border border-[#f4f4f5] bg-[#064e3b] flex items-center justify-center">
-                <Users className="text-[#d4af37]" size={24} />
-             </div>
-             <div className="flex flex-col">
-                <h1 className="font-black text-lg tracking-tight leading-none text-zinc-900">{vt.title}</h1>
-                <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest mt-1">{vt.subtitle}</span>
-             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Language Selector */}
-            <div className="hidden md:flex items-center bg-zinc-100 p-1 rounded-xl border border-zinc-200">
-              {(['en', 'hi', 'bn'] as Language[]).map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setLanguage(lang)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    language === lang ? 'bg-white text-[#064e3b] shadow-sm' : 'text-zinc-400 hover:text-zinc-600'
-                  }`}
-                >
-                  {lang === 'en' ? 'ENG' : lang === 'hi' ? 'HIN' : 'BEN'}
-                </button>
-              ))}
-            </div>
-
-            <button 
-              onClick={downloadManual}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-[#d4af37] text-[#064e3b] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-50 transition-all shadow-sm"
+    <section className="tree-stage">
+      <div className="tree-toolbar">
+        <button title="Fit tree" onClick={fit}><LocateFixed size={16} /></button>
+        <button title="Zoom out" onClick={() => setScale((value) => Math.max(0.18, value - 0.1))}><ZoomOut size={16} /></button>
+        <span>{Math.round(scale * 100)}%</span>
+        <button title="Zoom in" onClick={() => setScale((value) => Math.min(1.7, value + 0.1))}><ZoomIn size={16} /></button>
+      </div>
+      <div
+        className="tree-viewport"
+        ref={viewportRef}
+        onPointerDown={(event) => {
+          if ((event.target as HTMLElement).closest(".tree-node")) return;
+          setDrag({ x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y });
+        }}
+        onPointerMove={(event) => {
+          if (!drag) return;
+          setOffset({ x: drag.ox + event.clientX - drag.x, y: drag.oy + event.clientY - drag.y });
+        }}
+        onPointerUp={() => setDrag(null)}
+        onPointerCancel={() => setDrag(null)}
+      >
+        <div
+          className="tree-canvas"
+          style={{
+            width: layout.canvasWidth,
+            height: layout.canvasHeight,
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`
+          }}
+        >
+          <svg className="tree-lines" width={layout.canvasWidth} height={layout.canvasHeight}>
+            {parentLines.map(({ parent, child }) => (
+              <path
+                key={`${parent.person.id}-${child.person.id}`}
+                d={`M ${parent.x + layout.nodeWidth / 2} ${parent.y + 116} C ${parent.x + layout.nodeWidth / 2} ${parent.y + 150}, ${child.x + layout.nodeWidth / 2} ${child.y - 34}, ${child.x + layout.nodeWidth / 2} ${child.y}`}
+                className="parent-line"
+              />
+            ))}
+            {spouseLines.map(({ a, b }) => (
+              <path
+                key={`${a.person.id}-${b.person.id}`}
+                d={`M ${a.x + layout.nodeWidth} ${a.y + 58} C ${(a.x + b.x + layout.nodeWidth) / 2} ${a.y + 42}, ${(a.x + b.x + layout.nodeWidth) / 2} ${b.y + 72}, ${b.x} ${b.y + 58}`}
+                className="spouse-line"
+              />
+            ))}
+          </svg>
+          {layout.nodes.map((node) => (
+            <button
+              type="button"
+              key={node.person.id}
+              className={`tree-node ${node.person.gender} ${node.person.lifeStatus} ${selectedId === node.person.id ? "selected" : ""}`}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => onSelect(node.person.id)}
             >
-              <FileText size={16} /> 
-              <span className="hidden sm:inline">{vt.manual}</span>
+              <span className="avatar">{node.person.photoUrl ? <img src={node.person.photoUrl} alt="" /> : initials(node.person.displayName)}</span>
+              <strong>{displayPersonName(node.person)}</strong>
+              <small>{statusLabel(node.person)}</small>
+              <span className="node-badges"><CircleDot size={13} /> Generation {node.generation + 1}</span>
             </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-            {step === 'dashboard' && !isPublic && (
-              <button onClick={logout} className="p-3 rounded-xl bg-zinc-50 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all">
-                <LogOut size={20} />
-              </button>
-            )}
-          </div>
+function TextInput({ label, value, onChange, placeholder = "" }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function PersonEditor({
+  people,
+  spouses,
+  form,
+  setForm,
+  onSubmit,
+  onCancel,
+  busy,
+  title,
+  currentPersonId
+}: {
+  people: Person[];
+  spouses: SpouseLink[];
+  form: PersonForm;
+  setForm: React.Dispatch<React.SetStateAction<PersonForm>>;
+  onSubmit: () => void;
+  onCancel: () => void;
+  busy: boolean;
+  title: string;
+  currentPersonId?: string | null;
+}) {
+  const eligibleParents = people.filter((person) => person.id !== currentPersonId && person.gender === "male");
+  const eligibleSpouses = form.gender === "male"
+    ? people.filter((person) => person.id !== currentPersonId && person.gender === "female" && !person.fatherId && !person.motherId)
+    : [];
+  const fatherSpouses = form.fatherId
+    ? spouses
+        .filter((spouse) => spouse.personAId === form.fatherId || spouse.personBId === form.fatherId)
+        .map((spouse) => people.find((person) => person.id === (spouse.personAId === form.fatherId ? spouse.personBId : spouse.personAId)))
+        .filter((person): person is Person => Boolean(person) && person.id !== currentPersonId)
+    : [];
+  const hasOneMother = fatherSpouses.length === 1;
+  const hasMultipleMothers = fatherSpouses.length > 1;
+  const motherHelp = !form.fatherId
+    ? "Select a father first. Mother choices are based on his linked spouse records."
+    : fatherSpouses.length === 0
+      ? "No spouse is linked to the selected father yet."
+      : hasOneMother
+        ? "Automatically selected from the father's linked spouse."
+        : "Choose from the father's linked spouses.";
+  const spouseLabel = "Wife / spouse";
+  const marriedDaughterNotice = form.gender === "female" && form.maritalStatus === "married"
+    ? "Married daughters are shown as part of this family, but their husband and children should be maintained in the husband's family tree."
+    : "";
+
+  React.useEffect(() => {
+    if (!form.fatherId) {
+      if (form.motherId) setForm((current) => ({ ...current, motherId: "" }));
+      return;
+    }
+    if (fatherSpouses.length === 1 && form.motherId !== fatherSpouses[0].id) {
+      setForm((current) => ({ ...current, motherId: fatherSpouses[0].id }));
+      return;
+    }
+    if (fatherSpouses.length !== 1 && form.motherId && !fatherSpouses.some((person) => person.id === form.motherId)) {
+      setForm((current) => ({ ...current, motherId: "" }));
+    }
+  }, [form.fatherId, form.motherId, fatherSpouses.map((person) => person.id).join("|"), setForm]);
+
+  React.useEffect(() => {
+    if ((form.maritalStatus !== "married" || form.gender !== "male") && form.spouseId) {
+      setForm((current) => ({ ...current, spouseId: "" }));
+    }
+  }, [form.gender, form.maritalStatus, form.spouseId, setForm]);
+
+  return (
+    <section className="surface">
+      <header className="surface-head">
+        <div>
+          <p className="eyebrow">Manual builder</p>
+          <h2>{title}</h2>
+        </div>
+        <div className="surface-actions">
+          <button onClick={onCancel}>Cancel</button>
+          <button className="primary-action" disabled={busy || !form.displayName.trim()} onClick={onSubmit}><Save size={16} />Save person</button>
         </div>
       </header>
-
-      <main className={`mx-auto pt-12 transition-all duration-700 ease-in-out ${
-        step === 'dashboard' && profile 
-          ? (isFullScreen 
-              ? 'max-w-none px-0 pt-0 fixed inset-0 z-[100] bg-[#fdfbf7] overflow-hidden' 
-              : 'w-full max-w-none px-4 sm:px-6 md:px-8 pb-20') 
-          : 'max-w-4xl px-6 pb-20'
-      }`}>
-        <AnimatePresence mode="wait">
-          {step === 'dashboard' && !isPublic && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-white rounded-3xl shadow-xl border-2 border-[#d4af37]/20"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`p-4 rounded-2xl ${isEditing ? 'bg-[#064e3b] text-white' : 'bg-[#fff7ed] text-[#ea580c]'} shadow-lg transition-all`}>
-                  <Settings size={24} className={isEditing ? 'animate-spin-slow' : ''} />
-                </div>
-                <div>
-                  <h3 className="font-serif font-black text-[#064e3b] text-xl">Chronicle Controls</h3>
-                  <p className="text-[#a1a1aa] text-[10px] font-bold uppercase tracking-widest">Manage your family heritage</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <button 
-                  onClick={() => setIsEditing(!isEditing)}
-                  className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 ${isEditing ? 'bg-[#18181b] text-white hover:bg-black' : 'bg-[#ea580c] text-white hover:bg-[#c2410c]'}`}
-                >
-                  {isEditing ? <><Save size={18} /> {vt.finishEditing}</> : <><Edit3 size={18} /> {vt.modifyLineage}</>}
-                </button>
-                <button 
-                  onClick={downloadPDF}
-                  className="flex-1 md:flex-none px-8 py-3 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-md hover:bg-[#065f46] transition-all flex items-center justify-center gap-2"
-                >
-                  <Download size={18} /> {vt.saveScroll}
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 'login' && (
-            <motion.div
-              key="login"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="max-w-5xl mx-auto"
-            >
-              <div className="bg-[#fdfbf7] rounded-[3rem] shadow-2xl border border-[#e5e1d8] overflow-hidden flex flex-col md:flex-row min-h-[600px]">
-                {/* Left Side: Storytelling & Visual */}
-                <div className="flex-1 p-12 bg-[#064e3b] text-white flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 -mr-20 -mt-20 opacity-10 pointer-events-none">
-                    <Users size={400} />
-                  </div>
-                  
-                  <div className="relative z-10 space-y-8">
-                    <div className="w-16 h-1 bg-brand-400 rounded-full" />
-                    <div className="space-y-4">
-                      <h2 className="text-4xl md:text-5xl font-serif font-bold leading-tight italic">
-                        {vt.loginTitle}
-                      </h2>
-                      <p className="text-emerald-100 text-lg leading-relaxed max-w-sm">
-                        {vt.loginSubtitle}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 pt-4">
-                      <button 
-                        onClick={downloadManual}
-                        className="flex items-center gap-2 px-6 py-3 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-all"
-                      >
-                        <FileText size={18} /> {vt.manual}
-                      </button>
-                      
-                      {/* Mobile Language Selector */}
-                      <div className="flex md:hidden items-center bg-[rgba(255,255,255,0.1)] p-1 rounded-2xl border border-[rgba(255,255,255,0.2)]">
-                        {(['en', 'hi', 'bn'] as Language[]).map((lang) => (
-                          <button
-                            key={lang}
-                            onClick={() => setLanguage(lang)}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              language === lang ? 'bg-[#d4af37] text-[#064e3b]' : 'text-emerald-100'
-                            }`}
-                          >
-                            {lang === 'en' ? 'EN' : lang === 'hi' ? 'HI' : 'BN'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6 pt-8">
-                      {[
-                        { icon: <Landmark size={20}/>, title: "Historical Identity", desc: "Secure your Gotra and Kuldevta records forever." },
-                        { icon: <Users size={20}/>, title: "Lineage Mapping", desc: "Connect generations across time and geography." },
-                        { icon: <CheckCircle2 size={20}/>, title: "Future Legacy", desc: "Leave a clear, verified history for those who come after you." }
-                      ].map((item, i) => (
-                        <div key={i} className="flex gap-4 p-4 rounded-2xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors">
-                          <div className="text-[#fb923c] shrink-0">{item.icon}</div>
-                          <div>
-                            <h4 className="font-bold text-sm tracking-wide">{item.title}</h4>
-                            <p className="text-[rgba(167,243,208,0.8)] text-xs mt-1 leading-normal font-medium">{item.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 pt-12 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#065f46] flex items-center justify-center border border-[#064e3b]">
-                      <Users size={16} />
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6ee7b7]">
-                      Join thousands of lineages being preserved online
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right Side: Login Form */}
-                <div className="hidden md:block w-px bg-[#e5e1d8]" />
-                <div className="flex-1 p-12 flex flex-col justify-center bg-white">
-                  <div className="max-w-sm mx-auto w-full space-y-10">
-                    <div className="text-center md:text-left space-y-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#ecfdf5] text-[#047857] rounded-full text-[10px] font-black uppercase tracking-widest border border-[#d1fae5]">
-                        <ShieldCheck size={12} /> Secure Access
-                      </div>
-                      <h3 className="text-4xl font-serif font-black text-zinc-900 tracking-tight">Digital Vamshavali</h3>
-                      <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-                        Preserve your family's heritage, traditions, and lineage in a secure digital chronicle. Sign in with your email or social account.
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleSendOTP} className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest ml-4">Email Address</label>
-                        <div className="relative group">
-                          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-[#a1a1aa] group-focus-within:text-[#059669] transition-colors" size={18} />
-                          <input 
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="e.g. name@family.com"
-                            required
-                            className="w-full pl-14 pr-6 py-5 bg-[#fdfbf7] border-2 border-[#e5e1d8] focus:border-[#F58E27] focus:bg-white rounded-2xl font-bold transition-all outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <button 
-                        disabled={isLoading}
-                        className="w-full py-5 bg-[#064e3b] text-[#fff7ed] rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-[#18181b] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#064e3b]/10 flex items-center justify-center gap-3 disabled:opacity-50"
-                      >
-                        {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Generate Access Code <ArrowRight size={18} /></>}
-                      </button>
-                    </form>
-
-                    <div className="relative my-8">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-zinc-100"></div>
-                      </div>
-                      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
-                        <span className="bg-white px-4 text-zinc-400">Or continue with social</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <button 
-                        onClick={() => handleSocialSignIn('google')}
-                        className="flex items-center justify-center gap-3 py-4 bg-white border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 hover:border-brand-500/30 transition-all text-xs font-bold text-zinc-700 active:scale-[0.98] shadow-sm"
-                      >
-                        <Globe size={18} className="text-brand-600" />
-                        Google
-                      </button>
-                      <button 
-                        onClick={() => handleSocialSignIn('facebook')}
-                        className="flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] rounded-2xl transition-all text-xs font-bold text-white active:scale-[0.98] shadow-lg shadow-[#1877F2]/20"
-                      >
-                        <Facebook size={18} fill="currentColor" />
-                        Facebook
-                      </button>
-                    </div>
-
-                    <div className="pt-8 border-t border-zinc-100 flex flex-col items-center gap-4">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">New to Digital Lineage?</p>
-                      <button 
-                        onClick={() => setAuthModalOpen(true)}
-                        className="w-full py-4 bg-white border-2 border-brand-200 text-brand-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-brand-50 hover:border-brand-300 transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <Plus size={16} /> Create your own Account
-                      </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-zinc-100 flex items-center justify-center">
-                      <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest text-center px-8 leading-relaxed">
-                        Privacy First: Your data is only visible to those you share your private link with.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 'otp' && (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="max-w-md mx-auto"
-            >
-              <div className="bg-[#fdfbf7] p-12 rounded-[3.5rem] shadow-2xl border border-[#e5e1d8] text-center space-y-10 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-[#059669]" />
-                
-                <div className="w-24 h-24 bg-[#ecfdf5] rounded-full flex items-center justify-center mx-auto text-[#059669] shadow-inner border-2 border-[#d1fae5]">
-                  <ShieldCheck size={40} />
-                </div>
-                
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-serif font-black text-[#18181b] tracking-tight italic">Confirm Identity</h2>
-                  <p className="text-[#71717a] text-sm font-medium leading-relaxed">
-                    Check your inbox for a 6-digit code sent to <br />
-                    <span className="font-bold text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md mt-1 inline-block">{email}</span>
-                  </p>
-                </div>
-
-                <form onSubmit={handleVerifyOTP} className="space-y-6">
-                  <input 
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="0 0 0 0 0 0"
-                    maxLength={6}
-                    required
-                    className="w-full px-6 py-6 bg-white border-2 border-[#e5e1d8] focus:border-[#059669] focus:bg-white rounded-2xl font-black text-4xl text-center tracking-[0.25em] transition-all outline-none text-[#064e3b] shadow-inner"
-                  />
-                  <button 
-                    disabled={isLoading}
-                    className="w-full py-5 bg-[#064e3b] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all shadow-xl shadow-[#064e3b]/10 flex items-center justify-center gap-3 disabled:opacity-50"
-                  >
-                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
-                  </button>
-                </form>
-
-                {debugOtp && (
-                  <div className="p-5 bg-amber-50/80 border border-amber-200/50 text-amber-900 rounded-[24px] text-left flex flex-col gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={18} className="text-amber-700 shrink-0" />
-                      <span className="font-extrabold text-[11px] uppercase tracking-wider text-amber-800">
-                        Sandbox OTP Helper
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed font-semibold text-amber-800">
-                      Since email SMTP delivery might be restricted in cloud-run containers, your current OTP is:{' '}
-                      <strong className="font-mono text-sm bg-white/90 border border-amber-200/50 px-2 py-0.5 rounded-lg text-amber-950 font-black">
-                        {debugOtp}
-                      </strong>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setOtp(debugOtp)}
-                      className="w-full py-2.5 bg-amber-750 hover:bg-amber-800 active:scale-[0.97] bg-emerald-700 hover:bg-emerald-800 transition-all text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl shadow-sm focus:outline-none"
-                    >
-                      Auto-fill OTP Code
-                    </button>
-                  </div>
-                )}
-
-                <button 
-                  onClick={() => setStep('login')}
-                  className="text-[#a1a1aa] text-[10px] font-black uppercase tracking-[0.2em] hover:text-[#047857] transition-colors flex items-center justify-center gap-2 mx-auto"
-                >
-                  <ArrowRight size={14} className="rotate-180" /> Back to Login
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 'dashboard' && profile && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-12"
-            >
-              {/* Profile Card */}
-              <div className="max-w-7xl mx-auto bg-white p-4 sm:p-6 md:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] md:rounded-[3rem] border-2 sm:border-4 border-white shadow-2xl relative overflow-hidden">
-                <div className="space-y-8 md:space-y-12">
-                  {/* Grand Header Panel */}
-                  <div className="bg-[#064e3b] rounded-[3.5rem] p-8 md:p-16 text-white shadow-2xl relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/black-paper.png')]">
-                    {/* Decorative Background Pattern */}
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')]" />
-                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[rgba(212,175,55,0.1)] rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[rgba(52,211,153,0.05)] rounded-full blur-3xl pointer-events-none" />
-
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
-                      <div className="relative">
-                        <div className="w-32 h-32 md:w-48 md:h-48 rounded-[2.5rem] bg-gradient-to-tr from-[#d4af37] via-[#f4e4bc] to-[#d4af37] p-1 shadow-2xl rotate-3">
-                          <div className="w-full h-full rounded-[2.3rem] bg-[#064e3b] flex items-center justify-center -rotate-3 overflow-hidden">
-                            {profile.members[0]?.photo ? (
-                               <img src={profile.members[0].photo} className="w-full h-full object-cover opacity-80 mix-blend-luminosity" />
-                            ) : (
-                               <Landmark size={64} className="text-[#d4af37]/40" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex-1 text-center md:text-left space-y-4">
-                        <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-[rgba(212,175,55,0.1)] rounded-full border border-[rgba(212,175,55,0.3)]">
-                          <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#d4af37]">Royal Heritage Registry</span>
-                        </div>
-                        
-                        {isEditing ? (
-                          <input 
-                            value={profile.name}
-                            onChange={(e) => setProfile({...profile, name: e.target.value})}
-                            className="text-4xl md:text-6xl font-serif font-black bg-white/5 border-b-2 border-[#d4af37]/30 outline-none w-full py-2 tracking-tight italic"
-                          />
-                        ) : (
-                          <h2 className="text-5xl md:text-7xl font-serif font-black tracking-tight italic leading-tight">
-                            {profile.name || vt.houseOf + " family"}
-                          </h2>
-                        )}
-                        
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
-                           {!isPublic && (
-                             <div className="px-5 py-2.5 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)] flex items-center gap-3 backdrop-blur-sm">
-                                <Share2 size={16} className="text-[#d4af37]" />
-                                <span className="text-[10px] font-mono opacity-60">
-                                  {window.location.host}/...{profile.shareId?.slice(-6)}
-                                </span>
-                                <button onClick={copyLink} className="p-1.5 hover:text-[#d4af37] transition-colors">
-                                   <Copy size={16} />
-                                </button>
-                             </div>
-                           )}
-                           <button 
-                             onClick={downloadPDF} 
-                             disabled={isLoading}
-                             className="px-6 py-2.5 bg-[#d4af37] text-[#064e3b] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2 disabled:opacity-50"
-                           >
-                               {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
-                               {vt.exportScroll}
-                           </button>
-                           <button 
-                             onClick={exportImage} 
-                             disabled={isLoading}
-                             className="px-6 py-2.5 bg-[#064e3b] text-white border border-[#d4af37]/30 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2 disabled:opacity-50"
-                           >
-                               <Heart size={16} className="text-[#d4af37]" />
-                               Export Image
-                           </button>
-                           <button 
-                             onClick={downloadManual} 
-                             className="px-6 py-2.5 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[rgba(255,255,255,0.2)] transition-colors flex items-center gap-2"
-                           >
-                               <FileText size={16} /> {vt.manual}
-                           </button>
-
-                           <div className="flex flex-col gap-2">
-                             <button 
-                               onClick={handleLinkTelegram}
-                               className="px-6 py-2.5 bg-[#0088cc] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
-                             >
-                                <MessageCircle size={16} /> Telegram Update (v2.2)
-                             </button>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-10">
-                    {/* Full Width Lineage Details Panel */}
-                    <div className="p-8 bg-white rounded-[2.5rem] border border-[#f4f4f5] shadow-xl space-y-8">
-                      <div className="pb-4 border-b border-[#f4f4f5] flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                           <Landmark size={20} className="text-[#d4af37]" />
-                           <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#064e3b]">{vt.lineageDetails}</h4>
-                         </div>
-                         <div className="text-[10px] uppercase font-black tracking-widest text-[#d4af37] bg-[#064e3b]/5 px-3 py-1 rounded-full border border-[#d4af37]/10">Sacred Credentials</div>
-                      </div>
-                      
-                      {/* Row/Grid of 4 Core Details */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[
-                          { icon: <Users size={16}/>, label: "Parents", value: profile.parents, key: 'parents' },
-                          { icon: <Landmark size={16}/>, label: "Gotra", value: profile.gotra, key: 'gotra' },
-                          { icon: <Home size={16}/>, label: "Kuldevi Name", value: profile.kuldevi, key: 'kuldevi' },
-                          { icon: <MapPin size={16}/>, label: "Native Origin", value: profile.nativePlace, key: 'nativePlace' },
-                        ].map((item, i) => (
-                          <div key={i} className="p-5 bg-[#fafafa]/50 rounded-2xl border border-zinc-100 hover:border-[#d4af37]/20 transition-all space-y-2">
-                            <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">
-                              {item.icon} {item.label}
-                            </label>
-                            {isEditing ? (
-                              <div className="space-y-3">
-                                <input 
-                                  value={item.value}
-                                  onChange={(e) => setProfile({...profile, [item.key]: e.target.value})}
-                                  className="w-full px-4 py-3 bg-white border border-[#f4f4f5] rounded-xl font-bold text-xs tracking-tight text-[#18181b]"
-                                />
-                                {item.key === 'kuldevi' && (
-                                  <div className="pt-2">
-                                    <p className="text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest mb-2 ml-1">Kuldevi Portrait</p>
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-12 h-16 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden flex items-center justify-center">
-                                        {profile.kuldeviPhoto ? (
-                                          <img src={profile.kuldeviPhoto} alt="Kuldevi" className="w-full h-full object-cover" />
-                                        ) : (
-                                          <Landmark size={20} className="text-zinc-300" />
-                                        )}
-                                      </div>
-                                      <label className="flex-1 px-4 py-2 bg-[#d4af37] text-[#064e3b] rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#b68d40] transition-colors text-center">
-                                        Upload Sacred Picture
-                                        <input 
-                                          type="file" 
-                                          accept="image/*"
-                                          onChange={(e) => handlePhotoUpload(e, (base64: string) => setProfile({...profile, kuldeviPhoto: base64}))}
-                                          className="hidden"
-                                        />
-                                      </label>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="font-bold text-[#18181b] tracking-tight text-sm">{item.value || "—"}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Chronicles & Numerology row */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-6 border-t border-[#f4f4f5]">
-                        {/* Chronicles Card */}
-                        <div className="space-y-3">
-                          <label className="flex items-center gap-2 text-[10px] font-black text-[#a1a1aa] uppercase tracking-widest">
-                             Chronicles
-                          </label>
-                          {isEditing ? (
-                            <textarea 
-                              value={profile.additionalNotes}
-                              onChange={(e) => setProfile({...profile, additionalNotes: e.target.value})}
-                              className="w-full px-4 py-3 bg-[#fafafa] border border-[#f4f4f5] rounded-xl font-bold text-xs min-h-[120px]"
-                            />
-                          ) : (
-                            <p className="text-[#52525b] font-medium text-xs leading-relaxed italic bg-[#fafafa]/30 p-4 rounded-2xl border border-zinc-100 h-full">"{profile.additionalNotes || "Records empty."}"</p>
-                          )}
-                        </div>
-
-                        {/* Vedic Numerology Card */}
-                        <div className="space-y-4">
-                           <div className="flex items-center gap-2">
-                              <BookOpen size={18} className="text-[#d4af37]" />
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#064e3b]">Vedic Numerology</h4>
-                           </div>
-                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center p-4 bg-[#fdfbf7] rounded-2xl border border-[#fef3c7]">
-                              <p className="text-[9px] text-[#71717a] font-medium leading-relaxed italic sm:col-span-1">
-                                Ancient Sankhya Shastra reveals the spiritual path through the vibrations of names and dates.
-                              </p>
-                              <div className="space-y-2 sm:col-span-2">
-                                <input 
-                                  id="manual_numerology_name"
-                                  placeholder="Enter Name..."
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    const caps = val.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                    if (val !== caps) e.target.value = caps;
-                                  }}
-                                  className="w-full px-4 py-2 bg-white border border-[#f4f4f5] rounded-xl text-xs font-bold outline-none focus:border-[#d4af37]"
-                                />
-                                <button 
-                                  onClick={() => {
-                                    const nameInput = document.getElementById('manual_numerology_name') as HTMLInputElement;
-                                    if (nameInput?.value) {
-                                      const currentYear = new Date().getFullYear().toString();
-                                      getVedicNumerology({ name: nameInput.value.trim(), birthYear: currentYear, role: 'Descendant', children: [], id: 'manual' });
-                                    } else {
-                                      toast.error("Please provide a name for the reading.");
-                                    }
-                                  }}
-                                  className="w-full py-2 bg-[#064e3b] text-[#d4af37] rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md hover:bg-emerald-900 transition-all"
-                                >
-                                  Reveal Divine Path
-                                </button>
-                              </div>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              {/* Genealogy Map Container (Full Page Width) */}
-              <div className="w-full space-y-8 mt-12">
-                 <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-4 sm:px-6 md:px-0">
-                    <div className="flex items-center gap-4">
-                       <div className="w-8 h-1 bg-[#d4af37] rounded-full" />
-                       <h3 className="text-xl font-serif font-black text-[#064e3b] italic">{vt.generationMapping}</h3>
-                    </div>
-                          {isEditing && (
-                             <div className="flex gap-4">
-                                <button onClick={() => addMember(null)} className="px-6 py-2.5 bg-white border border-zinc-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#d4af37] transition-all flex items-center gap-2 text-zinc-600">
-                                   <Plus size={14}/> Add Root
-                                </button>
-                                <button 
-                                   onClick={handleUpdateProfile}
-                                   className="px-6 py-2.5 bg-[#064e3b] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2"
-                                >
-                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <><Save size={14} /> {vt.preserve}</>}
-                                </button>
-                             </div>
-                          )}
-                       </div>
-
-                       <div className="relative group/canvas h-full flex flex-col w-full">
-                          {/* Tree Controls */}
-                          <div id="tree-controls" className={`absolute z-30 flex gap-3 transition-all duration-500 ${isFullScreen ? 'top-10 left-1/2 -translate-x-1/2 flex-row bg-white/40 p-2 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl' : 'top-10 right-10 flex-col'}`}>
-                             <button 
-                              type="button"
-                              onClick={() => setTreeScale(prev => Math.min(prev + 0.1, 2))}
-                              className="w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center justify-center text-[#064e3b] hover:bg-[#d4af37] hover:text-white transition-all border-2 border-[#d4af37]/20"
-                              title="Zoom In"
-                             >
-                               <Plus size={24} />
-                             </button>
-                             <button 
-                              type="button"
-                              onClick={() => setTreeScale(prev => Math.max(prev - 0.1, 0.4))}
-                              className="w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center justify-center text-[#064e3b] hover:bg-[#d4af37] hover:text-white transition-all border-2 border-[#d4af37]/20"
-                              title="Zoom Out"
-                             >
-                               <ChevronDown size={24} className="rotate-180" />
-                             </button>
-                             <button 
-                              type="button"
-                              onClick={autoFitTree}
-                              className="w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl flex items-center justify-center text-[#064e3b] hover:bg-[#d4af37] hover:text-white transition-all border-2 border-[#d4af37]/20"
-                              title="Auto Fit"
-                             >
-                               <Maximize size={22} />
-                             </button>
-                             <button 
-                              type="button"
-                              onClick={toggleFullScreen}
-                              className={`w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center transition-all border-2 ${isFullScreen ? 'bg-[#18181b] text-[#d4af37] border-white/20' : 'bg-white/90 text-[#064e3b] border-[#d4af37]/20 hover:bg-[#064e3b] hover:text-white'}`}
-                              title={isFullScreen ? "Exit Full Screen" : "Full Screen View"}
-                             >
-                               {isFullScreen ? <Minimize2 size={24} /> : <ScreenShare size={24} />}
-                             </button>
-                          </div>
-
-                          {/* Tree Stage */}
-                          <div 
-                            ref={treeRef}
-                            id="genealogy_container"
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
-                            onPointerCancel={handlePointerUp}
-                            className={`bg-[#fcf8f1] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.25)] overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/old-map.png')] bg-repeat flex items-center justify-center transition-all duration-700 ease-in-out w-full ${
-                              isFullScreen 
-                                ? 'h-screen w-screen rounded-none border-0 p-4 md:p-12' 
-                                : 'rounded-[0.5rem] sm:rounded-[1.5rem] md:rounded-[3rem] border-y-[3px] md:border-[10px] md:border-x-[10px] border-[#d4af37] h-[650px] lg:h-[800px] p-2 sm:p-4 md:p-12'
-                            }`}
-                            style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
-                          >
-                            <div className="absolute inset-2 sm:inset-4 border border-[#d4af37]/20 pointer-events-none rounded-[0.4rem] sm:rounded-[2.3rem]" />
-                            <div className="absolute inset-3 sm:inset-6 border-2 border-[#d4af37]/10 pointer-events-none rounded-[0.2rem] sm:rounded-[1.8rem]" />
-                            
-                            {/* Decorative Corner Ornaments */}
-                            <div className="absolute top-10 left-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
-                            <div className="absolute top-10 right-10 p-2 text-[#d4af37]/20 rotate-12"><Landmark size={48} /></div>
-                            <div className="absolute bottom-10 left-10 p-2 text-[#d4af37]/20 rotate-12"><Landmark size={48} /></div>
-                            <div className="absolute bottom-10 right-10 p-2 text-[#d4af37]/20 -rotate-12"><Landmark size={48} /></div>
-                            
-                            <div 
-                              className={`relative inline-block min-w-max w-max flex flex-col items-center text-center z-10 pt-4 pb-12 sm:pt-12 sm:pb-32 origin-center flex-shrink-0 select-none ${isDragging || isPointerActive ? '' : 'transition-transform duration-300 ease-out'}`}
-                              style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${treeScale})` }}
-                            >
-                               <div className="mb-6 md:mb-10 flex flex-col items-center flex-shrink-0">
-                                  {/* Deities Rendered Side-by-Side in a row on tablet/desktop, stacked with custom snug gap on mobile */}
-                                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 md:gap-16 mb-4 md:mb-8">
-                                    {(profile.kuldevi || profile.kuldeviPhoto) && (
-                                      <DeityFrame photo={profile.kuldeviPhoto} name={profile.kuldevi} />
-                                    )}
-                                    {(profile.kuldevta || profile.kuldevtaPhoto) && (
-                                      <DeityFrame photo={profile.kuldevtaPhoto} name={profile.kuldevta} isKuldevta />
-                                    )}
-                                  </div>
-                                  
-                                  {/* Sacred Blessing Beam connecting the Divine to the scroll */}
-                                  <div className="flex flex-col items-center relative mb-4 md:mb-8">
-                                    <motion.div 
-                                      animate={{ scaleY: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                                      transition={{ duration: 3, repeat: Infinity }}
-                                      className="w-0.5 h-8 md:h-16 bg-gradient-to-b from-[#d4af37] via-[#d4af37]/50 to-transparent rounded-full shadow-[0_0_8px_#d4af37]" 
-                                    />
-                                    {[...Array(3)].map((_, i) => (
-                                      <motion.div
-                                        key={i}
-                                        initial={{ y: -10, opacity: 0 }}
-                                        animate={{ 
-                                          y: [0, 60], 
-                                          opacity: [0, 0.8, 0],
-                                          scale: [0.6, 1, 0.6]
-                                        }}
-                                        transition={{ 
-                                          duration: 2.5 + Math.random(), 
-                                          repeat: Infinity, 
-                                          delay: i * 0.7,
-                                          ease: "easeInOut"
-                                        }}
-                                        className="absolute top-0 text-[#d4af37]"
-                                      >
-                                        <div className="w-1 h-1 rounded-full bg-current shadow-[0_0_4px_currentColor]" />
-                                      </motion.div>
-                                    ))}
-                                  </div>
-
-                                  <VintageScroll title={`${vt.eternalLineage} ${profile.name || 'family'}`} />
-                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]/60 mb-4 flex items-center gap-2">
-                                     <Fingerprint size={12} /> ID: {profile.shareId || profile.id}
-                                  </div>
-                                  <RoyalOrnament />
-                               </div>
-                               <div className="flex justify-center">
-                                 <TreeStructure 
-                                  members={profile.members} 
-                                  isEditing={isEditing} 
-                                  onEdit={(node: any) => {
-                                    setEditingNode(node);
-                                    setIsEditModalOpen(true);
-                                  }}
-                                  onViewDetail={(node: any) => setActiveLightboxMember(node)}
-                                  onRemove={removeMember}
-                                  onAddChild={addMember}
-                                  onGetNumerology={getVedicNumerology}
-                                 />
-                               </div>
-                               
-                               <div className="mt-12 md:mt-24 opacity-30 italic text-[#8a6821] text-xs font-serif">
-                                  Records maintained by {profile.name} via {vt.archives}
-                               </div>
-                            </div>
-                          </div>
-                       </div>
-                    </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Modals */}
-      <EditMemberModal 
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        member={editingNode}
-        onSave={updateMemberFromModal}
-        handlePhotoUpload={handlePhotoUpload}
-      />
-
-      {/* Lightbox / High-definition zoom viewer modal */}
-      <AnimatePresence>
-        {activeLightboxMember && (
-          <div 
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out"
-            onClick={() => setActiveLightboxMember(null)}
+      <div className="form-grid">
+        <TextInput label="Full name" value={form.displayName} onChange={(displayName) => setForm((current) => ({ ...current, displayName }))} />
+        <label className="field">
+          <span>Gender</span>
+          <select value={form.gender} onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value as Gender }))}>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Living status</span>
+          <select value={form.lifeStatus} onChange={(event) => setForm((current) => ({ ...current, lifeStatus: event.target.value as LifeStatus }))}>
+            <option value="living">Living</option>
+            <option value="deceased">Deceased</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>Marital status</span>
+          <select value={form.maritalStatus} onChange={(event) => setForm((current) => ({ ...current, maritalStatus: event.target.value as MaritalStatus }))}>
+            <option value="unmarried">Unmarried</option>
+            <option value="married">Married</option>
+            <option value="widowed">Widowed</option>
+            <option value="divorced">Divorced</option>
+            <option value="separated">Separated</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        {form.maritalStatus === "married" && (
+          form.gender === "male" ? (
+            <label className="field">
+              <span>{spouseLabel}</span>
+              <select value={form.spouseId} onChange={(event) => setForm((current) => ({ ...current, spouseId: event.target.value }))}>
+                <option value="">Not linked yet</option>
+                {eligibleSpouses.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
+              </select>
+              <small>Select an existing female spouse who is not already recorded as a daughter in this tree.</small>
+            </label>
+          ) : (
+            <div className="field lineage-rule-note">
+              <span>Marriage continuation rule</span>
+              <small>{marriedDaughterNotice || "Set gender to Male if this person is a male lineage member whose next generation should continue here."}</small>
+            </div>
+          )
+        )}
+        <TextInput label="Date of birth" value={form.dateOfBirth} placeholder="YYYY-MM-DD" onChange={(dateOfBirth) => setForm((current) => ({ ...current, dateOfBirth }))} />
+        <TextInput label="Date of death" value={form.dateOfDeath} placeholder="YYYY-MM-DD" onChange={(dateOfDeath) => setForm((current) => ({ ...current, dateOfDeath }))} />
+        <TextInput label="Death anniversary / tithi" value={form.deathAnniversary} onChange={(deathAnniversary) => setForm((current) => ({ ...current, deathAnniversary }))} />
+        <TextInput label="Rashi" value={form.rashi} onChange={(rashi) => setForm((current) => ({ ...current, rashi }))} />
+        <TextInput label="Gotra" value={form.gotra} onChange={(gotra) => setForm((current) => ({ ...current, gotra }))} />
+        <label className="field">
+          <span>Father</span>
+          <select value={form.fatherId} onChange={(event) => setForm((current) => ({ ...current, fatherId: event.target.value }))}>
+            <option value="">Unknown / not set</option>
+            {eligibleParents.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
+          </select>
+          <small>Only male lineage members can be selected as father for next-generation continuation.</small>
+        </label>
+        <label className="field parent-constrained">
+          <span>Mother</span>
+          <select
+            value={form.motherId}
+            disabled={!hasMultipleMothers}
+            onChange={(event) => setForm((current) => ({ ...current, motherId: event.target.value }))}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="relative max-w-lg w-full bg-[#18181b] rounded-[3rem] border-4 border-[#d4af37] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden cursor-default text-white"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="absolute top-6 right-6 z-10">
-                <button 
-                  onClick={() => setActiveLightboxMember(null)}
-                  className="p-3 bg-zinc-900/80 hover:bg-zinc-800 rounded-full transition-colors text-[#d4af37]"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Header Image Frame (Big Picture Zoom) */}
-              <div className="relative aspect-[4/5] w-full bg-zinc-950 flex items-center justify-center overflow-hidden group">
-                {activeLightboxMember.photo ? (
-                  <img 
-                    src={activeLightboxMember.photo} 
-                    alt={activeLightboxMember.name} 
-                    className="w-full h-full object-cover select-none scale-100 transition-all duration-700 hover:scale-110" 
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-[#d4af37]/20">
-                    <User size={120} strokeWidth={0.5} />
-                    <p className="text-[10px] font-black uppercase tracking-widest mt-4">Portrait Archive Empty</p>
-                  </div>
-                )}
-                {/* Decorative overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-[#18181b]/25 to-transparent pointer-events-none" />
-              </div>
-
-              {/* Bio Detail Content */}
-              <div className="p-8 relative">
-                {/* Spiritual pattern */}
-                <div className="absolute right-8 top-8 opacity-10 text-[#d4af37] pointer-events-none">
-                  <Landmark size={80} strokeWidth={1} />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#d4af37]/10 rounded-full border border-[#d4af37]/30">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#d4af37]">{activeLightboxMember.role || "Generation Node"}</span>
-                  </div>
-
-                  <h3 className="text-3xl font-serif font-black tracking-tight italic text-[#f4e4bc]">{activeLightboxMember.name}</h3>
-                  <p className="text-sm font-bold text-zinc-400 font-mono">Historical Record: {activeLightboxMember.birthYear || "N/A"}</p>
-                  <p className="text-xs text-zinc-300 leading-relaxed font-serif italic pt-2">
-                    "A distinguished figure in the {profile ? profile.name : 'Vamshavali'} registry. May their virtue inspire generations to come."
-                  </p>
-
-                  <div className="pt-6 border-t border-zinc-800/80 flex items-center justify-between">
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-[#d4af37]">Sankhya Shastra Reading</div>
-                    <button 
-                      onClick={() => {
-                        setActiveLightboxMember(null);
-                        getVedicNumerology(activeLightboxMember);
-                      }}
-                      className="px-5 py-2 bg-[#d4af37] text-[#064e3b] rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#b68d40] transition-all flex items-center gap-2"
-                    >
-                      <Sparkles size={12} /> Divine Insight
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Numerology Insights Modal */}
-      <AnimatePresence>
-        {(numerologyReading || isCalculatingNumerology) && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-[#064e3b]/30 backdrop-blur-xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="bg-white rounded-[3.5rem] w-full max-w-2xl overflow-hidden shadow-[0_50px_150px_rgba(0,0,0,0.4)] border-4 border-[#d4af37] relative"
-            >
-              {/* Sacred Design Elements */}
-              <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-r from-[#d4af37] via-white to-[#d4af37]" />
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[#d4af37]/20 pointer-events-none">
-                 <Landmark size={120} strokeWidth={0.5} />
-              </div>
-
-              <div className="p-10 relative z-10">
-                <div className="flex justify-between items-start mb-12">
-                  <div className="space-y-2">
-                    <h3 className="text-4xl font-serif font-black text-[#064e3b] italic tracking-tight">Vedic Numerology</h3>
-                    <p className="text-[#d4af37] text-[10px] font-black uppercase tracking-[0.4em]">Sankhya Shastra • Spiritual Insights</p>
-                  </div>
-                  <button 
-                    onClick={() => setNumerologyReading(null)}
-                    className="p-3 bg-zinc-100 hover:bg-zinc-200 rounded-full transition-colors"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-
-                {isCalculatingNumerology ? (
-                  <div className="py-24 text-center space-y-8">
-                     <div className="relative inline-block">
-                        <div className="absolute inset-0 bg-[#d4af37]/20 blur-2xl rounded-full animate-pulse" />
-                        <Loader2 className="animate-spin text-[#d4af37] relative" size={64} strokeWidth={1} />
-                     </div>
-                     <p className="text-[#b68d40] text-sm font-serif italic animate-pulse">Consulting the celestial patterns for {editingNode?.name || 'the lineage'}...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    <div className="p-8 bg-[#fdfbf7] rounded-[2.5rem] border border-[#fef3c7] shadow-inner">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 bg-[#064e3b] rounded-2xl flex items-center justify-center text-[#d4af37] shadow-lg">
-                           <Sparkles size={20} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-black text-[#18181b] tracking-tight">{numerologyReading?.name}</h4>
-                          <p className="text-[9px] font-black text-[#d4af37] uppercase tracking-[0.2em]">Sacred Reading</p>
-                        </div>
-                      </div>
-
-                      <div className="prose prose-sm prose-zinc max-h-[400px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-[#d4af37]/20 font-medium leading-relaxed text-[#52525b]">
-                         <Markdown>{numerologyReading?.reading || ''}</Markdown>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-center pt-4">
-                       <RoyalOrnament />
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-8 p-6 bg-[#064e3b]/5 rounded-2xl border border-[rgba(212,175,55,0.1)]">
-                   <p className="text-[#8a6821] text-[10px] font-medium leading-relaxed text-center italic">
-                     "Numbers are the cosmic vibrations that define the rhythm of the soul. In the Vedic tradition, each digit is a portal to the divine energy of the cosmos."
-                   </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
+            <option value="">{form.fatherId ? "No eligible mother selected" : "Select father first"}</option>
+            {fatherSpouses.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
+          </select>
+          <small>{motherHelp}</small>
+        </label>
+        <TextInput label="Photo URL" value={form.photoUrl} onChange={(photoUrl) => setForm((current) => ({ ...current, photoUrl }))} />
+        <label className="field wide">
+          <span>Notes</span>
+          <textarea rows={3} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+        </label>
+      </div>
+    </section>
   );
-};
+}
 
-const TreeStructure = ({ members, isEditing, onEdit, onViewDetail, onRemove, onAddChild, onGetNumerology }: any) => {
+function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; request: ReturnType<typeof useLineage>["request"]; busy: boolean; canEdit: boolean }) {
+  const [draft, setDraft] = React.useState(tree);
+  React.useEffect(() => setDraft(tree), [tree.id, tree.updatedAt]);
+  function update(key: keyof LineageTree, value: string) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
   return (
-    <div className="flex justify-center gap-6 sm:gap-10 md:gap-24 px-2 sm:px-4 md:px-8">
-      {members.map((member: FamilyMember, index: number) => (
-        <div key={member.id} className="relative flex flex-col items-center">
-          {/* Node Wrapper */}
-          <div className="flex flex-col items-center group relative z-20">
-            {/* Elegant Royal Card Wrapper */}
-            <div className={`relative flex items-center justify-center p-3.5 sm:p-5 md:p-6 rounded-[1.6rem] sm:rounded-[2.2rem] md:rounded-[2.5rem] bg-gradient-to-b from-[#fffefb] to-[#fdfaf2] border-2 sm:border-[3px] border-[#d4af37] shadow-[0_10px_20px_rgba(182,141,64,0.08)] md:shadow-[0_15px_30px_rgba(182,141,64,0.12)] ring-4 sm:ring-8 ring-white/60 transition-all duration-300 md:hover:shadow-[0_25px_60px_rgba(182,141,64,0.25)] md:hover:-translate-y-1 z-20 interactive-node ${member.partner ? 'gap-3 sm:gap-6 md:gap-8 min-w-[260px] sm:min-w-[340px] md:min-w-[440px]' : 'min-w-[110px] sm:min-w-[170px] md:min-w-[210px]'}`}>
-              
-              {/* Member */}
-              <div className="flex flex-col items-center text-center">
-                <div 
-                  className="relative transition-all duration-300 ease-out cursor-pointer md:hover:scale-105 active:scale-95"
-                  onClick={() => {
-                    if (hasDraggedGlobal) return;
-                    if (isEditing) {
-                      onEdit(member);
-                    } else if (onViewDetail) {
-                      onViewDetail(member);
-                    }
-                  }}
-                >
-                  <GoldenFrame photo={member.photo} name={member.name} gender={member.gender || (member.role?.toLowerCase().includes('daughter') || member.role?.toLowerCase().includes('mother') || member.role?.toLowerCase().includes('matriarch') ? 'female' : 'male')} />
-                  {isEditing && (
-                    <div className="absolute -top-1 -right-1 w-8 h-8 bg-[#059669] text-white rounded-full flex items-center justify-center shadow-md z-30 border-2 border-white animate-bounce-slow">
-                      <Edit2 size={12} />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-3 sm:mt-4 flex flex-col items-center">
-                  <h4 className="font-serif font-black text-[#58441c] text-xs sm:text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
-                    {member.name}
-                  </h4>
-                  <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-                    <div className="h-px w-1.5 sm:w-2 bg-[#d4af37]/45" />
-                    <p className="text-[9px] sm:text-[10px] md:text-xs text-[#ea580c] font-bold italic font-mono">{member.birthYear || "—"}</p>
-                    <div className="h-px w-1.5 sm:w-2 bg-[#d4af37]/45" />
-                  </div>
-                  <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-[#064e3b] text-[#d4af37] text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-2 rounded-full shadow-sm">
-                    {member.role || "Member"}
-                  </div>
-                </div>
-              </div>
+    <section className="surface traditions-surface">
+      <header className="surface-head">
+        <div>
+          <p className="eyebrow">Family record</p>
+          <h2>Traditions and identity</h2>
+        </div>
+        {canEdit && <button className="primary-action" disabled={busy} onClick={() => request("save-family", `/api/lineage/trees/${tree.id}`, { method: "PATCH", body: JSON.stringify(draft) })}><Save size={16} />Save details</button>}
+      </header>
+      <div className="tradition-display">
+        {[
+          ["Gotra", draft.gotra],
+          ["Pravara", draft.pravara],
+          ["Kuladevi", draft.kuladevi],
+          ["Kuladevata", draft.kuladevata],
+          ["Kulapurohit", draft.kulapurohit],
+          ["Gramadevata", draft.gramadevata],
+          ["Native village", draft.nativeVillage],
+          ["Family surname", draft.familySurname]
+        ].map(([label, value]) => (
+          <div className="tradition-tile" key={label ?? ""}>
+            <span>{label}</span>
+            <strong>{value || "Not recorded"}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="form-grid traditions-form">
+        <TextInput label="Lineage name" value={draft.name ?? ""} onChange={(value) => update("name", value)} />
+        <TextInput label="Account holder" value={draft.accountHolderName ?? ""} onChange={(value) => update("accountHolderName", value)} />
+        <TextInput label="Gotra" value={draft.gotra ?? ""} onChange={(value) => update("gotra", value)} />
+        <TextInput label="Pravara" value={draft.pravara ?? ""} onChange={(value) => update("pravara", value)} />
+        <TextInput label="Kuladevi" value={draft.kuladevi ?? ""} onChange={(value) => update("kuladevi", value)} />
+        <TextInput label="Kuladevata" value={draft.kuladevata ?? ""} onChange={(value) => update("kuladevata", value)} />
+        <TextInput label="Kulapurohit" value={draft.kulapurohit ?? ""} onChange={(value) => update("kulapurohit", value)} />
+        <TextInput label="Gramadevata" value={draft.gramadevata ?? ""} onChange={(value) => update("gramadevata", value)} />
+        <TextInput label="Native village" value={draft.nativeVillage ?? ""} onChange={(value) => update("nativeVillage", value)} />
+        <TextInput label="Family surname" value={draft.familySurname ?? ""} onChange={(value) => update("familySurname", value)} />
+      </div>
+    </section>
+  );
+}
 
-              {/* Partner Section */}
-              {member.partner && (
-                <>
-                  {/* Union Symbol */}
-                  <div className="flex flex-col items-center relative py-4 sm:py-6 shrink-0 select-none">
-                     <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 rounded-full bg-[#fdfbf7] border border-[#d4af37]/35 flex items-center justify-center shadow-sm">
-                        <Heart size={10} className="text-[#fb7185] sm:hidden" fill="currentColor" />
-                        <Heart size={14} className="text-[#fb7185] hidden sm:block" fill="currentColor" />
-                     </div>
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 sm:w-16 md:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent pointer-events-none" />
-                  </div>
+function CsvImporter({ treeId, request }: { treeId: string; request: ReturnType<typeof useLineage>["request"] }) {
+  const [csv, setCsv] = React.useState(sampleCsv);
+  const [preview, setPreview] = React.useState<ImportProposal | null>(null);
+  async function previewCsv() {
+    setPreview(await request("preview-csv", "/api/lineage/import/preview", { method: "POST", body: JSON.stringify({ treeId, csv }) }));
+  }
+  async function commitCsv() {
+    await request("commit-csv", "/api/lineage/import/commit", { method: "POST", body: JSON.stringify({ treeId, csv }) });
+    setPreview(null);
+  }
+  return (
+    <section className="surface">
+      <header className="surface-head">
+        <div>
+          <p className="eyebrow">Spreadsheet</p>
+          <h2>CSV import</h2>
+        </div>
+        <button onClick={previewCsv}><Upload size={16} />Preview</button>
+      </header>
+      <textarea className="csv-box" value={csv} onChange={(event) => setCsv(event.target.value)} />
+      {preview && (
+        <div className="preview-box">
+          <div className="preview-head">
+            <strong>{preview.people.length} people detected</strong>
+            <button className="primary-action" onClick={commitCsv}><Check size={16} />Commit import</button>
+          </div>
+          {preview.warnings.map((warning) => <p className="warning" key={warning}>{warning}</p>)}
+          <div className="preview-list">
+            {preview.people.slice(0, 8).map((person) => (
+              <span key={person.clientKey}>{person.displayName}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
-                  <div className="flex flex-col items-center text-center">
-                    <div 
-                      className="relative transition-all duration-350 ease-out cursor-pointer md:hover:scale-105 active:scale-95"
-                      onClick={() => {
-                        if (hasDraggedGlobal) return;
-                        if (isEditing) {
-                          onEdit(member);
-                        } else if (onViewDetail) {
-                          onViewDetail({
-                            ...member.partner,
-                            role: "Union Partner",
-                            gender: (member.partner as any).gender || "female"
-                          });
-                        }
-                      }}
-                    >
-                      <GoldenFrame photo={member.partner.photo} name={member.partner.name} size="sm" gender={(member.partner as any).gender || 'female'} />
-                    </div>
-                    
-                    <div className="mt-3 sm:mt-4 flex flex-col items-center">
-                      <h4 className="font-serif font-black text-[#58441c] text-xs sm:text-sm md:text-base uppercase tracking-tight leading-tight whitespace-nowrap drop-shadow-sm">
-                        {member.partner.name}
-                      </h4>
-                      <p className="text-[9px] sm:text-[10px] md:text-xs text-[#ea580c] font-bold italic mt-1.5">{member.partner.birthYear || "—"}</p>
-                      <p className="text-[#b68d40] text-[6px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-widest mt-2 px-1.5 py-0.5 bg-white rounded-md border border-[#8a6821]/20">Partner</p>
-                    </div>
-                  </div>
-                </>
-              )}
+function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposals: Proposal[]; request: ReturnType<typeof useLineage>["request"] }) {
+  const [sourceType, setSourceType] = React.useState<"telegram_text" | "telegram_voice" | "csv">("telegram_text");
+  const [rawText, setRawText] = React.useState("My name is Arjun Deshpande. My father is Mahesh Deshpande. My mother is Kavita Deshpande. My grandfather was Ganesh Deshpande and grandmother was Sushila Deshpande. My wife is Priya Deshpande. Our gotra is Kashyap, Kuladevi is Tulja Bhavani, Gramadevata is Khandoba, my rashi is Vrischika.");
+  async function createProposal() {
+    await request("telegram-proposal", "/api/lineage/telegram", { method: "POST", body: JSON.stringify({ treeId, rawText, sourceType }) });
+  }
+  return (
+    <section className="surface">
+      <header className="surface-head">
+        <div>
+          <p className="eyebrow">Telegram and voice</p>
+          <h2>Reviewable intake</h2>
+        </div>
+        <button onClick={createProposal}>{sourceType === "telegram_voice" ? <Mic size={16} /> : <MessageCircle size={16} />}Extract</button>
+      </header>
+      <div className="segmented">
+        <button className={sourceType === "telegram_text" ? "active" : ""} onClick={() => setSourceType("telegram_text")}><MessageCircle size={15} />Text</button>
+        <button className={sourceType === "telegram_voice" ? "active" : ""} onClick={() => setSourceType("telegram_voice")}><Mic size={15} />Voice transcript</button>
+      </div>
+      <textarea className="telegram-box" value={rawText} onChange={(event) => setRawText(event.target.value)} />
+      <div className="proposal-list">
+        {proposals.map((proposal) => (
+          <article className="proposal" key={proposal.id}>
+            <div>
+              <strong>{proposal.proposal.people.length} proposed people</strong>
+              <span>{proposal.status} - {proposal.sourceType.replace("_", " ")}</span>
             </div>
-
-            {/* Action Buttons for Editing */}
-            {isEditing && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-2.5 mt-6 p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#d4af37]/25 z-30 pointer-events-auto interactive-node"
-              >
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onAddChild(member.id); }}
-                  className="w-10 h-10 bg-[#064e3b] text-[#d4af37] rounded-xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-md animate-fade-in"
-                  title="Add Generation"
-                >
-                  <Plus size={20}/>
+            <p>{proposal.rawText}</p>
+            {proposal.proposal.warnings.map((warning) => <small key={warning}>{warning}</small>)}
+            {proposal.status === "pending" && (
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
+                <button className="primary-action" onClick={() => request(`commit-${proposal.id}`, `/api/lineage/proposals/${proposal.id}/commit`, { method: "POST" })}>
+                  <Check size={16} />Commit proposal
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onRemove(member.id); }}
-                  className="w-10 h-10 bg-white text-red-600 rounded-xl border-2 border-red-50 hover:bg-red-50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
-                  title="Remove Lineage"
-                >
-                  <Trash2 size={20}/>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onEdit(member); }}
-                  className="w-10 h-10 bg-white text-[#064e3b] rounded-xl border-2 border-zinc-100 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
-                  title="Registry Editor"
-                >
-                  <Settings size={18}/>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onGetNumerology(member); }}
-                  className="w-10 h-10 bg-[#fdfbf7] text-[#d4af37] rounded-xl border-2 border-[#fef3c7] hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm"
-                  title="Vedic Insight"
-                >
-                  <BookOpen size={18}/>
-                </button>
-              </motion.div>
-            )}
-            
-            {/* View Numerology Reading Button */}
-            {!isEditing && (
-              <div className="mt-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 z-30 interactive-node">
-                <button 
-                  onClick={() => { if (hasDraggedGlobal) return; onGetNumerology(member); }}
-                  className="px-5 py-2 bg-gradient-to-r from-[#064e3b] to-[#065f46] text-[#d4af37] rounded-full text-[9px] font-black uppercase tracking-[0.25em] shadow-lg md:hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-[#d4af37]/30"
-                >
-                  <Sparkles size={12} /> Reveal Divine Path
+                <button className="danger-action" onClick={() => request(`dismiss-${proposal.id}`, `/api/lineage/proposals/${proposal.id}/dismiss`, { method: "POST" })}>
+                  <X size={16} />Dismiss
                 </button>
               </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PersonDrawer({ person, people, spouses, canEdit, onClose, onEdit, onDelete, onLinkSpouse }: {
+  person: Person;
+  people: Person[];
+  spouses: SpouseLink[];
+  canEdit: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onLinkSpouse: (spouseId: string) => void;
+}) {
+  const [spouseId, setSpouseId] = React.useState("");
+  const peopleById = new Map(people.map((item) => [item.id, item]));
+  const spouseNames = spouseNamesFor(person, peopleById, spouses);
+  return (
+    <aside className="detail-drawer">
+      <button className="icon-only close-drawer" onClick={onClose}><X size={18} /></button>
+      <div className={`drawer-avatar ${person.gender} ${person.lifeStatus}`}>{person.photoUrl ? <img src={person.photoUrl} alt="" /> : initials(person.displayName)}</div>
+      <h2>{displayPersonName(person)}</h2>
+      <p>{statusLabel(person)}</p>
+      <div className="detail-grid">
+        <span>Father</span><strong>{person.fatherId ? displayPersonName(peopleById.get(person.fatherId)) : "Unknown"}</strong>
+        <span>Mother</span><strong>{person.motherId ? displayPersonName(peopleById.get(person.motherId)) : "Unknown"}</strong>
+        <span>Spouse</span><strong>{spouseNames.join(", ") || "Not linked"}</strong>
+        <span>DOB</span><strong>{person.dateOfBirth || "Unknown"}</strong>
+        <span>DOD</span><strong>{person.dateOfDeath || "Not applicable"}</strong>
+        <span>Anniversary</span><strong>{person.deathAnniversary || "Unknown"}</strong>
+        <span>Rashi</span><strong>{person.rashi || "Unknown"}</strong>
+        <span>Gotra</span><strong>{person.gotra || "Unknown"}</strong>
+      </div>
+      {person.notes && <p className="drawer-notes">{person.notes}</p>}
+      <div className="drawer-actions">
+        {canEdit ? (
+          <>
+            <button className="primary-action" onClick={onEdit}><UserRound size={16} />Edit person</button>
+            <button className="danger-action" onClick={onDelete}><Trash2 size={16} />Delete person</button>
+            <div className="inline-linker">
+              <select value={spouseId} onChange={(event) => setSpouseId(event.target.value)}>
+                <option value="">Select spouse</option>
+                {people.filter((item) => item.id !== person.id).map((item) => <option key={item.id} value={item.id}>{displayPersonName(item)}</option>)}
+              </select>
+              <button disabled={!spouseId} onClick={() => { onLinkSpouse(spouseId); setSpouseId(""); }}><Heart size={16} /></button>
+            </div>
+          </>
+        ) : (
+          <p className="settings-note">Read-only access. Ask the tree owner for edit permission.</p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function Overview({
+  tree,
+  people,
+  spouses,
+  onView,
+  onAddPerson,
+  canEdit
+}: {
+  tree: LineageTree;
+  people: Person[];
+  spouses: SpouseLink[];
+  onView: (view: AppView) => void;
+  onAddPerson: () => void;
+  canEdit: boolean;
+}) {
+  const generations = new Set(generationMap(people, spouses).values());
+  return (
+    <section className="overview-grid">
+      <div className="lineage-hero">
+        <p className="eyebrow">Digital Vanshavali</p>
+        <h1>{tree.name}</h1>
+        <p>{tree.notes || "A private, structured family chronicle for lineage, identity, and family traditions."}</p>
+        <div className="hero-actions">
+          <button className="primary-action" onClick={() => onView("tree")}>Open family tree</button>
+          {canEdit && <button onClick={onAddPerson}><Plus size={16} />Add member</button>}
+        </div>
+      </div>
+      <div className="stat-grid">
+        <span><Users size={18} /><strong>{people.length}</strong>People</span>
+        <span><ChevronsUpDown size={18} /><strong>{generations.size}</strong>Generations</span>
+        <span><Heart size={18} /><strong>{spouses.length}</strong>Marriages</span>
+        <span><Baby size={18} /><strong>{people.filter((person) => person.fatherId || person.motherId).length}</strong>Child links</span>
+      </div>
+      <div className="tradition-strip">
+        <div><span>Gotra</span><strong>{tree.gotra || "Not recorded"}</strong></div>
+        <div><span>Kuladevi</span><strong>{tree.kuladevi || "Not recorded"}</strong></div>
+        <div><span>Gramadevata</span><strong>{tree.gramadevata || "Not recorded"}</strong></div>
+        <div><span>Native village</span><strong>{tree.nativeVillage || "Not recorded"}</strong></div>
+      </div>
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Recent records</p>
+            <h2>Family members</h2>
+          </div>
+          <button onClick={() => onView("people")}>Manage people</button>
+        </header>
+        <div className="people-table">
+          {people.slice(0, 8).map((person) => (
+            <div key={person.id}>
+              <span className={`person-dot ${person.gender} ${person.lifeStatus}`} />
+              <strong>{displayPersonName(person)}</strong>
+              <small>{statusLabel(person)}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function PeopleDirectory({
+  people,
+  filteredPeople,
+  spouses,
+  onAddPerson,
+  canEdit,
+  onOpen,
+  onEdit,
+  onDelete
+}: {
+  people: Person[];
+  filteredPeople: Person[];
+  spouses: SpouseLink[];
+  onAddPerson: () => void;
+  canEdit: boolean;
+  onOpen: (id: string) => void;
+  onEdit: (person: Person) => void;
+  onDelete: (person: Person) => void;
+}) {
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const generations = generationMap(people, spouses);
+  const childCounts = new Map<string, number>();
+  for (const person of people) {
+    for (const parentId of [person.fatherId, person.motherId]) {
+      if (!parentId) continue;
+      childCounts.set(parentId, (childCounts.get(parentId) ?? 0) + 1);
+    }
+  }
+  const grouped = new Map<number, Person[]>();
+  for (const person of filteredPeople) {
+    const generation = generations.get(person.id) ?? 0;
+    grouped.set(generation, [...(grouped.get(generation) ?? []), person]);
+  }
+  const groups = [...grouped.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([generation, members]) => ({
+      generation,
+      members: [...members].sort((a, b) => displayPersonName(a).localeCompare(displayPersonName(b)))
+    }));
+
+  return (
+    <section className="surface people-directory">
+      <header className="surface-head">
+        <div>
+          <p className="eyebrow">Directory</p>
+          <h2>{filteredPeople.length === people.length ? `${people.length} people` : `${filteredPeople.length} of ${people.length} people`}</h2>
+        </div>
+        {canEdit && <button className="primary-action" onClick={onAddPerson}><Plus size={16} />Add new person</button>}
+      </header>
+      <div className="generation-list">
+        {groups.map(({ generation, members }) => (
+          <section className="generation-group" key={generation}>
+            <header className="generation-head">
+              <div>
+                <strong>Generation {generation + 1}</strong>
+                <span>{generation === 0 ? "Oldest known ancestors and root records" : `Level ${generation + 1} in the lineage`}</span>
+              </div>
+              <small>{members.length} {members.length === 1 ? "person" : "people"}</small>
+            </header>
+            <div className="people-table">
+              {members.map((person) => {
+                const spouseNames = spouseNamesFor(person, peopleById, spouses);
+                const childCount = childCounts.get(person.id) ?? 0;
+                return (
+                  <div className="person-row" key={person.id}>
+                    <span className={`person-dot ${person.gender} ${person.lifeStatus}`} />
+                    <div className="person-main">
+                      <strong>{displayPersonName(person)}</strong>
+                      <small>{statusLabel(person)}</small>
+                    </div>
+                    <div className="relationship-meta">
+                      <span><CircleDot size={13} />Generation {generation + 1}</span>
+                      <span>{parentSummary(person, peopleById)}</span>
+                      <span><Heart size={13} />{spouseNames.length ? `Married to ${spouseNames.join(", ")}` : "Spouse not linked"}</span>
+                      <span><Baby size={13} />{childCount} {childCount === 1 ? "child" : "children"} linked</span>
+                    </div>
+                    <div className="person-actions">
+                      <button onClick={() => onOpen(person.id)}>Open</button>
+                      {canEdit && <button onClick={() => onEdit(person)}><UserRound size={14} />Edit</button>}
+                      {canEdit && <button className="danger-action" onClick={() => onDelete(person)}><Trash2 size={14} />Delete</button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        {!groups.length && (
+          <div className="empty-directory">
+            <strong>No matching people</strong>
+            <span>Try another search or add a new family member.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AccountSettings({
+  session,
+  state,
+  request,
+  onSessionChange,
+  onTreeCreated
+}: {
+  session: Session;
+  state: LineageState;
+  request: ReturnType<typeof useLineage>["request"];
+  onSessionChange: (session: Session) => void;
+  onTreeCreated: (treeId: string) => void;
+}) {
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [message, setMessage] = React.useState("");
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteRole, setInviteRole] = React.useState<"viewer" | "contributor" | "admin">("viewer");
+  const [access, setAccess] = React.useState<TreeAccess | null>(null);
+  const [inviteLink, setInviteLink] = React.useState("");
+  const canManageAccess = state.activeRole === "owner" || state.activeRole === "admin";
+  const activeTreeId = state.activeTreeId;
+
+  React.useEffect(() => {
+    if (!canManageAccess || !activeTreeId) {
+      setAccess(null);
+      return;
+    }
+    fetch(`/api/lineage/trees/${activeTreeId}/access`, {
+      headers: { Authorization: `Bearer ${session.token}` }
+    })
+      .then(async (response) => {
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error ?? "Could not load access list.");
+        setAccess(json);
+      })
+      .catch(() => setAccess(null));
+  }, [canManageAccess, activeTreeId, session.token]);
+
+  async function changePassword() {
+    setMessage("");
+    try {
+      const json = await request("change-password", "/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      onSessionChange({ ...session, account: json.account });
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage(session.account.hasPassword ? "Password changed." : "Password set for this account.");
+    } catch {
+      setMessage("");
+    }
+  }
+
+  async function createAdditionalTree() {
+    const nextNumber = state.trees.length + 1;
+    const body = {
+      ...createEmptyTreeBody(session, "manual"),
+      name: nextNumber === 2 ? `${session.account.name} Maternal Family Lineage` : `${session.account.name} Family Lineage ${nextNumber}`
+    };
+    const nextState = await request("create-tree", "/api/lineage/trees", {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+    if (nextState.activeTreeId) onTreeCreated(nextState.activeTreeId);
+  }
+
+  async function createInvite() {
+    if (!activeTreeId) return;
+    setMessage("");
+    setInviteLink("");
+    const response = await fetch(`/api/lineage/trees/${activeTreeId}/invites`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({ email: inviteEmail, role: inviteRole })
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      setMessage(json.error ?? "Could not create invite.");
+      return;
+    }
+    setInviteLink(json.inviteUrl);
+    setInviteEmail("");
+    const accessResponse = await fetch(`/api/lineage/trees/${activeTreeId}/access`, {
+      headers: { Authorization: `Bearer ${session.token}` }
+    });
+    if (accessResponse.ok) setAccess(await accessResponse.json());
+  }
+
+  return (
+    <section className="account-layout">
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Account</p>
+            <h2>Profile and security</h2>
+          </div>
+        </header>
+        <div className="account-summary">
+          <div><span>Name</span><strong>{session.account.name}</strong></div>
+          <div><span>Email</span><strong>{session.account.email}</strong></div>
+          <div><span>Password</span><strong>{session.account.hasPassword ? "Enabled" : "Access code only"}</strong></div>
+          <div><span>Role on active tree</span><strong>{state.activeRole ?? "None"}</strong></div>
+          <div><span>Family trees</span><strong>{state.trees.length} of {session.maxTreesPerAccount}</strong></div>
+        </div>
+      </section>
+
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Public view link</p>
+            <h2>Share family tree</h2>
+          </div>
+        </header>
+        <p className="settings-note">Anyone with this link can view this family tree in read-only mode without needing to sign in.</p>
+        <div className="invite-form" style={{ gap: "12px", alignItems: "flex-end" }}>
+          <label className="field" style={{ flex: 1, margin: 0 }}>
+            <span>Family tree share link / Profile ID link</span>
+            <input 
+              readOnly 
+              value={`${window.location.origin}/vamshavali/v/${activeTreeId}`} 
+              onFocus={(event) => event.currentTarget.select()} 
+            />
+          </label>
+          <button 
+            className="primary-action" 
+            style={{ height: "40px" }}
+            onClick={() => {
+              const url = `${window.location.origin}/vamshavali/v/${activeTreeId}`;
+              navigator.clipboard.writeText(url);
+              setMessage("Family tree link copied to clipboard.");
+            }}
+          >
+            Copy link
+          </button>
+        </div>
+      </section>
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Family access</p>
+            <h2>Invite family members</h2>
+          </div>
+        </header>
+        {!canManageAccess && <p className="settings-note">Your role for this tree is {state.activeRole}. Only owners and admins can invite family members.</p>}
+        {canManageAccess && (
+          <>
+            <div className="invite-form">
+              <label className="field">
+                <span>Email address</span>
+                <input value={inviteEmail} placeholder="relative@example.com" onChange={(event) => setInviteEmail(event.target.value)} />
+              </label>
+              <label className="field">
+                <span>Role</span>
+                <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as "viewer" | "contributor" | "admin")}>
+                  <option value="viewer">Viewer - read only</option>
+                  <option value="contributor">Contributor - can edit lineage</option>
+                  <option value="admin">Admin - can edit and invite</option>
+                </select>
+              </label>
+              <button className="primary-action" disabled={!inviteEmail.trim()} onClick={createInvite}><Plus size={16} />Create invite link</button>
+            </div>
+            {inviteLink && (
+              <label className="field invite-link-field">
+                <span>Invite link for family members</span>
+                <input readOnly value={inviteLink} onFocus={(event) => event.currentTarget.select()} />
+              </label>
+            )}
+            <div className="access-grid">
+              <section>
+                <h3>Members</h3>
+                <div className="tree-list">
+                  {(access?.members ?? []).map((member) => (
+                    <div key={member.accountId}>
+                      <strong>{member.name}</strong>
+                      <span>{member.email} - {member.role}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section>
+                <h3>Invites</h3>
+                <div className="tree-list">
+                  {(access?.invitations ?? []).map((invite) => (
+                    <div key={invite.id}>
+                      <strong>{invite.email}</strong>
+                      <span>{invite.role} - {invite.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </section>
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Password login</p>
+            <h2>{session.account.hasPassword ? "Change password" : "Set password"}</h2>
+          </div>
+          <button className="primary-action" disabled={newPassword.length < 8 || (session.account.hasPassword && !currentPassword)} onClick={changePassword}>
+            <KeyRound size={16} />Save password
+          </button>
+        </header>
+        <div className="form-grid">
+          {session.account.hasPassword && (
+            <label className="field">
+              <span>Current password</span>
+              <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+            </label>
+          )}
+          <label className="field">
+            <span>New password</span>
+            <input type="password" value={newPassword} placeholder="Minimum 8 characters" onChange={(event) => setNewPassword(event.target.value)} />
+          </label>
+        </div>
+        {message && <p className="busy">{message}</p>}
+      </section>
+      <section className="surface">
+        <header className="surface-head">
+          <div>
+            <p className="eyebrow">Family trees</p>
+            <h2>Tree allowance</h2>
+          </div>
+          <button
+            className="primary-action"
+            disabled={state.trees.length >= session.maxTreesPerAccount}
+            onClick={createAdditionalTree}
+          >
+            <Plus size={16} />Create another tree
+          </button>
+        </header>
+        <p className="settings-note">This account can create {session.maxTreesPerAccount} family trees.</p>
+        <div className="tree-list">
+          {state.trees.map((tree) => (
+            <div key={tree.id}>
+              <strong>{tree.name}</strong>
+              <span>{tree.accountHolderName || "Account holder not recorded"}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function AppShell({
+  session,
+  isPublic = false,
+  shareId,
+  inviteMessage,
+  onInviteMessageClear,
+  onLogout,
+  onSessionChange
+}: {
+  session: Session | null;
+  isPublic?: boolean;
+  shareId?: string;
+  inviteMessage: string;
+  onInviteMessageClear: () => void;
+  onLogout: () => void;
+  onSessionChange: (session: Session) => void;
+}) {
+  const lineage = useLineage(session, isPublic ? (shareId ?? null) : (session?.treeId ?? null), true, isPublic);
+  const [view, setView] = React.useState<AppView>("overview");
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
+  const [form, setForm] = React.useState<PersonForm>(emptyPersonForm);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [isPersonEditorOpen, setIsPersonEditorOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  function handleTreeCreated(treeId: string) {
+    if (!session) return;
+    const next = { ...session, treeId };
+    onSessionChange(next);
+    setView("people");
+    setIsMobileMenuOpen(false);
+  }
+
+  if (!lineage.state) {
+    return <main className="loading-screen"><Users size={28} />Loading lineage...</main>;
+  }
+
+  if (!lineage.state.activeTreeId) {
+    if (!session) return <main className="loading-screen"><Users size={28} />Family tree not found.</main>;
+    return <Onboarding session={session} onTreeCreated={handleTreeCreated} request={lineage.request} onLogout={onLogout} />;
+  }
+
+  const tree = lineage.state.trees.find((item) => item.id === lineage.state!.activeTreeId) ?? lineage.state.trees[0];
+  const canEdit = lineage.state.activeRole !== "viewer";
+  const people = lineage.state.people;
+  const spouses = lineage.state.spouses;
+  const proposals = lineage.state.proposals;
+  const selected = people.find((person) => person.id === selectedId) ?? null;
+  const filteredPeople = search.trim()
+    ? people.filter((person) => displayPersonName(person).toLowerCase().includes(search.toLowerCase()))
+    : people;
+
+  function spouseIdFor(personId: string) {
+    const link = spouses.find((spouse) => spouse.personAId === personId || spouse.personBId === personId);
+    return link ? (link.personAId === personId ? link.personBId : link.personAId) : "";
+  }
+
+  function personFormWithSpouse(person: Person): PersonForm {
+    return { ...personToForm(person), spouseId: spouseIdFor(person.id) };
+  }
+
+  async function savePerson() {
+    let savedPersonId = editingId;
+    if (editingId) {
+      await lineage.request("update-person", `/api/lineage/people/${editingId}`, { method: "PATCH", body: JSON.stringify(formToBody(form, tree.id)) });
+    } else {
+      const json = await lineage.request("create-person", "/api/lineage/people", { method: "POST", body: JSON.stringify(formToBody(form, tree.id)) });
+      savedPersonId = json.person.id;
+      setSelectedId(json.person.id);
+    }
+    if (savedPersonId && form.maritalStatus === "married" && form.spouseId) {
+      await lineage.request("link-spouse", "/api/lineage/spouses", {
+        method: "POST",
+        body: JSON.stringify({ treeId: tree.id, personAId: savedPersonId, personBId: form.spouseId })
+      });
+    }
+    setForm(emptyPersonForm);
+    setEditingId(null);
+    setIsPersonEditorOpen(false);
+  }
+
+  function addPerson() {
+    setForm(emptyPersonForm);
+    setEditingId(null);
+    setSelectedId(null);
+    setIsPersonEditorOpen(true);
+    setView("people");
+  }
+
+  function cancelPersonEdit() {
+    setForm(emptyPersonForm);
+    setEditingId(null);
+    setIsPersonEditorOpen(false);
+  }
+
+  function editSelected() {
+    if (!selected) return;
+    setForm(personFormWithSpouse(selected));
+    setEditingId(selected.id);
+    setSelectedId(null);
+    setIsPersonEditorOpen(true);
+    setView("people");
+  }
+
+  function editPerson(person: Person) {
+    setForm(personFormWithSpouse(person));
+    setEditingId(person.id);
+    setSelectedId(null);
+    setIsPersonEditorOpen(true);
+    setView("people");
+  }
+
+  async function deletePerson(person: Person) {
+    const confirmed = window.confirm(
+      `Delete ${displayPersonName(person)} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.`
+    );
+    if (!confirmed) return;
+    await lineage.request("delete-person", `/api/lineage/people/${person.id}`, { method: "DELETE" });
+    if (selectedId === person.id) setSelectedId(null);
+    if (editingId === person.id) {
+      setEditingId(null);
+      setForm(emptyPersonForm);
+      setIsPersonEditorOpen(false);
+    }
+  }
+
+  function goHome() {
+    setSelectedId(null);
+    setEditingId(null);
+    setForm(emptyPersonForm);
+    setIsPersonEditorOpen(false);
+    setView("overview");
+    setIsMobileMenuOpen(false);
+  }
+
+  function navigate(nextView: AppView) {
+    setView(nextView);
+    setIsMobileMenuOpen(false);
+  }
+
+  return (
+    <main className="product-shell">
+      <header className="mobile-appbar">
+        <button className="icon-only" onClick={() => setIsMobileMenuOpen(true)} aria-label="Open menu">
+          <Menu size={21} />
+        </button>
+        <button className="brand-mark" onClick={goHome} aria-label="Go to overview home">
+          <div className="brand-logo-container">
+            <img 
+              src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+              alt="Barnia Logo" 
+              className="brand-logo-img"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <strong>Vanshavali</strong>
+        </button>
+      </header>
+      {isMobileMenuOpen && <button className="mobile-menu-backdrop" aria-label="Close menu" onClick={() => setIsMobileMenuOpen(false)} />}
+      <aside className={`app-sidebar ${isMobileMenuOpen ? "open" : ""}`}>
+        <button className="brand-mark" onClick={goHome} aria-label="Go to overview home">
+          <div className="brand-logo-container">
+            <img 
+              src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+              alt="Barnia Logo" 
+              className="brand-logo-img"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <strong>Vanshavali</strong>
+        </button>
+        <nav>
+          {[
+            ["overview", HomeIcon, "Overview"],
+            ["tree", Users, "Tree"],
+            ["people", UserRound, "People"],
+            ["traditions", Landmark, "Family Details"],
+            ...(canEdit ? [["import", Upload, "Import"] as const] : []),
+            ...(!isPublic ? [["account", KeyRound, "Account"] as const] : [])
+          ].map(([key, Icon, label]) => (
+            <button key={key as string} className={view === key ? "active" : ""} onClick={() => navigate(key as AppView)}>
+              {React.createElement(Icon as typeof HomeIcon, { size: 17 })}
+              {label as string}
+            </button>
+          ))}
+        </nav>
+        <button className="logout-button" onClick={onLogout}>
+          <LogOut size={16} />{isPublic ? "Admin Log In" : "Sign out"}
+        </button>
+      </aside>
+
+      <section className="app-main">
+        <header className="app-topbar">
+          <div>
+            <p className="eyebrow">{isPublic ? "Public family archive" : "Private family archive"}</p>
+            <h1>{tree.name}</h1>
+          </div>
+          <div className="topbar-tools">
+            {!isPublic && session && lineage.state.trees.length > 1 && (
+              <label className="tree-switcher">
+                <span>Family tree</span>
+                <select
+                  value={tree.id || ""}
+                  onChange={(event) => onSessionChange({ ...session, treeId: event.target.value })}
+                >
+                  {lineage.state.trees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+            )}
+            <div className="search-box">
+              <Search size={17} />
+              <input value={search} placeholder="Search family members" onChange={(event) => setSearch(event.target.value)} />
+            </div>
+            {!isPublic && session && (
+              <button className="account-chip" onClick={() => setView("account")}><ShieldCheck size={15} />{session.account.email}</button>
+            )}
+            {isPublic && (
+              <button className="account-chip" onClick={() => window.location.href = "/vamshavali"}><ShieldCheck size={15} />Log in</button>
             )}
           </div>
+        </header>
 
-          {/* Children / Recursive Section */}
-          {member.children.length > 0 && (
-            <div className="pt-10 md:pt-12 relative w-full">
-              {/* Connector from parent DOWN to the sibling line level */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center h-6 w-full">
-                 <div className="w-1 bg-[#d4af37] h-full shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
-                 {/* Connection Point Ornament */}
-                 <div className="w-4 h-4 rounded-full bg-[#064e3b] border-2 border-[#d4af37] -mt-2 shadow-md z-20 flex items-center justify-center">
-                    <div className="w-1 h-1 rounded-full bg-[#d4af37] shadow-[0_0_5px_gold]" />
-                 </div>
+        {lineage.error && <p className="error">{lineage.error}</p>}
+        {lineage.busy && <p className="busy">Working on {lineage.busy}...</p>}
+
+        {inviteMessage && <p className="busy invite-status" onClick={onInviteMessageClear}>{inviteMessage}</p>}
+        {view === "overview" && <Overview tree={tree} people={people} spouses={spouses} onView={setView} onAddPerson={addPerson} canEdit={canEdit} />}
+        {view === "tree" && (
+          <section className="surface tree-surface">
+            <header className="surface-head">
+              <div>
+                <p className="eyebrow">Bird's-eye lineage</p>
+                <h2>Family tree</h2>
               </div>
-              
-              <div className="flex justify-center gap-12 md:gap-24 relative mt-6 overflow-visible">
-                {member.children.map((child, index) => (
-                  <div key={child.id} className="relative">
-                    {/* Horizontal Line Segment to connect siblings */}
-                    {member.children.length > 1 && (
-                      <div 
-                        className="absolute -top-6 h-1 bg-[#d4af37]"
-                        style={{
-                          left: index === 0 ? '50%' : '0',
-                          right: index === member.children.length - 1 ? '50%' : '0',
-                          boxShadow: '0 0 6px rgba(212,175,55,0.2)'
-                        }}
-                      />
-                    )}
-                    {/* Vertical line from sibling bar DOWN to child */}
-                    {member.children.length > 1 && (
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-1 h-6 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
-                    )}
-                    {/* If single child, direct line down */}
-                    {member.children.length === 1 && (
-                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-1 h-6 bg-[#d4af37]" style={{ boxShadow: '0 0 6px rgba(212,175,55,0.2)' }} />
-                    )}
-                    
-                    <TreeStructure 
-                      members={[child]} 
-                      isEditing={isEditing} 
-                      onEdit={onEdit}
-                      onViewDetail={onViewDetail}
-                      onRemove={onRemove}
-                      onAddChild={onAddChild}
-                      onGetNumerology={onGetNumerology}
-                    />
-                  </div>
-                ))}
+              <div className="legend">
+                <span className="legend-dot male" />Male
+                <span className="legend-dot female" />Female
+                <span className="legend-dot deceased" />Deceased
+                <span className="legend-ring" />Married
               </div>
-            </div>
-          )}
-        </div>
-      ))}
+            </header>
+            <FamilyTreeCanvas people={filteredPeople} spouses={spouses} selectedId={selectedId} onSelect={setSelectedId} />
+          </section>
+        )}
+        {view === "people" && (
+          <section className="people-layout">
+            {isPersonEditorOpen && (
+              <PersonEditor
+                people={people}
+                spouses={spouses}
+                form={form}
+                setForm={setForm}
+                busy={Boolean(lineage.busy)}
+                title={editingId ? "Edit family member" : "Add family member"}
+                currentPersonId={editingId}
+                onSubmit={savePerson}
+                onCancel={cancelPersonEdit}
+              />
+            )}
+            <PeopleDirectory
+              people={people}
+              filteredPeople={filteredPeople}
+              spouses={spouses}
+              onAddPerson={addPerson}
+              canEdit={canEdit}
+              onOpen={setSelectedId}
+              onEdit={editPerson}
+              onDelete={deletePerson}
+            />
+          </section>
+        )}
+        {view === "traditions" && <TraditionPanel tree={tree} request={lineage.request} busy={Boolean(lineage.busy)} canEdit={canEdit} />}
+        {view === "import" && canEdit && (
+          <section className="import-layout">
+            <CsvImporter treeId={tree.id} request={lineage.request} />
+            <TelegramInbox treeId={tree.id} proposals={proposals} request={lineage.request} />
+          </section>
+        )}
+        {view === "account" && (
+          <AccountSettings
+            session={session}
+            state={lineage.state}
+            request={lineage.request}
+            onSessionChange={onSessionChange}
+            onTreeCreated={handleTreeCreated}
+          />
+        )}
+      </section>
+
+      {selected && (
+        <PersonDrawer
+          person={selected}
+          people={people}
+          spouses={spouses}
+          canEdit={canEdit}
+          onClose={() => setSelectedId(null)}
+          onEdit={editSelected}
+          onDelete={() => deletePerson(selected)}
+          onLinkSpouse={(spouseId) => lineage.request("link-spouse", "/api/lineage/spouses", { method: "POST", body: JSON.stringify({ treeId: tree.id, personAId: selected.id, personBId: spouseId }) })}
+        />
+      )}
+    </main>
+  );
+}
+
+function App({ isPublic = false, shareId }: { isPublic?: boolean; shareId?: string }) {
+  const [session, setSession] = React.useState<Session | null>(() => loadSession());
+  const [inviteMessage, setInviteMessage] = React.useState("");
+
+  function updateSession(next: Session | null) {
+    if (isPublic) return;
+    setSession(next);
+    saveSession(next);
+  }
+
+  React.useEffect(() => {
+    if (isPublic) return;
+    const token = inviteTokenFromUrl();
+    if (!session || !token) return;
+    fetch("/api/invites/accept", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({ token })
+    })
+      .then(async (response) => {
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error ?? "Could not accept invite.");
+        updateSession({ ...session, treeId: json.activeTreeId ?? session.treeId });
+        clearInviteTokenFromUrl();
+        setInviteMessage("Family tree invite accepted.");
+      })
+      .catch((reason) => setInviteMessage((reason as Error).message));
+  }, [session?.token, isPublic]);
+
+  if (!session && !isPublic) {
+    return <AuthScreen onAuth={(next) => updateSession(next)} />;
+  }
+
+  return (
+    <AppShell
+      session={session}
+      isPublic={isPublic}
+      shareId={shareId}
+      inviteMessage={inviteMessage}
+      onInviteMessageClear={() => setInviteMessage("")}
+      onSessionChange={updateSession}
+      onLogout={() => {
+        if (isPublic) {
+          window.location.href = "/vamshavali";
+        } else {
+          updateSession(null);
+        }
+      }}
+    />
+  );
+}
+
+export function VamshavaliPage({ isPublic = false }: { isPublic?: boolean }) {
+  const { shareId } = useParams();
+  return (
+    <div className="vamshavali-theme min-h-screen">
+      <App isPublic={isPublic} shareId={shareId} />
     </div>
   );
-};
-
-export default VamshavaliPage;
+}
