@@ -1,8 +1,12 @@
 import express, { Router } from "express";
 import { z } from "zod";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
 import { authSchemas, authStore } from "./lineage-auth.js";
 import { appConfig } from "./lineage-config.js";
 import { robustSendMail, getGrandEmailHtml } from "./email.js";
+import { db } from "./lineage-db.js";
 import { 
   inviteCreateSchema, 
   lineagePersonInputSchema, 
@@ -96,6 +100,22 @@ lineageRouter.post("/auth/verify-code", asyncRoute(async (req, res) => {
   res.json({ ...session, state: lineageStore.stateForAccount(session.account.id) });
 }));
 
+lineageRouter.post("/auth/google", asyncRoute(async (req, res) => {
+  const email = z.string().email().parse(req.body?.email ?? "");
+  const name = z.string().default("").parse(req.body?.name ?? "");
+  
+  // Call ensureAccount to create if it doesn't exist
+  authStore.ensureAccount(email, name);
+  
+  // Fetch full row from sqlite to pass into createSession
+  const cleanEmail = email.trim().toLowerCase();
+  const row = db.prepare("SELECT * FROM accounts WHERE email = ?").get(cleanEmail) as any;
+  if (!row) throw new Error("Account row was not created.");
+  
+  const session = authStore.createSession(row);
+  res.json({ ...session, state: lineageStore.stateForAccount(session.account.id) });
+}));
+
 lineageRouter.post("/auth/register-password", asyncRoute(async (req, res) => {
   const parsed = authSchemas.registerPassword.parse(req.body ?? {});
   const session = authStore.registerPassword(parsed.email, parsed.name, parsed.password);
@@ -121,6 +141,13 @@ lineageRouter.post("/auth/change-password", requireAuth, asyncRoute(async (req, 
   const auth = (req as AuthenticatedRequest).auth;
   const parsed = authSchemas.changePassword.parse(req.body ?? {});
   res.json({ account: authStore.changePassword(auth.account.id, parsed.currentPassword, parsed.newPassword) });
+}));
+
+lineageRouter.post("/auth/language", requireAuth, asyncRoute(async (req, res) => {
+  const auth = (req as AuthenticatedRequest).auth;
+  const language = z.enum(["bn", "en", "hi"]).parse(req.body?.language ?? "en");
+  const account = authStore.updateLanguage(auth.account.id, language);
+  res.json({ account });
 }));
 
 lineageRouter.post("/invites/accept", requireAuth, asyncRoute(async (req, res) => {
@@ -319,6 +346,39 @@ lineageRouter.get(
   asyncRoute(async (req, res) => {
     const treeId = routeId(req.params.id);
     res.json(lineageStore.publicState(treeId));
+  })
+);
+
+lineageRouter.post(
+  "/lineage/upload",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const { image } = req.body ?? {};
+    if (!image) {
+      res.status(400).json({ error: "No image content provided." });
+      return;
+    }
+    const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      res.status(400).json({ error: "Invalid base64 image data." });
+      return;
+    }
+    const contentType = matches[1];
+    const imageBuffer = Buffer.from(matches[2], "base64");
+    
+    let extension = "jpg";
+    if (contentType.includes("png")) extension = "png";
+    else if (contentType.includes("gif")) extension = "gif";
+    else if (contentType.includes("webp")) extension = "webp";
+    
+    const safeFilename = `${crypto.randomUUID()}.${extension}`;
+    const uploadsDir = path.resolve(appConfig.dataDir ?? "data", "uploads");
+    await fs.promises.mkdir(uploadsDir, { recursive: true });
+    
+    const filePath = path.join(uploadsDir, safeFilename);
+    await fs.promises.writeFile(filePath, imageBuffer);
+    
+    res.json({ url: `/uploads/${safeFilename}` });
   })
 );
 

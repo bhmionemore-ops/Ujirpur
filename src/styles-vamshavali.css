@@ -1590,3 +1590,20 @@
     border-radius: 8px;
   }
 }
+
+.export-menu-item {
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.export-menu-item:hover {
+  background: rgba(11, 90, 67, 0.08) !important;
+  color: #0b5a43 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.export-menu-item:active {
+  background: rgba(11, 90, 67, 0.15) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}

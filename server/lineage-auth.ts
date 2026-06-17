@@ -9,6 +9,7 @@ type AccountRow = {
   display_name: string;
   password_hash: string | null;
   password_salt: string | null;
+  language: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -63,7 +64,8 @@ function mapAccount(row: AccountRow) {
     id: row.id,
     email: row.email,
     name: row.display_name,
-    hasPassword: Boolean(row.password_hash)
+    hasPassword: Boolean(row.password_hash),
+    language: row.language || 'en'
   };
 }
 
@@ -74,6 +76,7 @@ db.exec(`
     display_name TEXT NOT NULL,
     password_hash TEXT,
     password_salt TEXT,
+    language TEXT DEFAULT 'en',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -97,6 +100,12 @@ db.exec(`
     FOREIGN KEY(account_id) REFERENCES accounts(id)
   );
 `);
+
+try {
+  db.exec("ALTER TABLE accounts ADD COLUMN language TEXT DEFAULT 'en'");
+} catch (e) {
+  // Column already exists or table doesn't have it yet
+}
 
 export const authSchemas = {
   email: z.object({
@@ -231,6 +240,12 @@ export const authStore = {
     const { salt, hash } = hashPassword(newPassword);
     db.prepare("UPDATE accounts SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?")
       .run(hash, salt, now(), accountId);
+    return this.accountById(accountId);
+  },
+
+  updateLanguage(accountId: string, language: string) {
+    db.prepare("UPDATE accounts SET language = ?, updated_at = ? WHERE id = ?")
+      .run(language, now(), accountId);
     return this.accountById(accountId);
   }
 };

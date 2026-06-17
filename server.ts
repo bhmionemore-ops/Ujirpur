@@ -12,6 +12,7 @@ process.on('unhandledRejection', (err: any) => {
 import express from "express";
 import dns from "dns";
 import path from "path";
+import fs from "node:fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
@@ -107,6 +108,11 @@ async function startServer() {
   setupAuthRoutes(app, DB.db, DB.adminDb, admin);
   setupVamshavaliRoutes(app, DB.db, DB.adminDb, admin);
   app.use("/api", lineageRouter);
+  
+  // Serve public/uploads statically from the data directory
+  const uploadsPath = path.resolve(process.env.DATA_DIR ?? "data", "uploads");
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  app.use("/uploads", express.static(uploadsPath));
   setupNewsRoutes(app, DB.db, DB.adminDb, newsLocks, getCurrentNewsDate);
   setupAIRouter(app, DB.db, DB.adminDb, admin);
   setupNumerologyRoutes(app);

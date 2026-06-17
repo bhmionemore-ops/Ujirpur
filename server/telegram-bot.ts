@@ -477,6 +477,18 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     if (cachedUser.userLang) {
       userLang = cachedUser.userLang;
     }
+    if (linkedEmail) {
+      try {
+        const account = sqliteDb.prepare("SELECT language FROM accounts WHERE email = ?").get(linkedEmail.trim().toLowerCase()) as { language?: string } | undefined;
+        if (account?.language) {
+          if (account.language === "bn") userLang = "ben";
+          else if (account.language === "hi") userLang = "hin";
+          else if (account.language === "en") userLang = "eng";
+        }
+      } catch (sqliteErr) {
+        console.warn("[Telegram] Error looking up language from accounts for cached bot user:", sqliteErr);
+      }
+    }
     respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
     console.log(`[Telegram Cache Hit] User: ${chatId} (${respectfulName}), LinkedProfileId: ${linkedProfileId}, ShareId: ${linkedShareId}, Lang: ${userLang}`);
   } else {
@@ -493,6 +505,18 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           telegramName = udata.name || telegramName;
           if (udata.language) {
             userLang = udata.language;
+          }
+          if (linkedEmail) {
+            try {
+              const account = sqliteDb.prepare("SELECT language FROM accounts WHERE email = ?").get(linkedEmail.trim().toLowerCase()) as { language?: string } | undefined;
+              if (account?.language) {
+                if (account.language === "bn") userLang = "ben";
+                else if (account.language === "hi") userLang = "hin";
+                else if (account.language === "en") userLang = "eng";
+              }
+            } catch (sqliteErr) {
+              console.warn("[Telegram] Error looking up language from accounts for bot:", sqliteErr);
+            }
           }
           respectfulName = formatRespectfulName(telegramName, null, userLang);
         } else {
@@ -1443,7 +1467,7 @@ ${treePromptSection}
   "summary": "Linking your Telegram profile..."
 }
 
-Format answers beautifully. Speak in Bengali or English based on the user's language. Keep answers concise.`;
+Format answers beautifully. Speak in Bengali, Hindi, or English based on the user's language: ${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English (English)"}. Keep answers concise.`;
 
     const response = await callGeminiWithRetry(apiKey, {
       model: "gemini-3.5-flash",

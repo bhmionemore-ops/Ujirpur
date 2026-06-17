@@ -37,7 +37,9 @@ export const lineageTreeInputSchema = z.object({
   gramadevata: z.string().optional().nullable(),
   nativeVillage: z.string().optional().nullable(),
   familySurname: z.string().optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  familyNumber: z.string().optional().nullable(),
+  kuldeviPhoto: z.string().optional().nullable()
 });
 
 export const lineageTreeCreateSchema = lineageTreeInputSchema.extend({
@@ -66,6 +68,8 @@ type TreeRow = {
   native_village: string | null;
   family_surname: string | null;
   notes: string | null;
+  family_number: string | null;
+  kuldevi_photo: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -192,6 +196,8 @@ function mapTree(row: TreeRow) {
     nativeVillage: row.native_village,
     familySurname: row.family_surname,
     notes: row.notes,
+    familyNumber: row.family_number,
+    kuldeviPhoto: row.kuldevi_photo,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -257,6 +263,8 @@ db.exec(`
     native_village TEXT,
     family_surname TEXT,
     notes TEXT,
+    family_number TEXT,
+    kuldevi_photo TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -329,6 +337,13 @@ db.exec(`
   );
 `);
 
+try {
+  db.exec("ALTER TABLE lineage_trees ADD COLUMN family_number TEXT;");
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE lineage_trees ADD COLUMN kuldevi_photo TEXT;");
+} catch (_) {}
+
 function defaultTreeId() {
   const existing = db.prepare("SELECT id FROM lineage_trees ORDER BY created_at LIMIT 1").get() as { id: string } | undefined;
   if (existing) return existing.id;
@@ -338,8 +353,8 @@ function defaultTreeId() {
   db.prepare(
     `INSERT INTO lineage_trees (
       id, name, account_holder_name, gotra, kuladevi, kuladevata, kulapurohit,
-      gramadevata, native_village, family_surname, notes, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      gramadevata, native_village, family_surname, notes, family_number, kuldevi_photo, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     treeId,
     "Sharma Family Lineage",
@@ -352,6 +367,8 @@ function defaultTreeId() {
     "Kolhapur",
     "Sharma",
     "Demo tree with traditional family metadata. Replace this with your verified family record.",
+    null,
+    "https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=800&auto=format&fit=crop", // use a nice pre-provided default kuldevi photo url
     timestamp,
     timestamp
   );
@@ -821,8 +838,8 @@ export const lineageStore = {
     db.prepare(
       `INSERT INTO lineage_trees (
         id, name, account_holder_name, gotra, pravara, kuladevi, kuladevata, kulapurohit,
-        gramadevata, native_village, family_surname, notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        gramadevata, native_village, family_surname, notes, family_number, kuldevi_photo, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       treeId,
       parsed.name,
@@ -836,6 +853,8 @@ export const lineageStore = {
       parsed.nativeVillage ?? null,
       parsed.familySurname ?? null,
       parsed.notes ?? null,
+      parsed.familyNumber ?? null,
+      parsed.kuldeviPhoto ?? null,
       timestamp,
       timestamp
     );
@@ -872,7 +891,9 @@ export const lineageStore = {
       gramadevata: "gramadevata",
       nativeVillage: "native_village",
       familySurname: "family_surname",
-      notes: "notes"
+      notes: "notes",
+      familyNumber: "family_number",
+      kuldeviPhoto: "kuldevi_photo"
     };
     const entries = Object.entries(parsed);
     if (entries.length) {
