@@ -460,18 +460,39 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara:": "Pravara:",
     "Kuladevi:": "Kuladevi:",
     "Kuladevata:": "Kuladevata:",
-    "Spouse not linked": "Spouse not linked",
     "DOB": "DOB",
     "DOD": "DOD",
     "Anniversary": "Anniversary",
     "Rashi": "Rashi",
-    "Gramadevata": "Gramadevata",
-    "Kulapurohit": "Kulapurohit",
-    "Native village": "Native village",
-    "Family surname": "Family surname",
-    "Family Number": "Family Number",
     "Kuldevi/Kuladevata Deity": "Kuldevi/Kuladevata Deity",
-    "Kuldevi/Kuladevata Photo URL": "Kuldevi/Kuladevata Photo URL"
+    "Back to Home": "Back to Home",
+    "Barnali Telegram AI Bot": "Barnali Telegram AI Bot",
+    "Preserve Your Roots, Grow Your Legacy.": "Preserve Your Roots, Grow Your Legacy.",
+    "A digital Vanshavali for family history, spiritual identity, and verified lineage records.": "A digital Vanshavali for family history, spiritual identity, and verified lineage records.",
+    "Historical Identity": "Historical Identity",
+    "Keep Gotra, Kuladevata, village, and elder records together.": "Keep Gotra, Kuladevata, village, and elder records together.",
+    "Lineage Mapping": "Lineage Mapping",
+    "Connect ancestors, spouses, children, and branches clearly.": "Connect ancestors, spouses, children, and branches clearly.",
+    "Private Legacy": "Private Legacy",
+    "Your family archive stays visible only to invited members.": "Your family archive stays visible only to invited members.",
+    "Secure access": "Secure access",
+    "Sign in to view an existing lineage, or create a new account to begin a family record.": "Sign in to view an existing lineage, or create a new account to begin a family record.",
+    "You have a family tree invite. Sign in or create an account with the invited email to accept it.": "You have a family tree invite. Sign in or create an account with the invited email to accept it.",
+    "Access code": "Access code",
+    "Password": "Password",
+    "Account holder name": "Account holder name",
+    "Generate access code": "Generate access code",
+    "Verify and sign in": "Verify and sign in",
+    "Sign in with password": "Sign in with password",
+    "Create account": "Create account",
+    "New to digital lineage?": "New to digital lineage?",
+    "Use existing account": "Use existing account",
+    "Create your own account": "Create your own account",
+    "Privacy first: your data is only visible to people you invite.": "Privacy first: your data is only visible to people you invite.",
+    "Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.": "Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.",
+    "Working on {0}...": "Working on {0}...",
+    "Edit family member": "Edit family member",
+    "Add family member": "Add family member"
   },
   bn: {
     "Private family archive": "ব্যক্তিগত পারিবারিক সংরক্ষণাগার",
@@ -502,7 +523,7 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Kuladevi": "কুলদেবী",
     "Kuladevata": "কুলদেবতা",
     "Kulapurohit": "কুলপুরোহিত",
-    "Gramadevata": "গ্রামদেবী",
+    "Gramadevata": "গ্রামদেবতা",
     "Native village": "মূল গ্রাম",
     "Family surname": "পারিবারিক উপাধি",
     "Family number": "পরিবার নম্বর",
@@ -717,18 +738,39 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara:": "প্রবর:",
     "Kuladevi:": "কুলদেবী:",
     "Kuladevata:": "কুলদেবতা:",
-    "Spouse not linked": "জীবনসঙ্গী সংযুক্ত নেই",
     "DOB": "জন্মতারিখ",
     "DOD": "মৃত্যুতারিখ",
     "Anniversary": "বার্ষিকী",
     "Rashi": "রাশি",
-    "Gramadevata": "গ্রামদেবতা",
-    "Kulapurohit": "কুলপুরোহিত",
-    "Native village": "মূল গ্রাম",
-    "Family surname": "পারিবারিক উপাধি",
-    "Family Number": "পরিবার নম্বর",
     "Kuldevi/Kuladevata Deity": "কুলদেবী/কুলদেবতা দেবতা",
-    "Kuldevi/Kuladevata Photo URL": "কুলদেবী/কুলদেবতার ছবির URL"
+    "Back to Home": "হোম পেজে ফিরে যান",
+    "Barnali Telegram AI Bot": "বর্ণালী টেলিগ্রাম এআই বট",
+    "Preserve Your Roots, Grow Your Legacy.": "আপনার শিকড় সংরক্ষণ করুন, আপনার ঐতিহ্যকে সমৃদ্ধ করুন।",
+    "A digital Vanshavali for family history, spiritual identity, and verified lineage records.": "পারিবারিক ইতিহাস, আধ্যাত্মিক পরিচয় এবং যাচাইকৃত বংশপরিচয়ের জন্য একটি ডিজিটাল বংশাবলী।",
+    "Historical Identity": "ঐতিহাসিক পরিচয়",
+    "Keep Gotra, Kuladevata, village, and elder records together.": "গোত্র, কুলদেবতা, গ্রাম এবং প্রবীণদের রেকর্ড একসাথে রাখুন।",
+    "Lineage Mapping": "বংশানুক্রমিক চিত্র",
+    "Connect ancestors, spouses, children, and branches clearly.": "পূর্বপুরুষ, পত্নী, সন্তান এবং শাখা স্পষ্টভাবে সংযুক্ত করুন।",
+    "Private Legacy": "ব্যক্তিগত উত্তরাধিকার",
+    "Your family archive stays visible only to invited members.": "আপনার পারিবারিক আর্কাইভ শুধুমাত্র আমন্ত্রিত সদস্যদের কাছে দৃশ্যমান থাকে।",
+    "Secure access": "নিরাপদ অ্যাক্সেস",
+    "Sign in to view an existing lineage, or create a new account to begin a family record.": "একটি বিদ্যমান বংশ তালিকা দেখতে সাইন ইন করুন, অথবা একটি নতুন পারিবারিক রেকর্ড শুরু করতে একটি নতুন অ্যাকাউন্ট তৈরি করুন।",
+    "You have a family tree invite. Sign in or create an account with the invited email to accept it.": "আপনার একটি পারিবারিক গ্রুপ বা বংশতালিকায় আমন্ত্রণ রয়েছে। এটি গ্রহণ করতে অনুগ্রহ করে আমন্ত্রিত ইমেল দিয়ে সাইন ইন করুন বা নতুন অ্যাকাউন্ট তৈরি করুন।",
+    "Access code": "অ্যাক্সেস কোড",
+    "Password": "পাসওয়ার্ড",
+    "Account holder name": "অ্যাকাউন্ট হোল্ডারের নাম",
+    "Generate access code": "অ্যাক্সেস কোড জেনারেট করুন",
+    "Verify and sign in": "যাচাই এবং সাইন ইন করুন",
+    "Sign in with password": "পাসওয়ার্ড দিয়ে সাইন ইন করুন",
+    "Create account": "অ্যাকাউন্ট তৈরি করুন",
+    "New to digital lineage?": "ডিজিটাল বংশাবলীতে নতুন?",
+    "Use existing account": "বিদ্যমান অ্যাকাউন্ট ব্যবহার করুন",
+    "Create your own account": "নতুন অ্যাকাউন্ট তৈরি করুন",
+    "Privacy first: your data is only visible to people you invite.": "গোপনীয়তা প্রথম: আপনার তথ্য শুধুমাত্র আপনার আমন্ত্রিত লোকেদের কাছে দৃশ্যমান।",
+    "Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.": "সদস্য তালিকা থেকে {0}-কে মুছে ফেলবেন? তাঁর স্বামী/স্ত্রীর লিঙ্কগুলি সরিয়ে দেওয়া হবে এবং তাঁর সাথে থাকা সন্তানদের রেফারেন্সগুলি সাফ করা হবে।",
+    "Working on {0}...": "{0}-র কাজ চলছে...",
+    "Edit family member": "পরিবারের সদস্য সংশোধন করুন",
+    "Add family member": "পরিবারের সদস্য যোগ করুন"
   },
   hi: {
     "Private family archive": "निजी पारिवारिक संग्रह",
@@ -974,18 +1016,39 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara:": "प्रवर:",
     "Kuladevi:": "कुलदेवी:",
     "Kuladevata:": "कुलदेवता:",
-    "Spouse not linked": "जीवनसाथी लिंक नहीं है",
     "DOB": "जन्म तिथि",
     "DOD": "मृत्यु तिथि",
     "Anniversary": "वर्षगांठ",
     "Rashi": "राशि",
-    "Gramadevata": "ग्रामदेवता",
-    "Kulapurohit": "कुलपुरोहित",
-    "Native village": "मूल गाँव",
-    "Family surname": "पारिवारिक उपनाम",
-    "Family Number": "परिवार नंबर",
     "Kuldevi/Kuladevata Deity": "कुलदेवी/कुलदेवता देवता",
-    "Kuldevi/Kuladevata Photo URL": "कुलदेवी/कुलदेवता फोटो URL"
+    "Back to Home": "होम पेज पर वापस जाएं",
+    "Barnali Telegram AI Bot": "बर्नाली टेलीग्राम एआई बोट",
+    "Preserve Your Roots, Grow Your Legacy.": "अपनी जड़ों को संजोएं, अपनी विरासत को बढ़ाएं।",
+    "A digital Vanshavali for family history, spiritual identity, and verified lineage records.": "पारिवारिक इतिहास, आध्यात्मिक पहचान और सत्यापित वंशावली के रिकॉर्ड के लिए एक डिजिटल वंशावली।",
+    "Historical Identity": "ऐतिहासिक पहचान",
+    "Keep Gotra, Kuladevata, village, and elder records together.": "गोत्र, कुलदेवता, गाँव और बुजुर्गों का रिकॉर्ड एक साथ रखें।",
+    "Lineage Mapping": "वंशावली चित्रण",
+    "Connect ancestors, spouses, children, and branches clearly.": "पूर्वजों, जीवनसाथी, बच्चों और शाखाओं को स्पष्ट रूप से जोड़ें।",
+    "Private Legacy": "व्यक्तिगत विरासत",
+    "Your family archive stays visible only to invited members.": "आपकी पारिवारिक वंशावली केवल आमंत्रित सदस्यों को ही दिखाई देती है।",
+    "Secure access": "सुरक्षित पहुंच",
+    "Sign in to view an existing lineage, or create a new account to begin a family record.": "मौजूदा वंशावली देखने के लिए साइन इन करें, या एक नया पारिवारिक रिकॉर्ड शुरू करने के लिए खाता बनाएं।",
+    "You have a family tree invite. Sign in or create an account with the invited email to accept it.": "आपके पास एक पारिवारिक वंशावली आमंत्रण प्राप्त है। इसे स्वीकार करने के लिए आमंत्रित ईमेल से साइन इन करें या नया खाता बनाएं।",
+    "Access code": "एक्सेस कोड",
+    "Password": "पासवर्ड",
+    "Account holder name": "खाताधारक का नाम",
+    "Generate access code": "एक्सेस कोड जेनरेट करें",
+    "Verify and sign in": "सत्यापित करें और साइन इन करें",
+    "Sign in with password": "पासवर्ड से साइन इन करें",
+    "Create account": "अकाउंट बनाएं",
+    "New to digital lineage?": "डिजिटल वंशावली में नए हैं?",
+    "Use existing account": "मौजूदा खाते का उपयोग करें",
+    "Create your own account": "नया खाता बनाएं",
+    "Privacy first: your data is only visible to people you invite.": "गोपनीयता सर्वोपरि: आपका डेटा केवल आपके आमंत्रित लोगों को दिखाई देता है।",
+    "Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.": "क्या आप {0} को इस वंशावली से हटाना चाहते हैं? उनके जीवनसाथी के संबंध हटा दिए जाएंगे और उनके बच्चों के माता-पिता के संदर्भ साफ कर दिए जाएंगे।",
+    "Working on {0}...": "{0} पर काम हो रहा है...",
+    "Edit family member": "पारिवारिक सदस्य को संपादित करें",
+    "Add family member": "पारिवारिक सदस्य जोड़ें"
   }
 };
 
@@ -1156,6 +1219,11 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
     maxTreesPerAccount: number;
     state?: LineageState;
   }): Session {
+    try {
+      localStorage.removeItem("vamshavali_signed_out");
+    } catch (e) {
+      console.error(e);
+    }
     return {
       token: json.token,
       account: json.account,
@@ -1163,6 +1231,42 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
       treeId: json.state?.activeTreeId ?? null
     };
   }
+
+  React.useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    import("../firebase").then(({ auth }) => {
+      unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+        if (currentUser && currentUser.email) {
+          const isSignedOut = localStorage.getItem("vamshavali_signed_out") === "true";
+          if (!isSignedOut && !busy) {
+            setBusy(true);
+            try {
+              const response = await fetch("/api/auth/google", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: currentUser.email,
+                  name: currentUser.displayName || ""
+                })
+              });
+              if (response.ok) {
+                const json = await response.json();
+                onAuth(buildSession(json));
+              }
+            } catch (err) {
+              console.error("Vamshavali background auto-auth error:", err);
+            } finally {
+              setBusy(false);
+            }
+          }
+        }
+      });
+    }).catch(err => console.error("Could not load Firebase auth module:", err));
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   async function authRequest(url: string, body: Record<string, string>) {
     setBusy(true);
@@ -1214,14 +1318,44 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
     setBusy(true);
     setMessage("");
     try {
-      const { signInWithGoogle } = await import("../firebase");
-      const result = await signInWithGoogle();
-      if (!result || !result.user || !result.user.email) {
-        throw new Error("Google sign-in did not complete or lacks an email address.");
+      try {
+        localStorage.removeItem("vamshavali_signed_out");
+      } catch (e) {
+        console.error(e);
       }
+      const { signInWithGoogle, auth } = await import("../firebase");
+      
+      // If we already have a user logged in, use it directly!
+      if (auth.currentUser && auth.currentUser.email) {
+        const json = await authRequest("/api/auth/google", {
+          email: auth.currentUser.email,
+          name: auth.currentUser.displayName || ""
+        });
+        onAuth(buildSession(json));
+        return;
+      }
+
+      const result = await signInWithGoogle();
+      
+      // Use the returned user or the current authenticated user as fallback
+      const user = result?.user || auth.currentUser;
+      
+      if (!user) {
+        // If result is undefined/null and we are redirecting
+        if (!result) {
+          setMessage("Redirecting to Google Sign-In...");
+          return;
+        }
+        throw new Error("Google sign-in did not complete. Please try again.");
+      }
+      
+      if (!user.email) {
+        throw new Error("Google account lacks a verified email address.");
+      }
+      
       const json = await authRequest("/api/auth/google", {
-        email: result.user.email,
-        name: result.user.displayName || ""
+        email: user.email,
+        name: user.displayName || ""
       });
       onAuth(buildSession(json));
     } catch (err: any) {
@@ -1232,7 +1366,8 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
     }
   }
 
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
+  const t = useVamshavaliTranslate();
 
   return (
     <main className="auth-screen" style={{ position: "relative", paddingTop: "96px", display: "flex", flexDirection: "column", gap: "24px", minHeight: "100vh", justifyContent: "center", alignItems: "center" }}>
@@ -1259,7 +1394,7 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
         width: "calc(100% - 40px)"
       }}>
         <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "#0b5a43", padding: "8px 16px", borderRadius: "10px", fontSize: "12px", fontWeight: "800", border: '1px solid #cbd5e1', background: '#ffffff', transition: 'all 0.15s ease' }}>
-          ← {language === "bn" ? "হোম পেজে ফিরে যান" : language === "hi" ? "होम पेज पर वापस जाएं" : "Back to Home"}
+          ← {t("Back to Home")}
         </a>
         
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
@@ -1284,7 +1419,7 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
             }}
           >
             <MessageCircle size={15} /> 
-            {language === "bn" ? "বর্ণালী টেলিগ্রাম এআই বট" : language === "hi" ? "बर्नाली टेलीग्राम एआई बोट" : "Barnali Telegram AI Bot"}
+            {t("Barnali Telegram AI Bot")}
           </a>
 
           {/* Language Selection */}
@@ -1318,28 +1453,28 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
       <section className="auth-card" style={{ marginTop: "12px" }}>
         <div className="auth-story">
           <span className="small-rule" />
-          <h1 style={{ fontSize: "28px" }}>{t.vamshavali.loginTitle || "Preserve Your Roots, Grow Your Legacy."}</h1>
-          <p style={{ fontSize: "14px", marginTop: "12px", color: "#e2e8f0" }}>{t.vamshavali.loginSubtitle || "A digital Vanshavali for family history, spiritual identity, and verified lineage records."}</p>
+          <h1 style={{ fontSize: "28px" }}>{t("Preserve Your Roots, Grow Your Legacy.")}</h1>
+          <p style={{ fontSize: "14px", marginTop: "12px", color: "#e2e8f0" }}>{t("A digital Vanshavali for family history, spiritual identity, and verified lineage records.")}</p>
           
           <div className="auth-feature" style={{ marginTop: "32px" }}>
             <Landmark size={18} />
             <div>
-              <strong>{language === "bn" ? "ঐতিহাসিক পরিচয়" : language === "hi" ? "ऐतिहासिक पहचान" : "Historical Identity"}</strong>
-              <span>{language === "bn" ? "গোত্র, কুলদেবী, গ্রাম এবং প্রবীণদের রেকর্ড একসাথে রাখুন।" : language === "hi" ? "गोत्र, कुलदेवी, गाँव और बुजुर्गों का रिकॉर्ड एक साथ रखें।" : "Keep Gotra, Kuladevata, village, and elder records together."}</span>
+              <strong>{t("Historical Identity")}</strong>
+              <span>{t("Keep Gotra, Kuladevata, village, and elder records together.")}</span>
             </div>
           </div>
           <div className="auth-feature">
             <Users size={18} />
             <div>
-              <strong>{language === "bn" ? "বংশানুক্রমিক চিত্র" : language === "hi" ? "वंशावली चित्रण" : "Lineage Mapping"}</strong>
-              <span>{language === "bn" ? "পূর্বপুরুষ, পত্নী, সন্তান এবং শাখা পরিষ্কারভাবে সংযুক্ত করুন।" : language === "hi" ? "पूर्वजों, जीवनसाथी, बच्चों और शाखाओं को स्पष्ट रूप से जोड़ें।" : "Connect ancestors, spouses, children, and branches clearly."}</span>
+              <strong>{t("Lineage Mapping")}</strong>
+              <span>{t("Connect ancestors, spouses, children, and branches clearly.")}</span>
             </div>
           </div>
           <div className="auth-feature">
             <ShieldCheck size={18} />
             <div>
-              <strong>{language === "bn" ? "ব্যক্তিগত উত্তরাধিকার" : language === "hi" ? "व्यक्तिगत विरासत" : "Private Legacy"}</strong>
-              <span>{language === "bn" ? "আপনার পারিবারিক সংরক্ষণাগার শুধুমাত্র আমন্ত্রিত সদস্যদের কাছে দৃশ্যমান থাকে।" : language === "hi" ? "आपकी पारिवारिक वंशावली केवल आमंत्रित सदस्यों को दिखाई देगी।" : "Your family archive stays visible only to invited members."}</span>
+              <strong>{t("Private Legacy")}</strong>
+              <span>{t("Your family archive stays visible only to invited members.")}</span>
             </div>
           </div>
         </div>
@@ -1353,17 +1488,17 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <span className="secure-pill"><ShieldCheck size={13} /> Secure access</span>
+            <span className="secure-pill"><ShieldCheck size={13} /> {t("Secure access")}</span>
           </div>
-          <h2>{language === "bn" ? "ডিজিটাল বংশাবলী" : language === "hi" ? "डिजिटल वंशावली" : "Digital Vanshavali"}</h2>
-          <p>{language === "bn" ? "একটি বিদ্যমান বংশ দেখতে সাইন ইন করুন, অথবা একটি নতুন পারিবারিক রেকর্ড শুরু করতে অ্যাকাউন্ট তৈরি করুন।" : language === "hi" ? "मौजूदा वंशावली देखने के लिए साइन इन करें, या एक नया पारिवारिक रिकॉर्ड शुरू करने के लिए खाता बनाएं।" : "Sign in to view an existing lineage, or create a new account to begin a family record."}</p>
-          {pendingInvite && <p className="busy">You have a family tree invite. Sign in or create an account with the invited email to accept it.</p>}
+          <h2>{t("Digital Vanshavali")}</h2>
+          <p>{t("Sign in to view an existing lineage, or create a new account to begin a family record.")}</p>
+          {pendingInvite && <p className="busy">{t("You have a family tree invite. Sign in or create an account with the invited email to accept it.")}</p>}
           <div className="segmented auth-tabs">
-            <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={15} />{language === "bn" ? "অ্যাক্সেস কোড" : language === "hi" ? "एक्सेस कोड" : "Access code"}</button>
-            <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={15} />{language === "bn" ? "পাসওয়ার্ড" : language === "hi" ? "पासवर्ड" : "Password"}</button>
+            <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={15} />{t("Access code")}</button>
+            <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={15} />{t("Password")}</button>
           </div>
           <label>
-            {language === "bn" ? "ইমেল ঠিকানা" : language === "hi" ? "ईमेल पता" : "Email address"}
+            {t("Email address")}
             <div className="input-with-icon">
               <Mail size={18} />
               <input value={email} placeholder="name@family.com" onChange={(event) => setEmail(event.target.value)} />
@@ -1371,7 +1506,7 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
           </label>
           {mode === "create" && (
             <label>
-              {language === "bn" ? "অ্যাকাউন্ট হোল্ডারের নাম" : language === "hi" ? "खाताधारक का नाम" : "Account holder name"}
+              {t("Account holder name")}
               <div className="input-with-icon">
                 <UserRound size={18} />
                 <input value={name} placeholder="e.g. Aarav Sharma" onChange={(event) => setName(event.target.value)} />
@@ -1380,33 +1515,33 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
           )}
           {(mode === "password" || mode === "create") && (
             <label>
-              {language === "bn" ? "পাসওয়ার্ড" : language === "hi" ? "पासवर्ड" : "Password"}
+              {t("Password")}
               <div className="input-with-icon">
                 <KeyRound size={18} />
-                <input type="password" value={password} placeholder="Minimum 8 characters" onChange={(event) => setPassword(event.target.value)} />
+                <input type="password" value={password} placeholder={t("Minimum 8 characters")} onChange={(event) => setPassword(event.target.value)} />
               </div>
             </label>
           )}
           {mode === "code" && (
             <>
-              <button className="auth-primary" disabled={busy || !email.trim()} onClick={requestCode}>{language === "bn" ? "অ্যাক্সেস কোড জেনারেট করুন" : language === "hi" ? "एक्सेस कोड जेनरेट करें" : "Generate access code"} <span>{"->"}</span></button>
+              <button className="auth-primary" disabled={busy || !email.trim()} onClick={requestCode}>{t("Generate access code")} <span>{"->"}</span></button>
               {(codeRequested || developmentCode) && (
                 <label>
-                  {language === "bn" ? "অ্যাক্সেস কোড দিন" : language === "hi" ? "एक्सेस कोड डालें" : "Access code"}
+                  {t("Access code")}
                   <div className="input-with-icon">
                     <ShieldCheck size={18} />
                     <input value={currentCode} placeholder="6 digit code" onChange={(event) => setCurrentCode(event.target.value)} />
                   </div>
                 </label>
               )}
-              <button disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}><Check size={16} />{language === "bn" ? "যাচাই এবং সাইন ইন করুন" : language === "hi" ? "सत्यापित करें और साइन इन करें" : "Verify and sign in"}</button>
+              <button disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}><Check size={16} />{t("Verify and sign in")}</button>
             </>
           )}
           {mode === "password" && (
-            <button className="auth-primary" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>{language === "bn" ? "পাসওয়ার্ড দিয়ে সাইন ইন করুন" : language === "hi" ? "पासवर्ड से साइन इन करें" : "Sign in with password"} <span>{"->"}</span></button>
+            <button className="auth-primary" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>{t("Sign in with password")} <span>{"->"}</span></button>
           )}
           {mode === "create" && (
-            <button className="auth-primary" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>{language === "bn" ? "অ্যাকাউন্ট তৈরি করুন" : language === "hi" ? "अकाउंट बनाएं" : "Create account"} <span>{"->"}</span></button>
+            <button className="auth-primary" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>{t("Create account")} <span>{"->"}</span></button>
           )}
           {message && <p className={codeRequested ? "busy" : "error"}>{message}</p>}
           
@@ -1441,15 +1576,15 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
                 style={{ width: "18px", height: "18px" }} 
                 referrerPolicy="no-referrer"
               />
-              {language === "bn" ? "গুগল সাইন ইন" : language === "hi" ? "गूगल साइन इन" : "Sign in with Google"}
+              {t("Sign in with Google")}
             </button>
           </div>
 
           <div className="new-account">
-            <span>{language === "bn" ? "ডিজিটাল বংশাবলীতে নতুন?" : language === "hi" ? "डिजिटल वंशावली में नए हैं?" : "New to digital lineage?"}</span>
-            <button onClick={() => setMode(mode === "create" ? "code" : "create")}><Plus size={15} /> {mode === "create" ? (language === "bn" ? "বিদ্যমান অ্যাকাউন্ট ব্যবহার করুন" : language === "hi" ? "मौजूदा खाते का उपयोग करें" : "Use existing account") : (language === "bn" ? "নতুন অ্যাকাউন্ট তৈরি করুন" : language === "hi" ? "नया खाता बनाएं" : "Create your own account")}</button>
+            <span>{t("New to digital lineage?")}</span>
+            <button onClick={() => setMode(mode === "create" ? "code" : "create")}><Plus size={15} /> {mode === "create" ? t("Use existing account") : t("Create your own account")}</button>
           </div>
-          <small>{language === "bn" ? "গোপনীয়তা প্রথম: আপনার তথ্য শুধুমাত্র আপনার আমন্ত্রিত লোকেদের কাছে দৃশ্যমান।" : language === "hi" ? "गोपनीयता सर्वोपरि: आपका डेटा केवल आपके आमंत्रित लोगों को दिखाई देता है।" : "Privacy first: your data is only visible to people you invite."}</small>
+          <small>{t("Privacy first: your data is only visible to people you invite.")}</small>
         </div>
       </section>
     </main>
@@ -1525,7 +1660,7 @@ function Onboarding({
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           {/* Telegram Bot Link */}
           <a 
-            href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}`}
+            href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}?start=${btoa(session.account.email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1622,7 +1757,7 @@ function Onboarding({
               </h2>
             </div>
             <a 
-              href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}`}
+              href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}?start=${btoa(session.account.email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -1831,6 +1966,7 @@ function FamilyTreeCanvas({
   onSelect: (id: string) => void;
   tree?: LineageTree | null;
 }) {
+  const t = useVamshavaliTranslate();
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = React.useState(0.6);
@@ -1987,7 +2123,7 @@ function FamilyTreeCanvas({
       }
     } catch (err) {
       console.error("Export failed", err);
-      alert("Failed to export family tree. Please try again.");
+      alert(t("Failed to export family tree. Please try again."));
     } finally {
       setExporting(false);
     }
@@ -1997,8 +2133,8 @@ function FamilyTreeCanvas({
     return (
       <section className="empty-tree">
         <Users size={34} />
-        <h2>No family members yet</h2>
-        <p>Add the account holder or import a CSV to begin the lineage map.</p>
+        <h2>{t("No family members yet")}</h2>
+        <p>{t("Add the account holder or import a CSV to begin the lineage map.")}</p>
       </section>
     );
   }
@@ -2006,16 +2142,16 @@ function FamilyTreeCanvas({
   return (
     <section className="tree-stage">
       <div className="tree-toolbar">
-        <button title="Fit tree" onClick={fit}><LocateFixed size={16} /></button>
-        <button title="Zoom out" onClick={() => setScale((value) => Math.max(0.18, value - 0.1))}><ZoomOut size={16} /></button>
+        <button title={t("Fit tree")} onClick={fit}><LocateFixed size={16} /></button>
+        <button title={t("Zoom out")} onClick={() => setScale((value) => Math.max(0.18, value - 0.1))}><ZoomOut size={16} /></button>
         <span>{Math.round(scale * 100)}%</span>
-        <button title="Zoom in" onClick={() => setScale((value) => Math.min(1.7, value + 0.1))}><ZoomIn size={16} /></button>
+        <button title={t("Zoom in")} onClick={() => setScale((value) => Math.min(1.7, value + 0.1))}><ZoomIn size={16} /></button>
         
         <div style={{ width: "1px", height: "18px", backgroundColor: "#d8d3ca", margin: "0 4px" }} />
         
         <div style={{ position: "relative" }}>
           <button
-            title="Export or print family tree"
+            title={t("Export or print family tree")}
             onClick={() => setShowExportMenu((prev) => !prev)}
             style={{ position: "relative" }}
             disabled={exporting}
@@ -2056,7 +2192,7 @@ function FamilyTreeCanvas({
                 }}
               >
                 <div style={{ padding: "5px 10px 3px 10px", fontSize: "10px", fontWeight: 800, color: "#8da19b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Export Tree
+                  {t("Export Tree")}
                 </div>
                 <button
                   type="button"
@@ -2078,7 +2214,7 @@ function FamilyTreeCanvas({
                   onClick={() => handleExport("png")}
                   className="export-menu-item"
                 >
-                  <Download size={14} style={{ color: "#065f46" }} /> High-Res PNG
+                  <Download size={14} style={{ color: "#065f46" }} /> {t("High-Res PNG")}
                 </button>
                 <button
                   type="button"
@@ -2100,7 +2236,7 @@ function FamilyTreeCanvas({
                   onClick={() => handleExport("jpeg")}
                   className="export-menu-item"
                 >
-                  <Download size={14} style={{ color: "#065f46" }} /> High-Res JPEG
+                  <Download size={14} style={{ color: "#065f46" }} /> {t("High-Res JPEG")}
                 </button>
                 <button
                   type="button"
@@ -2122,7 +2258,7 @@ function FamilyTreeCanvas({
                   onClick={() => handleExport("pdf")}
                   className="export-menu-item"
                 >
-                  <Download size={14} style={{ color: "#0d9488" }} /> PDF Document
+                  <Download size={14} style={{ color: "#0d9488" }} /> {t("PDF Document")}
                 </button>
                 <button
                   type="button"
@@ -2144,7 +2280,7 @@ function FamilyTreeCanvas({
                   onClick={() => handleExport("print")}
                   className="export-menu-item"
                 >
-                  <Printer size={14} style={{ color: "#1d4ed8" }} /> Print Layout
+                  <Printer size={14} style={{ color: "#1d4ed8" }} /> {t("Print Layout")}
                 </button>
               </div>
             </>
@@ -2213,17 +2349,17 @@ function FamilyTreeCanvas({
                   </div>
                   {tree.familyNumber && (
                     <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: "2px" }}>
-                      Family Number: {tree.familyNumber}
+                      {t("Family number")}: {tree.familyNumber}
                     </span>
                   )}
                 </div>
               </div>
               
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px", marginTop: "6px", fontSize: "12px", color: "#425a54", fontWeight: 650 }}>
-                {tree.gotra && <span><strong>Gotra:</strong> {tree.gotra}</span>}
-                {tree.pravara && <span><strong>Pravara:</strong> {tree.pravara}</span>}
-                {tree.kuladevi && <span><strong>Kuladevi:</strong> {tree.kuladevi}</span>}
-                {tree.kuladevata && <span><strong>Kuladevata:</strong> {tree.kuladevata}</span>}
+                {tree.gotra && <span><strong>{t("Gotra")}:</strong> {tree.gotra}</span>}
+                {tree.pravara && <span><strong>{t("Pravara")}:</strong> {tree.pravara}</span>}
+                {tree.kuladevi && <span><strong>{t("Kuladevi")}:</strong> {tree.kuladevi}</span>}
+                {tree.kuladevata && <span><strong>{t("Kuladevata")}:</strong> {tree.kuladevata}</span>}
               </div>
               <div style={{ width: "240px", height: "1px", background: "linear-gradient(90deg, transparent, #0b5a43, transparent)", marginTop: "8px" }} />
             </div>
@@ -2255,8 +2391,8 @@ function FamilyTreeCanvas({
             >
               <span className="avatar">{node.person.photoUrl ? <img src={node.person.photoUrl} alt="" /> : initials(node.person.displayName)}</span>
               <strong>{displayPersonName(node.person)}</strong>
-              <small>{statusLabel(node.person)}</small>
-              <span className="node-badges"><CircleDot size={13} /> Generation {node.generation + 1}</span>
+              <small>{statusLabel(node.person, t)}</small>
+              <span className="node-badges"><CircleDot size={13} /> {t("Generation")} {node.generation + 1}</span>
             </button>
           ))}
         </div>
@@ -2295,6 +2431,7 @@ function PersonEditor({
   title: string;
   currentPersonId?: string | null;
 }) {
+  const t = useVamshavaliTranslate();
   const eligibleParents = people.filter((person) => person.id !== currentPersonId && person.gender === "male");
   const eligibleSpouses = form.gender === "male"
     ? people.filter((person) => person.id !== currentPersonId && person.gender === "female" && !person.fatherId && !person.motherId)
@@ -2308,15 +2445,15 @@ function PersonEditor({
   const hasOneMother = fatherSpouses.length === 1;
   const hasMultipleMothers = fatherSpouses.length > 1;
   const motherHelp = !form.fatherId
-    ? "Select a father first. Mother choices are based on his linked spouse records."
+    ? t("Select a father first. Mother choices are based on his linked spouse records.")
     : fatherSpouses.length === 0
-      ? "No spouse is linked to the selected father yet."
+      ? t("No spouse is linked to the selected father yet.")
       : hasOneMother
-        ? "Automatically selected from the father's linked spouse."
-        : "Choose from the father's linked spouses.";
-  const spouseLabel = "Wife / spouse";
+        ? t("Automatically selected from the father's linked spouse.")
+        : t("Choose from the father's linked spouses.");
+  const spouseLabel = t("Wife / spouse");
   const marriedDaughterNotice = form.gender === "female" && form.maritalStatus === "married"
-    ? "Married daughters are shown as part of this family, but their husband and children should be maintained in the husband's family tree."
+    ? t("Married daughters are shown as part of this family, but their husband and children should be maintained in the husband's family tree.")
     : "";
 
   React.useEffect(() => {
@@ -2343,42 +2480,42 @@ function PersonEditor({
     <section className="surface">
       <header className="surface-head">
         <div>
-          <p className="eyebrow">Manual builder</p>
+          <p className="eyebrow">{t("Manual builder")}</p>
           <h2>{title}</h2>
         </div>
         <div className="surface-actions">
-          <button onClick={onCancel}>Cancel</button>
-          <button className="primary-action" disabled={busy || !form.displayName.trim()} onClick={onSubmit}><Save size={16} />Save person</button>
+          <button onClick={onCancel}>{t("Cancel")}</button>
+          <button className="primary-action" disabled={busy || !form.displayName.trim()} onClick={onSubmit}><Save size={16} />{t("Save person")}</button>
         </div>
       </header>
       <div className="form-grid">
-        <TextInput label="Full name" value={form.displayName} onChange={(displayName) => setForm((current) => ({ ...current, displayName }))} />
+        <TextInput label={t("Full name")} value={form.displayName} onChange={(displayName) => setForm((current) => ({ ...current, displayName }))} />
         <label className="field">
-          <span>Gender</span>
+          <span>{t("Gender")}</span>
           <select value={form.gender} onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value as Gender }))}>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="unknown">Unknown</option>
+            <option value="male">{t("Male")}</option>
+            <option value="female">{t("Female")}</option>
+            <option value="other">{t("Other")}</option>
+            <option value="unknown">{t("Unknown")}</option>
           </select>
         </label>
         <label className="field">
-          <span>Living status</span>
+          <span>{t("Living status")}</span>
           <select value={form.lifeStatus} onChange={(event) => setForm((current) => ({ ...current, lifeStatus: event.target.value as LifeStatus }))}>
-            <option value="living">Living</option>
-            <option value="deceased">Deceased</option>
-            <option value="unknown">Unknown</option>
+            <option value="living">{t("Living")}</option>
+            <option value="deceased">{t("Deceased")}</option>
+            <option value="unknown">{t("Unknown")}</option>
           </select>
         </label>
         <label className="field">
-          <span>Marital status</span>
+          <span>{t("Marital status")}</span>
           <select value={form.maritalStatus} onChange={(event) => setForm((current) => ({ ...current, maritalStatus: event.target.value as MaritalStatus }))}>
-            <option value="unmarried">Unmarried</option>
-            <option value="married">Married</option>
-            <option value="widowed">Widowed</option>
-            <option value="divorced">Divorced</option>
-            <option value="separated">Separated</option>
-            <option value="unknown">Unknown</option>
+            <option value="unmarried">{t("Unmarried")}</option>
+            <option value="married">{t("Married")}</option>
+            <option value="widowed">{t("Widowed")}</option>
+            <option value="divorced">{t("Divorced")}</option>
+            <option value="separated">{t("Separated")}</option>
+            <option value="unknown">{t("Unknown")}</option>
           </select>
         </label>
         {form.maritalStatus === "married" && (
@@ -2386,53 +2523,53 @@ function PersonEditor({
             <label className="field">
               <span>{spouseLabel}</span>
               <select value={form.spouseId} onChange={(event) => setForm((current) => ({ ...current, spouseId: event.target.value }))}>
-                <option value="">Not linked yet</option>
+                <option value="">{t("Not linked yet")}</option>
                 {eligibleSpouses.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
               </select>
-              <small>Select an existing female spouse who is not already recorded as a daughter in this tree.</small>
+              <small>{t("Select an existing female spouse who is not already recorded as a daughter in this tree.")}</small>
             </label>
           ) : (
             <div className="field lineage-rule-note">
-              <span>Marriage continuation rule</span>
-              <small>{marriedDaughterNotice || "Set gender to Male if this person is a male lineage member whose next generation should continue here."}</small>
+              <span>{t("Marriage continuation rule")}</span>
+              <small>{marriedDaughterNotice || t("Set gender to Male if this person is a male lineage member whose next generation should continue here.")}</small>
             </div>
           )
         )}
-        <TextInput label="Date of birth" value={form.dateOfBirth} placeholder="YYYY-MM-DD" onChange={(dateOfBirth) => setForm((current) => ({ ...current, dateOfBirth }))} />
-        <TextInput label="Date of death" value={form.dateOfDeath} placeholder="YYYY-MM-DD" onChange={(dateOfDeath) => setForm((current) => ({ ...current, dateOfDeath }))} />
-        <TextInput label="Death anniversary / tithi" value={form.deathAnniversary} onChange={(deathAnniversary) => setForm((current) => ({ ...current, deathAnniversary }))} />
-        <TextInput label="Rashi" value={form.rashi} onChange={(rashi) => setForm((current) => ({ ...current, rashi }))} />
-        <TextInput label="Gotra" value={form.gotra} onChange={(gotra) => setForm((current) => ({ ...current, gotra }))} />
+        <TextInput label={t("Date of birth")} value={form.dateOfBirth} placeholder="YYYY-MM-DD" onChange={(dateOfBirth) => setForm((current) => ({ ...current, dateOfBirth }))} />
+        <TextInput label={t("Date of death")} value={form.dateOfDeath} placeholder="YYYY-MM-DD" onChange={(dateOfDeath) => setForm((current) => ({ ...current, dateOfDeath }))} />
+        <TextInput label={t("Death anniversary / tithi")} value={form.deathAnniversary} onChange={(deathAnniversary) => setForm((current) => ({ ...current, deathAnniversary }))} />
+        <TextInput label={t("Rashi")} value={form.rashi} onChange={(rashi) => setForm((current) => ({ ...current, rashi }))} />
+        <TextInput label={t("Gotra")} value={form.gotra} onChange={(gotra) => setForm((current) => ({ ...current, gotra }))} />
         <label className="field">
-          <span>Father</span>
+          <span>{t("Father")}</span>
           <select value={form.fatherId} onChange={(event) => setForm((current) => ({ ...current, fatherId: event.target.value }))}>
-            <option value="">Unknown / not set</option>
+            <option value="">{t("Unknown / not set")}</option>
             {eligibleParents.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
           </select>
-          <small>Only male lineage members can be selected as father for next-generation continuation.</small>
+          <small>{t("Only male lineage members can be selected as father for next-generation continuation.")}</small>
         </label>
         <label className="field parent-constrained">
-          <span>Mother</span>
+          <span>{t("Mother")}</span>
           <select
             value={form.motherId}
             disabled={!hasMultipleMothers}
             onChange={(event) => setForm((current) => ({ ...current, motherId: event.target.value }))}
           >
-            <option value="">{form.fatherId ? "No eligible mother selected" : "Select father first"}</option>
+            <option value="">{form.fatherId ? t("No eligible mother selected") : t("Select father first")}</option>
             {fatherSpouses.map((person) => <option key={person.id} value={person.id}>{displayPersonName(person)}</option>)}
           </select>
           <small>{motherHelp}</small>
         </label>
         <label className="field">
           <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Photo URL</span>
+            <span>{t("Photo URL")}</span>
             {form.photoUrl && (
               <button 
                 type="button" 
                 onClick={() => setForm((current) => ({ ...current, photoUrl: "" }))}
                 style={{ fontSize: "10px", color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
-                Remove
+                {t("Remove")}
               </button>
             )}
           </span>
@@ -2469,7 +2606,7 @@ function PersonEditor({
                     const json = await response.json();
                     setForm((current) => ({ ...current, photoUrl: json.url }));
                   } catch (err: any) {
-                    alert("Image upload failed: " + err.message);
+                    alert(t("Image upload failed: ") + err.message);
                   }
                 };
                 reader.readAsDataURL(file);
@@ -2481,7 +2618,7 @@ function PersonEditor({
               onClick={() => document.getElementById("member-image-upload")?.click()}
               style={{ padding: "10px 14px", borderRadius: "8px", fontSize: "11px", background: "#f1f5f9", border: "1px solid #cbd5e1", color: "#1e293b", fontWeight: "600", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}
             >
-              📷 Upload Image
+              📷 {t("Upload Photo")}
             </button>
             {form.photoUrl && (
               <img 
@@ -2494,7 +2631,7 @@ function PersonEditor({
           </div>
         </label>
         <label className="field wide">
-          <span>Notes</span>
+          <span>{t("Bio / Notes")}</span>
           <textarea rows={3} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
         </label>
       </div>
@@ -2503,6 +2640,7 @@ function PersonEditor({
 }
 
 function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; request: ReturnType<typeof useLineage>["request"]; busy: boolean; canEdit: boolean }) {
+  const t = useVamshavaliTranslate();
   const [draft, setDraft] = React.useState(tree);
   React.useEffect(() => setDraft(tree), [tree.id, tree.updatedAt]);
   function update(key: keyof LineageTree, value: string) {
@@ -2512,51 +2650,51 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
     <section className="surface traditions-surface">
       <header className="surface-head">
         <div>
-          <p className="eyebrow">Family record</p>
-          <h2>Traditions and identity</h2>
+          <p className="eyebrow">{t("Family record")}</p>
+          <h2>{t("Traditions and identity")}</h2>
         </div>
-        {canEdit && <button className="primary-action" disabled={busy} onClick={() => request("save-family", `/api/lineage/trees/${tree.id}`, { method: "PATCH", body: JSON.stringify(draft) })}><Save size={16} />Save details</button>}
+        {canEdit && <button className="primary-action" disabled={busy} onClick={() => request("save-family", `/api/lineage/trees/${tree.id}`, { method: "PATCH", body: JSON.stringify(draft) })}><Save size={16} />{t("Save details")}</button>}
       </header>
       <div className="tradition-display">
         {[
-          ["Gotra", draft.gotra],
-          ["Pravara", draft.pravara],
-          ["Kuladevi", draft.kuladevi],
-          ["Kuladevata", draft.kuladevata],
-          ["Kulapurohit", draft.kulapurohit],
-          ["Gramadevata", draft.gramadevata],
-          ["Native village", draft.nativeVillage],
-          ["Family surname", draft.familySurname],
-          ["Family number", draft.familyNumber]
+          [t("Gotra"), draft.gotra],
+          [t("Pravara"), draft.pravara],
+          [t("Kuladevi"), draft.kuladevi],
+          [t("Kuladevata"), draft.kuladevata],
+          [t("Kulapurohit"), draft.kulapurohit],
+          [t("Gramadevata"), draft.gramadevata],
+          [t("Native village"), draft.nativeVillage],
+          [t("Family surname"), draft.familySurname],
+          [t("Family number"), draft.familyNumber]
         ].map(([label, value]) => (
           <div className="tradition-tile" key={label ?? ""}>
             <span>{label}</span>
-            <strong>{value || "Not recorded"}</strong>
+            <strong>{value || t("Not recorded")}</strong>
           </div>
         ))}
         {draft.kuldeviPhoto && (
           <div className="tradition-tile" style={{ gridColumn: "span 2", display: "flex", gap: "12px", alignItems: "center" }}>
-            <span>Kuldevi/Kuladevata Deity Image</span>
-            <img src={draft.kuldeviPhoto} alt="Kuldevi/Kuladevata Deity" style={{ width: "64px", height: "64px", borderRadius: "8px", objectFit: "cover", border: "2px solid #0b5a43" }} referrerPolicy="no-referrer" />
+            <span>{t("Kuldevi/Kuladevata Deity Image")}</span>
+            <img src={draft.kuldeviPhoto} alt={t("Kuldevi/Kuladevata Deity")} style={{ width: "64px", height: "64px", borderRadius: "8px", objectFit: "cover", border: "2px solid #0b5a43" }} referrerPolicy="no-referrer" />
           </div>
         )}
       </div>
       <div className="form-grid traditions-form">
-        <TextInput label="Lineage name" value={draft.name ?? ""} onChange={(value) => update("name", value)} />
-        <TextInput label="Account holder" value={draft.accountHolderName ?? ""} onChange={(value) => update("accountHolderName", value)} />
-        <TextInput label="Gotra" value={draft.gotra ?? ""} onChange={(value) => update("gotra", value)} />
-        <TextInput label="Pravara" value={draft.pravara ?? ""} onChange={(value) => update("pravara", value)} />
-        <TextInput label="Kuladevi" value={draft.kuladevi ?? ""} onChange={(value) => update("kuladevi", value)} />
-        <TextInput label="Kuladevata" value={draft.kuladevata ?? ""} onChange={(value) => update("kuladevata", value)} />
-        <TextInput label="Kulapurohit" value={draft.kulapurohit ?? ""} onChange={(value) => update("kulapurohit", value)} />
-        <TextInput label="Gramadevata" value={draft.gramadevata ?? ""} onChange={(value) => update("gramadevata", value)} />
-        <TextInput label="Native village" value={draft.nativeVillage ?? ""} onChange={(value) => update("nativeVillage", value)} />
-        <TextInput label="Family surname" value={draft.familySurname ?? ""} onChange={(value) => update("familySurname", value)} />
-        <TextInput label="Family number" value={draft.familyNumber ?? ""} onChange={(value) => update("familyNumber", value)} />
-        <TextInput label="Kuldevi/Kuladevata Photo URL" value={draft.kuldeviPhoto ?? ""} onChange={(value) => update("kuldeviPhoto", value)} />
+        <TextInput label={t("Lineage name")} value={draft.name ?? ""} onChange={(value) => update("name", value)} />
+        <TextInput label={t("Account holder")} value={draft.accountHolderName ?? ""} onChange={(value) => update("accountHolderName", value)} />
+        <TextInput label={t("Gotra")} value={draft.gotra ?? ""} onChange={(value) => update("gotra", value)} />
+        <TextInput label={t("Pravara")} value={draft.pravara ?? ""} onChange={(value) => update("pravara", value)} />
+        <TextInput label={t("Kuladevi")} value={draft.kuladevi ?? ""} onChange={(value) => update("kuladevi", value)} />
+        <TextInput label={t("Kuladevata")} value={draft.kuladevata ?? ""} onChange={(value) => update("kuladevata", value)} />
+        <TextInput label={t("Kulapurohit")} value={draft.kulapurohit ?? ""} onChange={(value) => update("kulapurohit", value)} />
+        <TextInput label={t("Gramadevata")} value={draft.gramadevata ?? ""} onChange={(value) => update("gramadevata", value)} />
+        <TextInput label={t("Native village")} value={draft.nativeVillage ?? ""} onChange={(value) => update("nativeVillage", value)} />
+        <TextInput label={t("Family surname")} value={draft.familySurname ?? ""} onChange={(value) => update("familySurname", value)} />
+        <TextInput label={t("Family number")} value={draft.familyNumber ?? ""} onChange={(value) => update("familyNumber", value)} />
+        <TextInput label={t("Kuldevi/Kuladevata Photo URL")} value={draft.kuldeviPhoto ?? ""} onChange={(value) => update("kuldeviPhoto", value)} />
         
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", gridColumn: "span 2", background: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
-          <label style={{ fontSize: "11px", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>Upload Kuldevi/Kuladevata Image</label>
+          <label style={{ fontSize: "11px", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Upload Kuldevi/Kuladevata Image")}</label>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px" }}>
             <input 
               type="file" 
@@ -2584,7 +2722,7 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
                     const json = await response.json();
                     update("kuldeviPhoto", json.url);
                   } catch (err: any) {
-                    alert("Image upload failed: " + err.message);
+                    alert(t("Image upload failed: ") + err.message);
                   }
                 };
                 reader.readAsDataURL(file);
@@ -2596,17 +2734,17 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
               onClick={() => document.getElementById("kuldevi-image-upload")?.click()}
               style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "12px", background: "#ffffff", border: "1.5px solid #64748b", color: "#1e293b", fontWeight: "600", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px" }}
             >
-              📷 Choose Image File
+              📷 {t("Choose Image File")}
             </button>
             {draft.kuldeviPhoto && (
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <img src={draft.kuldeviPhoto} alt="Upload Preview" style={{ width: "48px", height: "48px", borderRadius: "6px", objectFit: "cover", border: "1px solid #94a3b8" }} referrerPolicy="no-referrer" />
+                <img src={draft.kuldeviPhoto} alt={t("Upload Preview")} style={{ width: "48px", height: "48px", borderRadius: "6px", objectFit: "cover", border: "1px solid #94a3b8" }} referrerPolicy="no-referrer" />
                 <button 
                   type="button" 
                   onClick={() => update("kuldeviPhoto", "")}
                   style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}
                 >
-                  Remove photo
+                  {t("Remove photo")}
                 </button>
               </div>
             )}
@@ -2618,6 +2756,7 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
 }
 
 function CsvImporter({ treeId, request }: { treeId: string; request: ReturnType<typeof useLineage>["request"] }) {
+  const t = useVamshavaliTranslate();
   const [csv, setCsv] = React.useState(sampleCsv);
   const [preview, setPreview] = React.useState<ImportProposal | null>(null);
   async function previewCsv() {
@@ -2631,17 +2770,17 @@ function CsvImporter({ treeId, request }: { treeId: string; request: ReturnType<
     <section className="surface">
       <header className="surface-head">
         <div>
-          <p className="eyebrow">Spreadsheet</p>
-          <h2>CSV import</h2>
+          <p className="eyebrow">{t("Spreadsheet")}</p>
+          <h2>{t("CSV import")}</h2>
         </div>
-        <button onClick={previewCsv}><Upload size={16} />Preview</button>
+        <button onClick={previewCsv}><Upload size={16} />{t("Preview")}</button>
       </header>
       <textarea className="csv-box" value={csv} onChange={(event) => setCsv(event.target.value)} />
       {preview && (
         <div className="preview-box">
           <div className="preview-head">
-            <strong>{preview.people.length} people detected</strong>
-            <button className="primary-action" onClick={commitCsv}><Check size={16} />Commit import</button>
+            <strong>{preview.people.length} {t("people detected")}</strong>
+            <button className="primary-action" onClick={commitCsv}><Check size={16} />{t("Commit import")}</button>
           </div>
           {preview.warnings.map((warning) => <p className="warning" key={warning}>{warning}</p>)}
           <div className="preview-list">
@@ -2656,6 +2795,7 @@ function CsvImporter({ treeId, request }: { treeId: string; request: ReturnType<
 }
 
 function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposals: Proposal[]; request: ReturnType<typeof useLineage>["request"] }) {
+  const t = useVamshavaliTranslate();
   const [sourceType, setSourceType] = React.useState<"telegram_text" | "telegram_voice" | "csv">("telegram_text");
   const [rawText, setRawText] = React.useState("My name is Arjun Deshpande. My father is Mahesh Deshpande. My mother is Kavita Deshpande. My grandfather was Ganesh Deshpande and grandmother was Sushila Deshpande. My wife is Priya Deshpande. Our gotra is Kashyap, Kuladevi is Tulja Bhavani, Gramadevata is Khandoba, my rashi is Vrischika.");
   async function createProposal() {
@@ -2665,21 +2805,21 @@ function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposa
     <section className="surface">
       <header className="surface-head">
         <div>
-          <p className="eyebrow">Telegram and voice</p>
-          <h2>Reviewable intake</h2>
+          <p className="eyebrow">{t("Telegram and voice")}</p>
+          <h2>{t("Reviewable intake")}</h2>
         </div>
-        <button onClick={createProposal}>{sourceType === "telegram_voice" ? <Mic size={16} /> : <MessageCircle size={16} />}Extract</button>
+        <button onClick={createProposal}>{sourceType === "telegram_voice" ? <Mic size={16} /> : <MessageCircle size={16} />}{t("Extract")}</button>
       </header>
       <div className="segmented">
-        <button className={sourceType === "telegram_text" ? "active" : ""} onClick={() => setSourceType("telegram_text")}><MessageCircle size={15} />Text</button>
-        <button className={sourceType === "telegram_voice" ? "active" : ""} onClick={() => setSourceType("telegram_voice")}><Mic size={15} />Voice transcript</button>
+        <button className={sourceType === "telegram_text" ? "active" : ""} onClick={() => setSourceType("telegram_text")}><MessageCircle size={15} />{t("Text")}</button>
+        <button className={sourceType === "telegram_voice" ? "active" : ""} onClick={() => setSourceType("telegram_voice")}><Mic size={15} />{t("Voice transcript")}</button>
       </div>
       <textarea className="telegram-box" value={rawText} onChange={(event) => setRawText(event.target.value)} />
       <div className="proposal-list">
         {proposals.map((proposal) => (
           <article className="proposal" key={proposal.id}>
             <div>
-              <strong>{proposal.proposal.people.length} proposed people</strong>
+              <strong>{proposal.proposal.people.length} {t("proposed people")}</strong>
               <span>{proposal.status} - {proposal.sourceType.replace("_", " ")}</span>
             </div>
             <p>{proposal.rawText}</p>
@@ -2687,10 +2827,10 @@ function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposa
             {proposal.status === "pending" && (
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
                 <button className="primary-action" onClick={() => request(`commit-${proposal.id}`, `/api/lineage/proposals/${proposal.id}/commit`, { method: "POST" })}>
-                  <Check size={16} />Commit proposal
+                  <Check size={16} />{t("Commit proposal")}
                 </button>
                 <button className="danger-action" onClick={() => request(`dismiss-${proposal.id}`, `/api/lineage/proposals/${proposal.id}/dismiss`, { method: "POST" })}>
-                  <X size={16} />Dismiss
+                  <X size={16} />{t("Dismiss")}
                 </button>
               </div>
             )}
@@ -2711,6 +2851,7 @@ function PersonDrawer({ person, people, spouses, canEdit, onClose, onEdit, onDel
   onDelete: () => void;
   onLinkSpouse: (spouseId: string) => void;
 }) {
+  const t = useVamshavaliTranslate();
   const [spouseId, setSpouseId] = React.useState("");
   const peopleById = new Map(people.map((item) => [item.id, item]));
   const spouseNames = spouseNamesFor(person, peopleById, spouses);
@@ -2719,33 +2860,33 @@ function PersonDrawer({ person, people, spouses, canEdit, onClose, onEdit, onDel
       <button className="icon-only close-drawer" onClick={onClose}><X size={18} /></button>
       <div className={`drawer-avatar ${person.gender} ${person.lifeStatus}`}>{person.photoUrl ? <img src={person.photoUrl} alt="" /> : initials(person.displayName)}</div>
       <h2>{displayPersonName(person)}</h2>
-      <p>{statusLabel(person)}</p>
+      <p>{statusLabel(person, t)}</p>
       <div className="detail-grid">
-        <span>Father</span><strong>{person.fatherId ? displayPersonName(peopleById.get(person.fatherId)) : "Unknown"}</strong>
-        <span>Mother</span><strong>{person.motherId ? displayPersonName(peopleById.get(person.motherId)) : "Unknown"}</strong>
-        <span>Spouse</span><strong>{spouseNames.join(", ") || "Not linked"}</strong>
-        <span>DOB</span><strong>{person.dateOfBirth || "Unknown"}</strong>
-        <span>DOD</span><strong>{person.dateOfDeath || "Not applicable"}</strong>
-        <span>Anniversary</span><strong>{person.deathAnniversary || "Unknown"}</strong>
-        <span>Rashi</span><strong>{person.rashi || "Unknown"}</strong>
-        <span>Gotra</span><strong>{person.gotra || "Unknown"}</strong>
+        <span>{t("Father")}</span><strong>{person.fatherId ? displayPersonName(peopleById.get(person.fatherId)) : t("Unknown")}</strong>
+        <span>{t("Mother")}</span><strong>{person.motherId ? displayPersonName(peopleById.get(person.motherId)) : t("Unknown")}</strong>
+        <span>{t("Spouse")}</span><strong>{spouseNames.join(", ") || t("Not linked")}</strong>
+        <span>{t("DOB")}</span><strong>{person.dateOfBirth || t("Unknown")}</strong>
+        <span>{t("DOD")}</span><strong>{person.dateOfDeath || t("Not applicable")}</strong>
+        <span>{t("Anniversary")}</span><strong>{person.deathAnniversary || t("Unknown")}</strong>
+        <span>{t("Rashi")}</span><strong>{person.rashi || t("Unknown")}</strong>
+        <span>{t("Gotra")}</span><strong>{person.gotra || t("Unknown")}</strong>
       </div>
       {person.notes && <p className="drawer-notes">{person.notes}</p>}
       <div className="drawer-actions">
         {canEdit ? (
           <>
-            <button className="primary-action" onClick={onEdit}><UserRound size={16} />Edit person</button>
-            <button className="danger-action" onClick={onDelete}><Trash2 size={16} />Delete person</button>
+            <button className="primary-action" onClick={onEdit}><UserRound size={16} />{t("Edit person")}</button>
+            <button className="danger-action" onClick={onDelete}><Trash2 size={16} />{t("Delete person")}</button>
             <div className="inline-linker">
               <select value={spouseId} onChange={(event) => setSpouseId(event.target.value)}>
-                <option value="">Select spouse</option>
+                <option value="">{t("Select spouse")}</option>
                 {people.filter((item) => item.id !== person.id).map((item) => <option key={item.id} value={item.id}>{displayPersonName(item)}</option>)}
               </select>
               <button disabled={!spouseId} onClick={() => { onLinkSpouse(spouseId); setSpouseId(""); }}><Heart size={16} /></button>
             </div>
           </>
         ) : (
-          <p className="settings-note">Read-only access. Ask the tree owner for edit permission.</p>
+          <p className="settings-note">{t("Read-only access. Ask the tree owner for edit permission.")}</p>
         )}
       </div>
     </aside>
@@ -2767,50 +2908,51 @@ function Overview({
   onAddPerson: () => void;
   canEdit: boolean;
 }) {
+  const t = useVamshavaliTranslate();
   const generations = new Set(generationMap(people, spouses).values());
   return (
     <section className="overview-grid">
       <div className="lineage-hero">
-        <p className="eyebrow">Digital Vanshavali</p>
+        <p className="eyebrow">{t("Digital Vanshavali")}</p>
         <h1>{tree.name}</h1>
-        <p>{tree.notes || "A private, structured family chronicle for lineage, identity, and family traditions."}</p>
+        <p>{tree.notes || t("A private, structured family chronicle for lineage, identity, and family traditions.")}</p>
         <div className="hero-actions">
-          <button className="primary-action" onClick={() => onView("tree")}>Open family tree</button>
-          {canEdit && <button onClick={onAddPerson}><Plus size={16} />Add member</button>}
+          <button className="primary-action" onClick={() => onView("tree")}>{t("Open family tree")}</button>
+          {canEdit && <button onClick={onAddPerson}><Plus size={16} />{t("Add member")}</button>}
         </div>
       </div>
       <div className="stat-grid">
-        <span><Users size={18} /><strong>{people.length}</strong>People</span>
-        <span><ChevronsUpDown size={18} /><strong>{generations.size}</strong>Generations</span>
-        <span><Heart size={18} /><strong>{spouses.length}</strong>Marriages</span>
-        <span><Baby size={18} /><strong>{people.filter((person) => person.fatherId || person.motherId).length}</strong>Child links</span>
+        <span><Users size={18} /><strong>{people.length}</strong>{t("People")}</span>
+        <span><ChevronsUpDown size={18} /><strong>{generations.size}</strong>{t("Generations")}</span>
+        <span><Heart size={18} /><strong>{spouses.length}</strong>{t("Marriages")}</span>
+        <span><Baby size={18} /><strong>{people.filter((person) => person.fatherId || person.motherId).length}</strong>{t("Child links")}</span>
       </div>
       <div className="tradition-strip">
-        <div><span>Gotra</span><strong>{tree.gotra || "Not recorded"}</strong></div>
+        <div><span>{t("Gotra")}</span><strong>{tree.gotra || t("Not recorded")}</strong></div>
         <div>
-          <span>Kuladevi</span>
+          <span>{t("Kuladevi")}</span>
           <strong style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
             {tree.kuldeviPhoto && <img src={tree.kuldeviPhoto} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />}
-            {tree.kuladevi || "Not recorded"}
+            {tree.kuladevi || t("Not recorded")}
           </strong>
         </div>
-        <div><span>Family No.</span><strong>{tree.familyNumber || "Not recorded"}</strong></div>
-        <div><span>Native village</span><strong>{tree.nativeVillage || "Not recorded"}</strong></div>
+        <div><span>{t("Family No.")}</span><strong>{tree.familyNumber || t("Not recorded")}</strong></div>
+        <div><span>{t("Native village")}</span><strong>{tree.nativeVillage || t("Not recorded")}</strong></div>
       </div>
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Recent records</p>
-            <h2>Family members</h2>
+            <p className="eyebrow">{t("Recent records")}</p>
+            <h2>{t("Family members")}</h2>
           </div>
-          <button onClick={() => onView("people")}>Manage people</button>
+          <button onClick={() => onView("people")}>{t("Manage people")}</button>
         </header>
         <div className="people-table">
           {people.slice(0, 8).map((person) => (
             <div key={person.id}>
               <span className={`person-dot ${person.gender} ${person.lifeStatus}`} />
               <strong>{displayPersonName(person)}</strong>
-              <small>{statusLabel(person)}</small>
+              <small>{statusLabel(person, t)}</small>
             </div>
           ))}
         </div>
@@ -2838,6 +2980,7 @@ function PeopleDirectory({
   onEdit: (person: Person) => void;
   onDelete: (person: Person) => void;
 }) {
+  const t = useVamshavaliTranslate();
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const generations = generationMap(people, spouses);
   const childCounts = new Map<string, number>();
@@ -2863,20 +3006,20 @@ function PeopleDirectory({
     <section className="surface people-directory">
       <header className="surface-head">
         <div>
-          <p className="eyebrow">Directory</p>
-          <h2>{filteredPeople.length === people.length ? `${people.length} people` : `${filteredPeople.length} of ${people.length} people`}</h2>
+          <p className="eyebrow">{t("Directory")}</p>
+          <h2>{filteredPeople.length === people.length ? `${people.length} ${t("people")}` : `${filteredPeople.length} ${t("of")} ${people.length} ${t("people")}`}</h2>
         </div>
-        {canEdit && <button className="primary-action" onClick={onAddPerson}><Plus size={16} />Add new person</button>}
+        {canEdit && <button className="primary-action" onClick={onAddPerson}><Plus size={16} />{t("Add new person")}</button>}
       </header>
       <div className="generation-list">
         {groups.map(({ generation, members }) => (
           <section className="generation-group" key={generation}>
             <header className="generation-head">
               <div>
-                <strong>Generation {generation + 1}</strong>
-                <span>{generation === 0 ? "Oldest known ancestors and root records" : `Level ${generation + 1} in the lineage`}</span>
+                <strong>{t("Generation")} {generation + 1}</strong>
+                <span>{generation === 0 ? t("Oldest known ancestors and root records") : `${t("Level")} ${generation + 1} ${t("in the lineage")}`}</span>
               </div>
-              <small>{members.length} {members.length === 1 ? "person" : "people"}</small>
+              <small>{members.length} {members.length === 1 ? t("person") : t("people")}</small>
             </header>
             <div className="people-table">
               {members.map((person) => {
@@ -2887,18 +3030,18 @@ function PeopleDirectory({
                     <span className={`person-dot ${person.gender} ${person.lifeStatus}`} />
                     <div className="person-main">
                       <strong>{displayPersonName(person)}</strong>
-                      <small>{statusLabel(person)}</small>
+                      <small>{statusLabel(person, t)}</small>
                     </div>
                     <div className="relationship-meta">
-                      <span><CircleDot size={13} />Generation {generation + 1}</span>
-                      <span>{parentSummary(person, peopleById)}</span>
-                      <span><Heart size={13} />{spouseNames.length ? `Married to ${spouseNames.join(", ")}` : "Spouse not linked"}</span>
-                      <span><Baby size={13} />{childCount} {childCount === 1 ? "child" : "children"} linked</span>
+                      <span><CircleDot size={13} />{t("Generation")} {generation + 1}</span>
+                      <span>{parentSummary(person, peopleById, t)}</span>
+                      <span><Heart size={13} />{spouseNames.length ? `${t("Married to")} ${spouseNames.join(", ")}` : t("Spouse not linked")}</span>
+                      <span><Baby size={13} />{childCount} {childCount === 1 ? t("child") : t("children")} {t("linked")}</span>
                     </div>
                     <div className="person-actions">
-                      <button onClick={() => onOpen(person.id)}>Open</button>
-                      {canEdit && <button onClick={() => onEdit(person)}><UserRound size={14} />Edit</button>}
-                      {canEdit && <button className="danger-action" onClick={() => onDelete(person)}><Trash2 size={14} />Delete</button>}
+                      <button onClick={() => onOpen(person.id)}>{t("Open")}</button>
+                      {canEdit && <button onClick={() => onEdit(person)}><UserRound size={14} />{t("Edit")}</button>}
+                      {canEdit && <button className="danger-action" onClick={() => onDelete(person)}><Trash2 size={14} />{t("Delete")}</button>}
                     </div>
                   </div>
                 );
@@ -2908,8 +3051,8 @@ function PeopleDirectory({
         ))}
         {!groups.length && (
           <div className="empty-directory">
-            <strong>No matching people</strong>
-            <span>Try another search or add a new family member.</span>
+            <strong>{t("No matching people")}</strong>
+            <span>{t("Try another search or add a new family member.")}</span>
           </div>
         )}
       </div>
@@ -2930,6 +3073,7 @@ function AccountSettings({
   onSessionChange: (session: Session) => void;
   onTreeCreated: (treeId: string) => void;
 }) {
+  const t = useVamshavaliTranslate();
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [message, setMessage] = React.useState("");
@@ -2968,10 +3112,10 @@ function AccountSettings({
             : "Language preference saved successfully!"
         );
       } else {
-        setMessage(data.error || "Failed to save language preference.");
+        setMessage(data.error || t("Failed to save language preference."));
       }
     } catch (err: any) {
-      setMessage(err?.message || "An error occurred.");
+      setMessage(err?.message || t("An error occurred."));
     } finally {
       setSavingLang(false);
     }
@@ -3003,7 +3147,7 @@ function AccountSettings({
       onSessionChange({ ...session, account: json.account });
       setCurrentPassword("");
       setNewPassword("");
-      setMessage(session.account.hasPassword ? "Password changed." : "Password set for this account.");
+      setMessage(session.account.hasPassword ? t("Password changed.") : t("Password set for this account."));
     } catch {
       setMessage("");
     }
@@ -3036,7 +3180,7 @@ function AccountSettings({
     });
     const json = await response.json();
     if (!response.ok) {
-      setMessage(json.error ?? "Could not create invite.");
+      setMessage(json.error ?? t("Could not create invite."));
       return;
     }
     setInviteLink(json.inviteUrl);
@@ -3052,30 +3196,30 @@ function AccountSettings({
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Account</p>
-            <h2>Profile and security</h2>
+            <p className="eyebrow">{t("Account")}</p>
+            <h2>{t("Profile and security")}</h2>
           </div>
         </header>
         <div className="account-summary">
-          <div><span>Name</span><strong>{session.account.name}</strong></div>
-          <div><span>Email</span><strong>{session.account.email}</strong></div>
-          <div><span>Password</span><strong>{session.account.hasPassword ? "Enabled" : "Access code only"}</strong></div>
-          <div><span>Role on active tree</span><strong>{state.activeRole ?? "None"}</strong></div>
-          <div><span>Family trees</span><strong>{state.trees.length} of {session.maxTreesPerAccount}</strong></div>
+          <div><span>{t("Name")}</span><strong>{session.account.name}</strong></div>
+          <div><span>{t("Email")}</span><strong>{session.account.email}</strong></div>
+          <div><span>{t("Password")}</span><strong>{session.account.hasPassword ? t("Enabled") : t("Access code only")}</strong></div>
+          <div><span>{t("Role on active tree")}</span><strong>{t(state.activeRole ?? "None")}</strong></div>
+          <div><span>{t("Family trees")}</span><strong>{state.trees.length} {t("of")} {session.maxTreesPerAccount}</strong></div>
         </div>
       </section>
 
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Public view link</p>
-            <h2>Share family tree</h2>
+            <p className="eyebrow">{t("Public view link")}</p>
+            <h2>{t("Share family tree")}</h2>
           </div>
         </header>
-        <p className="settings-note">Anyone with this link can view this family tree in read-only mode without needing to sign in.</p>
+        <p className="settings-note">{t("Anyone with this link can view this family tree in read-only mode without needing to sign in.")}</p>
         <div className="invite-form" style={{ gap: "12px", alignItems: "flex-end" }}>
           <label className="field" style={{ flex: 1, margin: 0 }}>
-            <span>Family tree share link / Profile ID link</span>
+            <span>{t("Family tree share link / Profile ID link")}</span>
             <input 
               readOnly 
               value={`${window.location.origin}/vamshavali/v/${activeTreeId}`} 
@@ -3088,63 +3232,63 @@ function AccountSettings({
             onClick={() => {
               const url = `${window.location.origin}/vamshavali/v/${activeTreeId}`;
               navigator.clipboard.writeText(url);
-              setMessage("Family tree link copied to clipboard.");
+              setMessage(t("Family tree link copied to clipboard."));
             }}
           >
-            Copy link
+            {t("Copy link")}
           </button>
         </div>
       </section>
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Family access</p>
-            <h2>Invite family members</h2>
+            <p className="eyebrow">{t("Family access")}</p>
+            <h2>{t("Invite family members")}</h2>
           </div>
         </header>
-        {!canManageAccess && <p className="settings-note">Your role for this tree is {state.activeRole}. Only owners and admins can invite family members.</p>}
+        {!canManageAccess && <p className="settings-note">{t("Your role for this tree is {0}. Only owners and admins can invite family members.", state.activeRole)}</p>}
         {canManageAccess && (
           <>
             <div className="invite-form">
               <label className="field">
-                <span>Email address</span>
+                <span>{t("Email address")}</span>
                 <input value={inviteEmail} placeholder="relative@example.com" onChange={(event) => setInviteEmail(event.target.value)} />
               </label>
               <label className="field">
-                <span>Role</span>
+                <span>{t("Role")}</span>
                 <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as "viewer" | "contributor" | "admin")}>
-                  <option value="viewer">Viewer - read only</option>
-                  <option value="contributor">Contributor - can edit lineage</option>
-                  <option value="admin">Admin - can edit and invite</option>
+                  <option value="viewer">{t("Viewer - read only")}</option>
+                  <option value="contributor">{t("Contributor - can edit lineage")}</option>
+                  <option value="admin">{t("Admin - can edit and invite")}</option>
                 </select>
               </label>
-              <button className="primary-action" disabled={!inviteEmail.trim()} onClick={createInvite}><Plus size={16} />Create invite link</button>
+              <button className="primary-action" disabled={!inviteEmail.trim()} onClick={createInvite}><Plus size={16} />{t("Create invite link")}</button>
             </div>
             {inviteLink && (
               <label className="field invite-link-field">
-                <span>Invite link for family members</span>
+                <span>{t("Invite link for family members")}</span>
                 <input readOnly value={inviteLink} onFocus={(event) => event.currentTarget.select()} />
               </label>
             )}
             <div className="access-grid">
               <section>
-                <h3>Members</h3>
+                <h3>{t("Members")}</h3>
                 <div className="tree-list">
                   {(access?.members ?? []).map((member) => (
                     <div key={member.accountId}>
                       <strong>{member.name}</strong>
-                      <span>{member.email} - {member.role}</span>
+                      <span>{member.email} - {t(member.role)}</span>
                     </div>
                   ))}
                 </div>
               </section>
               <section>
-                <h3>Invites</h3>
+                <h3>{t("Invites")}</h3>
                 <div className="tree-list">
                   {(access?.invitations ?? []).map((invite) => (
                     <div key={invite.id}>
                       <strong>{invite.email}</strong>
-                      <span>{invite.role} - {invite.status}</span>
+                      <span>{t(invite.role)} - {t(invite.status)}</span>
                     </div>
                   ))}
                 </div>
@@ -3156,23 +3300,23 @@ function AccountSettings({
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Password login</p>
-            <h2>{session.account.hasPassword ? "Change password" : "Set password"}</h2>
+            <p className="eyebrow">{t("Password login")}</p>
+            <h2>{session.account.hasPassword ? t("Change password") : t("Set password")}</h2>
           </div>
           <button className="primary-action" disabled={newPassword.length < 8 || (session.account.hasPassword && !currentPassword)} onClick={changePassword}>
-            <KeyRound size={16} />Save password
+            <KeyRound size={16} />{t("Save password")}
           </button>
         </header>
         <div className="form-grid">
           {session.account.hasPassword && (
             <label className="field">
-              <span>Current password</span>
+              <span>{t("Current password")}</span>
               <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
             </label>
           )}
           <label className="field">
-            <span>New password</span>
-            <input type="password" value={newPassword} placeholder="Minimum 8 characters" onChange={(event) => setNewPassword(event.target.value)} />
+            <span>{t("New password")}</span>
+            <input type="password" value={newPassword} placeholder={t("Minimum 8 characters")} onChange={(event) => setNewPassword(event.target.value)} />
           </label>
         </div>
         {message && <p className="busy">{message}</p>}
@@ -3181,16 +3325,12 @@ function AccountSettings({
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">{language === "bn" ? "ভাষা পছন্দ" : language === "hi" ? "भाषा प्राथमिकता" : "Language Preference"}</p>
-            <h2>{language === "bn" ? "ডিফল্ট ভাষা সেট করুন" : language === "hi" ? "डिफ़ॉल्ट भाषा सेट करें" : "Set default language"}</h2>
+            <p className="eyebrow">{t("Language Preference")}</p>
+            <h2>{t("Set default language")}</h2>
           </div>
         </header>
         <p className="settings-note" style={{ marginBottom: "16px" }}>
-          {language === "bn" 
-            ? "যখন আপনি লগ ইন করবেন তখন এই ভাষাটি আপনার ডিফল্ট ভাষা হিসাবে সেট হবে এবং টেলিগ্রাম এআই বট এই ভাষায় আপনার সাথে চ্যাট করবে।" 
-            : language === "hi" 
-            ? "जब आप लॉगिन करेंगे तो यह भाषा आपकी डिफ़ॉल्ट भाषा के रूप में सेट होगी और टेलीग्राम एआई बोट इस भाषा में आपसे चैट करेगा।" 
-            : "This language will be set as your default whenever you log in and the Telegram AI Bot will chat with you in this language."}
+          {t("This language will be set as your default whenever you log in and the Telegram AI Bot will chat with you in this language.")}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -3223,11 +3363,7 @@ function AccountSettings({
             onClick={saveLanguagePreference}
             disabled={savingLang}
           >
-            {savingLang ? (
-              language === "bn" ? "সংরক্ষণ করা হচ্ছে..." : language === "hi" ? "सहेज रहा है..." : "Saving..."
-            ) : (
-              language === "bn" ? "পছন্দ সংরক্ষণ করুন" : language === "hi" ? "प्राथमिकता सहेजें" : "Save Preference"
-            )}
+            {savingLang ? t("Saving...") : t("Save Preference")}
           </button>
         </div>
       </section>
@@ -3235,23 +3371,23 @@ function AccountSettings({
       <section className="surface">
         <header className="surface-head">
           <div>
-            <p className="eyebrow">Family trees</p>
-            <h2>Tree allowance</h2>
+            <p className="eyebrow">{t("Family trees")}</p>
+            <h2>{t("Tree allowance")}</h2>
           </div>
           <button
             className="primary-action"
             disabled={state.trees.length >= session.maxTreesPerAccount}
             onClick={createAdditionalTree}
           >
-            <Plus size={16} />Create another tree
+            <Plus size={16} />{t("Create another tree")}
           </button>
         </header>
-        <p className="settings-note">This account can create {session.maxTreesPerAccount} family trees.</p>
+        <p className="settings-note">{t("This account can create {0} family trees.", session.maxTreesPerAccount)}</p>
         <div className="tree-list">
           {state.trees.map((tree) => (
             <div key={tree.id}>
               <strong>{tree.name}</strong>
-              <span>{tree.accountHolderName || "Account holder not recorded"}</span>
+              <span>{tree.accountHolderName || t("Account holder not recorded")}</span>
             </div>
           ))}
         </div>
@@ -3289,6 +3425,7 @@ function AppShell({
     }
   );
   const { language, setLanguage, t } = useLanguage();
+  const vt = useVamshavaliTranslate();
 
   React.useEffect(() => {
     if (session?.account?.language) {
@@ -3316,7 +3453,7 @@ function AppShell({
     return (
       <main className="loading-screen" style={{ flexDirection: "column", padding: "20px", textAlign: "center", gap: "12px" }}>
         <Users size={32} style={{ color: "#ef4444" }} />
-        <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#18221f" }}>Could Not Load Family Tree</h2>
+        <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#18221f" }}>{vt("Could Not Load Family Tree")}</h2>
         <p style={{ fontSize: "14px", color: "#4b5563", maxWidth: "320px", lineHeight: "1.5" }}>{lineage.error}</p>
         <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
           <button 
@@ -3333,7 +3470,7 @@ function AppShell({
               cursor: "pointer" 
             }}
           >
-            Retry
+            {vt("Retry")}
           </button>
           {!isPublic && (
             <button 
@@ -3350,7 +3487,7 @@ function AppShell({
                 cursor: "pointer" 
               }}
             >
-              Log Out
+              {vt("Log Out")}
             </button>
           )}
         </div>
@@ -3359,11 +3496,11 @@ function AppShell({
   }
 
   if (!lineage.state) {
-    return <main className="loading-screen"><Users size={28} />Loading lineage...</main>;
+    return <main className="loading-screen"><Users size={28} />{vt("Loading lineage...")}</main>;
   }
 
   if (!lineage.state.activeTreeId) {
-    if (!session) return <main className="loading-screen"><Users size={28} />Family tree not found.</main>;
+    if (!session) return <main className="loading-screen"><Users size={28} />{vt("Family tree not found.")}</main>;
     return <Onboarding session={session} onTreeCreated={handleTreeCreated} request={lineage.request} onLogout={onLogout} />;
   }
 
@@ -3439,7 +3576,7 @@ function AppShell({
 
   async function deletePerson(person: Person) {
     const confirmed = window.confirm(
-      `Delete ${displayPersonName(person)} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.`
+      vt("Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.", displayPersonName(person, vt))
     );
     if (!confirmed) return;
     await lineage.request("delete-person", `/api/lineage/people/${person.id}`, { method: "DELETE" });
@@ -3498,12 +3635,12 @@ function AppShell({
         </button>
         <nav>
           {[
-            ["overview", HomeIcon, "Overview"],
-            ["tree", Users, "Tree"],
-            ["people", UserRound, "People"],
-            ["traditions", Landmark, "Family Details"],
-            ...(canEdit ? [["import", Upload, "Import"] as const] : []),
-            ...(!isPublic ? [["account", KeyRound, "Account"] as const] : [])
+            ["overview", HomeIcon, vt("Overview")],
+            ["tree", Users, vt("Tree")],
+            ["people", UserRound, vt("People")],
+            ["traditions", Landmark, vt("Family Details")],
+            ...(canEdit ? [["import", Upload, vt("Import")] as const] : []),
+            ...(!isPublic ? [["account", KeyRound, vt("Account")] as const] : [])
           ].map(([key, Icon, label]) => (
             <button key={key as string} className={view === key ? "active" : ""} onClick={() => navigate(key as AppView)}>
               {React.createElement(Icon as typeof HomeIcon, { size: 17 })}
@@ -3512,20 +3649,20 @@ function AppShell({
           ))}
         </nav>
         <button className="logout-button" onClick={onLogout}>
-          <LogOut size={16} />{isPublic ? "Admin Log In" : "Sign out"}
+          <LogOut size={16} />{isPublic ? vt("Admin Log In") : vt("Sign out")}
         </button>
       </aside>
 
       <section className="app-main">
         <header className="app-topbar">
           <div>
-            <p className="eyebrow">{isPublic ? "Public family archive" : "Private family archive"}</p>
+            <p className="eyebrow">{isPublic ? vt("Public family archive") : vt("Private family archive")}</p>
             <h1>{tree.name}</h1>
           </div>
           <div className="topbar-tools" style={{ gap: "10px", flexWrap: "wrap" }}>
             {/* Telegram Bot Link */}
             <a 
-              href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}`}
+              href={`https://t.me/${(typeof import.meta.env.VITE_TELEGRAM_BOT_USERNAME === 'string' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME.trim() !== '' && import.meta.env.VITE_TELEGRAM_BOT_USERNAME !== 'undefined') ? import.meta.env.VITE_TELEGRAM_BOT_USERNAME.replace('@', '').trim() : 'Vamshavali_bot'}?start=${(tree as any).shareId || tree.id}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -3544,7 +3681,7 @@ function AppShell({
                 height: "36px"
               }}
             >
-              <MessageCircle size={14} /> {language === "bn" ? "টেলিগ্রাম এআই বট" : language === "hi" ? "टेलीग्राम एआई बोट" : "Telegram AI Bot"}
+              <MessageCircle size={14} /> {vt("Telegram AI Bot")}
             </a>
 
             {/* Language Selection */}
@@ -3575,7 +3712,7 @@ function AppShell({
 
             {!isPublic && session && lineage.state.trees.length > 1 && (
               <label className="tree-switcher">
-                <span>Family tree</span>
+                <span>{vt("Family tree")}</span>
                 <select
                   value={tree.id || ""}
                   onChange={(event) => onSessionChange({ ...session, treeId: event.target.value })}
@@ -3586,19 +3723,19 @@ function AppShell({
             )}
             <div className="search-box">
               <Search size={17} />
-              <input value={search} placeholder="Search family members" onChange={(event) => setSearch(event.target.value)} />
+              <input value={search} placeholder={vt("Search family members")} onChange={(event) => setSearch(event.target.value)} />
             </div>
             {!isPublic && session && (
               <button className="account-chip" onClick={() => setView("account")}><ShieldCheck size={15} />{session.account.email}</button>
             )}
             {isPublic && (
-              <button className="account-chip" onClick={() => window.location.href = "/vamshavali"}><ShieldCheck size={15} />Log in</button>
+              <button className="account-chip" onClick={() => window.location.href = "/vamshavali"}><ShieldCheck size={15} />{vt("Log in")}</button>
             )}
           </div>
         </header>
 
         {lineage.error && <p className="error">{lineage.error}</p>}
-        {lineage.busy && <p className="busy">Working on {lineage.busy}...</p>}
+        {lineage.busy && <p className="busy">{vt("Working on {0}...", lineage.busy)}</p>}
 
         {inviteMessage && <p className="busy invite-status" onClick={onInviteMessageClear}>{inviteMessage}</p>}
         {view === "overview" && <Overview tree={tree} people={people} spouses={spouses} onView={setView} onAddPerson={addPerson} canEdit={canEdit} />}
@@ -3606,14 +3743,14 @@ function AppShell({
           <section className="surface tree-surface">
             <header className="surface-head">
               <div>
-                <p className="eyebrow">Bird's-eye lineage</p>
-                <h2>Family tree</h2>
+                <p className="eyebrow">{vt("Bird's-eye lineage")}</p>
+                <h2>{vt("Family tree")}</h2>
               </div>
               <div className="legend">
-                <span className="legend-dot male" />Male
-                <span className="legend-dot female" />Female
-                <span className="legend-dot deceased" />Deceased
-                <span className="legend-ring" />Married
+                <span className="legend-dot male" />{vt("Male")}
+                <span className="legend-dot female" />{vt("Female")}
+                <span className="legend-dot deceased" />{vt("Deceased")}
+                <span className="legend-ring" />{vt("Married")}
               </div>
             </header>
             <FamilyTreeCanvas people={filteredPeople} spouses={spouses} selectedId={selectedId} onSelect={setSelectedId} tree={tree} />
@@ -3628,7 +3765,7 @@ function AppShell({
                 form={form}
                 setForm={setForm}
                 busy={Boolean(lineage.busy)}
-                title={editingId ? "Edit family member" : "Add family member"}
+                title={editingId ? vt("Edit family member") : vt("Add family member")}
                 currentPersonId={editingId}
                 onSubmit={savePerson}
                 onCancel={cancelPersonEdit}
@@ -3688,6 +3825,13 @@ function App({ isPublic = false, shareId }: { isPublic?: boolean; shareId?: stri
     if (isPublic) return;
     setSession(next);
     saveSession(next);
+    if (!next) {
+      try {
+        localStorage.setItem("vamshavali_signed_out", "true");
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
   React.useEffect(() => {

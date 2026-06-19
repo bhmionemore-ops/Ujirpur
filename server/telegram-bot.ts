@@ -6,6 +6,120 @@ import { db as sqliteDb } from "./lineage-db";
 import { lineageStore } from "./lineage-core";
 import { GoogleGenAI } from "@google/genai";
 import { randomUUID, randomBytes } from "crypto";
+import { getAlmanacData, getBengaliDate, toBengaliNumber, getMonthlyPonjikaEvents, getAuspiciousMarriageDates, BENGALI_MONTHS, BENGALI_MONTHS_EN } from "../src/utils/bengaliDate";
+
+const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+
+function compileAllPonjikaData(): string {
+  let text = "==================================================\n";
+  text += "LOCAL BENGALI PONJIKA CALENDAR DATA FOR WEST BENGAL:\n";
+  text += "==================================================\n\n";
+
+  for (let m = 0; m < 12; m++) {
+    const bnMonth = BENGALI_MONTHS[m];
+    const enMonth = BENGALI_MONTHS_EN[m];
+    text += `• Month: ${bnMonth} (${enMonth})\n`;
+
+    // Festivals & Highlights in English
+    const enEvents = getMonthlyPonjikaEvents(m, 2026, 'en');
+    text += `  - Festivals: ${enEvents.festivals.join(', ')}\n`;
+    text += "  - Highlights:\n";
+    enEvents.highlights.forEach(h => {
+      text += `    * ${h.date}: ${h.event}\n`;
+    });
+
+    // Marriage dates
+    const mDatesEn = getAuspiciousMarriageDates(m, 'en');
+    text += `  - Marriage Info: ${mDatesEn.message}\n`;
+    if (mDatesEn.dates.length > 0) {
+      text += "    * Auspicious Dates:\n";
+      mDatesEn.dates.forEach(d => {
+        text += `      Date: ${d.gregorianDate} (${d.bengaliDateString}) | Lagna: ${d.lagnaTime} | Nakshatra: ${d.nakshatra} | Tithi: ${d.tithi}\n`;
+      });
+    }
+    
+    // Bengali names and events
+    const bnEvents = getMonthlyPonjikaEvents(m, 2026, 'bn');
+    text += "  - উৎসব ও বিশেষত্ব (Bengali):\n";
+    bnEvents.highlights.forEach(h => {
+      text += `    * ${h.date}: ${h.event}\n`;
+    });
+    
+    text += "\n";
+  }
+
+  text += `==================================================\n`;
+  text += `COMMON BENGALI PONJIKA RITUALS, RULES, & TIPS FOR BOT RESPONSE:\n`;
+  text += `1. Ekadashi (একাদশী):\n`;
+  text += `   - Mentioned Ekadashis: 'ভৈমী একাদশী' (Bhaimi Ekadashi) is on 28 Magha / 11 February. Explain that Ekadashi occurs twice every month (Shukla Paksha and Krishna Paksha). Urge the devotee/user to seek the active tithi on the live Ponjika page on barnia.in or by clicking 'Local Ponjika' which reports the EXACT daily tithi dynamically!\n`;
+  text += `2. Durga Puja (দুর্গাপূজা):\n`;
+  text += `   - Maha Shasthi (মহাষষ্ঠী) begins on 22 Ashwin / October 8.\n`;
+  text += `   - Vijaya Dashami (বিজয়া দশমী) is on 25 Ashwin / October 11.\n`;
+  text += `3. Kali Puja & Diwali (কালীপূজা ও দীপাবলি):\n`;
+  text += `   - On 12 Kartika / October 28.\n`;
+  text += `4. Saraswati Puja (সরস্বতী পূজা):\n`;
+  text += `   - On 18 Magha / February 1.\n`;
+  text += `5. Dol Yatra / Holi (দোলযাত্রা / হোলি):\n`;
+  text += `   - On 28 Phalguna / March 12.\n`;
+  text += `6. Shivaratri (শিবরাত্রি):\n`;
+  text += `   - On 14 Phalguna / February 26.\n`;
+  text += `7. Nabanna (নবান্ন):\n`;
+  text += `   - On 5 Agrahayana / November 20 (famed in Nadia district as the festival of new harvest seeds).\n`;
+  text += `8. Rash Utsav / Rash lila (রাস উৎসব):\n`;
+  text += `   - Peak festival of Santipur and Nabadwip in Nadia, starting on 10 Agrahayana / November 25.\n`;
+  text += `==================================================\n`;
+  
+  return text;
+}
+
+function compileVamshavaliDetails(): string {
+  let text = "==================================================\n";
+  text += "VAMSHAVALI (FAMILY TREE / বংশাবলী) PAGE DETAILED GUIDE:\n";
+  text += "==================================================\n";
+  text += "The Family Tree (Vamshavali) Page on barnia.in is a state-of-the-art interactive digital lineage mapping companion. Below is the total product manual, list of buttons, features, and detailed guidance instructions on how the page operates:\n\n";
+  
+  text += "1. THE INTERACTIVE FAMILY TREE CANVAS:\n";
+  text += "   - Shows a visual chart/graph/tree of the customer's lineage.\n";
+  text += "   - Navigation / Interaction: Customers can click and drag, or double-click to move/pan around and swipe the tree coordinates in any direction to explore ancestors and younger descendants.\n\n";
+  
+  text += "2. NAVIGATION & CAMERA TOOLBAR CONTROLS:\n";
+  text += "   - Located at the top of the canvas screen. Includes these physical button tools and markers:\n";
+  text += "     * 'Fit Tree' button (Icon: LocateFixed): Clicking this dynamically re-aligns the canvas camera to fit the entire family tree perfectly on the customer's current screen.\n";
+  text += "     * 'Zoom Out' button (Icon: ZoomOut): Decreases the view magnification down to 18% (0.18 scale value), reducing size by 10% per click, helping users see massive multi-generational trees.\n";
+  text += "     * 'Zoom In' button (Icon: ZoomIn): Increases current zoom magnification up to 170% (1.7 scale value) for a high-intensity close up.\n";
+  text += "     * 'Current Zoom Percentage': Displays the active magnification level (e.g., 100%) in real-time.\n\n";
+  
+  text += "3. REAL-TIME SEARCH BOX FILTER:\n";
+  text += "   - Features a Search Input Field (with lens icon) saying 'Search family members'.\n";
+  text += "   - Typing in this box immediately searches and highlights matched family relative names, filtering out non-matching views instantly.\n\n";
+  
+  text += "4. EXPORT & DOWNLOAD MENU (Icon: Download):\n";
+  text += "   - Clicking the Download button reveals a drop-down with 4 premium export formats:\n";
+  text += "     * 'Export as PNG': Downloads a high-resolution transparent image asset of the family tree, ready to show off, email, or forward to relatives via WhatsApp.\n";
+  text += "     * 'Export as JPEG': Downloads standard image file format of the family tree.\n";
+  text += "     * 'Export as PDF': Creates a vector-based document, maintaining pristine readability even when printing at poster-scale!\n";
+  text += "     * 'Print Tree': Triggers the computer/device's native print menu, enabling customers to print beautiful physical hard copies or posters of their Vamshavali directly from the browser.\n\n";
+  
+  text += "5. MEMBER NODE INTERACTIONS & THE RIGHT SIDEBAR DETAIL PANEL:\n";
+  text += "   - Clicking on any relative's node/bubble on the canvas selects them and triggers a slide-out Side Panel/Sidebar containing comprehensive controls:\n";
+  text += "     * Relatives information: View full name, birth year, role, profile picture/photo, listed spouses, and child branches.\n";
+  text += "     * 'Edit Member' Action: Clicking 'Edit' opens an overlay form dialog where the user can update details like Name, Gender, Year of Birth, Deceased/Passed Away year/status, and upload or set a profile photo URL.\n";
+  text += "     * 'Link Spouse' Action: Allows the user to select another member (e.g., a wife) and link them as partner/spouse of the selected ancestor, merging branch lines correctly.\n";
+  text += "     * 'Add Child / Next Generation': Allows the user to click 'Add Relative' on a selected parent to add a direct child. Nadya village rules follow patrilineal heritage: only male lineage members are selected as fathers to continue the branch, though female members are fully represented visually.\n"
+  text += "     * 'Delete Member': Allows removal of entry nodes with simple warnings.\n\n";
+  
+  text += "6. MULTILINGUAL DIALECT TOGGLE:\n";
+  text += "   - Page is fully localized. The language selector in the top-right corner allows immediate translation of all buttons, forms, and titles into:\n";
+  text += "     * English (Default)\n";
+  text += "     * Bengali (বাংলা - Local vernacular of Barnia village)\n";
+  text += "     * Hindi (हिंदी - widely spoken commercial dialect)\n\n";
+  
+  text += "7. SECURE SHARING & CHAT LINKING:\n";
+  text += "   - Shareable Link URI: Every family tree on barnia.in is accessible via a unique Share ID link (e.g. 'https://barnia.in/vamshavali/v/SHARE_ID'). Customers can easily copy and send this URL to family.\n";
+  text += "   - Telegram Bot Link: Customers can click the Telegram icon/button to link their family tree to Barnali (this Bot!). It connects their chat automatically, so they can update and query their tree by simply chatting with me!\n";
+  text += "==================================================\n";
+  return text;
+}
 
 let cachedBotToken: string | null = null;
 let commandsRegistered = false;
@@ -21,6 +135,7 @@ async function registerBotCommands(botToken: string) {
           { command: "start", description: "Start or status check of Barnali AI" },
           { command: "link", description: "Connect family tree: /link <email>" },
           { command: "unlink", description: "Disconnect connected family tree" },
+          { command: "ponjika", description: "Check Bengal's local Ponjika and timings" },
           { command: "credits", description: "Check remaining AI credits" },
           { command: "help", description: "View commands details and manual" }
         ]
@@ -382,8 +497,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   const quickChatMenuMarkup = {
     keyboard: [
-      [{ text: "🌳 My Family Tree" }, { text: "🌽 Barnia Bazar" }],
-      [{ text: "📅 Local Ponjika" }, { text: "💳 Check Credits" }, { text: "❓ Help" }]
+      [{ text: "🌳 My Family Tree" }, { text: "📅 Local Ponjika" }],
+      [{ text: "💳 Check Credits" }, { text: "❓ Help" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false
@@ -654,6 +769,91 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     }
   }
 
+  if (textLower === "check local ponjika" || textLower === "/ponjika" || textLower === "ponjika") {
+    let responseText = "";
+    if (userLang === "ben") {
+      const bDate = getBengaliDate(new Date());
+      const almanac = getAlmanacData(new Date(), "bn");
+      const festText = almanac.festivals && almanac.festivals.length > 0
+        ? almanac.festivals.map((f: string) => `• ${f}`).join("\n")
+        : "• আজ কোনো বড় উৎসব নেই বা বিশেষ দিন নেই।";
+      responseText = `📅 *আজকের স্থানীয় পঞ্জিকা (নদীয় এডিটিশন)* 📅\n\n` +
+        `• *তারিখ:* ${toBengaliNumber(bDate.day)} ${bDate.month} ${toBengaliNumber(bDate.year)} (${almanac.bengaliEra})\n` +
+        `• *বার:* ${bDate.dayName} (${almanac.dayLord})\n` +
+        `• *তিথি:* ${almanac.tithi} (${almanac.paksha})\n` +
+        `• *নক্ষত্র:* ${almanac.nakshatra}\n` +
+        `• *যোগ:* ${almanac.yoga} | *করণ:* ${almanac.karana}\n` +
+        `• *সূর্যোদয়:* ${almanac.sunrise} | *সূর্যাস্ত:* ${almanac.sunset}\n` +
+        `• *চন্দ্রোদয়:* ${almanac.moonrise} | *চন্দ্রাস্ত:* ${almanac.moonset}\n` +
+        `• *ঋতু:* ${almanac.ritu}\n\n` +
+        `🌟 *শুভ সময় (Auspicious Timings):*\n` +
+        `• *ব্রহ্ম মুহূর্ত:* ${almanac.brahmaMuhurta}\n` +
+        `• *অভিজিৎ মুহূর্ত:* ${almanac.abhijitMuhurta}\n` +
+        `• *অমৃত যোগ:* ${almanac.amritaYoga}\n` +
+        `• *মহেন্দ্র যোগ:* ${almanac.mahendraYoga}\n\n` +
+        `⚠️ *অশুভ সময় (Inauspicious Timings):*\n` +
+        `• *রাহুকাল:* ${almanac.rahuKaal}\n` +
+        `• *বারবেলা:* ${almanac.barabela}\n` +
+        `• *কালবেলা:* ${almanac.kalabela}\n` +
+        `• *কালরাত্রি:* ${almanac.kalratri}\n\n` +
+        `🌾 *আজকের উৎসব ও বিশেষত্ব:*\n${festText}`;
+    } else if (userLang === "hin") {
+      const bDate = getBengaliDate(new Date());
+      const almanac = getAlmanacData(new Date(), "en");
+      const festText = almanac.festivals && almanac.festivals.length > 0
+        ? almanac.festivals.map((f: string) => `• ${f}`).join("\n")
+        : "• आज कोई मुख्य त्यौहार या विशेष दिन नहीं है।";
+      responseText = `📅 *आज की स्थानीय बंगाली पंजिका* 📅\n\n` +
+        `• *तिथि:* ${bDate.day} ${bDate.monthEn} ${bDate.year} (${almanac.bengaliEraEn})\n` +
+        `• *दिन:* ${bDate.dayNameEn} (${almanac.dayLordEn})\n` +
+        `• *तिथि विवरण:* ${almanac.tithiEn} (${almanac.pakshaEn})\n` +
+        `• *नक्षत्र:* ${almanac.nakshatraEn}\n` +
+        `• *योग:* ${almanac.yogaEn} | *करण:* ${almanac.karanaEn}\n` +
+        `• *सूर्योदय:* ${almanac.sunrise} | *सूर्यास्त:* ${almanac.sunset}\n` +
+        `• *चन्द्रोदय:* ${almanac.moonrise} | *चन्द्रास्त:* ${almanac.moonset}\n` +
+        `• *ऋतु (Season):* ${almanac.rituEn}\n\n` +
+        `🌟 *शुभ समय (Auspicious Timings):*\n` +
+        `• *ब्रह्म मुहूर्त:* ${almanac.brahmaMuhurta}\n` +
+        `• *अभिजीत मुहूर्त:* ${almanac.abhijitMuhurta}\n` +
+        `• *अमृत योग:* ${almanac.amritaYoga}\n` +
+        `• *महेन्द्र योग:* ${almanac.mahendraYoga}\n\n` +
+        `⚠️ *अशुभ समय (Inauspicious Timings):*\n` +
+        `• *राहु काल:* ${almanac.rahuKaal}\n` +
+        `• *बारबेला:* ${almanac.barabela}\n` +
+        `• *कालबेला:* ${almanac.kalabela}\n` +
+        `• *कालरात्रि:* ${almanac.kalratri}\n\n` +
+        `🌾 *त्यौहार और विशेषताएँ:*\n${festText}`;
+    } else {
+      const bDate = getBengaliDate(new Date());
+      const almanac = getAlmanacData(new Date(), "en");
+      const festText = almanac.festivals && almanac.festivals.length > 0
+        ? almanac.festivals.map((f: string) => `• ${f}`).join("\n")
+        : "• No major festivals today.";
+      responseText = `📅 *Today's Local Bengali Ponjika* 📅\n\n` +
+        `• *Bengali Date:* ${bDate.day} ${bDate.monthEn} ${bDate.year} (${almanac.bengaliEraEn})\n` +
+        `• *Day:* ${bDate.dayNameEn} (${almanac.dayLordEn})\n` +
+        `• *Tithi:* ${almanac.tithiEn} (${almanac.pakshaEn})\n` +
+        `• *Nakshatra:* ${almanac.nakshatraEn}\n` +
+        `• *Yoga:* ${almanac.yogaEn} | *Karana:* ${almanac.karanaEn}\n` +
+        `• *Sunrise:* ${almanac.sunrise} | *Sunset:* ${almanac.sunset}\n` +
+        `• *Moonrise:* ${almanac.moonrise} | *Moonset:* ${almanac.moonset}\n` +
+        `• *Ritu (Season):* ${almanac.rituEn}\n\n` +
+        `🌟 *Auspicious Timings:*\n` +
+        `• *Brahma Muhurta:* ${almanac.brahmaMuhurta}\n` +
+        `• *Abhijit Muhurta:* ${almanac.abhijitMuhurta}\n` +
+        `• *Amrita Yoga:* ${almanac.amritaYoga}\n` +
+        `• *Mahendra Yoga:* ${almanac.mahendraYoga}\n\n` +
+        `⚠️ *Inauspicious Timings:*\n` +
+        `• *Rahu Kaal:* ${almanac.rahuKaal}\n` +
+        `• *Barabela:* ${almanac.barabela}\n` +
+        `• *Kalabela:* ${almanac.kalabela}\n` +
+        `• *Kalratri:* ${almanac.kalratri}\n\n` +
+        `🌾 *Festivals & Highlights:*\n${festText}`;
+    }
+    await sendMessage(responseText, { parse_mode: "Markdown" });
+    return;
+  }
+
   if (textLower === "/credits" || textLower === "check credits") {
     await sendMessage(
       `💳 *AI Assistant Credits Check* 💳\n\n` +
@@ -673,7 +873,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       
     await sendMessage(
       `🌸 *Barnali AI Bot Help Manual* 🌸\n\n` +
-      `I am Barnali, your conversational AI companion for **Barnia Digital Hub** (\`barnia.in\`).\n\n` +
+      `I am Barnali, your conversational AI companion for **Vamshavali / Ponjika** (\`barnia.in\`).\n\n` +
       `🚦 *Current Connection Status:*\n` +
       `• *User Profile:* ${linkStatus}\n` +
       `• *Your Balance:* \`${currentCredits}\` credits\n\n` +
@@ -682,15 +882,16 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       `• \`/link <email>\` - Connect tree via registered email\n` +
       `• \`/unlink\` - Disconnect tree from Telegram\n` +
       `• \`/lang <bn/hi/en>\` - Set language (Bengali, Hindi, English)\n` +
+      `• \`/ponjika\` - Check daily local Bengali Ponjika\n` +
       `• \`/credits\` - Check remaining AI credits\n` +
       `• \`/help\` - Show helpful commands manual\n\n` +
       `✨ *Quick Chat Menu Buttons:*\n` +
       `Use the simple buttons at the bottom of your screen to trigger immediate actions:\n` +
       `• *🌳 My Family Tree* - Display your registered Vamshavali page link\n` +
-      `• *🌽 Barnia Bazar* - Check market items, local prices & shops\n` +
-      `• *📅 Local Ponjika* - Check rural Hindu calendars & auspicious timings\n` +
-      `• *💳 Check Credits* - Show remaining assistant credits\n\n` +
-      `Type any general queries about Barnia village, directories, or your lineage, and I'll assist!`,
+      `• *📅 Local Ponjika* - Check Bengal's local Ponjika and timings\n` +
+      `• *💳 Check Credits* - Show remaining assistant credits\n` +
+      `• *❓ Help* - View commands details & manual\n\n` +
+      `Type any queries about your family tree or lineage, or ask me about the local Ponjika, and I'll assist!`,
       { parse_mode: "Markdown" }
     );
     return;
@@ -771,11 +972,55 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   const isStartCmd = startParts[0].toLowerCase() === "/start";
 
   if (isStartCmd) {
-    const startParam = startParts.length > 1 ? startParts[1].trim() : null;
+    let startParam = startParts.length > 1 ? startParts[1].trim() : null;
 
     if (startParam) {
+      // Decode URL-safe Base64 if applicable (e.g. for encoded emails)
+      try {
+        if (/^[a-zA-Z0-9_-]+={0,2}$/.test(startParam)) {
+          let base64 = startParam.replace(/-/g, '+').replace(/_/g, '/');
+          while (base64.length % 4) {
+            base64 += '=';
+          }
+          const decoded = Buffer.from(base64, 'base64').toString('utf8');
+          if (decoded.includes('@') && decoded.includes('.')) {
+            console.log(`[Telegram startParam] Decoded base64 "${startParam}" to "${decoded}"`);
+            startParam = decoded;
+          }
+        }
+      } catch (b64Err) {
+        console.error("[Telegram] Error decoding base64 startParam:", b64Err);
+      }
+
       let foundProfile: any = null;
-      if (adminDb) {
+      let foundSqliteTree: any = null;
+
+      // 1. Check SQLite first
+      try {
+        const emailVal = startParam.toLowerCase().trim();
+        const account = sqliteDb.prepare("SELECT * FROM accounts WHERE email = ?").get(emailVal) as any;
+        if (account) {
+          const membership = sqliteDb.prepare("SELECT * FROM account_tree_memberships WHERE account_id = ?").get(account.id) as any;
+          if (membership) {
+            const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(membership.tree_id) as any;
+            if (tree) {
+              foundSqliteTree = tree;
+              console.log(`[Telegram startParam] Found SQLite tree ${tree.id} for account email ${emailVal}`);
+            }
+          }
+        } else {
+          const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(startParam.trim()) as any;
+          if (tree) {
+            foundSqliteTree = tree;
+            console.log(`[Telegram startParam] Found SQLite tree ${tree.id} directly by ID`);
+          }
+        }
+      } catch (sqliteErr) {
+        console.error("[Telegram] Error searching SQLite tree during start auto-link:", sqliteErr);
+      }
+
+      // 2. Check Firestore next
+      if (!foundSqliteTree && adminDb) {
         try {
           const queryEmail = await adminDb.collection("vamshavali_profiles").where("email", "==", startParam.toLowerCase().trim()).limit(1).get();
           if (!queryEmail.empty) {
@@ -791,6 +1036,45 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         }
       }
 
+      // Execute linkage if found in SQLite:
+      if (foundSqliteTree) {
+        if (adminDb) {
+          await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+            linkedProfileId: foundSqliteTree.id,
+            linkedEmail: startParam.match(emailRegex) ? startParam.toLowerCase().trim() : null,
+            linkedShareId: foundSqliteTree.id,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+
+        linkedProfileId = foundSqliteTree.id;
+        linkedEmail = startParam.match(emailRegex) ? startParam.toLowerCase().trim() : null;
+        linkedShareId = foundSqliteTree.id;
+        linkedProfile = foundSqliteTree;
+        respectfulName = formatRespectfulName(telegramName, foundSqliteTree, userLang);
+
+        telegramLinkCache.set(chatId, {
+          linkedProfileId,
+          linkedEmail,
+          linkedShareId,
+          currentCredits,
+          linkedProfile,
+          telegramName,
+          timestamp: Date.now()
+        });
+
+        const treeLink = `https://barnia.in/vamshavali/v/${foundSqliteTree.id}`;
+        await sendMessage(
+          `🌳 *Vamshavali Connected Automatically!* 🌳\n\n` +
+          `I have automatically linked your Telegram chat to your family tree: *"${foundSqliteTree.name}"* 🎉.\n\n` +
+          `🔗 *Your Live Family Tree Link:* [View My Tree](${treeLink})\n\n` +
+          `From now on, I will remember this tree! Whenever you send a message or a picture, we'll consult and update this tree.`,
+          { parse_mode: "Markdown" }
+        );
+        return;
+      }
+
+      // Execute linkage if found in Firestore:
       if (foundProfile) {
         if (adminDb) {
           await adminDb.collection("telegram_users").doc(chatId.toString()).set({
@@ -822,7 +1106,6 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         return;
       } else {
         // Auto-bootstrap if the parameter looks like email
-        const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
         if (startParam.match(emailRegex)) {
           try {
             const { bootstrapProfile } = await import("./vamshavali-logic");
@@ -1016,7 +1299,6 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   }
 
   // 2. Handling Direct & Conversational Family Tree Linking
-  const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
   const emailMatch = text.match(emailRegex);
   const isLinkCmd = textLower.startsWith("/link");
   const isLinkMention = (textLower.includes("link") && (emailMatch || textLower.match(/\b([A-Z0-9]{8})\b/i))) || (!linkedProfileId && emailMatch);
@@ -1446,18 +1728,17 @@ STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:
 5. If they are NOT linked, and ask "Where is my family tree?" or "You don't have my family tree link?", you MUST politely explain that you cannot search by name due to overlapping names/surnames in the village. Instruct them to connect their chat securely to their specific family tree by typing "/link <registered_email>" or "/link <Vamshavali_Share_ID>" (e.g., "/link contact@barnia.in" or "/link AB12CD34").
 
 STRICT SCOPE LIMITS:
-- You MUST ONLY answer questions about the barnia.in application, its features, and Barnia village. 
-- Features of barnia.in include:
-  - **Vamshavali (Family Tree)**: Interactive digital family lineage mapping.
-  - **AI Router Hub**: SaaS API and AI Tiers playground (optimizing cost details and model routing).
-  - **Barnia Bazar**: Local market retailer and vendor directory.
-  - **Barnia Influencers**: Local digital content creators registry.
-  - **Ponjika Calendar**: Pure Hindu astrological panchanga & rural lunar calendar.
-  - **Sanatani Fact Check**: Dedicated Vedic references validation engine.
-  - **Village Transport**: Transits and booking directories for Barnia.
-- If the user's inquiry is unrelated to barnia.in, Barnia village, or their linked lineage, you MUST politely decline and ground yourself. Example: "I am Barnali, dedicated specifically to helping you on barnia.in. I can only assist with platform modules, community directories, or linked genealogy trees."
+- You are strictly optimized for and MUST ONLY answer questions and assist with Vamshavali (Family Tree mapping & updates) and Local Ponjika (Hindu almanac / calendar queries).
+- You are STRICTLY FORBIDDEN from answering questions or performing queries on other platform features like Barnia Bazar, village transport, local directories, influencers, or AI Router Hub. 
+- If the user asks about Barnia Bazar, village transit, or any other features, politely direct them to visit the main barnia.in website instead, saying that you are now dedicated exclusively to assisting with their Family Tree (Vamshavali) and Ponjika.
  
 ${treePromptSection}
+
+LOCAL BENGALI PONJIKA REFERENCE MATERIAL:
+${compileAllPonjikaData()}
+
+LOCAL VAMSHAVALI (FAMILY TREE) PRODUCT & PAGE REFERENCE MATERIAL:
+${compileVamshavaliDetails()}
 
 - If the request is NOT a family tree modification (e.g., just general help, asking about Bazar, asking about auspicious dates, or querying details from their tree), proceed by returning standard human-readable text directly (do NOT wrap inside JSON structure).
 - Conversational linking triggers: If the user says "link me to <email_or_share_id>", or you ask them to and they provide an email or Share ID/Code explicitly, you can respond with this JSON to link them:
