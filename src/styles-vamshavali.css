@@ -88,7 +88,7 @@
 }
 
 .auth-card {
-  width: min(1120px, 100%);
+  width: min(1240px, 100%);
   min-height: 720px;
   display: grid;
   grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1fr);
@@ -828,7 +828,7 @@
   stroke-dasharray: 7 6;
 }
 
-.tree-node {
+.vamshavali-theme .tree-node {
   position: absolute;
   width: 198px;
   min-height: 124px;
@@ -839,6 +839,8 @@
     "avatar status"
     "badges badges";
   align-content: start;
+  align-items: start;
+  justify-content: stretch;
   gap: 6px 10px;
   text-align: left;
   border: 2px solid #8da19b;
@@ -848,29 +850,29 @@
   padding: 12px;
 }
 
-.tree-node.male {
+.vamshavali-theme .tree-node.male {
   border-left-color: #2d75a8;
   border-left-width: 7px;
 }
 
-.tree-node.female {
+.vamshavali-theme .tree-node.female {
   border-left-color: #b94f78;
   border-left-width: 7px;
 }
 
-.tree-node.other,
-.tree-node.unknown {
+.vamshavali-theme .tree-node.other,
+.vamshavali-theme .tree-node.unknown {
   border-left-color: #7a8798;
   border-left-width: 7px;
 }
 
-.tree-node.deceased {
+.vamshavali-theme .tree-node.deceased {
   background: #eef0ec;
   color: #4d5551;
 }
 
-.tree-node.selected,
-.tree-node:hover {
+.vamshavali-theme .tree-node.selected,
+.vamshavali-theme .tree-node:hover {
   border-color: #17221f;
 }
 

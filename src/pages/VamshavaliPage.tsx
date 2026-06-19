@@ -72,6 +72,7 @@ type LineageTree = {
   notes: string | null;
   familyNumber: string | null;
   kuldeviPhoto: string | null;
+  kuladevataPhoto: string | null;
   updatedAt?: string;
 };
 
@@ -244,6 +245,9 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara": "Pravara",
     "Kuladevi": "Kuladevi",
     "Kuladevata": "Kuladevata",
+    "Deity Blessings": "Deity Blessings",
+    "Edit Deity info": "Edit Deity info",
+    "Not set": "Not set",
     "Kulapurohit": "Kulapurohit",
     "Gramadevata": "Gramadevata",
     "Native village": "Native village",
@@ -283,10 +287,16 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Traditions and identity": "Traditions and identity",
     "Save details": "Save details",
     "Kuldevi/Kuladevata Deity Image": "Kuldevi/Kuladevata Deity Image",
+    "Kuladevi Deity Image": "Kuladevi Image",
+    "Kuladevata Deity Image": "Kuladevata Image",
     "Lineage name": "Lineage name",
     "Account holder": "Account holder",
     "Kuldevi/Kuladevata Photo URL": "Kuldevi/Kuladevata Photo URL",
+    "Kuladevi Photo URL": "Kuladevi Photo URL",
+    "Kuladevata Photo URL": "Kuladevata Photo URL",
     "Upload Kuldevi/Kuladevata Image": "Upload Kuldevi/Kuladevata Image",
+    "Upload Kuldevi Image": "Upload Kuldevi Image",
+    "Upload Kuladevata Image": "Upload Kuladevata Image",
     "Manual builder": "Manual builder",
     "Cancel": "Cancel",
     "Save person": "Save person",
@@ -522,6 +532,9 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara": "প্রবর",
     "Kuladevi": "কুলদেবী",
     "Kuladevata": "কুলদেবতা",
+    "Deity Blessings": "দেবতার আশীর্বাদ",
+    "Edit Deity info": "দেবতার তথ্য সম্পাদনা",
+    "Not set": "নির্ধারিত নেই",
     "Kulapurohit": "কুলপুরোহিত",
     "Gramadevata": "গ্রামদেবতা",
     "Native village": "মূল গ্রাম",
@@ -561,10 +574,16 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Traditions and identity": "ঐতিহ্য ও পরিচয়",
     "Save details": "বিবরণ সংরক্ষণ করুন",
     "Kuldevi/Kuladevata Deity Image": "কুলদেবী/কুলদেবতার ছবি",
+    "Kuladevi Deity Image": "কুলদেবী ছবি",
+    "Kuladevata Deity Image": "কুলদেবতা ছবি",
     "Lineage name": "বংশাবলীর নাম",
     "Account holder": "অ্যাকাউন্ট ধারক",
     "Kuldevi/Kuladevata Photo URL": "কুলদেবী/কুলদেবতার ছবির URL",
+    "Kuladevi Photo URL": "কুলদেবী ছবির URL",
+    "Kuladevata Photo URL": "কুলদেবতা ছবির URL",
     "Upload Kuldevi/Kuladevata Image": "কুলদেবী/কুলদেবতার ছবি আপলোড করুন",
+    "Upload Kuldevi Image": "কুলদেবী ছবি আপলোড করুন",
+    "Upload Kuladevata Image": "কুলদেবতা ছবি আপলোড করুন",
     "Manual builder": "ম্যানুয়াল বিল্ডার",
     "Cancel": "বাতিল",
     "Save person": "সদস্য সংরক্ষণ করুন",
@@ -800,6 +819,9 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Pravara": "प्रवर",
     "Kuladevi": "कुलदेवी",
     "Kuladevata": "कुलदेवता",
+    "Deity Blessings": "देवता का आशीर्वाद",
+    "Edit Deity info": "देवता की जानकारी बदलें",
+    "Not set": "निर्धारित नहीं",
     "Kulapurohit": "कुलपुरोहित",
     "Gramadevata": "ग्रामदेवता",
     "Native village": "मूल गाँव",
@@ -839,10 +861,16 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Traditions and identity": "परंपराएं और पहचान",
     "Save details": "विवरण सहेजें",
     "Kuldevi/Kuladevata Deity Image": "कुलदेवी/कुलदेवता देवता की छवि",
+    "Kuladevi Deity Image": "कुलदेवी छवि",
+    "Kuladevata Deity Image": "कुलदेवता छवि",
     "Lineage name": "वंशावली का नाम",
     "Account holder": "खाता धारक",
     "Kuldevi/Kuladevata Photo URL": "कुलदेवी/कुलदेवता फोटो URL",
+    "Kuladevi Photo URL": "कुलदेवी फोटो URL",
+    "Kuladevata Photo URL": "कुलदेवता फोटो URL",
     "Upload Kuldevi/Kuladevata Image": "कुलदेवी/कुलदेवता चित्र अपलोड करें",
+    "Upload Kuldevi Image": "कुलदेवी चित्र अपलोड करें",
+    "Upload Kuladevata Image": "कुलदेवता चित्र अपलोड करें",
     "Manual builder": "मैनुअल बिल्डर",
     "Cancel": "रद्द करें",
     "Save person": "सदस्य सहेजें",
@@ -1389,7 +1417,7 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
         borderRadius: "16px",
         border: "1px solid #cbd5e1",
         boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-        maxWidth: "1120px",
+        maxWidth: "1240px",
         margin: "0 auto",
         width: "calc(100% - 40px)"
       }}>
@@ -2353,6 +2381,14 @@ function FamilyTreeCanvas({
                     </span>
                   )}
                 </div>
+                {tree.kuladevataPhoto && (
+                  <img 
+                    src={tree.kuladevataPhoto} 
+                    alt="Kuladevata/Deity" 
+                    style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: "2.5px solid #0b5a43", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }} 
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
               
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px", marginTop: "6px", fontSize: "12px", color: "#425a54", fontWeight: 650 }}>
@@ -2419,7 +2455,8 @@ function PersonEditor({
   onCancel,
   busy,
   title,
-  currentPersonId
+  currentPersonId,
+  session
 }: {
   people: Person[];
   spouses: SpouseLink[];
@@ -2430,6 +2467,7 @@ function PersonEditor({
   busy: boolean;
   title: string;
   currentPersonId?: string | null;
+  session: Session | null;
 }) {
   const t = useVamshavaliTranslate();
   const eligibleParents = people.filter((person) => person.id !== currentPersonId && person.gender === "male");
@@ -2595,7 +2633,8 @@ function PersonEditor({
                     const response = await fetch("/api/lineage/upload", {
                       method: "POST",
                       headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        ...(session ? { Authorization: `Bearer ${session.token}` } : {})
                       },
                       body: JSON.stringify({ image: base64 })
                     });
@@ -2634,12 +2673,30 @@ function PersonEditor({
           <span>{t("Bio / Notes")}</span>
           <textarea rows={3} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
         </label>
+        <div style={{ display: "flex", gap: "10px", marginTop: "15px", gridColumn: "1 / -1" }}>
+          <button 
+            type="button" 
+            className="primary-action" 
+            disabled={busy || !form.displayName.trim()} 
+            onClick={onSubmit}
+            style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+          >
+            <Save size={16} />
+            {t("Save person")}
+          </button>
+          <button 
+            type="button" 
+            onClick={onCancel}
+          >
+            {t("Cancel")}
+          </button>
+        </div>
       </div>
     </section>
   );
 }
 
-function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; request: ReturnType<typeof useLineage>["request"]; busy: boolean; canEdit: boolean }) {
+function TraditionPanel({ tree, request, busy, canEdit, session }: { tree: LineageTree; request: ReturnType<typeof useLineage>["request"]; busy: boolean; canEdit: boolean; session: Session | null }) {
   const t = useVamshavaliTranslate();
   const [draft, setDraft] = React.useState(tree);
   React.useEffect(() => setDraft(tree), [tree.id, tree.updatedAt]);
@@ -2673,9 +2730,15 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
           </div>
         ))}
         {draft.kuldeviPhoto && (
-          <div className="tradition-tile" style={{ gridColumn: "span 2", display: "flex", gap: "12px", alignItems: "center" }}>
-            <span>{t("Kuldevi/Kuladevata Deity Image")}</span>
-            <img src={draft.kuldeviPhoto} alt={t("Kuldevi/Kuladevata Deity")} style={{ width: "64px", height: "64px", borderRadius: "8px", objectFit: "cover", border: "2px solid #0b5a43" }} referrerPolicy="no-referrer" />
+          <div className="tradition-tile" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <span>{t("Kuladevi Deity Image")}</span>
+            <img src={draft.kuldeviPhoto} alt={t("Kuladevi")} style={{ width: "64px", height: "64px", borderRadius: "8px", objectFit: "cover", border: "2px solid #0b5a43" }} referrerPolicy="no-referrer" />
+          </div>
+        )}
+        {draft.kuladevataPhoto && (
+          <div className="tradition-tile" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <span>{t("Kuladevata Deity Image")}</span>
+            <img src={draft.kuladevataPhoto} alt={t("Kuladevata")} style={{ width: "64px", height: "64px", borderRadius: "8px", objectFit: "cover", border: "2px solid #0b5a43" }} referrerPolicy="no-referrer" />
           </div>
         )}
       </div>
@@ -2691,10 +2754,11 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
         <TextInput label={t("Native village")} value={draft.nativeVillage ?? ""} onChange={(value) => update("nativeVillage", value)} />
         <TextInput label={t("Family surname")} value={draft.familySurname ?? ""} onChange={(value) => update("familySurname", value)} />
         <TextInput label={t("Family number")} value={draft.familyNumber ?? ""} onChange={(value) => update("familyNumber", value)} />
-        <TextInput label={t("Kuldevi/Kuladevata Photo URL")} value={draft.kuldeviPhoto ?? ""} onChange={(value) => update("kuldeviPhoto", value)} />
+        <TextInput label={t("Kuladevi Photo URL")} value={draft.kuldeviPhoto ?? ""} onChange={(value) => update("kuldeviPhoto", value)} />
+        <TextInput label={t("Kuladevata Photo URL")} value={draft.kuladevataPhoto ?? ""} onChange={(value) => update("kuladevataPhoto", value)} />
         
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", gridColumn: "span 2", background: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
-          <label style={{ fontSize: "11px", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Upload Kuldevi/Kuladevata Image")}</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
+          <label style={{ fontSize: "11px", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Upload Kuladevi Image")}</label>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px" }}>
             <input 
               type="file" 
@@ -2711,7 +2775,8 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
                     const response = await fetch("/api/lineage/upload", {
                       method: "POST",
                       headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        ...(session ? { Authorization: `Bearer ${session.token}` } : {})
                       },
                       body: JSON.stringify({ image: base64 })
                     });
@@ -2742,6 +2807,65 @@ function TraditionPanel({ tree, request, busy, canEdit }: { tree: LineageTree; r
                 <button 
                   type="button" 
                   onClick={() => update("kuldeviPhoto", "")}
+                  style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  {t("Remove photo")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
+          <label style={{ fontSize: "11px", fontWeight: "700", color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Upload Kuladevata Image")}</label>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px" }}>
+            <input 
+              type="file" 
+              accept="image/*" 
+              id="kuladevata-image-upload"
+              style={{ display: "none" }} 
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const base64 = reader.result;
+                  try {
+                    const response = await fetch("/api/lineage/upload", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(session ? { Authorization: `Bearer ${session.token}` } : {})
+                      },
+                      body: JSON.stringify({ image: base64 })
+                    });
+                    if (!response.ok) {
+                      const errJson = await response.json().catch(() => ({}));
+                      throw new Error(errJson.error || "Upload failed");
+                    }
+                    const json = await response.json();
+                    update("kuladevataPhoto", json.url);
+                  } catch (err: any) {
+                    alert(t("Image upload failed: ") + err.message);
+                  }
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+            <button 
+              type="button"
+              className="secondary-action" 
+              onClick={() => document.getElementById("kuladevata-image-upload")?.click()}
+              style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "12px", background: "#ffffff", border: "1.5px solid #64748b", color: "#1e293b", fontWeight: "600", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px" }}
+            >
+              📷 {t("Choose Image File")}
+            </button>
+            {draft.kuladevataPhoto && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <img src={draft.kuladevataPhoto} alt={t("Upload Preview")} style={{ width: "48px", height: "48px", borderRadius: "6px", objectFit: "cover", border: "1px solid #94a3b8" }} referrerPolicy="no-referrer" />
+                <button 
+                  type="button" 
+                  onClick={() => update("kuladevataPhoto", "")}
                   style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}
                 >
                   {t("Remove photo")}
@@ -2936,6 +3060,13 @@ function Overview({
             {tree.kuladevi || t("Not recorded")}
           </strong>
         </div>
+        <div>
+          <span>{t("Kuladevata")}</span>
+          <strong style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+            {tree.kuladevataPhoto && <img src={tree.kuladevataPhoto} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />}
+            {tree.kuladevata || t("Not recorded")}
+          </strong>
+        </div>
         <div><span>{t("Family No.")}</span><strong>{tree.familyNumber || t("Not recorded")}</strong></div>
         <div><span>{t("Native village")}</span><strong>{tree.nativeVillage || t("Not recorded")}</strong></div>
       </div>
@@ -3084,6 +3215,18 @@ function AccountSettings({
   const canManageAccess = state.activeRole === "owner" || state.activeRole === "admin";
   const activeTreeId = state.activeTreeId;
 
+  const getAppOrigin = () => {
+    const envUrl = process.env.APP_URL;
+    if (envUrl && typeof envUrl === "string" && envUrl.trim() && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+      return envUrl.trim().replace(/\/$/, "");
+    }
+    const loc = window.location.origin;
+    if (loc && (loc.includes("europe-west2.run.app") || loc.includes("google.com") || loc.includes("aistudio"))) {
+      return "https://barnia.in";
+    }
+    return loc;
+  };
+
   const { language, setLanguage } = useLanguage();
   const [selLang, setSelLang] = React.useState<"en" | "bn" | "hi">(session.account.language as any || "en");
   const [savingLang, setSavingLang] = React.useState(false);
@@ -3201,11 +3344,11 @@ function AccountSettings({
           </div>
         </header>
         <div className="account-summary">
-          <div><span>{t("Name")}</span><strong>{session.account.name}</strong></div>
-          <div><span>{t("Email")}</span><strong>{session.account.email}</strong></div>
-          <div><span>{t("Password")}</span><strong>{session.account.hasPassword ? t("Enabled") : t("Access code only")}</strong></div>
-          <div><span>{t("Role on active tree")}</span><strong>{t(state.activeRole ?? "None")}</strong></div>
-          <div><span>{t("Family trees")}</span><strong>{state.trees.length} {t("of")} {session.maxTreesPerAccount}</strong></div>
+          <div><span>{t("Name")}</span><strong>${session.account.name}</strong></div>
+          <div><span>{t("Email")}</span><strong>${session.account.email}</strong></div>
+          <div><span>{t("Password")}</span><strong>${session.account.hasPassword ? t("Enabled") : t("Access code only")}</strong></div>
+          <div><span>{t("Role on active tree")}</span><strong>${t(state.activeRole ?? "None")}</strong></div>
+          <div><span>{t("Family trees")}</span><strong>${state.trees.length} ${t("of")} ${session.maxTreesPerAccount}</strong></div>
         </div>
       </section>
 
@@ -3222,7 +3365,7 @@ function AccountSettings({
             <span>{t("Family tree share link / Profile ID link")}</span>
             <input 
               readOnly 
-              value={`${window.location.origin}/vamshavali/v/${activeTreeId}`} 
+              value={`${getAppOrigin()}/vamshavali/v/${activeTreeId}`} 
               onFocus={(event) => event.currentTarget.select()} 
             />
           </label>
@@ -3230,7 +3373,7 @@ function AccountSettings({
             className="primary-action" 
             style={{ height: "40px" }}
             onClick={() => {
-              const url = `${window.location.origin}/vamshavali/v/${activeTreeId}`;
+              const url = `${getAppOrigin()}/vamshavali/v/${activeTreeId}`;
               navigator.clipboard.writeText(url);
               setMessage(t("Family tree link copied to clipboard."));
             }}
@@ -3440,6 +3583,29 @@ function AppShell({
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [isPersonEditorOpen, setIsPersonEditorOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  const [isDeityModalOpen, setIsDeityModalOpen] = React.useState(false);
+  const [deityFormDraft, setDeityFormDraft] = React.useState({
+    kuladevi: "",
+    kuladevata: "",
+    kuldeviPhoto: "",
+    kuladevataPhoto: ""
+  });
+  const [isDeityUploading, setIsDeityUploading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (lineage.state?.activeTreeId && lineage.state.trees) {
+      const activeTree = lineage.state.trees.find((item) => item.id === lineage.state!.activeTreeId) ?? lineage.state.trees[0];
+      if (activeTree) {
+        setDeityFormDraft({
+          kuladevi: activeTree.kuladevi ?? "",
+          kuladevata: activeTree.kuladevata ?? "",
+          kuldeviPhoto: activeTree.kuldeviPhoto ?? "",
+          kuladevataPhoto: activeTree.kuladevataPhoto ?? ""
+        });
+      }
+    }
+  }, [lineage.state?.activeTreeId, lineage.state?.trees, isDeityModalOpen]);
 
   function handleTreeCreated(treeId: string) {
     if (!session) return;
@@ -3741,12 +3907,150 @@ function AppShell({
         {view === "overview" && <Overview tree={tree} people={people} spouses={spouses} onView={setView} onAddPerson={addPerson} canEdit={canEdit} />}
         {view === "tree" && (
           <section className="surface tree-surface">
-            <header className="surface-head">
-              <div>
+            <header className="surface-head" style={{ flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
+              <div style={{ flex: "1 1 200px" }}>
                 <p className="eyebrow">{vt("Bird's-eye lineage")}</p>
                 <h2>{vt("Family tree")}</h2>
               </div>
-              <div className="legend">
+
+              {/* Kuldevi / Kuldevata Image & Name Widget */}
+              <div 
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                  background: "#fcfaf2",
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #eae2cb",
+                  boxShadow: "0 2px 10px rgba(11, 90, 67, 0.05)",
+                  fontFamily: "inherit",
+                  flex: "1 1 auto",
+                  maxWidth: "520px",
+                  transition: "all 0.25s ease-in-out"
+                }}
+              >
+                {/* Kuldevi Photo on Left */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {tree.kuldeviPhoto ? (
+                    <img 
+                      src={tree.kuldeviPhoto} 
+                      alt="Kuldevi" 
+                      style={{ 
+                        width: "56px", 
+                        height: "56px", 
+                        borderRadius: "8px", 
+                        objectFit: "cover", 
+                        border: "2px solid #bba374",
+                        cursor: canEdit ? "pointer" : "default"
+                      }}
+                      onClick={() => canEdit && setIsDeityModalOpen(true)}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        width: "56px", 
+                        height: "56px", 
+                        borderRadius: "8px", 
+                        background: "#f2ede0", 
+                        border: "1.5px dashed #bba374", 
+                        display: "flex", 
+                        flexDirection: "column",
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        cursor: canEdit ? "pointer" : "default"
+                      }}
+                      onClick={() => canEdit && setIsDeityModalOpen(true)}
+                    >
+                      <span style={{ fontSize: "18px" }}>🛕</span>
+                      <span style={{ fontSize: "7px", color: "#bba374", fontWeight: 700, textTransform: "uppercase" }}>Devi</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Text Info in Middle */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flex: "1" }}>
+                  <span style={{ fontSize: "10px", color: "#bba374", fontWeight: 750, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {vt("Deity Blessings")}
+                  </span>
+                  <div style={{ fontSize: "12px", color: "#18221f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      <strong>{vt("Kuldevi")}:</strong>{" "}
+                      <span style={{ color: tree.kuladevi ? "#0b5a43" : "#8a9490", fontWeight: tree.kuladevi ? 600 : 400 }}>
+                        {tree.kuladevi || vt("Not set")}
+                      </span>
+                    </div>
+                    <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      <strong>{vt("Kuldevata")}:</strong>{" "}
+                      <span style={{ color: tree.kuladevata ? "#0b5a43" : "#8a9490", fontWeight: tree.kuladevata ? 600 : 400 }}>
+                        {tree.kuladevata || vt("Not set")}
+                      </span>
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeityModalOpen(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: "0",
+                        color: "#0b5a43",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        textAlign: "left"
+                      }}
+                    >
+                      {vt("Edit Deity info")}
+                    </button>
+                  )}
+                </div>
+
+                {/* Kuladevata Photo on Right */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {tree.kuladevataPhoto ? (
+                    <img 
+                      src={tree.kuladevataPhoto} 
+                      alt="Kuladevata" 
+                      style={{ 
+                        width: "56px", 
+                        height: "56px", 
+                        borderRadius: "8px", 
+                        objectFit: "cover", 
+                        border: "2px solid #bba374",
+                        cursor: canEdit ? "pointer" : "default"
+                      }}
+                      onClick={() => canEdit && setIsDeityModalOpen(true)}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        width: "56px", 
+                        height: "56px", 
+                        borderRadius: "8px", 
+                        background: "#f2ede0", 
+                        border: "1.5px dashed #bba374", 
+                        display: "flex", 
+                        flexDirection: "column",
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        cursor: canEdit ? "pointer" : "default"
+                      }}
+                      onClick={() => canEdit && setIsDeityModalOpen(true)}
+                    >
+                      <span style={{ fontSize: "18px" }}>🛕</span>
+                      <span style={{ fontSize: "7px", color: "#bba374", fontWeight: 700, textTransform: "uppercase" }}>Devata</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="legend" style={{ margin: 0 }}>
                 <span className="legend-dot male" />{vt("Male")}
                 <span className="legend-dot female" />{vt("Female")}
                 <span className="legend-dot deceased" />{vt("Deceased")}
@@ -3769,6 +4073,7 @@ function AppShell({
                 currentPersonId={editingId}
                 onSubmit={savePerson}
                 onCancel={cancelPersonEdit}
+                session={session}
               />
             )}
             <PeopleDirectory
@@ -3783,7 +4088,7 @@ function AppShell({
             />
           </section>
         )}
-        {view === "traditions" && <TraditionPanel tree={tree} request={lineage.request} busy={Boolean(lineage.busy)} canEdit={canEdit} />}
+        {view === "traditions" && <TraditionPanel tree={tree} request={lineage.request} busy={Boolean(lineage.busy)} canEdit={canEdit} session={session} />}
         {view === "import" && canEdit && (
           <section className="import-layout">
             <CsvImporter treeId={tree.id} request={lineage.request} />
@@ -3812,6 +4117,373 @@ function AppShell({
           onDelete={() => deletePerson(selected)}
           onLinkSpouse={(spouseId) => lineage.request("link-spouse", "/api/lineage/spouses", { method: "POST", body: JSON.stringify({ treeId: tree.id, personAId: selected.id, personBId: spouseId }) })}
         />
+      )}
+
+      {isDeityModalOpen && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(24, 34, 31, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px",
+          }}
+        >
+          <div 
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              width: "100%",
+              maxWidth: "480px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+              border: "1.5px solid #eae5da",
+              overflow: "hidden",
+              fontFamily: "inherit",
+            }}
+          >
+            <header 
+              style={{
+                background: "#0b5a43",
+                padding: "16px 20px",
+                color: "#ffffff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "20px" }}>🛕</span>
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, letterSpacing: "0.5px" }}>
+                  {vt("Edit Deity info")}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsDeityModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "4px",
+                  opacity: 0.8,
+                }}
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <TextInput 
+                label={vt("Kuladevi")} 
+                value={deityFormDraft.kuladevi} 
+                onChange={(val) => setDeityFormDraft(prev => ({ ...prev, kuladevi: val }))} 
+                placeholder={vt("Enter Kuladevi name")}
+              />
+              <TextInput 
+                label={vt("Kuladevata")} 
+                value={deityFormDraft.kuladevata} 
+                onChange={(val) => setDeityFormDraft(prev => ({ ...prev, kuladevata: val }))} 
+                placeholder={vt("Enter Kuldevata name")}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <TextInput 
+                  label={vt("Kuladevi Photo URL")} 
+                  value={deityFormDraft.kuldeviPhoto} 
+                  onChange={(val) => setDeityFormDraft(prev => ({ ...prev, kuldeviPhoto: val }))} 
+                  placeholder="https://example.com/devi.jpg"
+                />
+                <TextInput 
+                  label={vt("Kuladevata Photo URL")} 
+                  value={deityFormDraft.kuladevataPhoto} 
+                  onChange={(val) => setDeityFormDraft(prev => ({ ...prev, kuladevataPhoto: val }))} 
+                  placeholder="https://example.com/devata.jpg"
+                />
+              </div>
+
+              {/* Upload Container Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                {/* Kuldevi Upload Container */}
+                <div 
+                  style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "6px", 
+                    background: "#fdfbf7", 
+                    padding: "16px", 
+                    borderRadius: "10px", 
+                    border: "1.5px dashed #eae5da" 
+                  }}
+                >
+                  <label style={{ fontSize: "11px", fontWeight: "700", color: "#4d5551", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {vt("Upload Kuldevi Image")}
+                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      id="deity-modal-devi-upload"
+                      style={{ display: "none" }} 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async () => {
+                          const base64 = reader.result;
+                          try {
+                            setIsDeityUploading(true);
+                            const response = await fetch("/api/lineage/upload", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(session ? { Authorization: `Bearer ${session.token}` } : {})
+                              },
+                              body: JSON.stringify({ image: base64 })
+                            });
+                            if (!response.ok) {
+                              const errJson = await response.json().catch(() => ({}));
+                              throw new Error(errJson.error || "Upload failed");
+                            }
+                            const json = await response.json();
+                            setDeityFormDraft(prev => ({ ...prev, kuldeviPhoto: json.url }));
+                          } catch (err: any) {
+                            alert(vt("Image upload failed: ") + err.message);
+                          } finally {
+                            setIsDeityUploading(false);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <button 
+                      type="button"
+                      disabled={isDeityUploading}
+                      onClick={() => document.getElementById("deity-modal-devi-upload")?.click()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "#0b5a43",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        justifyContent: "center"
+                      }}
+                    >
+                      <Upload size={14} />
+                      {isDeityUploading ? vt("Uploading...") : vt("Choose file")}
+                    </button>
+                    {deityFormDraft.kuldeviPhoto && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "space-between" }}>
+                        <img 
+                          src={deityFormDraft.kuldeviPhoto} 
+                          alt="Devi preview" 
+                          style={{ width: "38px", height: "38px", borderRadius: "6px", objectFit: "cover", border: "1px solid #d8d3ca" }} 
+                          referrerPolicy="no-referrer"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setDeityFormDraft(prev => ({ ...prev, kuldeviPhoto: "" }))}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f43f5e",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            padding: 0
+                          }}
+                        >
+                          {vt("Remove")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Kuladevata Upload Container */}
+                <div 
+                  style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "6px", 
+                    background: "#fdfbf7", 
+                    padding: "16px", 
+                    borderRadius: "10px", 
+                    border: "1.5px dashed #eae5da" 
+                  }}
+                >
+                  <label style={{ fontSize: "11px", fontWeight: "700", color: "#4d5551", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {vt("Upload Kuladevata Image")}
+                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      id="deity-modal-devata-upload"
+                      style={{ display: "none" }} 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async () => {
+                          const base64 = reader.result;
+                          try {
+                            setIsDeityUploading(true);
+                            const response = await fetch("/api/lineage/upload", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(session ? { Authorization: `Bearer ${session.token}` } : {})
+                              },
+                              body: JSON.stringify({ image: base64 })
+                            });
+                            if (!response.ok) {
+                              const errJson = await response.json().catch(() => ({}));
+                              throw new Error(errJson.error || "Upload failed");
+                            }
+                            const json = await response.json();
+                            setDeityFormDraft(prev => ({ ...prev, kuladevataPhoto: json.url }));
+                          } catch (err: any) {
+                            alert(vt("Image upload failed: ") + err.message);
+                          } finally {
+                            setIsDeityUploading(false);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <button 
+                      type="button"
+                      disabled={isDeityUploading}
+                      onClick={() => document.getElementById("deity-modal-devata-upload")?.click()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "#0b5a43",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        justifyContent: "center"
+                      }}
+                    >
+                      <Upload size={14} />
+                      {isDeityUploading ? vt("Uploading...") : vt("Choose file")}
+                    </button>
+                    {deityFormDraft.kuladevataPhoto && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "space-between" }}>
+                        <img 
+                          src={deityFormDraft.kuladevataPhoto} 
+                          alt="Devata preview" 
+                          style={{ width: "38px", height: "38px", borderRadius: "6px", objectFit: "cover", border: "1px solid #d8d3ca" }} 
+                          referrerPolicy="no-referrer"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setDeityFormDraft(prev => ({ ...prev, kuladevataPhoto: "" }))}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f43f5e",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            padding: 0
+                          }}
+                        >
+                          {vt("Remove")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <footer 
+              style={{
+                background: "#fdfbf7",
+                borderTop: "1px solid #eae5da",
+                padding: "12px 20px",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px"
+              }}
+            >
+              <button 
+                onClick={() => setIsDeityModalOpen(false)}
+                style={{
+                  background: "#ffffff",
+                  border: "1.5px solid #d8d3ca",
+                  color: "#18221f",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                {vt("Cancel")}
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    setIsDeityUploading(true);
+                    await lineage.request("save-family", `/api/lineage/trees/${tree.id}`, {
+                      method: "PATCH",
+                      body: JSON.stringify({
+                        ...tree,
+                        kuladevi: deityFormDraft.kuladevi,
+                        kuladevata: deityFormDraft.kuladevata,
+                        kuldeviPhoto: deityFormDraft.kuldeviPhoto,
+                        kuladevataPhoto: deityFormDraft.kuladevataPhoto
+                      })
+                    });
+                    setIsDeityModalOpen(false);
+                  } catch (err: any) {
+                    alert(vt("Save failed: ") + err.message);
+                  } finally {
+                    setIsDeityUploading(false);
+                  }
+                }}
+                disabled={isDeityUploading}
+                style={{
+                  background: "#0b5a43",
+                  border: "none",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Save size={14} />
+                {vt("Save")}
+              </button>
+            </footer>
+          </div>
+        </div>
       )}
     </main>
   );
@@ -3853,7 +4525,10 @@ function App({ isPublic = false, shareId }: { isPublic?: boolean; shareId?: stri
         clearInviteTokenFromUrl();
         setInviteMessage("Family tree invite accepted.");
       })
-      .catch((reason) => setInviteMessage((reason as Error).message));
+      .catch((reason) => {
+        clearInviteTokenFromUrl();
+        setInviteMessage((reason as Error).message);
+      });
   }, [session?.token, isPublic]);
 
   if (!session && !isPublic) {

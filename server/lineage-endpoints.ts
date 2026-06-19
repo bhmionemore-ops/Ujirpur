@@ -336,8 +336,87 @@ lineageRouter.post(
   asyncRoute(async (req, res) => {
     const auth = (req as AuthenticatedRequest).auth;
     const parsed = inviteCreateSchema.parse(req.body ?? {});
-    const origin = appConfig.appOrigin ?? `${req.protocol}://${req.get("host")}`;
-    res.json(lineageStore.createInvite(auth.account.id, routeId(req.params.id), parsed, origin));
+    
+    // Dynamically and robustly calculate origin to support custom domain names (e.g. barnia.in)
+    let origin = appConfig.appOrigin;
+    if (!origin && process.env.APP_URL) {
+      origin = process.env.APP_URL.trim().replace(/\/$/, "");
+    }
+    if (!origin) {
+      const referer = req.headers.referer || req.headers.origin;
+      if (typeof referer === "string" && referer) {
+        try {
+          const refUrl = new URL(referer);
+          origin = refUrl.origin;
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    if (!origin) {
+      origin = `${req.protocol}://${req.get("host")}`;
+    }
+    // Override sandbox/preview container/cloud run URLs to ensure custom domain (barnia.in) is used
+    if (origin && (origin.includes("europe-west2.run.app") || origin.includes("google.com") || origin.includes("aistudio"))) {
+      origin = "https://barnia.in";
+    }
+
+    const result = lineageStore.createInvite(auth.account.id, routeId(req.params.id), parsed, origin);
+
+    // Fetch the tree's details to include in the email
+    let treeName = "Family Tree";
+    try {
+      const treeRow = db.prepare("SELECT name FROM lineage_trees WHERE id = ?").get(routeId(req.params.id)) as { name: string } | undefined;
+      if (treeRow?.name) {
+        treeName = treeRow.name;
+      }
+    } catch (e) {
+      console.error("[Email Lookup] Could not retrieve lineage tree detail:", e);
+    }
+
+    // Send high-contrast, beautiful email in the background
+    const senderEmail = (process.env.EMAIL_USER || process.env.SMTP_USER || "ujirpur.barnia6@gmail.com").trim();
+    const title = "Family Tree Invitation";
+    const subtitle = `Join ${auth.account.name}'s Family Lineage on Vamshavali`;
+    const contentHtml = `
+      <div style="font-family: inherit; line-height: 1.6; color: #27272a;">
+        <p style="font-size: 16px; margin-bottom: 22px; font-weight: 600; color: #1e293b;">Greetings,</p>
+        <p style="font-size: 15px; margin-bottom: 22px; color: #334155;">
+          You have been formally invited by <strong>${auth.account.name}</strong> (${auth.account.email}) to join and contribute to their family tree, <strong>${treeName}</strong>, on the <strong>Barnia Vamshavali</strong> portal.
+        </p>
+        <p style="font-size: 15px; margin-bottom: 22px; color: #334155;">
+          Your role for this tree will be: <strong style="color: #ea580c;">${parsed.role.toUpperCase()}</strong>.
+        </p>
+        <p style="font-size: 15px; margin-bottom: 30px; color: #334155;">
+          To accept this invitation and view or edit the ${treeName} record, please click the secure button below to sign in or register:
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${result.inviteUrl}" style="background-color: #ea580c; color: #ffffff; padding: 14px 28px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; transition: all 0.15s ease;">Accept Invitation & Join Tree</a>
+        </div>
+        <p style="font-size: 13px; color: #64748b; margin-top: 32px; word-break: break-all;">
+          Or copy and paste this link in your browser:
+          <br>
+          <a href="${result.inviteUrl}" style="color: #ea580c; text-decoration: underline;">${result.inviteUrl}</a>
+        </p>
+        <p style="font-size: 13px; color: #94a3b8; margin: 16px 0 0 0; line-height: 1.5;">This invite is valid for ${appConfig.inviteDays} days and is intended solely for <strong>${parsed.email}</strong>.</p>
+        <div style="border-top: 1px solid rgba(245, 142, 39, 0.15); padding-top: 16px; margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center;">
+          <p>© ${new Date().getFullYear()} Barnia Digital Hub. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    const mailHtml = getGrandEmailHtml(title, subtitle, contentHtml);
+
+    robustSendMail({
+      from: `"Barnia Digital Hub" <${senderEmail}>`,
+      to: parsed.email,
+      subject: `Invitation to join ${treeName} on Barnia Vamshavali`,
+      html: mailHtml
+    }).catch((err) => {
+      console.error(`[Lineage Invite] Background email sending failed for ${parsed.email}:`, err);
+    });
+
+    res.json(result);
   })
 );
 
