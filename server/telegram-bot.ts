@@ -175,6 +175,19 @@ export function inferGenderByName(rawName: string): "male" | "female" {
   return "male";
 }
 
+export function sanitizeUserLang(lang: any): "ben" | "hin" | "eng" {
+  if (!lang) return "eng";
+  const l = String(lang).trim().toLowerCase();
+  if (l === "bn" || l === "ben" || l === "bengali" || l === "ben-in" || l === "beng") {
+    return "ben";
+  }
+  if (l === "hi" || l === "hin" || l === "hindi" || l === "hi-in" || l === "hind") {
+    return "hin";
+  }
+  // Any other language that the telegram bot can't understand -> still reply English only
+  return "eng";
+}
+
 export function formatRespectfulName(rawName: string, linkedProfile: any = null, lang: "ben" | "hin" | "eng" = "eng"): string {
   const clean = (rawName || "").trim();
   if (!clean || clean.toLowerCase() === "friend") {
@@ -672,15 +685,13 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     linkedProfile = cachedUser.linkedProfile || null;
     telegramName = cachedUser.telegramName || telegramName;
     if (cachedUser.userLang) {
-      userLang = cachedUser.userLang;
+      userLang = sanitizeUserLang(cachedUser.userLang);
     }
     if (linkedEmail) {
       try {
         const account = sqliteDb.prepare("SELECT language FROM accounts WHERE email = ?").get(linkedEmail.trim().toLowerCase()) as { language?: string } | undefined;
         if (account?.language) {
-          if (account.language === "bn") userLang = "ben";
-          else if (account.language === "hi") userLang = "hin";
-          else if (account.language === "en") userLang = "eng";
+          userLang = sanitizeUserLang(account.language);
         }
       } catch (sqliteErr) {
         console.warn("[Telegram] Error looking up language from accounts for cached bot user:", sqliteErr);
@@ -701,15 +712,13 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedShareId = udata.linkedShareId || null;
           telegramName = udata.name || telegramName;
           if (udata.language) {
-            userLang = udata.language;
+            userLang = sanitizeUserLang(udata.language);
           }
           if (linkedEmail) {
             try {
               const account = sqliteDb.prepare("SELECT language FROM accounts WHERE email = ?").get(linkedEmail.trim().toLowerCase()) as { language?: string } | undefined;
               if (account?.language) {
-                if (account.language === "bn") userLang = "ben";
-                else if (account.language === "hi") userLang = "hin";
-                else if (account.language === "en") userLang = "eng";
+                userLang = sanitizeUserLang(account.language);
               }
             } catch (sqliteErr) {
               console.warn("[Telegram] Error looking up language from accounts for bot:", sqliteErr);
@@ -768,6 +777,81 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         });
       } catch (err) {
         console.error("[Telegram] State retrieval / bootstrap error:", err);
+      }
+    }
+  }
+
+  // Support profile/linked-account language override (e.g. if the family tree profile language is saved in Bangla, bot should chat with that user in Bangla)
+  if (linkedProfile) {
+    let profileLang: string | null = null;
+    
+    // 1. Direct language field on the profile/tree record
+    if (linkedProfile.language) {
+      profileLang = linkedProfile.language;
+    } else if (linkedProfile.lang) {
+      profileLang = linkedProfile.lang;
+    }
+
+    // 2. Email-based lookup for Firestore profile owner in SQLite accounts
+    if (!profileLang && linkedProfile.email) {
+      try {
+        const account = sqliteDb.prepare("SELECT language FROM accounts WHERE email = ?").get(linkedProfile.email.trim().toLowerCase()) as { language?: string } | undefined;
+        if (account?.language) {
+          profileLang = account.language;
+        }
+      } catch (sqliteErr) {
+        console.warn("[Telegram] Error looking up language from accounts for profile owner email:", sqliteErr);
+      }
+    }
+
+    // 3. SQLite membership-based lookup for tree
+    if (!profileLang && linkedProfileId) {
+      try {
+        const member = sqliteDb.prepare(
+          "SELECT accounts.language FROM accounts " +
+          "INNER JOIN account_tree_memberships ON accounts.id = account_tree_memberships.account_id " +
+          "WHERE account_tree_memberships.tree_id = ? " +
+          "LIMIT 1"
+        ).get(linkedProfileId) as { language?: string } | undefined;
+        if (member?.language) {
+          profileLang = member.language;
+        }
+      } catch (sqliteErr) {
+        console.warn("[Telegram] Error looking up language from membership:", sqliteErr);
+      }
+    }
+
+    if (profileLang) {
+      const resolved = sanitizeUserLang(profileLang);
+      if (resolved && resolved !== userLang) {
+        userLang = resolved;
+        respectfulName = formatRespectfulName(telegramName, linkedProfile, userLang);
+        console.log(`[Telegram] Synchronized/Switched language to ${userLang} based on connected family tree profile language config.`);
+        
+        // Persist back to Firestore/Cache so it stays in sync
+        if (adminDb) {
+          try {
+            await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+              language: userLang,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          } catch (err) {
+            console.error("[Telegram] Error saving synced profile language:", err);
+          }
+        }
+        
+        const latestCache = telegramLinkCache.get(chatId) || {};
+        telegramLinkCache.set(chatId, {
+          ...latestCache,
+          linkedProfileId,
+          linkedEmail,
+          linkedShareId,
+          currentCredits,
+          linkedProfile,
+          telegramName,
+          userLang,
+          timestamp: Date.now()
+        });
       }
     }
   }
@@ -1902,7 +1986,7 @@ ${compileVamshavaliDetails()}
   "summary": "Linking your Telegram profile..."
 }
 
-Format answers beautifully. Speak in Bengali, Hindi, or English based on the user's language: ${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English (English)"}. Keep answers concise.`;
+Format answers beautifully. Speak in Bengali, Hindi, or English based on the user's language: ${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English (English)"}. If the family tree profile, user context, or message is in a different language that you cannot understand or support, you MUST still reply in English only. Keep answers concise.`;
 
     const userParts: any[] = [ { text: `${systemPrompt}\n\nUser request: ${unifiedPrompt}` } ];
     if (photoBuffer && photoMimeType) {
