@@ -7,6 +7,8 @@ import { lineageStore } from "./lineage-core";
 import { GoogleGenAI } from "@google/genai";
 import { randomUUID, randomBytes } from "crypto";
 import { getAlmanacData, getBengaliDate, toBengaliNumber, getMonthlyPonjikaEvents, getAuspiciousMarriageDates, BENGALI_MONTHS, BENGALI_MONTHS_EN } from "../src/utils/bengaliDate";
+import { jsPDF } from "jspdf";
+import FormData from "form-data";
 
 const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
 
@@ -135,6 +137,7 @@ async function registerBotCommands(botToken: string) {
           { command: "start", description: "Start or status check of Barnali AI" },
           { command: "link", description: "Connect family tree: /link <email>" },
           { command: "unlink", description: "Disconnect connected family tree" },
+          { command: "pdf", description: "Download your family tree PDF report" },
           { command: "ponjika", description: "Check Bengal's local Ponjika and timings" },
           { command: "credits", description: "Check remaining AI credits" },
           { command: "help", description: "View commands details and manual" }
@@ -593,7 +596,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   const quickChatMenuMarkup = {
     keyboard: [
       [{ text: "🌳 My Family Tree" }, { text: "📅 Local Ponjika" }],
-      [{ text: "🎤 Record Voice" }, { text: "💳 Check Credits" }, { text: "❓ Help" }]
+      [{ text: "📄 Get Family Tree PDF" }, { text: "🎤 Record Voice" }],
+      [{ text: "💳 Check Credits" }, { text: "❓ Help" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false
@@ -895,9 +899,11 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   // Support quick menu buttons mapping: map quick buttons text to clean actions
   let cleanText = text.trim();
-  if (cleanText.startsWith("🌳 ") || cleanText.startsWith("🌽 ") || cleanText.startsWith("📅 ") || cleanText.startsWith("💳 ") || cleanText.startsWith("❓ ") || cleanText.startsWith("⚙️ ") || cleanText.startsWith("🎤 ") || cleanText.startsWith("🎙️ ")) {
+  if (cleanText.startsWith("🌳 ") || cleanText.startsWith("🌽 ") || cleanText.startsWith("📅 ") || cleanText.startsWith("💳 ") || cleanText.startsWith("❓ ") || cleanText.startsWith("⚙️ ") || cleanText.startsWith("🎤 ") || cleanText.startsWith("🎙️ ") || cleanText.startsWith("📄 ")) {
     const rawNoEmoji = cleanText.substring(2).trim();
-    if (rawNoEmoji.toLowerCase().includes("family tree")) {
+    if (rawNoEmoji.toLowerCase().includes("family tree pdf") || rawNoEmoji.toLowerCase().includes("get family tree pdf")) {
+      cleanText = "get family tree pdf";
+    } else if (rawNoEmoji.toLowerCase().includes("family tree")) {
       cleanText = "view my family tree";
     } else if (rawNoEmoji.toLowerCase().includes("bazar")) {
       cleanText = "tell me about barnia bazar";
@@ -935,6 +941,256 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       );
       return;
     }
+  }
+
+  if (textLower === "get family tree pdf" || textLower === "/pdf" || textLower === "pdf") {
+    if (!linkedProfileId) {
+      if (userLang === "ben") {
+        await sendMessage(
+          `⚠️ *কোনো বংশ তালিকা যুক্ত নেই*\n\n` +
+          `দয়া করে প্রথমে আপনার বংশ তালিকা কানেক্ট করুন। আপনার রেজিস্টার্ড ইমেইল ব্যবহার করে নিচের ফরম্যাটে মেসেজ পাঠান:\n` +
+          `/link <আপনার ইমেইল>`,
+          { parse_mode: "Markdown" }
+        );
+      } else if (userLang === "hin") {
+        await sendMessage(
+          `⚠️ *कोई वंशावली लिंक नहीं है*\n\n` +
+          `कृपया पहले अपनी वंशावली लिंक करें। अपने पंजीकृत ईमेल का उपयोग करके इस प्रकार संदेश भेजें:\n` +
+          `/link <आपका ईमेल>`,
+          { parse_mode: "Markdown" }
+        );
+      } else {
+        await sendMessage(
+          `⚠️ *No Family Tree Connected*\n\n` +
+          `Please connect your family tree first. Use the following format with your registered email:\n` +
+          `/link <your-email>`,
+          { parse_mode: "Markdown" }
+        );
+      }
+      return;
+    }
+
+    await sendMessage(
+      userLang === "ben" 
+        ? "📄 *আপনার বংশাবলীর পিডিএফ তৈরি হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন।* ⏳" 
+        : userLang === "hin" 
+          ? "📄 *आपकी वंशावली का पीडीएफ तैयार किया जा रहा है... कृपया प्रतीक्षा करें।* ⏳" 
+          : "📄 *Generating your Family Tree PDF report... Please wait.* ⏳",
+      { parse_mode: "Markdown" }
+    );
+
+    try {
+      // 1. Fetch data from SQLite
+      const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkedProfileId) as any;
+      if (!tree) {
+        throw new Error("Tree not found");
+      }
+      const people = sqliteDb.prepare("SELECT * FROM lineage_people WHERE tree_id = ?").all(linkedProfileId) as any[];
+      const spouses = sqliteDb.prepare("SELECT * FROM lineage_spouses WHERE tree_id = ?").all(linkedProfileId) as any[];
+
+      // 2. Generate PDF with jsPDF
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      // Style setups: Primary theme color emerald-styled (#0b5a43 / 11, 90, 67)
+      // Header Banner
+      doc.setFillColor(11, 90, 67);
+      doc.rect(15, 15, 180, 20, "F");
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("VAMSHAVALI FAMILY TREE REPORT", 20, 27);
+
+      // Metadata card
+      doc.setFillColor(243, 244, 246);
+      doc.rect(15, 38, 180, 25, "F");
+
+      doc.setTextColor(55, 65, 81);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text(`Tree Name: ${tree.name || "Family Tree"}`, 18, 44);
+      doc.text(`Gotra: ${tree.gotra || "N/A"}`, 18, 49);
+      doc.text(`Family Surname: ${tree.family_surname || "N/A"}`, 18, 54);
+      doc.text(`Gramadevata: ${tree.gramadevata || "N/A"}`, 18, 59);
+
+      doc.text(`Kuladevi: ${tree.kuladevi || "N/A"}`, 110, 44);
+      doc.text(`Kuladevata: ${tree.kuladevata || "N/A"}`, 110, 49);
+      doc.text(`Total Members: ${people.length}`, 110, 54);
+
+      // 3. Lineage Tree Graph Traversal
+      const personMap = new Map<string, any>(people.map(p => [p.id, p]));
+      
+      // Roots mapping: find members who have no father and mother in database
+      const roots = people.filter(p => !p.father_id && !p.mother_id);
+      if (roots.length === 0 && people.length > 0) {
+        roots.push(people[0]);
+      }
+
+      const formatLineageNode = (personId: string, prefix: string, isLast: boolean, visited: Set<string>): string[] => {
+        if (visited.has(personId)) return [];
+        visited.add(personId);
+
+        const person = personMap.get(personId);
+        if (!person) return [];
+
+        let nameStr = `${person.display_name || "Unknown"} (${person.gender === "female" ? "F" : "M"})`;
+        if (person.life_status === "deceased") {
+          nameStr += " [Deceased]";
+        }
+        
+        // Find Spouses
+        const matchedSpouses = spouses.filter(s => s.person_id === personId || s.spouse_id === personId);
+        const spouseStrings = matchedSpouses.map(s => {
+          const spId = s.person_id === personId ? s.spouse_id : s.person_id;
+          const sp = personMap.get(spId);
+          return sp ? sp.display_name : null;
+        }).filter(Boolean);
+
+        if (spouseStrings.length > 0) {
+          nameStr += ` = (${spouseStrings.join(", ")})`;
+        }
+
+        const line = `${prefix}${isLast ? "└── " : "├── "}${nameStr}`;
+        const result: string[] = [line];
+
+        // Children of this person
+        const children = people.filter(p => p.father_id === personId || p.mother_id === personId);
+        const childPrefix = prefix + (isLast ? "    " : "│   ");
+        for (let i = 0; i < children.length; i++) {
+          const isChildLast = i === children.length - 1;
+          result.push(...formatLineageNode(children[i].id, childPrefix, isChildLast, visited));
+        }
+
+        return result;
+      };
+
+      let curY = 75;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("FAMILY TREE LINEAGE CHART", 15, curY);
+      curY += 6;
+
+      doc.setFont("courier", "normal");
+      doc.setFontSize(8);
+      const visited = new Set<string>();
+      const chartLines: string[] = [];
+      for (let i = 0; i < roots.length; i++) {
+        chartLines.push(...formatLineageNode(roots[i].id, "", i === roots.length - 1, visited));
+      }
+
+      for (const line of chartLines) {
+        if (curY > 275) {
+          doc.addPage();
+          curY = 20;
+        }
+        // jsPDF courier standard font handles ASCII tree box drawing characters exceptionally cleanly
+        doc.text(line, 15, curY);
+        curY += 4.5;
+      }
+
+      // Add detailed catalog directories list on next page
+      if (people.length > 0) {
+        doc.addPage();
+        let pageY = 20;
+
+        doc.setFillColor(11, 90, 67);
+        doc.rect(15, pageY, 180, 8, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("FAMILY MEMBERS CATALOG", 18, pageY + 5.5);
+        pageY += 13;
+
+        doc.setTextColor(55, 65, 81);
+        for (const p of people) {
+          if (pageY > 270) {
+            doc.addPage();
+            pageY = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.text(`${p.display_name} (${p.gender === "female" ? "Female" : "Male"})`, 15, pageY);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          let details = `Status: ${p.life_status === "deceased" ? "Deceased" : "Living"}`;
+          if (p.date_of_birth) details += ` | DOB: ${p.date_of_birth}`;
+          if (p.gotra) details += ` | Gotra: ${p.gotra}`;
+          if (p.rashi) details += ` | Rashi: ${p.rashi}`;
+
+          doc.text(details, 15, pageY + 4);
+
+          if (p.notes) {
+            doc.setFont("helvetica", "italic");
+            doc.text(`Notes: ${p.notes.substring(0, 100)}`, 15, pageY + 8);
+            pageY += 13;
+          } else {
+            pageY += 9;
+          }
+        }
+      }
+
+      // 4. Send document to Telegram
+      const arrayBuffer = doc.output("arraybuffer");
+      const pdfBuffer = Buffer.from(arrayBuffer);
+
+      const fData = new FormData();
+      fData.append("chat_id", chatId.toString());
+      fData.append("document", pdfBuffer, {
+        filename: `${tree.name ? tree.name.replace(/\s+/g, "_") : "Vamshavali"}_Tree.pdf`,
+        contentType: "application/pdf"
+      });
+
+      let caption = "";
+      if (userLang === "ben") {
+        caption = `🌳 *এখানে আপনার সম্পূর্ণ বংশাবলীর পিডিএফ ডকুমেন্ট রয়েছে!* 📄\n\n` +
+          `• বংশের নাম: *${tree.name || "বংশাবলী"}*\n` +
+          `• গোত্র: *${tree.gotra || "N/A"}*\n` +
+          `• মোট সদস্য: *${people.length} জন*\n\n` +
+          `প্রয়োজনে আপনি এই ফাইলটি শেয়ার বা প্রিন্ট করতে পারেন।`;
+      } else if (userLang === "hin") {
+        caption = `🌳 *यहाँ आपकी पूरी वंशावली का पीडीएफ दस्तावेज़ है!* 📄\n\n` +
+          `• वंशावली का नाम: *${tree.name || "वंशावली"}*\n` +
+          `• गोत्र: *${tree.gotra || "N/A"}*\n` +
+          `• कुल सदस्य: *${people.length} लोग*\n\n` +
+          `ज़रूरत पड़ने पर आप इस फ़ाइल को साझा या प्रिंट कर सकते हैं।`;
+      } else {
+        caption = `🌳 *Here is your complete Family Tree PDF document!* 📄\n\n` +
+          `• Tree Name: *${tree.name || "Vamshavali"}*\n` +
+          `• Gotra: *${tree.gotra || "N/A"}*\n` +
+          `• Total Members: *${people.length} members*\n\n` +
+          `You can save, share, or print this document at any time.`;
+      }
+      fData.append("caption", caption);
+      fData.append("parse_mode", "Markdown");
+
+      const teleRes = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+        method: "POST",
+        body: fData
+      });
+
+      const resJson = await teleRes.json() as any;
+      if (!resJson.ok) {
+        console.error("[Telegram Bot] sendDocument API error:", resJson);
+        throw new Error(resJson.description || "Telegram API failed to sendDocument");
+      }
+
+    } catch (pdfErr) {
+      console.error("[Telegram Bot] PDF Generation/Delivery failed:", pdfErr);
+      if (userLang === "ben") {
+        await sendMessage("❌ দুঃখিত, পিডিএফ তৈরি করতে একটি ত্রুটি ঘটেছে। অনুগ্রহ করে পরে আবার চেষ্টা করুন।");
+      } else if (userLang === "hin") {
+        await sendMessage("❌ क्षमा करें, पीडीएफ बनाने में कोई त्रुटि हुई। कृपया बाद में पुनः प्रयास करें।");
+      } else {
+        await sendMessage("❌ Sorry, an error occurred while preparing your family tree PDF. Please try again later.");
+      }
+    }
+    return;
   }
 
   if (textLower === "check local ponjika" || textLower === "/ponjika" || textLower === "ponjika") {
@@ -1964,6 +2220,7 @@ STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:
 3. Once a user has securely linked their chat to a family tree via their Telegram ID, that linkage is permanently remembered in our Firestore cloud database so they never have to link it again unless they type /unlink.
 4. If they are already linked (their credentials are provided below), confidently guide them and offer updates.
 5. If they are NOT linked, and ask "Where is my family tree?" or "You don't have my family tree link?", you MUST politely explain that you cannot search by name due to overlapping names/surnames in the village. Instruct them to connect their chat securely to their specific family tree by typing "/link <registered_email>" or "/link <Vamshavali_Share_ID>" (e.g., "/link contact@barnia.in" or "/link AB12CD34").
+6. NO DIRECT PDF/IMAGE EXPORT ATTACHMENTS IN CHAT: Under no circumstance can you or the Telegram bot generate, fetch, download, or attach PDF documents or family tree picture/image files directly in the Telegram chat itself. If a user asks to 'give me my family tree pdf', 'download family tree PDF', 'give me my family tree picture/image/photo', or anything similar, you MUST politely explain that high-resolution vector PDFs and image files cannot be delivered directly over Telegram due to file size, layout precision, and privacy standards. Instead, confidently provide their personalized web link (e.g. https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""}) and guide them to use the **Export & Download Menu** (the 'Download' button in the toolbar) on that web page to instantly download pristine, print-ready PDFs, JPEGs, or PNGs containing their complete up-to-date family tree.
 
 STRICT SCOPE LIMITS:
 - You are strictly optimized for and MUST ONLY answer questions and assist with Vamshavali (Family Tree mapping & updates) and Local Ponjika (Hindu almanac / calendar queries).
