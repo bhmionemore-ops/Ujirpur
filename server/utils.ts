@@ -23,9 +23,21 @@ export function escapeHtml(text: string) {
 export function cleanGeminiJson(text: string): string {
   if (!text) return "{}";
   let cleaned = text.trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+
+  // Try to find markdown code block first
+  const codeBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/i;
+  const match = cleaned.match(codeBlockRegex);
+  if (match) {
+    cleaned = match[1].trim();
+  } else {
+    // Fallback: search for first { and last }
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1).trim();
+    }
   }
+
   return cleaned.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/gs, (match) => {
     return match
       .replace(/\n/g, '\\n')

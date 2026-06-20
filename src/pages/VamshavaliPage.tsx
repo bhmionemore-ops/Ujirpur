@@ -2920,8 +2920,86 @@ function CsvImporter({ treeId, request }: { treeId: string; request: ReturnType<
 
 function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposals: Proposal[]; request: ReturnType<typeof useLineage>["request"] }) {
   const t = useVamshavaliTranslate();
+  const { language } = useLanguage();
   const [sourceType, setSourceType] = React.useState<"telegram_text" | "telegram_voice" | "csv">("telegram_text");
   const [rawText, setRawText] = React.useState("My name is Arjun Deshpande. My father is Mahesh Deshpande. My mother is Kavita Deshpande. My grandfather was Ganesh Deshpande and grandmother was Sushila Deshpande. My wife is Priya Deshpande. Our gotra is Kashyap, Kuladevi is Tulja Bhavani, Gramadevata is Khandoba, my rashi is Vrischika.");
+  
+  const [isListening, setIsListening] = React.useState(false);
+  const recognitionRef = React.useRef<any>(null);
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert(language === "bn" ? "আপনার ব্রাউজার ভয়েস সমর্থন করে না। দয়া করে ক্রোম ব্যবহার করুন।" : language === "hi" ? "आपका ब्राउज़र वॉयस समर्थन नहीं करता है। कृपया क्रोम का उपयोग करें।" : "Speech recognition is not supported in this browser. Please use Chrome.");
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      
+      if (language === "bn") {
+        rec.lang = "bn-IN";
+      } else if (language === "hi") {
+        rec.lang = "hi-IN";
+      } else {
+        rec.lang = "en-US";
+      }
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onerror = (e: any) => {
+        console.error("Speech recognition error:", e);
+        setIsListening(false);
+      };
+
+      rec.onresult = (event: any) => {
+        let finalTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript + " ";
+          }
+        }
+        if (finalTranscript) {
+          setRawText((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${finalTranscript.trim()}` : finalTranscript.trim();
+          });
+        }
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error("Error starting speech recognition:", err);
+      setIsListening(false);
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
   async function createProposal() {
     await request("telegram-proposal", "/api/lineage/telegram", { method: "POST", body: JSON.stringify({ treeId, rawText, sourceType }) });
   }
@@ -2938,6 +3016,50 @@ function TelegramInbox({ treeId, proposals, request }: { treeId: string; proposa
         <button className={sourceType === "telegram_text" ? "active" : ""} onClick={() => setSourceType("telegram_text")}><MessageCircle size={15} />{t("Text")}</button>
         <button className={sourceType === "telegram_voice" ? "active" : ""} onClick={() => setSourceType("telegram_voice")}><Mic size={15} />{t("Voice transcript")}</button>
       </div>
+
+      {/* Voice Recorder control / Mic button */}
+      <div style={{ display: "flex", gap: "10px", alignItems: "center", margin: "12px 0", background: "rgba(244, 244, 245, 0.5)", padding: "10px 14px", borderRadius: "14px", border: "1px solid rgba(228, 228, 231, 0.5)" }}>
+        <button 
+          type="button" 
+          onClick={toggleListening}
+          className={`mic-record-btn ${isListening ? "recording active" : ""}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 16px",
+            borderRadius: "9999px",
+            border: "none",
+            outline: "none",
+            fontWeight: "bold",
+            fontSize: "13px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            background: isListening ? "#ef4444" : "#0d9488",
+            color: "#ffffff",
+            boxShadow: isListening ? "0 0 15px rgba(239, 68, 68, 0.5)" : "0 4px 10px rgba(13, 148, 136, 0.15)",
+          }}
+        >
+          <Mic size={16} className={isListening ? "animate-pulse" : ""} />
+          {isListening 
+            ? (language === "bn" ? "শুনছি... বন্ধ করতে ক্লিক করুন" : language === "hi" ? "सुन रहा हूँ... रोकने के लिए दबाएं" : "Listening... Click to stop") 
+            : (language === "bn" ? "ভয়েস রেকর্ড করুন 🎤" : language === "hi" ? "आवाज रिकॉर्ड करें 🎤" : "Record Voice 🎤")
+          }
+        </button>
+        {isListening ? (
+          <div style={{ display: "flex", gap: "3px", alignItems: "center", marginLeft: "10px" }}>
+            <span style={{ width: "4px", height: "14px", background: "#ef4444", borderRadius: "2px", animation: "pulse 0.8s ease-in-out infinite alternate" }} />
+            <span style={{ width: "4px", height: "22px", background: "#ef4444", borderRadius: "2px", animation: "pulse 0.8s ease-in-out infinite alternate 0.15s" }} />
+            <span style={{ width: "4px", height: "10px", background: "#ef4444", borderRadius: "2px", animation: "pulse 0.8s ease-in-out infinite alternate 0.3s" }} />
+            <span style={{ width: "4px", height: "18px", background: "#ef4444", borderRadius: "2px", animation: "pulse 0.8s ease-in-out infinite alternate 0.45s" }} />
+          </div>
+        ) : (
+          <span style={{ fontSize: "12px", color: "#6b7280" }}>
+            {language === "bn" ? "মাইক্রোফোনের মাধ্যমে আপনার ভয়েস কথা বলে লিখুন" : language === "hi" ? "माइक्रोफोन के माध्यम से अपनी आवाज बोलकर लिखें" : "Speak through your mic to transcribe in real-time"}
+          </span>
+        )}
+      </div>
+
       <textarea className="telegram-box" value={rawText} onChange={(event) => setRawText(event.target.value)} />
       <div className="proposal-list">
         {proposals.map((proposal) => (

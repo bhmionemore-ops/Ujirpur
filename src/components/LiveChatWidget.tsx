@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, User } from 'lucide-react';
+import { MessageCircle, X, Send, User, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -18,6 +18,82 @@ export const LiveChatWidget = () => {
   const [messages, setMessages] = useState<{ text: string; isBot: boolean; id?: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert(language === 'bn' ? 'আপনার ব্রাউজার ভয়েস সমর্থন করে না' : 'Speech recognition is not supported in this browser. Please use Chrome.');
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      
+      if ((language as string) === 'bn') {
+        rec.lang = 'bn-IN';
+      } else if ((language as string) === 'hi' || (language as string) === 'hin') {
+        rec.lang = 'hi-IN';
+      } else {
+        rec.lang = 'en-US';
+      }
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onerror = (e: any) => {
+        console.error("Speech recognition error:", e);
+        setIsListening(false);
+      };
+
+      rec.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript + ' ';
+          }
+        }
+        if (finalTranscript) {
+          setMessage((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${finalTranscript.trim()}` : finalTranscript.trim();
+          });
+        }
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error("Error starting speech recognition:", err);
+      setIsListening(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -174,20 +250,36 @@ export const LiveChatWidget = () => {
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSend} className="p-5 bg-white border-t border-zinc-100 flex gap-3 items-center">
-              <div className="flex-1 relative">
+            <form onSubmit={handleSend} className="p-4 bg-white border-t border-zinc-100 flex gap-2 items-center">
+              <div className="flex-1 relative flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 transition-all overflow-hidden">
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder={t.collab.placeholder}
-                  className="w-full text-sm py-3 px-4 rounded-2xl border border-zinc-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all bg-zinc-50/50"
+                  placeholder={isListening ? (language === 'bn' ? 'শুনছি... বলুন' : 'Listening... Speak') : t.collab.placeholder}
+                  className="w-full text-sm py-3 pl-4 pr-10 outline-none bg-transparent"
+                  disabled={isListening}
                 />
+                
+                {/* Microphone button inside input field */}
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`absolute right-2.5 p-1.5 rounded-xl transition-all cursor-pointer ${
+                    isListening 
+                      ? 'bg-red-500 text-white animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.4)]' 
+                      : 'text-zinc-400 hover:text-brand-500 hover:bg-zinc-100'
+                  }`}
+                  title={isListening ? "Stop listening" : "Record Voice / Transcribe"}
+                >
+                  <Mic size={18} />
+                </button>
               </div>
+              
               <button 
                 type="submit" 
-                disabled={!message.trim()}
-                className="bg-gradient-to-br from-brand-600 to-brand-500 text-white p-3 rounded-2xl hover:shadow-lg hover:shadow-brand-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
+                disabled={!message.trim() || isListening}
+                className="bg-gradient-to-br from-brand-600 to-brand-500 text-white p-3 rounded-2xl hover:shadow-lg hover:shadow-brand-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale flex-shrink-0"
               >
                 <Send size={20} />
               </button>

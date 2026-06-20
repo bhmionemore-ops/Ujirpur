@@ -263,6 +263,88 @@ async function getTelegramFileUrl(fileId: string, botToken: string): Promise<str
   return null;
 }
 
+function normalizePersonData(data: any): any {
+  if (!data || typeof data !== "object") return {};
+  const normalized: any = { ...data };
+  
+  const mappings: Record<string, string> = {
+    display_name: "displayName",
+    life_status: "lifeStatus",
+    marital_status: "maritalStatus",
+    date_of_birth: "dateOfBirth",
+    date_of_death: "dateOfDeath",
+    death_anniversary: "deathAnniversary",
+    photo_url: "photoUrl",
+    photo: "photoUrl",
+    father_id: "fatherId",
+    mother_id: "motherId",
+    birthYear: "dateOfBirth",
+    birth_year: "dateOfBirth"
+  };
+
+  for (const [snakeKey, camelKey] of Object.entries(mappings)) {
+    if (snakeKey in normalized && !(camelKey in normalized)) {
+      normalized[camelKey] = normalized[snakeKey];
+    }
+  }
+
+  if (normalized.dateOfBirth && typeof normalized.dateOfBirth === "number") {
+    normalized.dateOfBirth = normalized.dateOfBirth.toString();
+  }
+  if (normalized.dateOfDeath && typeof normalized.dateOfDeath === "number") {
+    normalized.dateOfDeath = normalized.dateOfDeath.toString();
+  }
+
+  const validGenders = ["male", "female", "other", "unknown"];
+  if (normalized.gender) {
+    normalized.gender = normalized.gender.toLowerCase().trim();
+    if (!validGenders.includes(normalized.gender)) {
+      normalized.gender = "unknown";
+    }
+  }
+
+  const validLifeStatuses = ["living", "deceased", "unknown"];
+  if (normalized.lifeStatus) {
+    normalized.lifeStatus = normalized.lifeStatus.toLowerCase().trim();
+    if (!validLifeStatuses.includes(normalized.lifeStatus)) {
+      normalized.lifeStatus = "unknown";
+    }
+  }
+
+  const validMaritalStatuses = ["unmarried", "married", "widowed", "divorced", "separated", "unknown"];
+  if (normalized.maritalStatus) {
+    normalized.maritalStatus = normalized.maritalStatus.toLowerCase().trim();
+    if (!validMaritalStatuses.includes(normalized.maritalStatus)) {
+      normalized.maritalStatus = "unknown";
+    }
+  }
+
+  return normalized;
+}
+
+function normalizeTreeData(data: any): any {
+  if (!data || typeof data !== "object") return {};
+  const normalized: any = { ...data };
+
+  const mappings: Record<string, string> = {
+    account_holder_name: "accountHolderName",
+    family_surname: "familySurname",
+    native_village: "nativeVillage",
+    kuldevi_photo: "kuldeviPhoto",
+    kuldeviPhoto: "kuldeviPhoto",
+    kuladevata_photo: "kuladevataPhoto",
+    kuladevataPhoto: "kuladevataPhoto"
+  };
+
+  for (const [snakeKey, camelKey] of Object.entries(mappings)) {
+    if (snakeKey in normalized && !(camelKey in normalized)) {
+      normalized[camelKey] = normalized[snakeKey];
+    }
+  }
+
+  return normalized;
+}
+
 async function transcribeVoice(audioBuffer: Buffer, geminiApiKey: string): Promise<string> {
   try {
     const ai = new GoogleGenAI({
@@ -498,7 +580,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   const quickChatMenuMarkup = {
     keyboard: [
       [{ text: "🌳 My Family Tree" }, { text: "📅 Local Ponjika" }],
-      [{ text: "💳 Check Credits" }, { text: "❓ Help" }]
+      [{ text: "🎤 Record Voice" }, { text: "💳 Check Credits" }, { text: "❓ Help" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false
@@ -729,7 +811,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   // Support quick menu buttons mapping: map quick buttons text to clean actions
   let cleanText = text.trim();
-  if (cleanText.startsWith("🌳 ") || cleanText.startsWith("🌽 ") || cleanText.startsWith("📅 ") || cleanText.startsWith("💳 ") || cleanText.startsWith("❓ ") || cleanText.startsWith("⚙️ ")) {
+  if (cleanText.startsWith("🌳 ") || cleanText.startsWith("🌽 ") || cleanText.startsWith("📅 ") || cleanText.startsWith("💳 ") || cleanText.startsWith("❓ ") || cleanText.startsWith("⚙️ ") || cleanText.startsWith("🎤 ") || cleanText.startsWith("🎙️ ")) {
     const rawNoEmoji = cleanText.substring(2).trim();
     if (rawNoEmoji.toLowerCase().includes("family tree")) {
       cleanText = "view my family tree";
@@ -741,6 +823,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       cleanText = "/credits";
     } else if (rawNoEmoji.toLowerCase().includes("help")) {
       cleanText = "/help";
+    } else if (rawNoEmoji.toLowerCase().includes("voice") || rawNoEmoji.toLowerCase().includes("record") || rawNoEmoji.toLowerCase().includes("mic")) {
+      cleanText = "/voiceguide";
     }
   }
 
@@ -889,11 +973,60 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       `Use the simple buttons at the bottom of your screen to trigger immediate actions:\n` +
       `• *🌳 My Family Tree* - Display your registered Vamshavali page link\n` +
       `• *📅 Local Ponjika* - Check Bengal's local Ponjika and timings\n` +
+      `• *🎤 Record Voice* - Get step-by-step guidance on how to record & send voice updates\n` +
       `• *💳 Check Credits* - Show remaining assistant credits\n` +
       `• *❓ Help* - View commands details & manual\n\n` +
       `Type any queries about your family tree or lineage, or ask me about the local Ponjika, and I'll assist!`,
       { parse_mode: "Markdown" }
     );
+    return;
+  }
+
+  // Voice guide helper command handler
+  if (textLower === "/voiceguide" || textLower === "voice guide" || textLower === "record & send voice" || textLower === "record voice guide" || textLower === "record voice") {
+    if (userLang === "ben") {
+      await sendMessage(
+        `🎙️ **বর্ণালী ভয়েস মেসেজ রেকর্ডিং নির্দেশিকা** 🎙️\n\n` +
+        `টেলিগ্রামে ভয়েস মেসেজ পাঠিয়ে আপনার বংশতালিকা আপডেট করা অত্যন্ত সহজ! অনুগ্রহ করে নিচের নির্দেশাবলী অনুসরণ করুন:\n\n` +
+        `১. **মাইক্রোফোন নিষ্ক্রিয় থাকলে চালু করুন:**\n` +
+        `   স্ক্রিনের নিচে ডানদিকের কোণায় যদি আপনি কোনো গোল ক্যামেরা/ভিডিও আইকন দেখতে পান (যেমনটি আপনি স্ক্রিনশটে চিহ্নিত করেছেন), তাহলে সেই **আইকনটির উপর একবার আলতো চাপুন (TAP)**। এটি সঙ্গে সঙ্গে ক্যামেরা মোড থেকে **মাইক্রোফোন (🎤) মোডে** পরিবর্তিত হয়ে যাবে!\n\n` +
+        `২. **ভয়েস রেকর্ড করুন:**\n` +
+        `   এখন নিচে ডানদিকের গোল **মাইক্রোফোন (🎤)** আইকনটি **চেপে ধরে রাখুন (Press & Hold)** এবং কথা বলা শুরু করুন। \n\n` +
+        `৩. **যথাযথ বিবরণ প্রদান করুন:**\n` +
+        `   আমরা বাংলায় সম্পূর্ণভাবে সমর্থন করি। স্পষ্ট করে বলুন: যেমন, *"আমার নাম অর্জুন দাস। আমার বাবার নাম আশুতোষ দাস। আমার ছেলের নাম আকাশ দাস..."*। কথা বলা শেষ হলে আইকনটি ছেড়ে দিন, বার্তাটি স্বয়ংক্রিয়ভাবে পাঠানো হবে।\n\n` +
+        `৪. **স্বয়ংক্রিয় প্রসেসিং:**\n` +
+        `   আপনার রেকর্ড করা ভয়েস বার্তাটি আমি (বর্ণালী) নিজেই শুনে তা স্বয়ংক্রিয়ভাবে রূপান্তর করব এবং আপনার বংশতালিকায় প্রস্তাব হিসেবে যোগ করব!`,
+        { parse_mode: "Markdown" }
+      );
+    } else if (userLang === "hin") {
+      await sendMessage(
+        `🎙️ **बर्नाली वॉयस संदेश रिकॉर्डिंग गाइड** 🎙️\n\n` +
+        `टेलीग्राम पर वॉयस नोट भेजकर अपनी वंशावली को अपडेट करना बहुत आसान है! कृपया निम्नलिखित चरणों का पालन करें:\n\n` +
+        `1. **यदि माइक्रोफ़ोन निष्क्रिय है, तो चालू करें:**\n` +
+        `   स्क्रीन के नीचे दाईं ओर गोल कैमरा/वीडियो आइकन हो (जैसा कि आपने स्क्रीनशॉट में घेरा है), तो उस **आइकन पर एक बार टैप करें (TAP)**। यह वॉयस मोड यानी **माइक्रोफ़ोन (🎤) मोड** में बदल जाएगा!\n\n` +
+        `2. **अपनी आवाज रिकॉर्ड करें:**\n` +
+        `   नीचे दाईं ओर गोल **माइक्रोफ़ोन (🎤)** बटन को **दबाकर रखें (Press & Hold)** और बात करना शुरू करें।\n\n` +
+        `3. **विवरण साफ-साफ बोलें:**\n` +
+        `   स्पष्ट आवाज़ में बोलें, जैसे: *"मेरा नाम अर्जुन है। मेरे पिता का नाम सुधीर है..."*। बोलना समाप्त होने पर बटन छोड़ दें, वॉयस संदेश अपने आप चला जाएगा।\n\n` +
+        `4. **स्वचालित प्रोसेसिंग:**\n` +
+        `   आपके द्वारा भेजे गए वॉयस संदेश को मैं (बर्नाली) सुनकर आपकी वंशावली में बदलाव का प्रस्ताव तैयार कर दूँगी!`,
+        { parse_mode: "Markdown" }
+      );
+    } else {
+      await sendMessage(
+        `🎙️ **Barnali Voice Message Guide** 🎙️\n\n` +
+        `Updating your lineage tree by sending voice messages in Telegram is incredibly simple! Just follow these steps:\n\n` +
+        `1. **Activate the Microphone:**\n` +
+        `   On the bottom-right corner of your screen, if you see a circular camera/video note icon (as circled in your screenshot), simply **TAP that icon once**! It will toggle from Video back to the **Microphone (🎤)** icon.\n\n` +
+        `2. **Record Your Message:**\n` +
+        `   Now, **press and hold** the Microphone (🎤) icon to start recording your voice.\n\n` +
+        `3. **Speak Clearly:**\n` +
+        `   Describe your family tree updates clearly (e.g. *"My name is Arjun Das. My father is Ashutosh Das..."*). Speak in Bengali, Hindi, or English. Release the button to send the voice note.\n\n` +
+        `4. **Automatic Processing:**\n` +
+        `   I (Barnali) will automatically listen, transcribe, and create an editable lineage update proposal for your family tree!`,
+        { parse_mode: "Markdown" }
+      );
+    }
     return;
   }
 
@@ -1529,12 +1662,33 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
   // 3. Process Photo upload (caching / capturing URL)
   let activePhotoUrl: string | null = null;
+  let photoBuffer: Buffer | null = null;
+  let photoMimeType: string | null = null;
   const unifiedPrompt = message.caption || cleanText || "";
 
   if (message.photo) {
     const photo = message.photo[message.photo.length - 1]; // maximum size
     await sendMessage("Receiving photo... 📸");
-    activePhotoUrl = await getTelegramFileUrl(photo.file_id, botToken);
+    try {
+      const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${photo.file_id}`);
+      const fileData = await fileRes.json() as any;
+      if (fileData && fileData.ok && fileData.result && fileData.result.file_path) {
+        const filePath = fileData.result.file_path;
+        activePhotoUrl = `/api/telegram-image/${filePath}`;
+        
+        const originalUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
+        const photoRes = await fetch(originalUrl);
+        if (photoRes.ok) {
+          const arrBuff = await photoRes.arrayBuffer();
+          photoBuffer = Buffer.from(arrBuff);
+          photoMimeType = "image/jpeg";
+          if (filePath.endsWith(".png")) photoMimeType = "image/png";
+          else if (filePath.endsWith(".webp")) photoMimeType = "image/webp";
+        }
+      }
+    } catch (e) {
+      console.error("[Telegram Bot] Error downloading photo to buffer:", e);
+    }
     
     if (activePhotoUrl) {
       lastPhotos.set(chatId, { url: activePhotoUrl, timestamp: Date.now() });
@@ -1750,10 +1904,20 @@ ${compileVamshavaliDetails()}
 
 Format answers beautifully. Speak in Bengali, Hindi, or English based on the user's language: ${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English (English)"}. Keep answers concise.`;
 
+    const userParts: any[] = [ { text: `${systemPrompt}\n\nUser request: ${unifiedPrompt}` } ];
+    if (photoBuffer && photoMimeType) {
+      userParts.unshift({
+        inlineData: {
+          mimeType: photoMimeType,
+          data: photoBuffer.toString("base64")
+        }
+      });
+    }
+
     const response = await callGeminiWithRetry(apiKey, {
       model: "gemini-3.5-flash",
       contents: [
-        { role: "user", parts: [ { text: `${systemPrompt}\n\nUser request: ${unifiedPrompt}` } ] }
+        { role: "user", parts: userParts }
       ]
     });
 
@@ -1820,18 +1984,21 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
               sqliteDb.transaction(() => {
                 for (const op of payload.sqliteOperations) {
                   if (op.type === "create_person") {
+                    const normalized = normalizePersonData(op.data);
                     lineageStore.createPerson({
                       treeId: linkedProfileId,
-                      ...op.data
+                      ...normalized
                     });
                   } else if (op.type === "update_person" && op.id) {
-                    lineageStore.updatePerson(op.id, op.data);
+                    const normalized = normalizePersonData(op.data);
+                    lineageStore.updatePerson(op.id, normalized);
                   } else if (op.type === "delete_person" && op.id) {
                     lineageStore.deletePerson(op.id);
                   } else if (op.type === "link_spouses" && op.personAId && op.personBId) {
                     lineageStore.linkSpouses(linkedProfileId, op.personAId, op.personBId, op.status || "married");
                   } else if (op.type === "update_tree" && op.data) {
-                    lineageStore.updateTree(linkedProfileId, op.data);
+                    const normalized = normalizeTreeData(op.data);
+                    lineageStore.updateTree(linkedProfileId, normalized);
                   }
                 }
               })();
