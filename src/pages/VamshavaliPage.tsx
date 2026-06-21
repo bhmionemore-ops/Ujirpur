@@ -1370,8 +1370,8 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
 
       const result = await signInWithGoogle();
       
-      // Use the returned user or the current authenticated user as fallback
-      const user = result?.user || auth.currentUser;
+      // Use the returned user or the current authenticated user as fallback (ignore if anonymous)
+      const user = result?.user || (auth.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser : null);
       
       if (!user) {
         // If result is undefined/null and we are redirecting
@@ -1383,6 +1383,20 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
       }
       
       let resolvedEmail = user.email || user.providerData?.find(p => p.email)?.email;
+      
+      // Additional fallback check using getAdditionalUserInfo when result is present
+      if (!resolvedEmail && result) {
+        try {
+          const { getAdditionalUserInfo } = await import("firebase/auth");
+          const additional = getAdditionalUserInfo(result);
+          if (additional?.profile && "email" in additional.profile) {
+            resolvedEmail = (additional.profile as any).email || "";
+          }
+        } catch (e) {
+          console.error("Could not get additional user info:", e);
+        }
+      }
+
       if (!resolvedEmail) {
         if (email && email.trim()) {
           resolvedEmail = email.trim();
