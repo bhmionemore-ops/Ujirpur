@@ -1,4 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import { appConfig } from "./lineage-config.js";
 import { db } from "./lineage-db.js";
@@ -713,6 +715,198 @@ export const lineageStore = {
   },
 
   stateForAccount(accountId: string, requestedTreeId?: string | null) {
+    try {
+      const accountRow = db.prepare("SELECT email FROM accounts WHERE id = ?").get(accountId) as { email: string } | undefined;
+      if (accountRow && accountRow.email) {
+        const email = accountRow.email.trim().toLowerCase();
+        const dbFilePath = path.resolve("server/local_admin_db.json");
+        if (fs.existsSync(dbFilePath)) {
+          const rawData = fs.readFileSync(dbFilePath, "utf8");
+          const localData = JSON.parse(rawData);
+          const profiles = localData.vamshavali_profiles || {};
+          const profile = profiles[email] || (email === "okbgmi611@gmail.com" ? profiles["okbgmi611@gmail.com"] : null);
+          if (profile) {
+            const treeId = profile.shareId || "LODSRIRAM";
+            const treeExists = db.prepare("SELECT 1 FROM lineage_trees WHERE id = ?").get(treeId);
+            if (!treeExists) {
+              db.prepare(
+                `INSERT INTO lineage_trees (
+                  id, name, account_holder_name, gotra, pravara, kuladevi, kuladevata, kulapurohit,
+                  gramadevata, native_village, family_surname, notes, family_number, kuldevi_photo, kuladevata_photo, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              ).run(
+                treeId,
+                profile.name || "Suryavamsha: The Royal Lineage of Lord Sri Ram (Raghuvansh)",
+                profile.parents || "King Dasharatha & Queen Kaushalya",
+                profile.gotra || "Kashyap",
+                null,
+                profile.kuldevi || "Kuladevi Chandi Mata",
+                profile.kuldevta || "Lord Surya (Sun God)",
+                null,
+                null,
+                profile.nativePlace || "Ayodhya, Uttar Pradesh",
+                "Raghuvansh",
+                profile.additionalNotes || "Legendary dynasty tracing down to Lord Sri Ram himself.",
+                null,
+                profile.kuldeviPhoto || null,
+                null,
+                new Date().toISOString(),
+                new Date().toISOString()
+              );
+
+              const members = profile.members || [];
+              const importedPairs = new Set<string>();
+
+              const importNested = (member: any, fatherId: string | null = null, motherId: string | null = null) => {
+                if (!member || !member.id) return;
+                const mId = member.id.trim();
+                const name = member.name || "Unnamed";
+                const notes = member.notes || null;
+                const birthYear = member.birthYear || null;
+                const photo = member.photo || null;
+
+                let gender: "male" | "female" | "other" | "unknown" = "male";
+                const nameLower = name.toLowerCase();
+                if (
+                  nameLower.includes("goddess") ||
+                  nameLower.includes("queen") ||
+                  nameLower.includes("princess") ||
+                  nameLower.includes("devi") ||
+                  nameLower.includes("sita") ||
+                  nameLower.includes("kaushalya") ||
+                  nameLower.includes("urmila") ||
+                  nameLower.includes("mandavi") ||
+                  nameLower.includes("shrutakirti")
+                ) {
+                  gender = "female";
+                }
+
+                const exists = db.prepare("SELECT 1 FROM lineage_people WHERE id = ?").get(mId);
+                if (!exists) {
+                  db.prepare(
+                    `INSERT INTO lineage_people (
+                      id, tree_id, display_name, gender, life_status, marital_status, date_of_birth,
+                      date_of_death, death_anniversary, rashi, gotra, photo_url, notes, father_id, mother_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                  ).run(
+                    mId,
+                    treeId,
+                    name,
+                    gender,
+                    "deceased",
+                    member.partner ? "married" : "unmarried",
+                    birthYear,
+                    null,
+                    null,
+                    null,
+                    "Kashyap",
+                    photo,
+                    notes,
+                    fatherId,
+                    motherId,
+                    new Date().toISOString(),
+                    new Date().toISOString()
+                  );
+                }
+
+                let partnerId: string | null = null;
+                if (member.partner) {
+                  const partner = member.partner;
+                  const partnerName = partner.name || "Unnamed Partner";
+                  partnerId = mId + "-partner";
+                  let partnerGender: "male" | "female" = gender === "male" ? "female" : "male";
+
+                  const partnerExists = db.prepare("SELECT 1 FROM lineage_people WHERE id = ?").get(partnerId);
+                  if (!partnerExists) {
+                    db.prepare(
+                      `INSERT INTO lineage_people (
+                        id, tree_id, display_name, gender, life_status, marital_status, date_of_birth,
+                        date_of_death, death_anniversary, rashi, gotra, photo_url, notes, father_id, mother_id, created_at, updated_at
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                    ).run(
+                      partnerId,
+                      treeId,
+                      partnerName,
+                      partnerGender,
+                      "deceased",
+                      "married",
+                      partner.birthYear || null,
+                      null,
+                      null,
+                      null,
+                      "Kashyap",
+                      partner.photo || null,
+                      partner.notes || null,
+                      null,
+                      null,
+                      new Date().toISOString(),
+                      new Date().toISOString()
+                    );
+                  }
+
+                  const p1 = `${mId}_${partnerId}`;
+                  const p2 = `${partnerId}_${mId}`;
+                  if (!importedPairs.has(p1) && !importedPairs.has(p2)) {
+                    const spouseExists = db.prepare(
+                      "SELECT 1 FROM lineage_spouses WHERE tree_id = ? AND ((person_a_id = ? AND person_b_id = ?) OR (person_a_id = ? AND person_b_id = ?))"
+                    ).get(treeId, mId, partnerId, partnerId, mId);
+                    if (!spouseExists) {
+                      db.prepare(
+                        `INSERT INTO lineage_spouses (id, tree_id, person_a_id, person_b_id, status, marriage_date, notes, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                      ).run(
+                        randomUUID(),
+                        treeId,
+                        mId,
+                        partnerId,
+                        "married",
+                        null,
+                        null,
+                        new Date().toISOString(),
+                        new Date().toISOString()
+                      );
+                    }
+                    importedPairs.add(p1);
+                    importedPairs.add(p2);
+                  }
+                }
+
+                let childFatherId = fatherId;
+                let childMotherId = motherId;
+                if (gender === "male") {
+                  childFatherId = mId;
+                  childMotherId = partnerId;
+                } else {
+                  childFatherId = partnerId;
+                  childMotherId = mId;
+                }
+
+                if (Array.isArray(member.children)) {
+                  for (const child of member.children) {
+                    importNested(child, childFatherId, childMotherId);
+                  }
+                }
+              };
+
+              for (const mem of members) {
+                importNested(mem);
+              }
+            }
+
+            const membershipExists = db.prepare("SELECT 1 FROM account_tree_memberships WHERE account_id = ? AND tree_id = ?").get(accountId, treeId);
+            if (!membershipExists) {
+              db.prepare(
+                `INSERT INTO account_tree_memberships (account_id, tree_id, role, created_at)
+                 VALUES (?, ?, ?, ?)`
+              ).run(accountId, treeId, "owner", new Date().toISOString());
+            }
+          }
+        }
+      }
+    } catch (seedErr: any) {
+      console.error("[Suryavamsha Auto-Seeder] Seed error:", seedErr.message);
+    }
+
     const trees = accountTrees(accountId);
     let activeTreeId = requestedTreeId && trees.some((tree) => tree.id === requestedTreeId)
       ? requestedTreeId
