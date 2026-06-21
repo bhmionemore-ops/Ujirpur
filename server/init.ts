@@ -70,6 +70,13 @@ export async function initSDKs() {
           await adb.collection("_health_check").limit(1).get();
           console.log(`[Firebase] Admin DB verification passed (DB: ${dbId || 'default'}).`);
           setIsAdminSDKActive(true);
+          
+          try {
+            const { restoreSqliteFromFirestore } = await import("./lineage-db.js");
+            await restoreSqliteFromFirestore();
+          } catch (restoreErr: any) {
+            console.error("[Firebase] Error during startup lineage database restore:", restoreErr.message);
+          }
         } catch (authErr: any) {
           const errMsg = authErr.message || "";
           const isCredErr = errMsg.toLowerCase().includes("credential") || 

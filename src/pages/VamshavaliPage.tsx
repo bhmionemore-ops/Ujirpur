@@ -183,6 +183,11 @@ type PersonForm = {
 
 const sessionKey = "vanshavali-session";
 
+function proxyUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  return url.trim();
+}
+
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -2182,7 +2187,12 @@ function FamilyTreeCanvas({
       }
     } catch (err) {
       console.error("Export failed", err);
-      alert(t("Failed to export family tree. Please try again."));
+      const isIframe = window.self !== window.top;
+      if (isIframe) {
+        alert(`${t("Failed to export family tree. Please try again.")}\n\n💡 Tip: Since you are currently in the embedded preview iframe, your browser might block downloads or popups. Please click the "Open in new tab" icon at the top right of your screen and try exporting from there!`);
+      } else {
+        alert(t("Failed to export family tree. Please try again."));
+      }
     } finally {
       setExporting(false);
     }
@@ -2393,9 +2403,10 @@ function FamilyTreeCanvas({
               <div style={{ display: "flex", alignItems: "center", gap: "20px", justifyContent: "center" }}>
                 {tree.kuldeviPhoto && (
                   <img 
-                    src={tree.kuldeviPhoto} 
+                    src={proxyUrl(tree.kuldeviPhoto)} 
                     alt="Kuldevi/Deity" 
                     style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: "2.5px solid #0b5a43", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }} 
+                    crossOrigin="anonymous"
                     referrerPolicy="no-referrer"
                   />
                 )}
@@ -2414,9 +2425,10 @@ function FamilyTreeCanvas({
                 </div>
                 {tree.kuladevataPhoto && (
                   <img 
-                    src={tree.kuladevataPhoto} 
+                    src={proxyUrl(tree.kuladevataPhoto)} 
                     alt="Kuladevata/Deity" 
                     style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: "2.5px solid #0b5a43", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }} 
+                    crossOrigin="anonymous"
                     referrerPolicy="no-referrer"
                   />
                 )}
@@ -2456,7 +2468,7 @@ function FamilyTreeCanvas({
               style={{ left: node.x, top: node.y }}
               onClick={() => onSelect(node.person.id)}
             >
-              <span className="avatar">{node.person.photoUrl ? <img src={node.person.photoUrl} alt="" /> : initials(node.person.displayName)}</span>
+              <span className="avatar">{node.person.photoUrl ? <img src={proxyUrl(node.person.photoUrl)} alt="" crossOrigin="anonymous" referrerPolicy="no-referrer" /> : initials(node.person.displayName)}</span>
               <strong>{displayPersonName(node.person)}</strong>
               <small>{statusLabel(node.person, t)}</small>
               <span className="node-badges"><CircleDot size={13} /> {t("Generation")} {node.generation + 1}</span>
@@ -3135,7 +3147,7 @@ function PersonDrawer({ person, people, spouses, canEdit, onClose, onEdit, onDel
   return (
     <aside className="detail-drawer">
       <button className="icon-only close-drawer" onClick={onClose}><X size={18} /></button>
-      <div className={`drawer-avatar ${person.gender} ${person.lifeStatus}`}>{person.photoUrl ? <img src={person.photoUrl} alt="" /> : initials(person.displayName)}</div>
+      <div className={`drawer-avatar ${person.gender} ${person.lifeStatus}`}>{person.photoUrl ? <img src={proxyUrl(person.photoUrl)} alt="" crossOrigin="anonymous" referrerPolicy="no-referrer" /> : initials(person.displayName)}</div>
       <h2>{displayPersonName(person)}</h2>
       <p>{statusLabel(person, t)}</p>
       <div className="detail-grid">
@@ -3209,14 +3221,14 @@ function Overview({
         <div>
           <span>{t("Kuladevi")}</span>
           <strong style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
-            {tree.kuldeviPhoto && <img src={tree.kuldeviPhoto} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />}
+            {tree.kuldeviPhoto && <img src={proxyUrl(tree.kuldeviPhoto)} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} crossOrigin="anonymous" referrerPolicy="no-referrer" />}
             {tree.kuladevi || t("Not recorded")}
           </strong>
         </div>
         <div>
           <span>{t("Kuladevata")}</span>
           <strong style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
-            {tree.kuladevataPhoto && <img src={tree.kuladevataPhoto} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} referrerPolicy="no-referrer" />}
+            {tree.kuladevataPhoto && <img src={proxyUrl(tree.kuladevataPhoto)} alt="" style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} crossOrigin="anonymous" referrerPolicy="no-referrer" />}
             {tree.kuladevata || t("Not recorded")}
           </strong>
         </div>
@@ -3759,6 +3771,13 @@ function AppShell({
       }
     }
   }, [lineage.state?.activeTreeId, lineage.state?.trees, isDeityModalOpen]);
+
+  // Synchronize frontend session's active tree if it differs from the server's computed active tree ID
+  React.useEffect(() => {
+    if (lineage.state?.activeTreeId && session && lineage.state.activeTreeId !== session.treeId) {
+      onSessionChange({ ...session, treeId: lineage.state.activeTreeId });
+    }
+  }, [lineage.state?.activeTreeId, session, onSessionChange]);
 
   function handleTreeCreated(treeId: string) {
     if (!session) return;

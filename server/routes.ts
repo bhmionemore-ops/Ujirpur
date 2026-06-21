@@ -67,6 +67,27 @@ export function setupRoutes(app: express.Application, _db: any, _adminDb: any, f
     }
   });
 
+  // General Image Proxy for external domain images (like Wikipedia) allowing secure CORS requests
+  app.get("/api/image-proxy", async (req, res) => {
+    const imageUrl = req.query.url as string;
+    if (!imageUrl) return res.status(400).send("Parameter url is required");
+    try {
+      if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+        return res.status(400).send("Invalid image URL");
+      }
+      const response = await fetch(imageUrl, { family: 4 });
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buffer = await response.buffer();
+      res.send(buffer);
+    } catch (error) {
+      console.error("[Image Proxy] Error fetching profile image:", error);
+      res.status(500).send("Proxy error loading image");
+    }
+  });
+
   // Inbound Email
   app.post("/api/webhooks/email", async (req, res) => {
     const { from, to, subject, text, html } = req.body;

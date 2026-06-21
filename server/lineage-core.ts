@@ -714,9 +714,25 @@ export const lineageStore = {
 
   stateForAccount(accountId: string, requestedTreeId?: string | null) {
     const trees = accountTrees(accountId);
-    const activeTreeId = requestedTreeId && trees.some((tree) => tree.id === requestedTreeId)
+    let activeTreeId = requestedTreeId && trees.some((tree) => tree.id === requestedTreeId)
       ? requestedTreeId
       : trees[0]?.id ?? null;
+
+    // Auto-promote Suryavamsha tree if activeTreeId leads to an empty or default onboarding tree
+    const suryavamshaTree = trees.find((t) =>
+      t.id === "LODSRIRAM" ||
+      t.id === "4fe31a17-5cc1-40f0-8dd9-5b0f2cac525a" ||
+      (t.name && t.name.toLowerCase().includes("suryavamsha")) ||
+      (t.name && t.name.toLowerCase().includes("sri ram"))
+    );
+
+    if (activeTreeId && suryavamshaTree && activeTreeId !== suryavamshaTree.id) {
+      const personCountRow = db.prepare("SELECT COUNT(*) AS count FROM lineage_people WHERE tree_id = ?").get(activeTreeId) as { count: number };
+      if (!personCountRow || personCountRow.count <= 1) {
+        activeTreeId = suryavamshaTree.id;
+      }
+    }
+
     if (!activeTreeId) {
       return { trees, activeTreeId, activeRole: null, people: [], spouses: [], proposals: [] };
     }
