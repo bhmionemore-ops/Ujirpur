@@ -95,9 +95,22 @@ export async function generateDailySanataniFacts() {
       config: { responseMimeType: "application/json" }
     });
 
-    const rawFacts = parseGeminiJson(response.text || '[]');
+    const rawFacts = parseGeminiJson(response.text || '[]', []);
+    
+    let factsArray: any[] = [];
+    if (Array.isArray(rawFacts)) {
+      factsArray = rawFacts;
+    } else if (rawFacts && typeof rawFacts === "object") {
+      const foundArray = Object.values(rawFacts).find((val) => Array.isArray(val));
+      if (foundArray) {
+        factsArray = foundArray as any[];
+      } else if ((rawFacts as any).claim) {
+        factsArray = [rawFacts];
+      }
+    }
+
     // Normalize facts to ensure we satisfy validation rules perfectly
-    const facts = rawFacts.map((fact: any) => {
+    const facts = factsArray.map((fact: any) => {
       const claim = fact.claim || fact.rumor || fact.myth || "";
       const rawStatus = fact.status || fact.verdict || "verified";
       const status = ["verified", "false", "misleading"].includes(rawStatus) ? rawStatus : "verified";

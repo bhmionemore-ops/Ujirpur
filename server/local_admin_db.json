@@ -40,367 +40,211 @@
   },
   "api_keys": {},
   "news": {
-    "2026-05-26-bn": {
-      "local": {
-        "0": {
-          "title": "বার্নপুর স্টিল প্ল্যান্টে আধুনিকীকরণ প্রকল্পের উদ্বোধন",
-          "content": "বার্নপুর ইস্পাত কারখানায় নতুন প্রযুক্তি ব্যবহারের মাধ্যমে উৎপাদন ক্ষমতা বাড়ানোর লক্ষ্যমাত্রা নির্ধারণ করা হয়েছে।",
-          "source": "পশ্চিমবঙ্গ সংবাদ",
-          "date": "2026-05-26"
+    "2026-06-20-bn": {
+      "local": [
+        {
+          "title": "বার্নিয়া হাই স্কুলে নতুন অত্যাধুনিক বিজ্ঞান গবেষণাগারের উদ্বোধন",
+          "content": "নদীয়ার বার্নিয়া উচ্চ বিদ্যালয়ে আজ একটি অত্যাধুনিক বিজ্ঞান গবেষণাগারের উদ্বোধন করা হলো। এই অনুষ্ঠানে উপস্থিত ছিলেন স্থানীয় বিধায়ক, পঞ্চায়েত প্রধান এবং বিদ্যালয়ের প্রধান শিক্ষক। দীর্ঘদিনের দাবি মেনে এই গবেষণাগারটি তৈরি হওয়ায় বিদ্যালয়ের ছাত্রছাত্রীদের মধ্যে ব্যাপক উৎসাহ দেখা গেছে। নতুন এই ল্যাবে পদার্থবিদ্যা, রসায়ন এবং জীববিদ্যার আধুনিক যন্ত্রপাতি স্থাপন করা হয়েছে, যা শিক্ষার্থীদের তাত্ত্বিক শিক্ষার পাশাপাশি ব্যবহারিক শিক্ষায় দারুণভাবে সাহায্য করবে। প্রধান শিক্ষক মহাশয় জানান, 'এই ল্যাবটি গ্রামীণ এলাকার শিক্ষার্থীদের বিজ্ঞানের প্রতি আগ্রহ বাড়াতে সাহায্য করবে এবং তারা এখন হাতে-কলমে পরীক্ষা-নিরীক্ষা করতে পারবে।' উদ্বোধনী অনুষ্ঠানে ছাত্রছাত্রীরা বিভিন্ন বিজ্ঞান মডেল প্রদর্শন করে। স্থানীয় অভিভাবকরাও স্কুলের এই উদ্যোগে অত্যন্ত খুশি এবং তারা আশা করছেন এর ফলে আগামী দিনে এলাকার শিক্ষার মান আরও উন্নত হবে।",
+          "source": "স্থানীয় সংবাদ প্রতিনিধি",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "নদীয়ায় কৃষি মেলায় কৃষকদের ভিড়",
-          "content": "নদীয়ার কৃষ্ণনগরে আয়োজিত বার্ষিক কৃষি মেলায় আধুনিক চাষাবাদের যন্ত্রপাতির প্রদর্শনী চলছে।",
-          "source": "নদীয়া বার্তা",
-          "date": "2026-05-26"
+        {
+          "title": "বার্নিয়া ব্লকে রাসায়নিক সার বর্জন করে জৈব চাষের জোয়ার",
+          "content": "নদীয়ার বার্নিয়া ব্লকের কৃষকদের মধ্যে জৈব চাষের প্রতি আগ্রহ দিন দিন বাড়ছে। আজ স্থানীয় কৃষি দপ্তরের উদ্যোগে একটি বিশেষ প্রশিক্ষণ শিবিরের আয়োজন করা হয়েছিল, যেখানে প্রায় দুই শতাধিক কৃষক অংশ নেন। রাসায়নিক সার ও কীটনাশকের ক্ষতিকারক প্রভাব এড়িয়ে কীভাবে সম্পূর্ণ প্রাকৃতিক উপায়ে ফলন বাড়ানো যায়, তা নিয়ে বিস্তারিত আলোচনা করা হয়। কৃষি বিশেষজ্ঞরা কৃষকদের কেঁচো সার তৈরি, নিম তেল ব্যবহার এবং জৈব উপায়ে মাটির উর্বরতা বৃদ্ধির কৌশল শেখান। বার্নিয়ার এক প্রবীণ কৃষক বলেন, 'জৈব পদ্ধতিতে চাষ করলে খরচ অনেক কমে যায় এবং উৎপাদিত ফসলের বাজারমূল্যও ভালো পাওয়া যায়।' কৃষি দপ্তর থেকে কৃষকদের বিনামূল্যে জৈব সার ও বীজ বিতরণ করা হয়। এই উদ্যোগের ফলে বার্নিয়ার বিস্তীর্ণ এলাকায় বিষমুক্ত সবজি ও ফসল উৎপাদন বৃদ্ধি পাবে বলে আশা করা হচ্ছে, যা জনস্বাস্থ্যের পক্ষে অত্যন্ত উপকারী।",
+          "source": "নদিয়া কৃষি বার্তা",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "পশ্চিমবঙ্গে বর্ষার আগমনের পূর্বাভাস",
-          "content": "আবহাওয়া দপ্তরের তথ্য অনুযায়ী, দক্ষিণবঙ্গে আগামী কয়েকদিনের মধ্যেই বর্ষা প্রবেশের অনুকূল পরিস্থিতি তৈরি হয়েছে।",
-          "source": "আবহাওয়া আপডেট",
-          "date": "2026-05-26"
+        {
+          "title": "বর্ষার আগে বার্নিয়ায় ডেঙ্গু প্রতিরোধে বিশেষ সচেতনতা শিবির",
+          "content": "বর্ষা মৌসুম শুরু হওয়ার আগেই নদীয়ার বার্নিয়া এলাকায় ডেঙ্গু ও ম্যালেরিয়া প্রতিরোধে এক বিশাল সচেতনতা শিবিরের আয়োজন করা হলো। স্থানীয় পঞ্চায়েত এবং ব্লক স্বাস্থ্য দপ্তরের যৌথ উদ্যোগে এই কর্মসূচিটি পরিচালিত হয়। আজ সকাল থেকেই স্বাস্থ্যকর্মীরা বার্নিয়ার বিভিন্ন ওয়ার্ডে গিয়ে জমে থাকা জল পরিষ্কার করেন এবং ব্লিচিং পাউডার ও মশা মারার তেল স্প্রে করেন। সাধারণ মানুষকে সচেতন করতে একটি পদযাত্রারও আয়োজন করা হয়েছিল। চিকিৎসকরা জানান, বাড়ির আশেপাশে জল জমতে দেওয়া যাবে না এবং ঘুমানোর সময় অবশ্যই মশারি ব্যবহার করতে হবে। পঞ্চায়েত প্রধান বলেন, 'আমরা প্রতিটি পরিবারকে সচেতন করছি যাতে ডেঙ্গুর প্রকোপ ছড়াতে না পারে।' এছাড়া, কোনো ব্যক্তির জ্বর হলে অবিলম্বে স্থানীয় স্বাস্থ্যকেন্দ্রে গিয়ে রক্ত পরীক্ষা করার পরামর্শ দেওয়া হয়েছে। এলাকার বাসিন্দারা এই তৎপরতাকে সাধুবাদ জানিয়েছেন।",
+          "source": "জনস্বাস্থ্য সংবাদ",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "শান্তিপুরের তাঁত শিল্পে নতুন ডিজাইনের সমাহার",
-          "content": "শান্তিপুরের তাঁতিরা এবার গ্লোবাল মার্কেটের কথা মাথায় রেখে নতুন ধরনের সুতির শাড়ির কালেকশন এনেছেন।",
-          "source": "নদীয়া লাইভ",
-          "date": "2026-05-26"
+        {
+          "title": "বার্নিয়া যুব সংঘের ফুটবল টুর্নামেন্টে চ্যাম্পিয়ন বার্নিয়া একাদশ",
+          "content": "নদীয়ার বার্নিয়া যুব সংঘের মাঠে আয়োজিত ঐতিহ্যবাহী ইন্টার-ভিলেজ ফুটবল টুর্নামেন্টের ফাইনাল খেলাটি আজ অত্যন্ত উত্তেজনাপূর্ণভাবে সম্পন্ন হলো। ফাইনালে মুখোমুখি হয়েছিল বার্নিয়া একাদশ এবং কৃষ্ণনগর স্পোর্টিং ক্লাব। নির্ধারিত সময়ে খেলাটি ১-১ গোলে ড্র থাকার পর, ট্রাইবেকারে বার্নিয়া একাদশ ৪-৩ ব্যবধানে জয়লাভ করে চ্যাম্পিয়ন ট্রফি নিজেদের নামে করে। মাঠজুড়ে প্রায় পাঁচ হাজার দর্শকের উপস্থিতি ছিল চোখে পড়ার মতো। বিজয়ী দলের হাতে ট্রফি ও নগদ অর্থ তুলে দেন স্থানীয় বিশিষ্ট সমাজসেবীরা। খেলার প্রথমার্ধে কৃষ্ণনগর দল গোল করে এগিয়ে গেলেও, দ্বিতীয়ার্ধে বার্নিয়ার স্ট্রাইকার দুর্দান্ত গোল করে সমতা ফেরান। টুর্নামেন্টের সেরা খেলোয়াড় নির্বাচিত হন বার্নিয়ার গোলরক্ষক, যিনি পেনাল্টি শুটআউটে দুটি গুরুত্বপূর্ণ সেভ করেন। এই টুর্নামেন্টকে কেন্দ্র করে গোটা বার্নিয়া এলাকায় উৎসবের আমেজ তৈরি হয়েছিল।",
+          "source": "স্থানীয় ক্রীড়া জগৎ",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "আসানসোল-দুর্গাপুর শিল্পাঞ্চলে পরিবেশ সচেতনতা কর্মসূচি",
-          "content": "শিল্পাঞ্চলে দূষণ কমাতে স্থানীয় প্রশাসন বৃক্ষরোপণ কর্মসূচি এবং সচেতনতা শিবিরের আয়োজন করেছে।",
-          "source": "পশ্চিমবঙ্গ দৈনিক",
-          "date": "2026-05-26"
+        {
+          "title": "বার্নিয়া বাজারে নিকাশি ব্যবস্থার আধুনিকীকরণ কাজ শুরু",
+          "content": "বর্ষার মরসুমে জলমগ্নতার হাত থেকে মুক্তি পেতে নদীয়ার বার্নিয়া বাজারের মূল নিকাশি ব্যবস্থার আধুনিকীকরণের কাজ আজ থেকে শুরু হয়েছে। স্থানীয় ব্যবসায়ী সমিতি এবং পঞ্চায়েতের যৌথ উদ্যোগে এই সংস্কার কাজ হাতে নেওয়া হয়েছে। দীর্ঘদিন ধরে একটু বৃষ্টি হলেই বার্নিয়া বাজারের রাস্তাঘাটে জল জমে যেত, যার ফলে ক্রেতা ও বিক্রেতা উভয়কেই চরম ভোগান্তির শিকার হতে হতো। নতুন পরিকল্পনা অনুযায়ী, বাজারের সমস্ত ড্রেন পরিষ্কার করে সেগুলিকে কংক্রিটের ড্রেনে রূপান্তর করা হচ্ছে এবং জল নিকাশের জন্য বড় আউটলেট তৈরি করা হচ্ছে। ব্যবসায়ী সমিতির সম্পাদক জানান, 'এই কাজ সম্পন্ন হলে বাজারের জল জমার সমস্যা চিরতরে দূর হবে এবং ব্যবসা-বাণিজ্য মসৃণভাবে চলবে।' কাজ চলাকালীন যাতে সাধারণ মানুষের যাতায়াতে অসুবিধা না হয়, তার জন্য বিকল্প রাস্তার ব্যবস্থা করা হয়েছে। স্থানীয় বাসিন্দারা এই দীর্ঘ প্রতীক্ষিত কাজ শুরু হওয়ায় স্বস্তি প্রকাশ করেছেন।",
+          "source": "বার্নিয়া বার্তা",
+          "date": "2026-06-20"
         }
-      },
-      "fbTrends": {
-        "0": {
-          "title": "ভ্রমণ পিপাসুদের জন্য অফবিট লোকেশন",
-          "content": "উত্তরবঙ্গের নতুন পর্যটন কেন্দ্রগুলো নিয়ে ফেসবুকে ভ্রমণ গ্রুপগুলোতে ব্যাপক আলোচনা চলছে।",
-          "source": "ফেসবুক ট্রেন্ডস",
-          "date": "2026-05-26"
+      ],
+      "fbTrends": [
+        {
+          "title": "Top 1 (WB): বর্ষার প্রথম ইলিশ রান্না রেসিপি",
+          "content": "ভাইরাল কৌশল: বর্ষার মরসুমে ইলিশ মাছের প্রতি বাঙালিদের আবেগ তুঙ্গে থাকে। এই আবেগকে কাজে নিয়ে ঐতিহ্যবাহী ও নতুন রেসিপি শেয়ার করা।\nহুক আইডিয়া: 'আজ বাজারে প্রথম ইলিশ এলো, আর আমি বানালাম দিদিমার হাতের স্পেশাল সর্ষে ইলিশ!'\nতৈরির টিপস: রান্নার প্রতিটি ধাপ পরিষ্কারভাবে দেখান, বিশেষ করে মাছ ভাজার শব্দ এবং মশলা কষানোর দৃশ্য ক্লোজ-আপ শটে রাখুন।\nভাইরাল সিক্রেট: ব্যাকগ্রাউন্ডে একটি জনপ্রিয় বর্ষার বাংলা গান ব্যবহার করুন এবং ভিডিওর শুরুতে গরম ভাতের সাথে ইলিশের তেল মাখার দৃশ্য দেখান।\nএনগেজমেন্ট বুস্টার: দর্শকদের কমেন্টে জিজ্ঞেস করুন তারা ইলিশের কোন রেসিপিটি সবচেয়ে বেশি পছন্দ করেন—সর্ষে নাকি ভাপা?\nমনিটাইজেশন টিপ: কোনো নামী মশলা ব্র্যান্ড বা সরিষার তেলের ব্র্যান্ডের সাথে স্পনসরশিপের জন্য যোগাযোগ করুন।\nহ্যাশট্যাগ: #HilsaRecipe #BengaliFood #MonsoonSpecial #BengaliCuisine #FBReels",
+          "source": "ফেসবুক ট্রেন্ডস অ্যানালিটিক্স",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "বাঙালি রান্নার নতুন রেসিপি",
-          "content": "গরমের দুপুরে হালকা ও স্বাস্থ্যকর বাঙালি খাবারের রেসিপিগুলো ফেসবুক ফিডে ভাইরাল হচ্ছে।",
-          "source": "ফেসবুক ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 2 (India): মধ্যবিত্তের সঞ্চয় ও বাজেট চ্যালেঞ্জ",
+          "content": "ভাইরাল কৌশল: মুদ্রাস্ফীতি এবং দৈনন্দিন খরচের বৃদ্ধি নিয়ে মধ্যবিত্ত পরিবারের বাস্তব ও হাস্যকর অভিজ্ঞতা শেয়ার করা যা সবার সাথে মিলে যায়।\nহুক আইডিয়া: 'মাসের ২০ তারিখের পর মধ্যবিত্তের মানিব্যাগের অবস্থা যেমন হয়...'\nতৈরির টিপস: ছোট কমেডি স্কেচ বা রিলেটেবল মনোলোগ তৈরি করুন যেখানে দৈনন্দিন খরচের হিসাব নিয়ে মজার অভিনয় থাকবে।\nভাইরাল সিক্রেট: অতি-নাটকীয় অভিব্যক্তি এবং সাধারণ মানুষের রোজকার জীবনের ছোটখাটো আপসগুলোকে তুলে ধরুন।\nএনগেজমেন্ট বুস্টার: কমেন্টে লিখুন, 'আপনারও কি মাসের শেষে এই অবস্থা হয়? বন্ধুদের ট্যাগ করুন!'\nমনিটাইজেশন টিপ: বাজেট ট্র্যাকিং অ্যাপ বা ফিন্যান্সিয়াল প্ল্যানিং সার্ভিসের প্রচার করে আয় করতে পারেন।\nহ্যাশট্যাগ: #MiddleClassLife #BudgetProblems #RelatableHumor #SavingsTips #FinancialReality",
+          "source": "ফেসবুক সোশ্যাল ইনসাইটস",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "স্মার্টফোন ফটোগ্রাফি টিপস",
-          "content": "মোবাইলে সেরা ছবি তোলার কৌশল নিয়ে তরুণ প্রজন্মের মধ্যে ব্যাপক আগ্রহ দেখা যাচ্ছে।",
-          "source": "ফেসবুক ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 3 (WB): পুরনো বাংলা গানের রিমিক্স ও নাচ",
+          "content": "ভাইরাল কৌশল: ৯০ দশকের বা তার আগের জনপ্রিয় বাংলা গানগুলির আধুনিক রিমিক্স সংস্করণে নাচ বা এক্সপ্রেশন ভিডিও তৈরি করা।\nহুক আইডিয়া: 'এই গানটা শুনলেই ছোটবেলার পুজোর দিনগুলোর কথা মনে পড়ে যায় না?'\nতৈরির টিপস: ঐতিহ্যবাহী বা ফিউশন পোশাক পরে চমৎকার কোরিওগ্রাফি বা লিপ-সিঙ্ক ভিডিও তৈরি করুন। আলো ও ব্যাকগ্রাউন্ড যেন নান্দনিক হয়।\nভাইরাল সিক্রেট: নাচের সাথে মিষ্টি ও স্বাভাবিক মুখের অভিব্যক্তি ব্যবহার করুন যা দর্শকদের মন ছুঁয়ে যাবে।\nএনগেজমেন্ট বুস্টার: দর্শকদের বলুন তাদের প্রিয় পুরনো বাংলা গান কোনটি কমেন্টে জানাতে।\nমনিটাইজেশন টিপ: পোশাকের ব্র্যান্ড বা জুয়েলারি ব্র্যান্ডের কোলাবোরেশন করে তাদের পোশাক পরে পারফর্ম করুন।\nহ্যাশট্যাগ: #RetroBengali #BengaliDance #OldIsGold #BengaliMusic #ReelsViral",
+          "source": "ফেসবুক মিউজিক চার্টস",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "অনলাইন শিক্ষার গুরুত্ব",
-          "content": "স্কিল ডেভেলপমেন্ট কোর্সের বিজ্ঞাপন ও আলোচনা ফেসবুকের মূলধারায় রয়েছে।",
-          "source": "ফেসবুক ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 4 (India): ১০ মিনিটে স্বাস্থ্যকর জলখাবার",
+          "content": "ভাইরাল কৌশল: ব্যস্ত সকালে দ্রুত তৈরি করা যায় এমন পুষ্টিকর ও সুস্বাদু জলখাবারের রেসিপি যা কর্মজীবী মানুষ ও মায়েদের সাহায্য করবে।\nহুক আইডিয়া: 'সকালে সময় নেই? মাত্র ১০ মিনিটে বানান এই হাই-প্রোটিন ব্রেকফাস্ট!'\nতৈরির টিপস: ভিডিওর গতি দ্রুত রাখুন (টাইম-ল্যাপস বা ফাস্ট কাট) এবং স্ক্রিনে উপাদানের নাম ও পরিমাণ লিখে দিন।\nভাইরাল সিক্রেট: রেসিপিটি অত্যন্ত সহজ কিন্তু দেখতে যেন অত্যন্ত লোভনীয় ও রঙিন হয়।\nএনগেজমেন্ট বুস্টার: দর্শকদের জিজ্ঞেস করুন, 'আপনারা সকালে জলখাবারে সাধারণত কী খান?'\nমনিটাইজেশন টিপ: কিচেন অ্যাপ্লায়েন্স বা হেলথ ফুড ব্র্যান্ডের (যেমন ওটস, পিনাট বাটার) সাথে কোলাবোরেশন করুন।\nহ্যাশট্যাগ: #HealthyBreakfast #10MinRecipes #QuickBreakfast #HealthyEating #FoodBlogger",
+          "source": "ফেসবুক ফুড ট্রেন্ডস",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "স্বাস্থ্য সচেতনতা ও যোগব্যায়াম",
-          "content": "সুস্থ জীবনযাপনের জন্য যোগব্যায়ামের ভিডিওগুলো ব্যাপক শেয়ার হচ্ছে।",
-          "source": "ফেসবুক ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 5 (WB): গ্রামের পথে একদিন - মিনি ট্রাভেল ভ্লগ",
+          "content": "ভাইরাল কৌশল: শহুরে কোলাহল থেকে দূরে বাংলার শান্ত ও সবুজ গ্রাম্য জীবনের সৌন্দর্যকে সিনেমাটিক শটের মাধ্যমে তুলে ধরা।\nহুক আইডিয়া: 'শহরের কোলাহল ছেড়ে আজ চলে এলাম বাংলার এক শান্ত সবুজ গ্রামে...'\nতৈরির টিপস: ভোরের কুয়াশা, মাটির বাড়ি, সবুজ মাঠ এবং গ্রামীণ মানুষের সরল জীবনের সিনেমাটিক স্লো-মোশন ক্লিপ ব্যবহার করুন।\nভাইরাল সিক্রেট: ব্যাকগ্রাউন্ডে হালকা বাঁশির সুর বা শান্ত রবীন্দ্রসংগীত ব্যবহার করুন যা মনকে শান্তি দেয়।\nএনগেজমেন্ট বুস্টার: ক্যাপশনে লিখুন, 'আপনার দেশের বাড়ি কোথায়? কমেন্টে জানান!'\nমনিটাইজেশন টিপ: গ্রামীণ হোমস্টে বা ইকো-ট্যুরিজম রিসোর্টের প্রচার করে আয় করতে পারেন।\nহ্যাশট্যাগ: #BengalVillage #TravelVlog #GramBangla #CinematicBengal #ExploreWestBengal",
+          "source": "ফেসবুক ট্রাভেল কমিউনিটি",
+          "date": "2026-06-20"
         }
-      },
-      "igTrends": {
-        "0": {
-          "title": "সামার ফ্যাশন কালেকশন",
-          "content": "ইনস্টাগ্রামে হালকা সুতির পোশাক এবং প্যাস্টেল শেডের পোশাকের নতুন ট্রেন্ড চলছে।",
-          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
-          "date": "2026-05-26"
+      ],
+      "igTrends": [
+        {
+          "title": "Top 1 (WB): নান্দনিক শাড়ি ড্র্যাপিং ও ট্রানজিশন রিলস",
+          "content": "ভাইরাল কৌশল: মসৃণ ট্রানজিশন এবং নান্দনিক ব্যাকগ্রাউন্ডের সাথে স্টাইলিশ উপায়ে শাড়ি পরার টিউটোরিয়াল বা ট্রান্সফরমেশন ভিডিও।\nহুক আইডিয়া: 'সাধারণ লুক থেকে এক নিমেষে বাঙালি সাজে পরিবর্তন! (ট্রানজিশন দেখুন)'\nতৈরির টিপস: বিটের সাথে পারফেক্ট ট্রানজিশন কাট ব্যবহার করুন। প্রথমে সাধারণ পোশাকে এবং পরে সুন্দর শাড়ি ও গহনায় নিজেকে দেখান।\nভাইরাল সিক্রেট: ট্রানজিশনের সময় চোখের ইশারা এবং স্মাইলিং ফেস ব্যবহার করুন যা দর্শকদের বারবার ভিডিওটি দেখতে বাধ্য করবে।\nএনগেজমেন্ট বুস্টার: দর্শকদের মতামত চান—'লাল নাকি নীল, কোন শাড়িটি বেশি ভালো লাগছে?'\nমনিটাইজেশন টিপ: বুটিক, শাড়ির ব্র্যান্ড এবং জুয়েলারি ডিজাইনারদের সাথে পেইড পার্টনারশিপ করুন।\nহ্যাশট্যাগ: #SareeDraping #SareeTransition #BengaliBeauty #AestheticReels #SareeLove",
+          "source": "ইনস্টাগ্রাম ফ্যাশন ইনসাইটস",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "ইন্টেরিয়র ডিজাইন হ্যাকস",
-          "content": "ছোট ফ্ল্যাট বা ঘর সাজানোর নান্দনিক আইডিয়া রিলস আকারে জনপ্রিয় হচ্ছে।",
-          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 2 (India): 'পয়েন্ট অফ ভিউ' (POV) অফিসের প্রথম দিন বনাম ১ বছর পর",
+          "content": "ভাইরাল কৌশল: কর্পোরেট জীবনের বাস্তব অভিজ্ঞতা এবং সহকর্মীদের সাথে সম্পর্কের পরিবর্তনকে হাস্যরসাত্মক POV ফরম্যাটে উপস্থাপন।\nহুক আইডিয়া: 'POV: প্রথম দিন অফিসে আপনি বনাম এক বছর পর আপনি...'\nতৈরির টিপস: দুটি ভিন্ন পরিস্থিতি দেখানোর জন্য পোশাক এবং বডি ল্যাঙ্গুয়েজের স্পষ্ট পরিবর্তন করুন। টেক্সট ওভারলে ব্যবহার করুন।\nভাইরাল সিক্রেট: ট্রেন্ডিং অডিওর সাথে নিখুঁত লিপ-সিঙ্ক এবং মানানসই অঙ্গভঙ্গি ব্যবহার করুন।\nএনগেজমেন্ট বুস্টার: কমেন্টে আপনার কর্পোরেট বন্ধুদের ট্যাগ করতে বলুন যারা এই পরিস্থিতির সাথে মিল পাবেন।\nমনিটাইজেশন টিপ: অফিস অ্যাক্সেসরিজ, গ্যাজেট বা এনার্জি ড্রিংক ব্র্যান্ডের প্রচার করুন।\nহ্যাশট্যাগ: #CorporateLife #POVReels #OfficeHumor #RelatableContent #WorkLife",
+          "source": "ইনস্টাগ্রাম ক্রিয়েটর পোর্টাল",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "ফুড ভ্লগিং",
-          "content": "কলকাতার স্ট্রিট ফুড ও ক্যাফে কালচারের ভিডিওগুলো ইনস্টাগ্রামে ট্রেন্ডিং।",
-          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 3 (WB): কলকাতা স্ট্রিট ফুড রিভিউ চ্যালেঞ্জ",
+          "content": "ভাইরাল কৌশল: কলকাতার বিখ্যাত এবং সস্তা স্ট্রিট ফুডের সৎ রিভিউ এবং খাবারের লোভনীয় ভিজ্যুয়াল প্রদর্শন।\nহুক আইডিয়া: 'কলকাতার এই দোকানে মাত্র ২০ টাকায় পাওয়া যাচ্ছে সেরা ফুচকা!'\nতৈরির টিপস: খাবারের ক্লোজ-আপ ম্যাক্রো শট নিন এবং খাওয়ার সময় আসল ক্রাঞ্চি শব্দ (ASMR) রেকর্ড করুন।\nভাইরাল সিক্রেট: দোকানের সঠিক অবস্থান, দাম এবং আপনার সত্যিকারের প্রতিক্রিয়া শেয়ার করুন যা বিশ্বস্ততা তৈরি করে।\nএনগেজমেন্ট বুস্টার: দর্শকদের জিজ্ঞেস করুন, 'আপনার প্রিয় কলকাতার স্ট্রিট ফুড কোনটি?'\nমনিটাইজেশন টিপ: স্থানীয় ক্যাফে, রেস্তোরাঁ বা ফুড ডেলিভারি অ্যাপের সাথে পার্টনারশিপ করুন।\nহ্যাশট্যাগ: #KolkataStreetFood #FoodReview #KolkataDiaries #FuchkaLove #StreetFoodIndia",
+          "source": "ইনস্টাগ্রাম ফুড ট্রেন্ডস",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "ফিটনেস চ্যালেঞ্জ",
-          "content": "৩০ দিনের ফিটনেস চ্যালেঞ্জ নিয়ে তরুণদের মধ্যে ইনস্টাগ্রাম রিলস বেশ সাড়া ফেলেছে।",
-          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 4 (India): লো-ফাই বাংলা ও হিন্দি গানের স্লো-মোশন রিলস",
+          "content": "ভাইরাল কৌশল: ট্রেন্ডিং লো-ফাই (Lofi) মিউজিকের সাথে দৈনন্দিন জীবনের সাধারণ মুহূর্তের নান্দনিক স্লো-মোশন ভিডিও।\nহুক আইডিয়া: 'বৃষ্টির দিনে জানলার ধারে এক কাপ গরম চা এবং এই গানটা...'\nতৈরির টিপস: সিনেমাটিক ফিল্টার, হালকা আলোর ব্যবহার এবং ধীর গতির ক্যামেরা মুভমেন্টের মাধ্যমে একটি শান্ত পরিবেশ তৈরি করুন।\nভাইরাল সিক্রেট: ভিডিওর কালার গ্রেডিং যেন একটু ভিন্টেজ বা ওয়ার্ম টোনের হয়, যা নস্টালজিক অনুভূতি দেয়।\nএনগেজমেন্ট বুস্টার: ক্যাপশনে লিখুন, 'আপনার প্রিয় বৃষ্টির দিনের গান কোনটি? শেয়ার করুন।'\nমনিটাইজেশন টিপ: অডিও ট্র্যাকের প্রচারের জন্য মিউজিক লেবেল বা স্বাধীন শিল্পীদের সাথে কোলাবোরেশন করুন।\nহ্যাশট্যাগ: #LofiAesthetic #SlowMotion #RainyDayVibes #AestheticVideos #ChillVibes",
+          "source": "ইনস্টাগ্রাম অ্যালগরিদম ট্র্যাকার",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "মিনিমালিস্ট লাইফস্টাইল",
-          "content": "কিভাবে কম জিনিসপত্র ব্যবহার করে জীবনকে সহজ করা যায়, তা নিয়ে ইনফ্লুয়েন্সারদের পোস্ট বাড়ছে।",
-          "source": "ইনস্টাগ্রাম ট্রেন্ডস",
-          "date": "2026-05-26"
+        {
+          "title": "Top 5 (WB): মিনিমালিস্ট হোম ডেকোর ও ডিআইওয়াই (DIY)",
+          "content": "ভাইরাল কৌশল: কম খরচে এবং সহজ উপায়ে ঘরকে সুন্দর ও নান্দনিক করে তোলার জন্য মিনিমালিস্ট ডিজাইন ও ডিআইওয়াই আইডিয়া।\nহুক আইডিয়া: 'ফেলে দেওয়া বোতল দিয়ে মাত্র ৫ মিনিটে বানান এই সুন্দর ফ্লাওয়ার ভাস!'\nতৈরির টিপস: আগে ও পরের (Before & After) রূপান্তরটি খুব স্পষ্টভাবে দেখান। প্রতিটি পদক্ষেপ সংক্ষেপে এবং সহজে বোঝান।\nভাইরাল সিক্রেট: ঘর সাজানোর পর ব্যাকগ্রাউন্ডে নরম আলো জ্বালিয়ে চূড়ান্ত লুকটি অত্যন্ত সুন্দরভাবে উপস্থাপন করুন।\nএনগেজমেন্ট বুস্টার: দর্শকদের বলুন, 'আপনি কি এটি বাড়িতে চেষ্টা করবেন? হ্যাঁ নাকি না?'\nমনিটাইজেশন টিপ: হোম ডেকোর ব্র্যান্ড, পেইন্ট কোম্পানি বা ক্রাফট সাপ্লাই ব্র্যান্ডের স্পনসরশিপ পান।\nহ্যাশট্যাগ: #HomeDecorDIY #MinimalistHome #RoomMakeover #CraftIdeas #AestheticHome",
+          "source": "ইনস্টাগ্রাম ডিজাইন ট্রেন্ডস",
+          "date": "2026-06-20"
         }
-      },
-      "date": "2026-05-26",
-      "updatedAt": "2026-05-26T17:51:23.662Z",
+      ],
+      "date": "2026-06-20",
+      "updatedAt": "2026-06-20T23:53:55.625Z",
       "serverKey": "barnia-system-2024-v1",
-      "id": "2026-05-26-bn",
-      "createdAt": "2026-05-26T17:51:23.662Z"
+      "id": "2026-06-20-bn",
+      "createdAt": "2026-06-20T23:52:59.713Z"
     },
-    "2026-05-26-en": {
-      "local": {
-        "0": {
-          "title": "Nadia District Health Department Launches Monsoon Preparedness Drive",
-          "content": "Health officials in Nadia have initiated a district-wide campaign to prevent water-borne diseases ahead of the monsoon season, focusing on sanitation in rural Barnia.",
-          "source": "Nadia Daily News",
-          "date": "2026-05-26"
+    "2026-06-20-en": {
+      "local": [
+        {
+          "title": "Bumper Mango Harvest in Barnia Orchard Belts Boosts Local Economy",
+          "content": "The agricultural belt of Barnia in Nadia district is celebrating a record-breaking mango harvest this season. Due to favorable weather conditions in early spring and timely intervention by the local block development agricultural officers, local orchards have yielded over 40% more produce compared to last year. Varieties such as Himsagar, Langra, and Amrapali are dominating the local markets. Local farmers' cooperatives have initiated direct supply chains to major retail hubs in Kolkata, bypassing middle-men and significantly boosting local farmers' profit margins. The Nadia District Administration has also proposed setting up a temporary cold storage unit in Barnia to help preserve the surplus harvest and prevent distress selling. Local farmers are expressing immense satisfaction, noting that this year's quality is exceptional. Plans are already underway to explore export opportunities to neighboring states, positioning Barnia as a key player in Bengal's agricultural map.",
+          "source": "Nadia District Agriculture Portal",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "Agricultural Fair Concludes in Barnia",
-          "content": "A three-day agricultural fair focused on modern irrigation techniques for jute farmers concluded in Barnia, drawing hundreds of local participants.",
-          "source": "West Bengal Regional Post",
-          "date": "2026-05-26"
+        {
+          "title": "Barnia High School Hosts District-Level Science and Technology Exhibition",
+          "content": "Barnia High School today became the center of intellectual excitement as it hosted the District-Level Science and Technology Exhibition 2026. Students from over thirty schools across Nadia district participated, showcasing innovative projects aimed at solving rural challenges. The theme for this year's exhibition was 'Sustainable Rural Technology.' The winning project, designed by a team of class eleven students from Barnia, featured a low-cost, solar-powered water filtration system tailored for agricultural runoff. Local education officials and scientists from nearby universities served as judges, praising the high caliber of innovation displayed by the rural youth. The event attracted hundreds of visitors, including parents, local residents, and students from neighboring villages. The headmaster of Barnia High School emphasized the importance of fostering scientific curiosity in rural areas, stating that such exhibitions provide crucial exposure and inspire young minds to pursue careers in science and technology.",
+          "source": "Bengal Education Times",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "New Infrastructure Project Approved for Nadia Connectivity",
-          "content": "The West Bengal government has sanctioned funds for a new bridge project connecting the outskirts of Barnia to the main Nadia commercial hub.",
-          "source": "State Development Bulletin",
-          "date": "2026-05-26"
+        {
+          "title": "New Primary Health Sub-Centre Inaugurated in Barnia to Improve Rural Care",
+          "content": "In a major boost to rural healthcare, a newly upgraded Primary Health Sub-Centre was officially inaugurated in Barnia today. The facility, which has been equipped with modern diagnostic tools, a dedicated maternal care unit, and a 24/7 emergency response team, aims to serve over fifteen thousand residents of Barnia and its adjoining villages. Previously, locals had to travel more than twenty kilometers to the nearest district hospital in Krishnanagar for basic medical emergencies. The inauguration ceremony was attended by local administrative officers and health department representatives. The new center will also host weekly specialized clinics for pediatrics and geriatrics, ensuring comprehensive care for vulnerable demographics. Additionally, a digital telemedicine portal has been integrated, allowing local doctors to consult with specialists in Kolkata in real-time. This upgrade marks a significant milestone in bridging the rural-urban healthcare divide in the Nadia district.",
+          "source": "Nadia Health Watch",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "Educational Seminar Held for Nadia Youth",
-          "content": "A career guidance seminar for high school graduates was organized in the Nadia district headquarters, emphasizing vocational training opportunities.",
-          "source": "Nadia Educational Times",
-          "date": "2026-05-26"
+        {
+          "title": "Jal Dharo Jal Bharo Water Conservation Drive Launched Across Barnia Ponds",
+          "content": "The Block Development Office in Barnia has officially launched the 'Jal Dharo Jal Bharo' water conservation initiative ahead of the upcoming monsoon season. This campaign aims to desilt and rejuvenate over twenty local community ponds and traditional water bodies that had fallen into disuse. By restoring these reservoirs, the local administration hopes to capture rainwater, recharge the depleting groundwater table, and provide reliable water sources for agricultural irrigation during dry spells. Local community members, including self-help groups and youth clubs, have actively volunteered for the physical desilting work. The project also includes planting saplings along the banks of the restored ponds to prevent soil erosion. Administrative officials stated that this community-driven ecological project will not only secure water resources but also generate temporary employment opportunities for local laborers, fostering a sense of collective ownership over natural resources in Barnia.",
+          "source": "West Bengal Panchayat News",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "Barnia Local Market Sees Rise in Organic Produce Demand",
-          "content": "Local farmers in Barnia report a significant surge in demand for organic seasonal vegetables, leading to a boost in the local weekly market economy.",
-          "source": "West Bengal Business Review",
-          "date": "2026-05-26"
+        {
+          "title": "Barnia Central Bazar Modernization Project Receives Official Administrative Approval",
+          "content": "The long-awaited modernization project for the Barnia Central Bazar has officially received administrative approval and funding from the state municipal affairs department. The busy marketplace, which serves as the economic lifeline for Barnia and surrounding rural areas, has suffered from congestion, poor drainage, and inadequate waste management facilities for years. The approved upgrade plan includes constructing concrete pathways, installing an integrated drainage network to prevent waterlogging during monsoons, setting up dedicated waste segregation zones, and installing solar streetlights for improved nighttime security. Local traders and shopkeepers have welcomed the announcement, noting that a cleaner and more organized market layout will attract more customers and boost local trade. Construction is scheduled to begin early next month, with local authorities promising to execute the work in phases to minimize disruption to daily businesses.",
+          "source": "Nadia Local Business Journal",
+          "date": "2026-06-20"
         }
-      },
-      "fbTrends": {
-        "0": {
-          "title": "Global Climate Summit 2026 Highlights",
-          "content": "Discussions on the latest carbon-neutral policies are dominating Facebook feeds as the Global Climate Summit concludes.",
-          "source": "Facebook Trends Tracker",
-          "date": "2026-05-26"
+      ],
+      "fbTrends": [
+        {
+          "title": "Top 1 (India): The '90s Nostalgia Remake Challenge",
+          "content": "Viral Strategy: Audiences on Facebook are highly responsive to nostalgia-driven content that triggers childhood memories. Hook Idea: 'Only 90s kids in India will remember this flavor...' Creation Tips: Recreate old Indian commercial jingles or snacks using modern setups. Keep the video length under 60 seconds with bright, warm color grading. Viral Secret: Use a side-by-side comparison with the original vintage clip. Engagement Booster: Ask viewers in the caption, 'What was your favorite childhood pocket money snack?' Monetization Tip: Partner with legacy brands doing retro relaunch campaigns. Hashtags: #90sNostalgia #IndianChildhood #RetroRemake #ThrowbackIndia #90sKids",
+          "source": "FB Social Intelligence Monitor",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "AI Integration in Home Appliances",
-          "content": "Viral discussions about the new generation of smart home AI assistants that simplify daily household management.",
-          "source": "Tech News Daily",
-          "date": "2026-05-26"
+        {
+          "title": "Top 2 (WB): Monsoon Travel Vlogs to Offbeat North Bengal",
+          "content": "Viral Strategy: With the monsoon setting in, West Bengal audiences are searching for serene, rainy weekend getaways. Hook Idea: 'Stop visiting Darjeeling! Go to this secret rainy paradise instead...' Creation Tips: Shoot cinematic drone shots of misty tea gardens and wet roads. Use a soothing, acoustic Bengali background score. Viral Secret: Provide a step-by-step budget breakdown in the first 5 seconds of the video text overlay. Engagement Booster: Tell viewers to 'Tag your travel partner who owes you a trip.' Monetization Tip: Collaborate with local homestays and eco-resorts for affiliate bookings. Hashtags: #NorthBengal #MonsoonTravel #BengalTourism #OffbeatTravel #RainyGetaway",
+          "source": "Bengal Digital Trends Tracker",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "Summer Travel Planning Tips",
-          "content": "Travel enthusiasts are sharing top budget-friendly summer vacation destinations for the upcoming season.",
-          "source": "Travel Community Hub",
-          "date": "2026-05-26"
+        {
+          "title": "Top 3 (India): AI-Generated Indian Fusion Street Foods",
+          "content": "Viral Strategy: Bizarre and futuristic food concepts trigger massive comment-section debates and shares on Facebook. Hook Idea: 'I asked AI to design the ultimate Indian street food, and it made this...' Creation Tips: Use high-quality AI images of crazy food fusions (e.g., Chocolate Golgappa) and then try to actually cook it. Viral Secret: Focus on the genuine, funny reaction during the taste test. Engagement Booster: Ask the audience, 'Is this a food masterpiece or a crime? Comment below!' Monetization Tip: Sponsor with kitchen appliance brands or modern food delivery apps. Hashtags: #AIFood #StreetFoodIndia #FoodFusion #CookingChallenge #IndianFoodie",
+          "source": "FB Creator Portal India",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "Health and Wellness Morning Routines",
-          "content": "Influencers are trending with the '5-minute morning mobility' challenge to improve posture and energy levels.",
-          "source": "Wellness Trends Daily",
-          "date": "2026-05-26"
+        {
+          "title": "Top 4 (WB): Traditional Bengali Handloom Styling",
+          "content": "Viral Strategy: Pride in local culture and handloom heritage is driving huge shares among Bengali women and youth. Hook Idea: '5 ways to style your mother's old Jamdani saree for office wear.' Creation Tips: Show quick, seamless outfit transitions from casual to traditional. Use upbeat, modern Rabindra Sangeet remixes. Viral Secret: Emphasize sustainable fashion and supporting local weavers of Nadia and Hooghly. Engagement Booster: Ask followers to share photos of their favorite heritage sarees in the comments. Monetization Tip: Partner with local boutique owners and handloom cooperatives for sponsored showcases. Hashtags: #BengaliFashion #JamdaniLove #HandloomSaree #SareeStyling #BengalHeritage",
+          "source": "Kolkata Fashion Analytics",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "Retro Gaming Nostalgia Resurgence",
-          "content": "Community groups are actively sharing collections of 90s gaming consoles, sparking widespread nostalgia.",
-          "source": "Gaming Culture Weekly",
-          "date": "2026-05-26"
+        {
+          "title": "Top 5 (India): Middle-Class Budget Hacks for 2026",
+          "content": "Viral Strategy: Relatable comedy sketches addressing inflation and budget management resonate deeply with families. Hook Idea: 'When the vegetable vendor asks for 100 rupees for coriander...' Creation Tips: Play multiple characters yourself using simple props like a shawl or glasses. Keep the dialogue punchy and colloquial. Viral Secret: Highlight everyday struggles that everyone experiences but rarely talks about. Engagement Booster: Pin a comment asking, 'What's the most expensive thing in your kitchen right now?' Monetization Tip: Integrate digital payment apps or budgeting tools naturally into the comedy sketch. Hashtags: #MiddleClassProblems #DesiHumor #BudgetHacks #RelatableComedy #IndianFamilies",
+          "source": "FB India Viral Index",
+          "date": "2026-06-20"
         }
-      },
-      "igTrends": {
-        "0": {
-          "title": "Minimalist Summer Fashion Aesthetic",
-          "content": "The 'Clean Girl' aesthetic evolves into 'Summer Minimalism' with breathable fabrics and neutral tones trending on Instagram.",
-          "source": "Fashion Pulse",
-          "date": "2026-05-26"
+      ],
+      "igTrends": [
+        {
+          "title": "Top 1 (India): The 'As It Was' Transition with Indian Ethnic Wear",
+          "content": "Viral Strategy: High-energy, visually satisfying aesthetic transition reels are dominating Instagram's algorithm. Hook Idea: 'Wait for the beat drop to see the transformation...' Creation Tips: Start in messy home clothes, jump on the beat, and transition into a stunning ethnic outfit. Use high-key lighting. Viral Secret: Match the exact frame alignment before and after the transition cut. Engagement Booster: Use an interactive poll sticker asking, 'Rate this look from 1-10.' Monetization Tip: Tag and promote fashion e-commerce brands for affiliate sales. Hashtags: #TransitionReels #EthnicWear #OOTDIndia #GlowUpChallenge #ReelsViral",
+          "source": "Instagram India Creator Hub",
+          "date": "2026-06-20"
         },
-        "1": {
-          "title": "Sustainable Urban Gardening",
-          "content": "Reels showcasing balcony vegetable gardens in small urban apartments are gaining massive traction.",
-          "source": "Green Living Daily",
-          "date": "2026-05-26"
+        {
+          "title": "Top 2 (WB): Kolkata Street Food Crawl POV Reels",
+          "content": "Viral Strategy: High-speed, point-of-view (POV) dining experiences trigger sensory cravings and high save rates. Hook Idea: 'Eating my way through Kolkata's legendary cabin restaurants for under ₹200.' Creation Tips: Use a chest mount or wide-angle lens. Keep edits fast, matching the sizzle of the food. Viral Secret: Include the exact location and price of every dish as text on screen. Engagement Booster: Tell viewers to 'Save this reel for your next Kolkata weekend food trip.' Monetization Tip: Offer premium placements for local restaurants wanting to feature in your food guides. Hashtags: #KolkataStreetFood #POVFoodie #KolkataCabin #FoodReels #BengaliFood",
+          "source": "IG Kolkata Foodies Network",
+          "date": "2026-06-20"
         },
-        "2": {
-          "title": "Cinematic Travel Vlogging Styles",
-          "content": "New editing techniques using AI-assisted color grading are the top trend for travel creators this week.",
-          "source": "Creator Insights",
-          "date": "2026-05-26"
+        {
+          "title": "Top 3 (India): Chill Lo-Fi Beats with Indian Retro Mashups",
+          "content": "Viral Strategy: Aesthetic, relaxing visuals paired with nostalgic lo-fi music create high loop rates. Hook Idea: 'POV: Driving through the monsoon rain listening to this...' Creation Tips: Shoot moody, rainy day window-seat footage or city lights. Apply a vintage film grain filter. Viral Secret: Keep the video looping seamlessly so viewers watch it multiple times. Engagement Booster: Ask, 'What's your go-to song for a rainy day?' Monetization Tip: Collaborate with independent indie musicians to feature their tracks. Hashtags: #LofiMusic #AestheticReels #MonsoonVibes #RetroMashup #ChillBeats",
+          "source": "IG Music Trends India",
+          "date": "2026-06-20"
         },
-        "3": {
-          "title": "Plant-Based Fusion Cuisine",
-          "content": "Instagram chefs are trending with 'Fusion Vegan' recipes, combining traditional spices with modern plant-based proteins.",
-          "source": "Foodie Trends",
-          "date": "2026-05-26"
+        {
+          "title": "Top 4 (WB): 'A Day in the Life of a Bengali Creator' Vlog",
+          "content": "Viral Strategy: Audiences crave authentic, behind-the-scenes glimpses into the lives of regional creators. Hook Idea: 'What a full-time content creator in Bengal actually does all day...' Creation Tips: Use aesthetic, warm-toned mini-vlogs with a soft, conversational voiceover in Bengali or English. Viral Secret: Show your failures, messy desk, or burnt breakfast to build genuine relatability. Engagement Booster: Ask, 'What career should I vlog next?' Monetization Tip: Showcase lifestyle, productivity, or tech gadgets used throughout your day. Hashtags: #DayInTheLife #BengaliCreator #MiniVlog #BehindTheScenes #CreatorLife",
+          "source": "Bengal Creator Insights",
+          "date": "2026-06-20"
         },
-        "4": {
-          "title": "Digital Art Portraits",
-          "content": "Creators are using new augmented reality filters to turn self-portraits into digital impressionist art pieces.",
-          "source": "Digital Arts Weekly",
-          "date": "2026-05-26"
+        {
+          "title": "Top 5 (India): 'Get Ready With Me' (GRWM) for Monsoon Weddings",
+          "content": "Viral Strategy: Practical beauty and fashion solutions for seasonal challenges drive high saves and shares. Hook Idea: 'How to make your makeup sweat-proof and rain-proof for monsoon weddings.' Creation Tips: Show close-up shots of product applications. Keep the background clean and pastel-colored. Viral Secret: Share a secret, unconventional hack (e.g., ice-water facial) in the first 3 seconds. Engagement Booster: Invite viewers to comment their biggest makeup struggle during humid weather. Monetization Tip: Partner with waterproof cosmetics brands for product placements. Hashtags: #GRWM #MonsoonWedding #WaterproofMakeup #IndianBridal #BeautyHacks",
+          "source": "IG Beauty Trends India",
+          "date": "2026-06-20"
         }
-      },
-      "date": "2026-05-26",
-      "updatedAt": "2026-05-26T17:51:29.451Z",
+      ],
+      "date": "2026-06-20",
+      "updatedAt": "2026-06-20T23:54:40.618Z",
       "serverKey": "barnia-system-2024-v1",
-      "id": "2026-05-26-en",
-      "createdAt": "2026-05-26T17:51:29.451Z"
-    },
-    "2026-05-31-bn": {
-      "local": {
-        "0": {
-          "title": "রানাঘাটে আধুনিক কৃষি মেলা ও প্রদর্শনী",
-          "content": "নদীয়ার রানাঘাটে আধুনিক কৃষি প্রযুক্তি এবং জৈব চাষের উপর তিন দিনের মেলা শুরু হয়েছে, যেখানে স্থানীয় কৃষকরা উন্নত বীজ ও সার সম্পর্কে তথ্য পাচ্ছেন।",
-          "source": "নদীয়ার কণ্ঠ",
-          "date": "2026-05-31"
-        },
-        "1": {
-          "title": "বার্নিয়া গ্রামে পানীয় জলের নতুন প্রকল্প",
-          "content": "বার্নিয়া এলাকায় দীর্ঘদিনের জলকষ্ট দূর করতে রাজ্য সরকারের উদ্যোগে নতুন পানীয় জলের পাইপলাইন বসানোর কাজ আজ থেকে শুরু হয়েছে।",
-          "source": "পশ্চিমবঙ্গ সংবাদ",
-          "date": "2026-05-31"
-        },
-        "2": {
-          "title": "নদীয়ায় বর্ষাকালীন বৃক্ষরোপণ কর্মসূচি",
-          "content": "পরিবেশ রক্ষায় নদীয়ার বিভিন্ন স্কুল ও ক্লাব মিলে আজ বিশ্ব পরিবেশ দিবসের প্রাক্কালে বৃক্ষরোপণ কর্মসূচি পালন করেছে।",
-          "source": "দৈনিক নদীয়া",
-          "date": "2026-05-31"
-        },
-        "3": {
-          "title": "বার্নিয়া হাইস্কুলে মেধাবী ছাত্রছাত্রীদের সংবর্ধনা",
-          "content": "মাধ্যমিক ও উচ্চমাধ্যমিক পরীক্ষায় সাফল্য অর্জনকারী বার্নিয়ার ছাত্রছাত্রীদের আজ স্থানীয় পঞ্চায়েতের পক্ষ থেকে বিশেষ সংবর্ধনা প্রদান করা হলো।",
-          "source": "গ্রামের খবর",
-          "date": "2026-05-31"
-        },
-        "4": {
-          "title": "নদীয়ায় গ্রামীণ হস্তশিল্প মেলা",
-          "content": "নদীয়ার মাটির শিল্প ও হস্তশিল্পকে তুলে ধরতে আজ থেকে এক সপ্তাহব্যাপী মেলা শুরু হয়েছে কৃষ্ণনগরের কাছে, যা স্থানীয় কারিগরদের উৎসাহিত করছে।",
-          "source": "বাংলার মাটি",
-          "date": "2026-05-31"
-        }
-      },
-      "fbTrends": {
-        "0": "পশ্চিমবঙ্গে বর্ষার আগমনী বার্তা",
-        "1": "বিশ্ব পরিবেশ দিবসের প্রস্তুতি",
-        "2": "স্থানীয় ফুটবলে নতুন প্রতিভা",
-        "3": "বাংলার ঐতিহ্যবাহী পিঠে-পুলি উৎসব",
-        "4": "গ্রীষ্মের শেষে আমের ফলন নিয়ে আলোচনা"
-      },
-      "igTrends": {
-        "0": "নদীয়ার প্রাকৃতিক সৌন্দর্য ফটোগ্রাফি",
-        "1": "বাংলার গ্রামীণ জীবনযাত্রা রিলস",
-        "2": "সকালের নাস্তায় দেশি খাবার",
-        "3": "হ্যান্ডলুম শাড়ি কালেকশন",
-        "4": "বর্ষার মেঘলা আকাশ ও চা"
-      },
-      "updatedAt": "2026-05-31T20:14:10.837Z",
-      "date": "2026-05-31",
-      "serverKey": "barnia-system-2024-v1",
-      "id": "2026-05-31-bn",
-      "createdAt": "2026-05-31T20:14:03.975Z"
-    },
-    "2026-05-31-en": {
-      "local": {
-        "0": {
-          "title": "New Science Lab Inaugurated at Barnia High School",
-          "content": "A state-of-the-art science laboratory was inaugurated today at Barnia High School, Nadia, aimed at boosting practical STEM education for rural students in the district.",
-          "source": "Nadia Chronicle",
-          "date": "2026-05-31"
-        },
-        "1": {
-          "title": "Nadia District Administration Launches Water Purification Plant in Barnia",
-          "content": "To combat groundwater contamination, a new community-level water purification plant was set up in Barnia, benefiting over 500 local households with safe drinking water.",
-          "source": "Bengal Local News",
-          "date": "2026-05-31"
-        },
-        "2": {
-          "title": "Barnia Mango Festival Attracts Regional Buyers",
-          "content": "The annual Barnia Mango Exhibition kicked off today, featuring unique local varieties of Himsagar and Langra, drawing traders and enthusiasts from all across West Bengal.",
-          "source": "Krishnanagar Times",
-          "date": "2026-05-31"
-        },
-        "3": {
-          "title": "Free Health Camp Organized by Barnia Youth Club",
-          "content": "Over 300 residents received free medical check-ups, diagnostic services, and essential medicines at a health camp organized by the Barnia Pragati Sangha today.",
-          "source": "Nadia Today",
-          "date": "2026-05-31"
-        },
-        "4": {
-          "title": "Krishnanagar-Barnia Road Expansion Project Approved",
-          "content": "The West Bengal State Highway Authority has officially approved the widening of the key arterial road connecting Barnia to Krishnanagar to ease long-term traffic congestion.",
-          "source": "Bengal Express",
-          "date": "2026-05-31"
-        }
-      },
-      "fbTrends": {
-        "0": {
-          "title": "#DecadeChallenge2026",
-          "content": "Users are sharing side-by-side photos comparing their lives in 2016 versus 2026, highlighting massive shifts in technology, fashion, and personal growth over the decade.",
-          "source": "FB Trends Monitor",
-          "date": "2026-05-31"
-        },
-        "1": {
-          "title": "AI Wellness Coaches",
-          "content": "Discussion groups are buzzing over the global launch of new personalized AI mental health and wellness companions integrated directly into social messaging platforms.",
-          "source": "TechPulse",
-          "date": "2026-05-31"
-        },
-        "2": {
-          "title": "E-Sports Senior Leagues",
-          "content": "A viral video of a competitive gaming tournament exclusively for senior citizens aged 65 and over has sparked widespread admiration and sharing across Facebook feeds.",
-          "source": "ViralFeed",
-          "date": "2026-05-31"
-        },
-        "3": {
-          "title": "#SaveOurSoil Initiative",
-          "content": "A global community-driven campaign raising awareness about agricultural soil degradation has garnered millions of shares and commitments to home composting.",
-          "source": "GreenEarth Network",
-          "date": "2026-05-31"
-        },
-        "4": {
-          "title": "Hybrid Work Anniversary",
-          "content": "As companies mark several years of permanent hybrid policies, employees are sharing humorous memes and serious discussions about the evolution of work-from-home culture.",
-          "source": "Workplace Insight",
-          "date": "2026-05-31"
-        }
-      },
-      "igTrends": {
-        "0": {
-          "title": "#NeonPastelAesthetic",
-          "content": "Creators are flooding feeds with a new visual trend combining bright neons with soft pastel backdrops, dominating fashion and interior design reels.",
-          "source": "IG Creative Lab",
-          "date": "2026-05-31"
-        },
-        "1": {
-          "title": "Silent Travel Vlogs",
-          "content": "A shift away from loud voiceovers; creators are gaining millions of views using ASMR and ambient natural sounds to document their solo travel journeys.",
-          "source": "TrendSpotter",
-          "date": "2026-05-31"
-        },
-        "2": {
-          "title": "#CyberPunkSelfie Challenge",
-          "content": "An augmented reality filter that turns users into holographic cyberpunk characters is the top-trending effect of the week.",
-          "source": "IG Filter Analytics",
-          "date": "2026-05-31"
-        },
-        "3": {
-          "title": "Micro-Balcony Farming",
-          "content": "A surge in carousel posts showing step-by-step guides on how to grow organic vegetables in extremely small apartment balconies.",
-          "source": "Urban Green",
-          "date": "2026-05-31"
-        },
-        "4": {
-          "title": "Lo-Fi Study Beats Sync",
-          "content": "Users are syncing transition reels of their late-night study or work sessions to a newly trending lo-fi hip-hop track.",
-          "source": "MusicCharts IG",
-          "date": "2026-05-31"
-        }
-      },
-      "date": "2026-05-31",
-      "updatedAt": "2026-05-31T20:14:20.961Z",
-      "serverKey": "barnia-system-2024-v1",
-      "id": "2026-05-31-en",
-      "createdAt": "2026-05-31T20:14:20.961Z"
+      "id": "2026-06-20-en",
+      "createdAt": "2026-06-20T23:54:40.618Z"
     }
   },
   "fact_checks": {
@@ -568,6 +412,182 @@
       "createdAt": "2026-05-31T21:13:58.083Z",
       "serverKey": "barnia-system-2024-v1",
       "id": "okbgmi611@gmail.com"
+    }
+  },
+  "vamshavali_profiles": {
+    "okbgmi611@gmail.com": {
+      "email": "okbgmi611@gmail.com",
+      "name": "Suryavamsha: The Royal Lineage of Lord Sri Ram (Raghuvansh)",
+      "shareId": "LODSRIRAM",
+      "parents": "King Dasharatha & Queen Kaushalya",
+      "grandparents": "King Aja & Queen Indumati",
+      "gotra": "Kashyap",
+      "kuldevi": "Kuladevi Chandi Mata",
+      "kuldevta": "Lord Surya (Sun God)",
+      "nativePlace": "Ayodhya, Uttar Pradesh",
+      "additionalNotes": "The ancient, legendary solar dynasty tracing down to the sons of Shatrughna, Lakshmana, Bharata, and Lord Sri Ram himself.",
+      "members": [
+        {
+          "id": "dasharatha",
+          "name": "King Dasharatha",
+          "role": "Patriarch (King of Ayodhya)",
+          "birthYear": "Treta Yuga",
+          "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/King_Dasharatha_of_Ayodhya.jpg/500px-King_Dasharatha_of_Ayodhya.jpg",
+          "notes": "Righteous emperor of Ayodhya, father of Sri Ram, Lakshmana, Bharata, and Shatrughna.",
+          "partner": {
+            "name": "Queen Kaushalya",
+            "birthYear": "Treta Yuga",
+            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Ravi_Varma-Kaushalya.jpg/500px-Ravi_Varma-Kaushalya.jpg",
+            "notes": "Senior-most Queen of Ayodhya, birth mother of Lord Sri Ram."
+          },
+          "children": [
+            {
+              "id": "sriram",
+              "name": "Lord Sri Ram",
+              "role": "Maryada Purushottama",
+              "birthYear": "Ram Navami",
+              "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Rama_Ravi_Varma.jpg/500px-Rama_Ravi_Varma.jpg",
+              "notes": "Seventh incarnation of Lord Vishnu, direct heir to the throne of Ayodhya.",
+              "partner": {
+                "name": "Goddess Sita",
+                "birthYear": "Treta Yuga",
+                "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Raja_Ravi_Varma_-_Sita.jpg/500px-Raja_Ravi_Varma_-_Sita.jpg",
+                "notes": "Princess of Mithila, daughter of King Janaka, incarnation of Goddess Lakshmi."
+              },
+              "children": [
+                {
+                  "id": "luv",
+                  "name": "Prince Luv",
+                  "role": "Son / Co-heir (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Raja_Ravi_Varma%2C_Lava_and_Kusha.jpg/500px-Raja_Ravi_Varma%2C_Lava_and_Kusha.jpg",
+                  "notes": "Twin son of Sri Ram & Goddess Sita, ruled North Kosala at Lovapuri (Lahore).",
+                  "children": []
+                },
+                {
+                  "id": "kush",
+                  "name": "Prince Kush",
+                  "role": "Son / Co-heir (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Lava_and_Kusha_Ravi_Varma.jpg/500px-Lava_and_Kusha_Ravi_Varma.jpg",
+                  "notes": "Twin son of Sri Ram & Goddess Sita, ruled South Kosala at Kushavati.",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "lakshmana",
+              "name": "Prince Lakshmana",
+              "role": "Consort & Loyal Brother",
+              "birthYear": "Treta Yuga",
+              "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Lakshmana_by_Raja_Ravi_Varma.jpg/500px-Lakshmana_by_Raja_Ravi_Varma.jpg",
+              "notes": "Incarnation of Shesha Naag, devoted brother accompanying Lord Ram to exile.",
+              "partner": {
+                "name": "Princess Urmila",
+                "birthYear": "Treta Yuga",
+                "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Raja_Ravi_Varma_-_Urmila.jpg/500px-Raja_Ravi_Varma_-_Urmila.jpg",
+                "notes": "Sister of Sita, legendary for her continuous 14-year sleep-tapasya."
+              },
+              "children": [
+                {
+                  "id": "angada",
+                  "name": "Angada",
+                  "role": "Son of Laxman (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Eldest son of Lakshmana, warrior prince of Angadiya.",
+                  "children": []
+                },
+                {
+                  "id": "chandraketu",
+                  "name": "Chandraketu",
+                  "role": "Son of Laxman (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Younger son of Lakshmana, famous for establishing Chandrakanta town.",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "bharata",
+              "name": "Prince Bharata",
+              "role": "Symbol of Brotherly Love",
+              "birthYear": "Treta Yuga",
+              "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Bharata_Milap_by_Raja_Ravi_Varma.jpg/500px-Bharata_Milap_by_Raja_Ravi_Varma.jpg",
+              "notes": "Dasharatha's second son, ruled Ayodhya as a hermit placing Ram's sandals on throne.",
+              "partner": {
+                "name": "Princess Mandavi",
+                "birthYear": "Treta Yuga",
+                "photo": null,
+                "notes": "Cousin of Sita, led a deeply ascetic lifestyle in support of Bharata."
+              },
+              "children": [
+                {
+                  "id": "taksha",
+                  "name": "Taksha",
+                  "role": "Son of Bharata (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Eldest son of Bharata, founded the world-renowned university town of Taxila (Takshashila).",
+                  "children": []
+                },
+                {
+                  "id": "pushkala",
+                  "name": "Pushkala",
+                  "role": "Son of Bharata (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Younger son of Bharata, established the historical city of Pushkalavati.",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "shatrughna",
+              "name": "Prince Shatrughna",
+              "role": "The Conqueror of Obstacles",
+              "birthYear": "Treta Yuga",
+              "photo": null,
+              "notes": "Youngest brother of Lord Ram, defeated Lavanasura and founded Mathura.",
+              "partner": {
+                "name": "Princess Shrutakirti",
+                "birthYear": "Treta Yuga",
+                "photo": null,
+                "notes": "Cousin of Sita, managed family responsibilities with absolute poise."
+              },
+              "children": [
+                {
+                  "id": "subahu",
+                  "name": "Subahu",
+                  "role": "Son of Shatrughna (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Eldest son of Shatrughna, governor-king of Mathura.",
+                  "children": []
+                },
+                {
+                  "id": "shatrughati",
+                  "name": "Shatrughati",
+                  "role": "Son of Shatrughna (Gen 3)",
+                  "birthYear": "Treta Yuga",
+                  "photo": null,
+                  "notes": "Younger son of Shatrughna, governor-king of Vidisha town.",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "updatedAt": "2026-06-21T00:23:41.063Z",
+      "createdAt": "2026-06-21T00:08:40.851Z",
+      "kuladevi": "Kuladevi Chandi Mata",
+      "kuladevata": "Lord Surya (Sun God)",
+      "kuldeviPhoto": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Goddess_Durga_Ravi_Varma.jpg/640px-Goddess_Durga_Ravi_Varma.jpg",
+      "kuladevataPhoto": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Surya_deva.jpg/640px-Surya_deva.jpg",
+      "kuldevata": "Lord Surya (Sun God)",
+      "pravara": "Trayarsheya (Kashyap, Avatsara, Naidhruva)"
     }
   }
 }

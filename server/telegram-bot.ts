@@ -980,13 +980,182 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     );
 
     try {
-      // 1. Fetch data from SQLite
-      const tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkedProfileId) as any;
-      if (!tree) {
-        throw new Error("Tree not found");
+      let treeName = "Family Tree";
+      let gotra = "N/A";
+      let familySurname = "N/A";
+      let gramadevata = "N/A";
+      let kuladevi = "N/A";
+      let kuladevata = "N/A";
+      let totalMembersCount = 0;
+      let chartLines: string[] = [];
+      let catalogMembers: any[] = [];
+
+      const isFirestoreProfile = linkedProfile && Array.isArray(linkedProfile.members);
+
+      if (isFirestoreProfile) {
+        console.log(`[Telegram Bot] Generating PDF from Firestore Profile ${linkedProfileId}`);
+        treeName = linkedProfile.name || "Family Tree";
+        gotra = linkedProfile.gotra || "N/A";
+        familySurname = linkedProfile.familySurname || linkedProfile.family_surname || "N/A";
+        gramadevata = linkedProfile.gramadevata || "N/A";
+        kuladevi = linkedProfile.kuldevi || linkedProfile.kuladevi || "N/A";
+        kuladevata = linkedProfile.kuldevta || linkedProfile.kuladevata || "N/A";
+
+        const roots = linkedProfile.members || [];
+        const visited = new Set<string>();
+
+        const formatFirestoreNode = (node: any, prefix: string, isLast: boolean): string[] => {
+          if (!node) return [];
+          const nodeId = node.id || Math.random().toString();
+          if (visited.has(nodeId)) return [];
+          visited.add(nodeId);
+
+          let nameStr = `${node.name || "Unknown"}`;
+          let infoParts: string[] = [];
+          if (node.birthYear) {
+            infoParts.push(`Yr: ${node.birthYear}`);
+          }
+          if (node.role) {
+            infoParts.push(node.role);
+          }
+          if (infoParts.length > 0) {
+            nameStr += ` (${infoParts.join(", ")})`;
+          }
+
+          if (node.partner && node.partner.name) {
+            let partnerStr = `Spouse: ${node.partner.name}`;
+            if (node.partner.birthYear) {
+              partnerStr += ` (Yr: ${node.partner.birthYear})`;
+            }
+            nameStr += ` = [${partnerStr}]`;
+          }
+
+          const line = `${prefix}${isLast ? "└── " : "├── "}${nameStr}`;
+          const result: string[] = [line];
+
+          const children = node.children || [];
+          const childPrefix = prefix + (isLast ? "    " : "│   ");
+          for (let i = 0; i < children.length; i++) {
+            const isChildLast = i === children.length - 1;
+            result.push(...formatFirestoreNode(children[i], childPrefix, isChildLast));
+          }
+
+          return result;
+        };
+
+        for (let i = 0; i < roots.length; i++) {
+          chartLines.push(...formatFirestoreNode(roots[i], "", i === roots.length - 1));
+        }
+
+        const collectAllFirestoreMembers = (nodes: any[]): any[] => {
+          const result: any[] = [];
+          const vis = new Set<string>();
+
+          const traverse = (node: any) => {
+            if (!node) return;
+            const nodeId = node.id || Math.random().toString();
+            if (vis.has(nodeId)) return;
+            vis.add(nodeId);
+
+            result.push({
+              display_name: node.name,
+              role: node.role,
+              date_of_birth: node.birthYear,
+              gender: node.gender || (node.role && node.role.toLowerCase().includes("daughter") ? "female" : "male"),
+              life_status: node.lifeStatus || "living",
+              notes: node.notes || "",
+              partner: node.partner
+            });
+
+            const children = node.children || [];
+            for (const child of children) {
+              traverse(child);
+            }
+          };
+
+          for (const root of nodes) {
+            traverse(root);
+          }
+          return result;
+        };
+
+        catalogMembers = collectAllFirestoreMembers(roots);
+        totalMembersCount = catalogMembers.length;
+
+      } else {
+        console.log(`[Telegram Bot] Generating PDF from SQLite Profile ${linkedProfileId}`);
+        const sqliteTree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(linkedProfileId) as any;
+        if (!sqliteTree) {
+          throw new Error("Local tree record not found");
+        }
+
+        treeName = sqliteTree.name || "Family Tree";
+        gotra = sqliteTree.gotra || "N/A";
+        familySurname = sqliteTree.family_surname || "N/A";
+        gramadevata = sqliteTree.gramadevata || "N/A";
+        kuladevi = sqliteTree.kuladevi || "N/A";
+        kuladevata = sqliteTree.kuladevata || "N/A";
+
+        const people = sqliteDb.prepare("SELECT * FROM lineage_people WHERE tree_id = ?").all(linkedProfileId) as any[];
+        const spouses = sqliteDb.prepare("SELECT * FROM lineage_spouses WHERE tree_id = ?").all(linkedProfileId) as any[];
+
+        totalMembersCount = people.length;
+        catalogMembers = people.map(p => ({
+          display_name: p.display_name,
+          role: p.gender === "female" ? "Daughter" : "Son",
+          date_of_birth: p.date_of_birth,
+          gender: p.gender || "male",
+          life_status: p.life_status || "living",
+          notes: p.notes || ""
+        }));
+
+        const personMap = new Map<string, any>(people.map(p => [p.id, p]));
+        const roots = people.filter(p => !p.father_id && !p.mother_id);
+        if (roots.length === 0 && people.length > 0) {
+          roots.push(people[0]);
+        }
+
+        const formatLineageNode = (personId: string, prefix: string, isLast: boolean, visitedSet: Set<string>): string[] => {
+          if (visitedSet.has(personId)) return [];
+          visitedSet.add(personId);
+
+          const person = personMap.get(personId);
+          if (!person) return [];
+
+          let nameStr = `${person.display_name || "Unknown"} (${person.gender === "female" ? "F" : "M"})`;
+          if (person.life_status === "deceased") {
+            nameStr += " [Deceased]";
+          }
+          
+          const matchedSpouses = spouses.filter(s => s.person_id === personId || s.spouse_id === personId);
+          const spouseStrings = matchedSpouses.map(s => {
+            const spId = s.person_id === personId ? s.spouse_id : s.person_id;
+            const sp = personMap.get(spId);
+            return sp ? sp.display_name : null;
+          }).filter(Boolean);
+
+          if (spouseStrings.length > 0) {
+            nameStr += ` = (${spouseStrings.join(", ")})`;
+          }
+
+          const line = `${prefix}${isLast ? "└── " : "├── "}${nameStr}`;
+          const result: string[] = [line];
+
+          const children = people.filter(p => p.father_id === personId || p.mother_id === personId);
+          const childPrefix = prefix + (isLast ? "    " : "│   ");
+          for (let i = 0; i < children.length; i++) {
+            const isChildLast = i === children.length - 1;
+            result.push(...formatLineageNode(children[i].id, childPrefix, isChildLast, visitedSet));
+          }
+
+          return result;
+        };
+
+        const visited = new Set<string>();
+        for (let i = 0; i < roots.length; i++) {
+          chartLines.push(...formatLineageNode(roots[i].id, "", i === roots.length - 1, visited));
+        }
       }
-      const people = sqliteDb.prepare("SELECT * FROM lineage_people WHERE tree_id = ?").all(linkedProfileId) as any[];
-      const spouses = sqliteDb.prepare("SELECT * FROM lineage_spouses WHERE tree_id = ?").all(linkedProfileId) as any[];
 
       // 2. Generate PDF with jsPDF
       const doc = new jsPDF({
@@ -1012,61 +1181,14 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       doc.setTextColor(55, 65, 81);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text(`Tree Name: ${tree.name || "Family Tree"}`, 18, 44);
-      doc.text(`Gotra: ${tree.gotra || "N/A"}`, 18, 49);
-      doc.text(`Family Surname: ${tree.family_surname || "N/A"}`, 18, 54);
-      doc.text(`Gramadevata: ${tree.gramadevata || "N/A"}`, 18, 59);
+      doc.text(`Tree Name: ${treeName}`, 18, 44);
+      doc.text(`Gotra: ${gotra}`, 18, 49);
+      doc.text(`Family Surname: ${familySurname}`, 18, 54);
+      doc.text(`Gramadevata: ${gramadevata}`, 18, 59);
 
-      doc.text(`Kuladevi: ${tree.kuladevi || "N/A"}`, 110, 44);
-      doc.text(`Kuladevata: ${tree.kuladevata || "N/A"}`, 110, 49);
-      doc.text(`Total Members: ${people.length}`, 110, 54);
-
-      // 3. Lineage Tree Graph Traversal
-      const personMap = new Map<string, any>(people.map(p => [p.id, p]));
-      
-      // Roots mapping: find members who have no father and mother in database
-      const roots = people.filter(p => !p.father_id && !p.mother_id);
-      if (roots.length === 0 && people.length > 0) {
-        roots.push(people[0]);
-      }
-
-      const formatLineageNode = (personId: string, prefix: string, isLast: boolean, visited: Set<string>): string[] => {
-        if (visited.has(personId)) return [];
-        visited.add(personId);
-
-        const person = personMap.get(personId);
-        if (!person) return [];
-
-        let nameStr = `${person.display_name || "Unknown"} (${person.gender === "female" ? "F" : "M"})`;
-        if (person.life_status === "deceased") {
-          nameStr += " [Deceased]";
-        }
-        
-        // Find Spouses
-        const matchedSpouses = spouses.filter(s => s.person_id === personId || s.spouse_id === personId);
-        const spouseStrings = matchedSpouses.map(s => {
-          const spId = s.person_id === personId ? s.spouse_id : s.person_id;
-          const sp = personMap.get(spId);
-          return sp ? sp.display_name : null;
-        }).filter(Boolean);
-
-        if (spouseStrings.length > 0) {
-          nameStr += ` = (${spouseStrings.join(", ")})`;
-        }
-
-        const line = `${prefix}${isLast ? "└── " : "├── "}${nameStr}`;
-        const result: string[] = [line];
-
-        // Children of this person
-        const children = people.filter(p => p.father_id === personId || p.mother_id === personId);
-        const childPrefix = prefix + (isLast ? "    " : "│   ");
-        for (let i = 0; i < children.length; i++) {
-          const isChildLast = i === children.length - 1;
-          result.push(...formatLineageNode(children[i].id, childPrefix, isChildLast, visited));
-        }
-
-        return result;
-      };
+      doc.text(`Kuladevi: ${kuladevi}`, 110, 44);
+      doc.text(`Kuladevata: ${kuladevata}`, 110, 49);
+      doc.text(`Total Members: ${totalMembersCount}`, 110, 54);
 
       let curY = 75;
       doc.setFont("helvetica", "bold");
@@ -1076,24 +1198,18 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
       doc.setFont("courier", "normal");
       doc.setFontSize(8);
-      const visited = new Set<string>();
-      const chartLines: string[] = [];
-      for (let i = 0; i < roots.length; i++) {
-        chartLines.push(...formatLineageNode(roots[i].id, "", i === roots.length - 1, visited));
-      }
 
       for (const line of chartLines) {
         if (curY > 275) {
           doc.addPage();
           curY = 20;
         }
-        // jsPDF courier standard font handles ASCII tree box drawing characters exceptionally cleanly
         doc.text(line, 15, curY);
         curY += 4.5;
       }
 
       // Add detailed catalog directories list on next page
-      if (people.length > 0) {
+      if (catalogMembers.length > 0) {
         doc.addPage();
         let pageY = 20;
 
@@ -1106,7 +1222,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         pageY += 13;
 
         doc.setTextColor(55, 65, 81);
-        for (const p of people) {
+        for (const p of catalogMembers) {
           if (pageY > 270) {
             doc.addPage();
             pageY = 20;
@@ -1114,14 +1230,17 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
           doc.setFont("helvetica", "bold");
           doc.setFontSize(9);
-          doc.text(`${p.display_name} (${p.gender === "female" ? "Female" : "Male"})`, 15, pageY);
+          doc.text(`${p.display_name || "Unknown"} (${p.gender === "female" ? "Female" : "Male"})`, 15, pageY);
 
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8);
           let details = `Status: ${p.life_status === "deceased" ? "Deceased" : "Living"}`;
-          if (p.date_of_birth) details += ` | DOB: ${p.date_of_birth}`;
-          if (p.gotra) details += ` | Gotra: ${p.gotra}`;
-          if (p.rashi) details += ` | Rashi: ${p.rashi}`;
+          if (p.date_of_birth) details += ` | Year of Birth/DOB: ${p.date_of_birth}`;
+          if (p.role) details += ` | Role: ${p.role}`;
+          if (p.partner && p.partner.name) {
+            details += ` | Spouse: ${p.partner.name}`;
+            if (p.partner.birthYear) details += ` (Yr: ${p.partner.birthYear})`;
+          }
 
           doc.text(details, 15, pageY + 4);
 
@@ -1142,28 +1261,28 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       const fData = new FormData();
       fData.append("chat_id", chatId.toString());
       fData.append("document", pdfBuffer, {
-        filename: `${tree.name ? tree.name.replace(/\s+/g, "_") : "Vamshavali"}_Tree.pdf`,
+        filename: `${treeName ? treeName.replace(/\s+/g, "_") : "Vamshavali"}_Tree.pdf`,
         contentType: "application/pdf"
       });
 
       let caption = "";
       if (userLang === "ben") {
         caption = `🌳 *এখানে আপনার সম্পূর্ণ বংশাবলীর পিডিএফ ডকুমেন্ট রয়েছে!* 📄\n\n` +
-          `• বংশের নাম: *${tree.name || "বংশাবলী"}*\n` +
-          `• গোত্র: *${tree.gotra || "N/A"}*\n` +
-          `• মোট সদস্য: *${people.length} জন*\n\n` +
+          `• বংশের নাম: *${treeName}*\n` +
+          `• গোত্র: *${gotra}*\n` +
+          `• মোট সদস্য: *${totalMembersCount} জন*\n\n` +
           `প্রয়োজনে আপনি এই ফাইলটি শেয়ার বা প্রিন্ট করতে পারেন।`;
       } else if (userLang === "hin") {
         caption = `🌳 *यहाँ आपकी पूरी वंशावली का पीडीएफ दस्तावेज़ है!* 📄\n\n` +
-          `• वंशावली का नाम: *${tree.name || "वंशावली"}*\n` +
-          `• गोत्र: *${tree.gotra || "N/A"}*\n` +
-          `• कुल सदस्य: *${people.length} लोग*\n\n` +
+          `• वंशावली का नाम: *${treeName}*\n` +
+          `• गोत्र: *${gotra}*\n` +
+          `• कुल सदस्य: *${totalMembersCount} लोग*\n\n` +
           `ज़रूरत पड़ने पर आप इस फ़ाइल को साझा या प्रिंट कर सकते हैं।`;
       } else {
         caption = `🌳 *Here is your complete Family Tree PDF document!* 📄\n\n` +
-          `• Tree Name: *${tree.name || "Vamshavali"}*\n` +
-          `• Gotra: *${tree.gotra || "N/A"}*\n` +
-          `• Total Members: *${people.length} members*\n\n` +
+          `• Tree Name: *${treeName}*\n` +
+          `• Gotra: *${gotra}*\n` +
+          `• Total Members: *${totalMembersCount} members*\n\n` +
           `You can save, share, or print this document at any time.`;
       }
       fData.append("caption", caption);
