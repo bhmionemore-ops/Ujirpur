@@ -118,7 +118,7 @@ function compileAllPonjikaData(): string {
   return text;
 }
 
-function compileVamshavaliDetails(): string {
+function compileVamshavaliDetails(baseUrl: string = "https://barnia.in"): string {
   let text = "==================================================\n";
   text += "VAMSHAVALI (FAMILY TREE / বংশাবলী) PAGE DETAILED GUIDE:\n";
   text += "==================================================\n";
@@ -161,7 +161,7 @@ function compileVamshavaliDetails(): string {
   text += "     * Hindi (हिंदी - widely spoken commercial dialect)\n\n";
   
   text += "7. SECURE SHARING & CHAT LINKING:\n";
-  text += "   - Shareable Link URI: Every family tree on barnia.in is accessible via a unique Share ID link (e.g. 'https://barnia.in/vamshavali/v/SHARE_ID'). Customers can easily copy and send this URL to family.\n";
+  text += `   - Shareable Link URI: Every family tree on the site is accessible via a unique Share ID link (e.g. '${baseUrl}/vamshavali/v/SHARE_ID'). Customers can easily copy and send this URL to family.\n`;
   text += "   - Telegram Bot Link: Customers can click the Telegram icon/button to link their family tree to Barnali (this Bot!). It connects their chat automatically, so they can update and query their tree by simply chatting with me!\n";
   text += "==================================================\n";
   return text;
@@ -619,6 +619,10 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     return res.status(200).send("OK");
   }
 
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.headers["x-forwarded-host"] || req.get("host");
+  const baseUrl = (process.env.APP_URL || `${protocol}://${host}`).replace(/\/$/, "");
+
   const { message } = body;
   const chatId = message.chat.id;
   let text = message.text || "";
@@ -980,8 +984,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   let textLower = cleanText.toLowerCase().trim();
 
   if (textLower === "view my family tree" || textLower === "/tree") {
-    if (linkedProfile && linkedProfile.shareId) {
-      const treeLink = `https://barnia.in/vamshavali/v/${linkedProfile.shareId}`;
+    if (linkedProfile && (linkedProfile.shareId || linkedProfile.id)) {
+      const treeLink = `${baseUrl}/vamshavali/v/${linkedProfile.shareId || linkedProfile.id}`;
       await sendMessage(
         `🌳 *Your Connected Family Tree* 🌳\n\n` +
         `👤 *Name:* ${linkedProfile.name}\n` +
@@ -1713,7 +1717,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           timestamp: Date.now()
         });
 
-        const treeLink = `https://barnia.in/vamshavali/v/${foundSqliteTree.id}`;
+        const treeLink = `${baseUrl}/vamshavali/v/${foundSqliteTree.id}`;
         await sendMessage(
           `🌳 *Vamshavali Connected Automatically!* 🌳\n\n` +
           `I have automatically linked your Telegram chat to your family tree: *"${foundSqliteTree.name}"* 🎉.\n\n` +
@@ -1750,7 +1754,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           `💖 *Connected Automatically!*\n\n` +
           `I have automatically linked your Telegram chat to the family tree of *"${foundProfile.name}"* (ID: \`${foundProfile.shareId || foundProfile.id}\`).\n\n` +
           `From now on, I will remember this tree! Whenever you send a message or a picture, we'll consult and update this tree.\n\n` +
-          `Enjoy using your voice, text, or pictures to build your tree on [barnia.in/vamshavali](https://barnia.in/vamshavali)!`,
+          `Enjoy using your voice, text, or pictures to build your tree on [barnia.in/vamshavali](${baseUrl}/vamshavali)!`,
           { parse_mode: "Markdown" }
         );
         return;
@@ -1784,7 +1788,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
               await sendMessage(
                 `✨ *Tree Initialized & Connected!*\n\n` +
                 `I have initialized a fresh family tree for *"${startParam.toLowerCase().trim()}"* and automatically linked it to this chat.\n\n` +
-                `You can view/edit it on [barnia.in/vamshavali](https://barnia.in/vamshavali) or make updates here in this chat!`,
+                `You can view/edit it on [barnia.in/vamshavali](${baseUrl}/vamshavali) or make updates here in this chat!`,
                 { parse_mode: "Markdown" }
               );
               return;
@@ -1811,7 +1815,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       
       if (linkedProfile) {
         // Welcoming back a linked returning user
-        const treeLinkVal = `https://barnia.in/vamshavali/v/${linkedProfile.shareId || linkedProfile.id}`;
+        const treeLinkVal = `${baseUrl}/vamshavali/v/${linkedProfile.shareId || linkedProfile.id}`;
         
         if (userLang === "ben") {
           await sendMessage(
@@ -1837,8 +1841,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           );
         } else {
           const treeLink = (linkedProfile.shareId || linkedProfile.id)
-            ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId || linkedProfile.id})`
-            : `[My Family Tree](https://barnia.in/vamshavali)`;
+            ? `[My Family Tree](${baseUrl}/vamshavali/v/${linkedProfile.shareId || linkedProfile.id})`
+            : `[My Family Tree](${baseUrl}/vamshavali)`;
             
           await sendMessage(
             `🌸 *Welcome back, ${userRespectful}!* 🌸\n\n` +
@@ -1957,7 +1961,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   if (currentCredits <= 0 && textLower !== "/start" && !isLinkCmd && !isLinkMention && textLower !== "/unlink") {
     await sendMessage(
       "⚠️ *No Credits Remaining*\n\n" +
-      "Your credit balance is 0. You cannot use Barnali AI assistant features. Please recharge your credits on [barnia.in/ai-router](https://barnia.in/ai-router) to continue using our services.",
+      "Your credit balance is 0. You cannot use Barnali AI assistant features. Please recharge your credits on [barnia.in/ai-router](${baseUrl}/ai-router) to continue using our services.",
       { parse_mode: "Markdown" }
     );
     return;
@@ -2051,7 +2055,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         timestamp: Date.now()
       });
 
-      const treeLink = `https://barnia.in/vamshavali/v/${foundSqliteTree.id}`;
+      const treeLink = `${baseUrl}/vamshavali/v/${foundSqliteTree.id}`;
       await sendMessage(
         `🌳 *Vamshavali Connected Successfully!* 🌳\n\n` +
         `I have linked your Telegram chat to your family tree: *"${foundSqliteTree.name}"* 🎉.\n\n` +
@@ -2152,7 +2156,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             timestamp: Date.now()
           });
 
-          const treeLink = `https://barnia.in/vamshavali/v/${tree.id}`;
+          const treeLink = `${baseUrl}/vamshavali/v/${tree.id}`;
           await sendMessage(
             `✨ *Vamshavali Tree Initialized & Connected!* ✨\n\n` +
             `I have successfully initialized your account for *"${emailVal}"* and bootstrapped your unique Vamshavali page! 🌳\n\n` +
@@ -2171,7 +2175,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     await sendMessage(
       `❌ *Family Tree Not Found*\n\n` +
       `I couldn't find any family tree under the email or share ID: *"${linkArg}"*.\n\n` +
-      `Make sure the email is registered in the *Vamshavali* section of [barnia.in](https://barnia.in) or supply a valid email to bootstrap a fresh tree!`,
+      `Make sure the email is registered in the *Vamshavali* section of [barnia.in](${baseUrl}/vamshavali) or supply a valid email to bootstrap a fresh tree!`,
       { parse_mode: "Markdown" }
     );
     return;
@@ -2282,7 +2286,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       }
     }
 
-    const finalTreeLink = linkedShareId ? `https://barnia.in/vamshavali/v/${linkedShareId}` : "";
+    const finalTreeLink = linkedShareId ? `${baseUrl}/vamshavali/v/${linkedShareId}` : "";
 
     let treePromptSection = "";
     if (isSqliteTree) {
@@ -2459,7 +2463,7 @@ STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:
 3. Once a user has securely linked their chat to a family tree via their Telegram ID, that linkage is permanently remembered in our Firestore cloud database so they never have to link it again unless they type /unlink.
 4. If they are already linked (their credentials are provided below), confidently guide them and offer updates.
 5. If they are NOT linked, and ask "Where is my family tree?" or "You don't have my family tree link?", you MUST politely explain that you cannot search by name due to overlapping names/surnames in the village. Instruct them to connect their chat securely to their specific family tree by typing "/link <registered_email>" or "/link <Vamshavali_Share_ID>" (e.g., "/link contact@barnia.in" or "/link AB12CD34").
-6. NO DIRECT PDF/IMAGE EXPORT ATTACHMENTS IN CHAT: Under no circumstance can you or the Telegram bot generate, fetch, download, or attach PDF documents or family tree picture/image files directly in the Telegram chat itself. If a user asks to 'give me my family tree pdf', 'download family tree PDF', 'give me my family tree picture/image/photo', or anything similar, you MUST politely explain that high-resolution vector PDFs and image files cannot be delivered directly over Telegram due to file size, layout precision, and privacy standards. Instead, confidently provide their personalized web link (e.g. ${finalTreeLink || "https://barnia.in/vamshavali"}) and guide them to use the **Export & Download Menu** (the 'Download' button in the toolbar) on that web page to instantly download pristine, print-ready PDFs, JPEGs, or PNGs containing their complete up-to-date family tree.
+6. NO DIRECT PDF/IMAGE EXPORT ATTACHMENTS IN CHAT: Under no circumstance can you or the Telegram bot generate, fetch, download, or attach PDF documents or family tree picture/image files directly in the Telegram chat itself. If a user asks to 'give me my family tree pdf', 'download family tree PDF', 'give me my family tree picture/image/photo', or anything similar, you MUST politely explain that high-resolution vector PDFs and image files cannot be delivered directly over Telegram due to file size, layout precision, and privacy standards. Instead, confidently provide their personalized web link (e.g. ${finalTreeLink || `${baseUrl}/vamshavali`}) and guide them to use the **Export & Download Menu** (the 'Download' button in the toolbar) on that web page to instantly download pristine, print-ready PDFs, JPEGs, or PNGs containing their complete up-to-date family tree.
 
 STRICT SCOPE LIMITS:
 - You are strictly optimized for and MUST ONLY answer questions and assist with Vamshavali (Family Tree mapping & updates) and Local Ponjika (Hindu almanac / calendar queries).
@@ -2472,7 +2476,7 @@ LOCAL BENGALI PONJIKA REFERENCE MATERIAL:
 ${compileAllPonjikaData()}
 
 LOCAL VAMSHAVALI (FAMILY TREE) PRODUCT & PAGE REFERENCE MATERIAL:
-${compileVamshavaliDetails()}
+${compileVamshavaliDetails(baseUrl)}
 
 - If the request is NOT a family tree modification (e.g., just general help, asking about Bazar, asking about auspicious dates, or querying details from their tree), proceed by returning standard human-readable text directly (do NOT wrap inside JSON structure).
 - Conversational linking triggers: If the user says "link me to <email_or_share_id>", or you ask them to and they provide an email or Share ID/Code explicitly, you can respond with this JSON to link them:
@@ -2638,7 +2642,7 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
                 timestamp: Date.now()
               });
 
-              const treeLink = `https://barnia.in/vamshavali/v/${tree.id}`;
+              const treeLink = `${baseUrl}/vamshavali/v/${tree.id}`;
               const setupSummary = payload.summary || `I have successfully initialized and generated your Vamshavali family tree under *"${createEmail}"*!`;
               const updateText = `🌳 *Vamshavali Created & Linked!* 🌳\n\n${setupSummary}\n\n🔗 *Your Live Previews:* [View My Tree](${treeLink})`;
               
@@ -2698,7 +2702,7 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
 
             await sendMessage(`✅ *Family Tree Connected Conversationaly!*\n\n` +
               `I have successfully linked your Telegram chat to the family tree of *"${matchedProf.name}"* 🎉.\n\n` +
-              `You can now view/manage your tree at any time here, or via the live link: [My Family Tree](https://barnia.in/vamshavali/v/${matchedProf.shareId || matchedProf.id}).`, { parse_mode: "Markdown" });
+              `You can now view/manage your tree at any time here, or via the live link: [My Family Tree](${baseUrl}/vamshavali/v/${matchedProf.shareId || matchedProf.id}).`, { parse_mode: "Markdown" });
             isTreeUpdated = true;
           } else {
             await sendMessage(`❌ *Could not find that family tree.* Please verify your Email or Share ID and try again!`);
@@ -2748,7 +2752,7 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
                 timestamp: Date.now()
               });
 
-              const traceLink = `\n\nLive preview updated on [barnia.in/vamshavali/v/${linkedProfileId}](https://barnia.in/vamshavali/v/${linkedProfileId}).`;
+              const traceLink = `\n\nLive preview updated on [barnia.in/vamshavali/v/${linkedProfileId}](${baseUrl}/vamshavali/v/${linkedProfileId}).`;
               const updateText = `✅ *Vamshavali Ledger Updated!* 🌳\n\n${payload.summary || "Updates successfully applied."}${traceLink}`;
               await sendMessage(updateText, { parse_mode: "Markdown" });
               isTreeUpdated = true;
@@ -2803,8 +2807,8 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
             });
             
             const traceLink = finalizedProfile.shareId 
-              ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](https://barnia.in/vamshavali/v/${finalizedProfile.shareId}).`
-              : `\n\nLive preview updated on [barnia.in/vamshavali](https://barnia.in/vamshavali).`;
+              ? `\n\nLive preview updated on [barnia.in/vamshavali/v/${finalizedProfile.shareId}](${baseUrl}/vamshavali/v/${finalizedProfile.shareId}).`
+              : `\n\nLive preview updated on [barnia.in/vamshavali](${baseUrl}/vamshavali).`;
 
             const updateMsg = `✅ *Family Tree Updated In Cloud Ledger!*\n\n${payload.summary || "Changes saved."}${traceLink}`;
             await sendMessage(updateMsg, { parse_mode: "Markdown" });
