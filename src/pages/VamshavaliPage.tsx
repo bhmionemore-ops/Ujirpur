@@ -1269,7 +1269,42 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
 
   React.useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-    import("../firebase").then(({ auth }) => {
+    import("../firebase").then(({ auth, handleRedirectResult }) => {
+      // 1. Process redirect result first (in case of redirect fallback on mobile/private browsers)
+      handleRedirectResult().then(async (result) => {
+        const user = result?.user;
+        if (user && user.email) {
+          console.log("[Vamshavali Page] Redirect login detected:", user.email);
+          try {
+            localStorage.removeItem("vamshavali_signed_out");
+          } catch (e) {
+            console.error(e);
+          }
+          setBusy(true);
+          try {
+            const response = await fetch("/api/auth/google", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: user.email,
+                name: user.displayName || ""
+              })
+            });
+            if (response.ok) {
+              const json = await response.json();
+              onAuth(buildSession(json));
+            }
+          } catch (err) {
+            console.error("Vamshavali redirect auto-auth error:", err);
+          } finally {
+            setBusy(false);
+          }
+        }
+      }).catch(err => {
+        console.error("[Vamshavali Page] Redirect result analysis failed:", err);
+      });
+
+      // 2. Setup auth state change subscription
       unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
         if (currentUser && currentUser.email) {
           const isSignedOut = localStorage.getItem("vamshavali_signed_out") === "true";

@@ -15,19 +15,32 @@ const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
 interface ChatMessage {
   role: "user" | "model";
   parts: Array<{ text: string }>;
+  timestamp?: number;
 }
 
 async function saveChatHistory(chatId: number, chatHistory: ChatMessage[], adminDb: any, telegramLinkCache: any) {
-  // Prune history to keep only the last 12 messages (6 turns)
-  const maxHistory = 12;
-  const prunedHistory = chatHistory.slice(-maxHistory);
+  const now = Date.now();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // Ensure every message has a timestamp and filter out messages older than 24 hours
+  const timedHistory = chatHistory.map(msg => ({
+    ...msg,
+    timestamp: msg.timestamp || now
+  }));
+  let prunedHistory = timedHistory.filter(msg => now - msg.timestamp < oneDayMs);
+
+  // Safety buffer cap to prevent hitting model prompt token or pricing limit
+  const maxHistory = 50;
+  if (prunedHistory.length > maxHistory) {
+    prunedHistory = prunedHistory.slice(-maxHistory);
+  }
 
   // Update memory cache
   const cached = telegramLinkCache.get(chatId) || {};
   telegramLinkCache.set(chatId, {
     ...cached,
     chatHistory: prunedHistory,
-    timestamp: Date.now()
+    timestamp: now
   });
 
   // Update Firestore if adminDb is available
@@ -720,7 +733,11 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
     linkedProfile = cachedUser.linkedProfile || null;
     telegramName = cachedUser.telegramName || telegramName;
-    chatHistory = cachedUser.chatHistory || [];
+    const nowMs = Date.now();
+    const limitMs = 24 * 60 * 60 * 1000;
+    chatHistory = (cachedUser.chatHistory || []).filter((msg: ChatMessage) => {
+      return !msg.timestamp || (nowMs - msg.timestamp < limitMs);
+    });
     if (cachedUser.userLang) {
       userLang = sanitizeUserLang(cachedUser.userLang);
     }
@@ -748,7 +765,11 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail = udata.linkedEmail || null;
           linkedShareId = udata.linkedShareId || null;
           telegramName = udata.name || telegramName;
-          chatHistory = udata.chatHistory || [];
+          const nowMs = Date.now();
+          const limitMs = 24 * 60 * 60 * 1000;
+          chatHistory = (udata.chatHistory || []).filter((msg: any) => {
+            return !msg.timestamp || (nowMs - msg.timestamp < limitMs);
+          });
           if (udata.language) {
             userLang = sanitizeUserLang(udata.language);
           }
@@ -1815,8 +1836,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             { parse_mode: "Markdown" }
           );
         } else {
-          const treeLink = linkedProfile.shareId 
-            ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId})`
+          const treeLink = (linkedProfile.shareId || linkedProfile.id)
+            ? `[My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile.shareId || linkedProfile.id})`
             : `[My Family Tree](https://barnia.in/vamshavali)`;
             
           await sendMessage(
@@ -2261,10 +2282,15 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       }
     }
 
+    const finalTreeLink = linkedShareId ? `https://barnia.in/vamshavali/v/${linkedShareId}` : "";
+
     let treePromptSection = "";
     if (isSqliteTree) {
       treePromptSection = `FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION (SQLITE MANUAL):
-The user is currently linked to a high-perf SQLITE-backed lineage ledger:
+The user is currently linked to their live high-performance SQLITE-backed family tree.
+The tree ID is '${linkedProfileId}' and their public tree link is '${finalTreeLink}'.
+
+FAMILY TREE DATABASE STRUCTURE:
 ${sqliteTreeDescription}
 
 To perform any interactive tree mutation (e.g., adding a relative/child/spouse, updating fields, deleting entries, linking spouses, changing Gotra/Kuldevi), you MUST return a payload in this exact JSON schema:
@@ -2326,14 +2352,14 @@ Strict Rules:
 3. If assigning a photo, use exactly: "${activePhotoUrl || ""}" for "photoUrl" or "photoUrl" updates. Only do this if they attached a picture (e.g. check if the URL is not empty).
 4. If they want to upload a photo but "${activePhotoUrl || ""}" is empty, DO NOT output any JSON operation; instead, output standard text asking them to attach/upload the image/photo in the Telegram message.
 5. In SQLite, only male lineage members are allowed to link children or continue generations. Married daughters can stand as female elements but cannot continue generations under their own branch. Keep this in mind when mapping family lines.`;
-    } else {
+    } else if (linkedProfile) {
       treePromptSection = `FAMILY TREE (VAMSHAVALI) MUTATION INTEGRATION (FIRESTORE LEGACY):
 The user's currently linked legacy Firestore Vamshavali profile is:
 ${linkedProfile ? JSON.stringify(linkedProfile) : "None (Not linked)"}
  
-${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '${linkedProfile.shareId}' and their public tree link is 'https://barnia.in/vamshavali/v/${linkedProfile.shareId}'.` : "The user does not have a fully linked active tree share ID yet."}
+The user's family tree share ID is '${linkedProfileId}' and their public tree link is '${finalTreeLink}'.
  
-- If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""} (if they are linked, formatting the link nicely in Markdown like [My Family Tree](https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""})), or ask them to link their tree if not linked.
+- If the user asks for their family tree link, asks to view/see their family tree, asks where their family tree is, or asks how to visit it, you MUST ALWAYS provide their personal public view link: ${finalTreeLink} (formatting the link nicely in Markdown like [My Family Tree](${finalTreeLink})), or ask them to link their tree if not linked.
 - If the user asks to UPDATE, CHANGE, ADD, or REMOVE information or images/pictures in their family tree:
   1. Produce a structured JSON payload response matching this exact shape ONLY if the required files or metadata are actually supplied:
   {
@@ -2352,6 +2378,60 @@ ${linkedProfile && linkedProfile.shareId ? `The user's family tree share ID is '
        - If they say "upload this picture of [Name]'s wife / partner / sponsor / spouse / viva" and have provided a photo URL, locate the member with that name (e.g., "Abhay") and set their 'partner.photo' property to "${activePhotoUrl || ""}". If the 'partner' object is missing or null under that member, initialize it like 'partner: { name: "Spouse of " + Name, photo: "${activePhotoUrl || ""}" }'.
        - If they say "upload this picture of my partner / wife / viva / spouse" and have provided a photo URL, locate the main/root member of the family tree and update their 'partner.photo' property to "${activePhotoUrl || ""}".
      - **By Relation description**: If they say "my grandmother's picture" or "my daughter's photo" and have provided a photo URL, trace the relation starting from the main root node and update the matching member's 'photo' to "${activePhotoUrl || ""}".`;
+    } else {
+      treePromptSection = `FAMILY TREE (VAMSHAVALI) NOT LINKED BINDS:
+The user is not currently connected to any active family tree.
+
+If the user provides family details (such as names of their father, mother, grandfather, or siblings) and expects you or asks you to create a family tree for them, we can build and bootstrap a brand new SQLite-backed digital lineage tree directly from their chat!
+
+To automatically create and link their Vamshavali tree, you MUST return a payload in this exact JSON schema:
+{
+  "isCreateAndLink": true,
+  "email": "user_email@example.com" (or suggest one derived from their chat, e.g. "${chatId}_telegram@barnia.in"),
+  "treeName": "Surname Vamshavali",
+  "surname": "Surname",
+  "accountHolderName": "${telegramName}",
+  "sqliteOperations": [
+    {
+      "type": "create_person",
+      "tempId": "temp_father",
+      "data": {
+        "displayName": "Father's Full Name",
+        "gender": "male",
+        "lifeStatus": "living" or "deceased",
+        "maritalStatus": "married"
+      }
+    },
+    {
+      "type": "create_person",
+      "tempId": "temp_mother",
+      "data": {
+        "displayName": "Mother's Full Name",
+        "gender": "female",
+        "lifeStatus": "living" or "deceased",
+        "maritalStatus": "married"
+      }
+    },
+    {
+      "type": "create_person",
+      "tempId": "temp_self",
+      "data": {
+        "displayName": "${telegramName}",
+        "gender": "${userGender}",
+        "lifeStatus": "living",
+        "maritalStatus": "unmarried",
+        "fatherId": "temp_father",
+        "motherId": "temp_mother"
+      }
+    }
+  ],
+  "summary": "Friendly scannable summary in Markdown describing that we are bootstrapping and linking their new custom village family tree with the details they provided."
+}
+
+Rules for create_person operations under 'sqliteOperations':
+1. Allocate parent references (e.g. fatherId, motherId) linking generations.
+2. Male members are the primary anchors for genealogical branches.
+3. If they just ask how to link an existing tree, politely tell them they can connect directly using '/link <registered_email>' or '/link <Vamshavali_Share_ID>'.`;
     }
 
     const systemPrompt = `You are Barnali 🌸, the smart, friendly, and helpful AI assistant for the barnia.in app (Barnia Digital Hub).
@@ -2379,7 +2459,7 @@ STRICT FAMILY TREE (VAMSHAVALI) SECURITY & PRIVACY MANDATES:
 3. Once a user has securely linked their chat to a family tree via their Telegram ID, that linkage is permanently remembered in our Firestore cloud database so they never have to link it again unless they type /unlink.
 4. If they are already linked (their credentials are provided below), confidently guide them and offer updates.
 5. If they are NOT linked, and ask "Where is my family tree?" or "You don't have my family tree link?", you MUST politely explain that you cannot search by name due to overlapping names/surnames in the village. Instruct them to connect their chat securely to their specific family tree by typing "/link <registered_email>" or "/link <Vamshavali_Share_ID>" (e.g., "/link contact@barnia.in" or "/link AB12CD34").
-6. NO DIRECT PDF/IMAGE EXPORT ATTACHMENTS IN CHAT: Under no circumstance can you or the Telegram bot generate, fetch, download, or attach PDF documents or family tree picture/image files directly in the Telegram chat itself. If a user asks to 'give me my family tree pdf', 'download family tree PDF', 'give me my family tree picture/image/photo', or anything similar, you MUST politely explain that high-resolution vector PDFs and image files cannot be delivered directly over Telegram due to file size, layout precision, and privacy standards. Instead, confidently provide their personalized web link (e.g. https://barnia.in/vamshavali/v/${linkedProfile?.shareId || ""}) and guide them to use the **Export & Download Menu** (the 'Download' button in the toolbar) on that web page to instantly download pristine, print-ready PDFs, JPEGs, or PNGs containing their complete up-to-date family tree.
+6. NO DIRECT PDF/IMAGE EXPORT ATTACHMENTS IN CHAT: Under no circumstance can you or the Telegram bot generate, fetch, download, or attach PDF documents or family tree picture/image files directly in the Telegram chat itself. If a user asks to 'give me my family tree pdf', 'download family tree PDF', 'give me my family tree picture/image/photo', or anything similar, you MUST politely explain that high-resolution vector PDFs and image files cannot be delivered directly over Telegram due to file size, layout precision, and privacy standards. Instead, confidently provide their personalized web link (e.g. ${finalTreeLink || "https://barnia.in/vamshavali"}) and guide them to use the **Export & Download Menu** (the 'Download' button in the toolbar) on that web page to instantly download pristine, print-ready PDFs, JPEGs, or PNGs containing their complete up-to-date family tree.
 
 STRICT SCOPE LIMITS:
 - You are strictly optimized for and MUST ONLY answer questions and assist with Vamshavali (Family Tree mapping & updates) and Local Ponjika (Hindu almanac / calendar queries).
