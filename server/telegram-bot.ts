@@ -2435,7 +2435,12 @@ To automatically create and link their Vamshavali tree, you MUST return a payloa
 Rules for create_person operations under 'sqliteOperations':
 1. Allocate parent references (e.g. fatherId, motherId) linking generations.
 2. Male members are the primary anchors for genealogical branches.
-3. If they just ask how to link an existing tree, politely tell them they can connect directly using '/link <registered_email>' or '/link <Vamshavali_Share_ID>'.`;
+3. If they just ask how to link an existing tree, politely tell them they can connect directly using '/link <registered_email>' or '/link <Vamshavali_Share_ID>'.
+4. PROACTIVE NEW TREE BOOTSTRAPPING OFFER: If they ask "Can you build my family tree?", "Create a family tree for me", "build my tree", or express interest in starting/making a new tree, do NOT reject them, and do NOT just ask them to link an existing tree. Instead, enthusiastically offer to build and bootstrap a brand-new family tree for them right here in this chat! Ask them to reply with the initial details of their family, specifically asking for:
+   - Their family surname
+   - Their father's full name
+   - Their mother's full name
+Once they provide those details, you will instantly create, bootstrap, and link their custom village family tree directly inside our cloud database!`;
     }
 
     const systemPrompt = `You are Barnali 🌸, the smart, friendly, and helpful AI assistant for the barnia.in app (Barnia Digital Hub).
