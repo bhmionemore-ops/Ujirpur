@@ -903,6 +903,227 @@ export const lineageStore = {
           }
         }
       }
+
+      // Dynamic core-level correction & synchronization for King Dasharatha's wives
+      try {
+        const treeId = "LODSRIRAM";
+        const treeExists = db.prepare("SELECT 1 FROM lineage_trees WHERE id = ?").get(treeId);
+        if (treeExists) {
+          // 1. Ensure Queen Kaushalya exists with ID 'dasharatha-partner' or create her
+          const kaushalyaExists = db.prepare("SELECT 1 FROM lineage_people WHERE id = ?").get("dasharatha-partner");
+          if (!kaushalyaExists) {
+            db.prepare(`
+              INSERT INTO lineage_people (id, tree_id, display_name, gender, life_status, marital_status, gotra, photo_url, notes, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              "dasharatha-partner",
+              treeId,
+              "Queen Kaushalya",
+              "female",
+              "deceased",
+              "married",
+              "Kashyap",
+              "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Rama_meets_his_mother_Kousalya_in_pooja.jpg/500px-Rama_meets_his_mother_Kousalya_in_pooja.jpg",
+              "Senior-most Queen of Ayodhya, birth mother of Lord Sri Ram.",
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          }
+
+          // 2. Ensure Queen Kaikeyi exists
+          const kaikeyiExists = db.prepare("SELECT 1 FROM lineage_people WHERE id = ?").get("queen-kaikeyi");
+          if (!kaikeyiExists) {
+            db.prepare(`
+              INSERT INTO lineage_people (id, tree_id, display_name, gender, life_status, marital_status, gotra, photo_url, notes, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              "queen-kaikeyi",
+              treeId,
+              "Queen Kaikeyi",
+              "female",
+              "deceased",
+              "married",
+              "Garga",
+              "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg/500px-Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg",
+              "Second Queen of Ayodhya, mother of Prince Bharata, famous for her beauty and warrior skills.",
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } else {
+            db.prepare("UPDATE lineage_people SET display_name = 'Queen Kaikeyi', photo_url = ? WHERE id = ?").run(
+              "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg/500px-Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg",
+              "queen-kaikeyi"
+            );
+          }
+
+          // 3. Ensure Queen Sumitra exists
+          const sumitraExists = db.prepare("SELECT 1 FROM lineage_people WHERE id = ?").get("queen-sumitra");
+          if (!sumitraExists) {
+            db.prepare(`
+              INSERT INTO lineage_people (id, tree_id, display_name, gender, life_status, marital_status, gotra, photo_url, notes, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              "queen-sumitra",
+              treeId,
+              "Queen Sumitra",
+              "female",
+              "deceased",
+              "married",
+              "Kashyap",
+              "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Dasharatha_give_Payasa_to_his_wives.jpg/500px-Dasharatha_give_Payasa_to_his_wives.jpg",
+              "Wise and highly learned Queen of Ayodhya, mother of twin princes Lakshmana & Shatrughna.",
+              new Date().toISOString(),
+              new Date().toISOString()
+            );
+          } else {
+            db.prepare("UPDATE lineage_people SET display_name = 'Queen Sumitra', photo_url = ? WHERE id = ?").run(
+              "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Dasharatha_give_Payasa_to_his_wives.jpg/500px-Dasharatha_give_Payasa_to_his_wives.jpg",
+              "queen-sumitra"
+            );
+          }
+
+          // 4. Ensure Dasharatha spouse links exist
+          const spousesToVerify = [
+            { wifeId: "dasharatha-partner" },
+            { wifeId: "queen-kaikeyi" },
+            { wifeId: "queen-sumitra" }
+          ];
+          
+          for (const spouse of spousesToVerify) {
+            const linkExists = db.prepare(`
+              SELECT 1 FROM lineage_spouses 
+              WHERE tree_id = ? 
+                AND ((person_a_id = ? AND person_b_id = ?) OR (person_a_id = ? AND person_b_id = ?))
+            `).get(treeId, "dasharatha", spouse.wifeId, spouse.wifeId, "dasharatha");
+            
+            if (!linkExists) {
+              db.prepare(`
+                INSERT INTO lineage_spouses (id, tree_id, person_a_id, person_b_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                randomUUID(),
+                treeId,
+                "dasharatha",
+                spouse.wifeId,
+                "married",
+                new Date().toISOString(),
+                new Date().toISOString()
+              );
+            }
+          }
+
+          // 5. Update children's mother_id and father_id properly
+          db.prepare("UPDATE lineage_people SET father_id = 'dasharatha', mother_id = 'dasharatha-partner' WHERE id = 'sriram'").run();
+          db.prepare("UPDATE lineage_people SET father_id = 'dasharatha', mother_id = 'queen-kaikeyi' WHERE id = 'bharata'").run();
+          db.prepare("UPDATE lineage_people SET father_id = 'dasharatha', mother_id = 'queen-sumitra' WHERE id = 'lakshmana'").run();
+          db.prepare("UPDATE lineage_people SET father_id = 'dasharatha', mother_id = 'queen-sumitra' WHERE id = 'shatrughna'").run();
+
+          // 6. Update Deity images inside the database to use corrected working URLs
+          db.prepare(`
+            UPDATE lineage_trees 
+            SET kuldevi_photo = ?, kuladevata_photo = ? 
+            WHERE id = ?
+          `).run(
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Goddess_Durga_by_Raja_Ravi_Varma.jpg/500px-Goddess_Durga_by_Raja_Ravi_Varma.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Surya_deva.jpg/500px-Surya_deva.jpg",
+            treeId
+          );
+
+          // 7. Auto-patch old broken photo URLs in the database to use verified working URLs
+          const photoUrlReplacements = [
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/King_Dasharatha_of_Ayodhya.jpg/500px-King_Dasharatha_of_Ayodhya.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/King_Dasharatha_Raja_Sabha.jpg/500px-King_Dasharatha_Raja_Sabha.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Ravi_Varma-Kaushalya.jpg/500px-Ravi_Varma-Kaushalya.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Rama_meets_his_mother_Kousalya_in_pooja.jpg/500px-Rama_meets_his_mother_Kousalya_in_pooja.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Kaikeyi_with_Manthara_from_Raja_Ravi_Varma_Press.jpg/500px-Kaikeyi_with_Manthara_from_Raja_Ravi_Varma_Press.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg/500px-Kaikeyi_and_Manthara_-_M._V._Dhurandhar.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Ramayana_ka_Sumitra_Aur_Laxman.jpg/500px-Ramayana_ka_Sumitra_Aur_Laxman.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Dasharatha_give_Payasa_to_his_wives.jpg/500px-Dasharatha_give_Payasa_to_his_wives.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Rama_Ravi_Varma.jpg/500px-Rama_Ravi_Varma.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Lord_Rama_with_arrows.jpg/500px-Lord_Rama_with_arrows.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Raja_Ravi_Varma_-_Sita.jpg/500px-Raja_Ravi_Varma_-_Sita.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Sita_in_exile.jpg/500px-Sita_in_exile.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Raja_Ravi_Varma%2C_Lava_and_Kusha.jpg/500px-Raja_Ravi_Varma%2C_Lava_and_Kusha.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Lava%2C_one_of_R%C4%81ma%E2%80%99s_sons..jpg/500px-Lava%2C_one_of_R%C4%81ma%E2%80%99s_sons..jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Lava_and_Kusha_Ravi_Varma.jpg/500px-Lava_and_Kusha_Ravi_Varma.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Valmiki_train_Lava_Kushas_in_Art_of_Archery.jpg/500px-Valmiki_train_Lava_Kushas_in_Art_of_Archery.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Lakshmana_by_Raja_Ravi_Varma.jpg/500px-Lakshmana_by_Raja_Ravi_Varma.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Lakshmana_at_Srivaikundam.jpg/500px-Lakshmana_at_Srivaikundam.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Raja_Ravi_Varma_-_Urmila.jpg/500px-Raja_Ravi_Varma_-_Urmila.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Urmila_and_lakshmana_marriage.webp/500px-Urmila_and_lakshmana_marriage.webp.png"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/A_Rajput_Prince_by_an_anonymous_artist_-_Google_Art_Project.jpg/500px-A_Rajput_Prince_by_an_anonymous_artist_-_Google_Art_Project.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Raja_Ravi_Varma%2C_There_Comes_Papa_%281893%29.jpg/500px-Raja_Ravi_Varma%2C_There_Comes_Papa_%281893%29.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/A_Prince_Holding_a_Flower%2C_c._1700%2C_Bikaner_school.jpg/500px-A_Prince_Holding_a_Flower%2C_c._1700%2C_Bikaner_school.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Lava%2C_one_of_R%C4%81ma%E2%80%99s_sons..jpg/500px-Lava%2C_one_of_R%C4%81ma%E2%80%99s_sons..jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Bharata_Milap_by_Raja_Ravi_Varma.jpg/500px-Bharata_Milap_by_Raja_Ravi_Varma.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Alone%2C_Bharat_worships_the_sandals.jpg/500px-Alone%2C_Bharat_worships_the_sandals.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Raja_Ravi_Varma_-_Lady_in_the_Moon-Light.jpg/500px-Raja_Ravi_Varma_-_Lady_in_the_Moon-Light.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/The_marriage_of_Bharata_and_Mandavi_%286125129180%29.jpg/500px-The_marriage_of_Bharata_and_Mandavi_%286125129180%29.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/A_Young_Prince_with_a_Bow_and_Arrow.jpg/500px-A_Young_Prince_with_a_Bow_and_Arrow.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Valmiki_train_Lava_Kushas_in_Art_of_Archery.jpg/500px-Valmiki_train_Lava_Kushas_in_Art_of_Archery.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Prince_with_Falcon_Kangra_Painting.jpg/500px-Prince_with_Falcon_Kangra_Painting.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/The_Birth_of_rama.jpg/500px-The_Birth_of_rama.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Shatrughna_b_w.jpg/500px-Shatrughna_b_w.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Satrughna%2C_the_youngest_brother_of_R%C4%81ma..jpg/500px-Satrughna%2C_the_youngest_brother_of_R%C4%81ma..jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Raja_Ravi_Varma_-_Shakuntala_looks_back-cropped.jpg/500px-Raja_Ravi_Varma_-_Shakuntala_looks_back-cropped.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/The_four_sons_of_Dasaratha_circumbulate_the_altar_during_their_marriage_rites.jpg/500px-The_four_sons_of_Dasaratha_circumbulate_the_altar_during_their_marriage_rites.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Portrait_of_a_young_Noble_or_Prince.jpg/500px-Portrait_of_a_young_Noble_or_Prince.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Sita_with_children.jpg/500px-Sita_with_children.jpg"
+            },
+            {
+              old: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Portrait_of_a_Prince%2C_Mewar%2C_circa_1710.jpg/500px-Portrait_of_a_Prince%2C_Mewar%2C_circa_1710.jpg",
+              new: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Raja_Ravi_Varma%2C_There_Comes_Papa_%281893%29.jpg/500px-Raja_Ravi_Varma%2C_There_Comes_Papa_%281893%29.jpg"
+            }
+          ];
+
+          for (const rep of photoUrlReplacements) {
+            db.prepare(`
+              UPDATE lineage_people 
+              SET photo_url = ? 
+              WHERE photo_url = ?
+            `).run(rep.new, rep.old);
+          }
+        }
+      } catch (migErr: any) {
+        console.error("[Wives Migration Error]:", migErr);
+      }
     } catch (seedErr: any) {
       console.error("[Suryavamsha Auto-Seeder] Seed error:", seedErr.message);
     }

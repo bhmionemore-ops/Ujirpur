@@ -421,6 +421,43 @@ lineageRouter.post(
 );
 
 lineageRouter.get(
+  "/lineage/proxy-image",
+  asyncRoute(async (req, res) => {
+    const urlParam = req.query.url;
+    if (typeof urlParam !== "string" || !urlParam) {
+      res.status(400).send("Parameter 'url' is required.");
+      return;
+    }
+
+    try {
+      const targetUrl = urlParam.trim();
+      const response = await fetch(targetUrl, {
+        headers: {
+          "User-Agent": "FamilyLineageHub/1.0 (okbgmi611@gmail.com) Node/18",
+          "Referer": "https://en.wikipedia.org/"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Fetch failed with status ${response.status}`);
+      }
+
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(buffer);
+    } catch (err: any) {
+      console.error(`[Proxy Image Error] Failed to proxy ${urlParam}:`, err.message);
+      res.status(500).send("Failed to proxy image.");
+    }
+  })
+);
+
+lineageRouter.get(
   "/lineage/public/trees/:id",
   asyncRoute(async (req, res) => {
     const treeId = routeId(req.params.id);

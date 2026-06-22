@@ -185,7 +185,9 @@ const sessionKey = "vanshavali-session";
 
 function proxyUrl(url: string | null | undefined): string {
   if (!url) return "";
-  return url.trim();
+  const cleaned = url.trim();
+  if (cleaned.startsWith("/") || cleaned.startsWith("data:")) return cleaned;
+  return `/api/lineage/proxy-image?url=${encodeURIComponent(cleaned)}`;
 }
 
 function inviteTokenFromUrl() {
@@ -2123,9 +2125,11 @@ function FamilyTreeCanvas({
     try {
       const el = canvasRef.current;
       const options = {
-        quality: 0.98,
-        pixelRatio: 2.2,
+        quality: 0.95,
+        pixelRatio: layout.canvasWidth > 2200 ? 1.0 : 1.5,
         backgroundColor: "#f5f3ee",
+        cacheBust: true,
+        skipFonts: true,
         style: {
           transform: "scale(1)",
           transformOrigin: "top left",
@@ -4127,7 +4131,7 @@ function AppShell({
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {tree.kuldeviPhoto ? (
                     <img 
-                      src={tree.kuldeviPhoto} 
+                      src={proxyUrl(tree.kuldeviPhoto)} 
                       alt="Kuldevi" 
                       style={{ 
                         width: "56px", 
@@ -4138,6 +4142,7 @@ function AppShell({
                         cursor: canEdit ? "pointer" : "default"
                       }}
                       onClick={() => canEdit && setIsDeityModalOpen(true)}
+                      crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
@@ -4207,7 +4212,7 @@ function AppShell({
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {tree.kuladevataPhoto ? (
                     <img 
-                      src={tree.kuladevataPhoto} 
+                      src={proxyUrl(tree.kuladevataPhoto)} 
                       alt="Kuladevata" 
                       style={{ 
                         width: "56px", 
@@ -4218,6 +4223,7 @@ function AppShell({
                         cursor: canEdit ? "pointer" : "default"
                       }}
                       onClick={() => canEdit && setIsDeityModalOpen(true)}
+                      crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
