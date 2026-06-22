@@ -1407,6 +1407,8 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
             (window.location.hostname.includes("run.app") || 
              window.location.hostname.includes("localhost") || 
              window.location.hostname.includes("aistudio") || 
+             window.location.hostname.includes("google") || 
+             window.location.hostname.includes("googleusercontent") || 
              window.location.port !== "");
           if (isDevOrPreview) {
             resolvedEmail = "okbgmi611@gmail.com";
