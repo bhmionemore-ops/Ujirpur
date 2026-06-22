@@ -12,6 +12,37 @@ import FormData from "form-data";
 
 const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
 
+interface ChatMessage {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+}
+
+async function saveChatHistory(chatId: number, chatHistory: ChatMessage[], adminDb: any, telegramLinkCache: any) {
+  // Prune history to keep only the last 12 messages (6 turns)
+  const maxHistory = 12;
+  const prunedHistory = chatHistory.slice(-maxHistory);
+
+  // Update memory cache
+  const cached = telegramLinkCache.get(chatId) || {};
+  telegramLinkCache.set(chatId, {
+    ...cached,
+    chatHistory: prunedHistory,
+    timestamp: Date.now()
+  });
+
+  // Update Firestore if adminDb is available
+  if (adminDb) {
+    try {
+      await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+        chatHistory: prunedHistory,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error("[Telegram] Error saving chat history to Firestore:", err);
+    }
+  }
+}
+
 function compileAllPonjikaData(): string {
   let text = "==================================================\n";
   text += "LOCAL BENGALI PONJIKA CALENDAR DATA FOR WEST BENGAL:\n";
@@ -667,6 +698,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   let linkedProfile: any = null;
   let isNewUser = false;
   let telegramName = `${from.first_name || ""} ${from.last_name || ""}`.trim() || from.username || "Friend";
+  let chatHistory: ChatMessage[] = [];
 
   const telegramLangCode = (from.language_code || "en").toLowerCase();
   let userLang: "ben" | "hin" | "eng" = "eng";
@@ -688,6 +720,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
     currentCredits = cachedUser.currentCredits !== undefined ? cachedUser.currentCredits : 10;
     linkedProfile = cachedUser.linkedProfile || null;
     telegramName = cachedUser.telegramName || telegramName;
+    chatHistory = cachedUser.chatHistory || [];
     if (cachedUser.userLang) {
       userLang = sanitizeUserLang(cachedUser.userLang);
     }
@@ -715,6 +748,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedEmail = udata.linkedEmail || null;
           linkedShareId = udata.linkedShareId || null;
           telegramName = udata.name || telegramName;
+          chatHistory = udata.chatHistory || [];
           if (udata.language) {
             userLang = sanitizeUserLang(udata.language);
           }
@@ -731,6 +765,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           respectfulName = formatRespectfulName(telegramName, null, userLang);
         } else {
           isNewUser = true;
+          chatHistory = [];
           await userRef.set({
             id: chatId.toString(),
             name: telegramName,
@@ -738,6 +773,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             credits: 10,
             role: "user",
             language: userLang,
+            chatHistory: [],
             createdAt: new Date().toISOString()
           });
         }
@@ -777,6 +813,7 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           linkedProfile,
           telegramName,
           userLang,
+          chatHistory,
           timestamp: Date.now()
         });
       } catch (err) {
@@ -2189,12 +2226,15 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
   // Grounding & Intercepting if they attempt to edit an unlinked tree
   const hasUpdateKeyword = unifiedPrompt.toLowerCase().match(/\b(update|change|set|add|modify|delete|remove|photo|picture|image|avatar|img|profile|kuldevi|kuldavi|viva|wife|partner|spouse|upload)\b/);
   const isUpdatingTree = !!activePhotoUrl || !!hasUpdateKeyword;
-  if (isUpdatingTree && !linkedProfile) {
+  const isCreationIntent = unifiedPrompt.toLowerCase().match(/\b(create|make|build|bootstrap|setup|new|init|generate|describe|family)\b/);
+
+  if (isUpdatingTree && !linkedProfile && !isCreationIntent) {
     await sendMessage(
       "⚠️ *Family Tree Link Required*\n\n" +
       "I see you want to modify family tree parameters or upload a picture, but I don't know which family tree belongs to you.\n\n" +
       "Please link your family tree first by supplying your email, chat, or share ID:\n" +
-      "`/link contact@barnia.in` or `my email is contact@barnia.in` or `/link AB12CD34`",
+      "`/link contact@barnia.in` or `my email is contact@barnia.in` or `/link AB12CD34`\n\n" +
+      "Alternatively, just say *'Create a new family tree for me'* and I'll build and link one for you right now!",
       { parse_mode: "Markdown" }
     );
     return;
@@ -2364,7 +2404,7 @@ ${compileVamshavaliDetails()}
 
 Format answers beautifully. Speak in Bengali, Hindi, or English based on the user's language: ${userLang === "ben" ? "Bengali (বাংলা)" : userLang === "hin" ? "Hindi (हिंदी)" : "English (English)"}. If the family tree profile, user context, or message is in a different language that you cannot understand or support, you MUST still reply in English only. Keep answers concise.`;
 
-    const userParts: any[] = [ { text: `${systemPrompt}\n\nUser request: ${unifiedPrompt}` } ];
+    const userParts: any[] = [ { text: `User request: ${unifiedPrompt}` } ];
     if (photoBuffer && photoMimeType) {
       userParts.unshift({
         inlineData: {
@@ -2374,21 +2414,170 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
       });
     }
 
+    // Build the contents array consisting of pruned conversational history + current turn
+    const contents: any[] = [];
+    for (const h of chatHistory) {
+      contents.push({
+        role: h.role,
+        parts: h.parts
+      });
+    }
+    contents.push({
+      role: "user",
+      parts: userParts
+    });
+
     const response = await callGeminiWithRetry(apiKey, {
       model: "gemini-3.5-flash",
-      contents: [
-        { role: "user", parts: userParts }
-      ]
+      contents: contents,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40
+      }
     });
 
     const replyText = (response.text || "").trim();
     let isTreeUpdated = false;
 
-    // Detect and parse JSON payloads for tree updates or database linking
-    if (replyText.startsWith("{") || replyText.includes('"isUpdate"') || replyText.includes('"isLink"')) {
+    // Detect and parse JSON payloads for tree updates, database linking, or creation
+    if (replyText.startsWith("{") || replyText.includes('"isUpdate"') || replyText.includes('"isLink"') || replyText.includes('"isCreateAndLink"')) {
       try {
         const payload = parseGeminiJson(replyText);
-        if (payload && payload.isLink && (payload.shareId || payload.email)) {
+        
+        if (payload && payload.isCreateAndLink) {
+          try {
+            const { authStore } = await import("./lineage-auth.js");
+            const createEmail = (payload.email || `${chatId}_telegram@barnia.in`).toLowerCase().trim();
+            const treeName = payload.treeName || `${telegramName}'s Vamshavali`;
+            const surname = payload.surname || telegramName.split(/\s+/).pop() || "Lineage";
+            const accountHolderName = payload.accountHolderName || telegramName;
+
+            let account = sqliteDb.prepare("SELECT * FROM accounts WHERE email = ?").get(createEmail) as any;
+            if (!account) {
+              const tempPass = randomBytes(8).toString("hex");
+              const session = authStore.registerPassword(createEmail, accountHolderName, tempPass);
+              account = session.account;
+            }
+
+            let membership = sqliteDb.prepare("SELECT * FROM account_tree_memberships WHERE account_id = ?").get(account.id) as any;
+            let tree: any;
+            if (!membership) {
+              const treeState = lineageStore.createTree({
+                name: treeName,
+                familySurname: surname,
+                seedAccountHolder: true,
+                accountHolderName: accountHolderName
+              }, account.id);
+              tree = treeState.trees.find((t: any) => t.id === treeState.activeTreeId);
+            } else {
+              tree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(membership.tree_id);
+            }
+
+            if (tree) {
+              if (adminDb) {
+                await adminDb.collection("telegram_users").doc(chatId.toString()).set({
+                  linkedProfileId: tree.id,
+                  linkedEmail: createEmail,
+                  linkedShareId: tree.id,
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              }
+
+              linkedProfileId = tree.id;
+              linkedEmail = createEmail;
+              linkedShareId = tree.id;
+              linkedProfile = tree;
+              respectfulName = formatRespectfulName(telegramName, tree, userLang);
+
+              // Update memory cache
+              telegramLinkCache.set(chatId, {
+                linkedProfileId,
+                linkedEmail,
+                linkedShareId: tree.id,
+                currentCredits,
+                linkedProfile: tree,
+                telegramName,
+                userLang,
+                chatHistory,
+                timestamp: Date.now()
+              });
+
+              // Process any specified SQLite operations to add initial members
+              if (payload.sqliteOperations && Array.isArray(payload.sqliteOperations)) {
+                try {
+                  sqliteDb.transaction(() => {
+                    const tempIdMap = new Map<string, string>(); // maps temporary child IDs 
+                    
+                    for (const op of payload.sqliteOperations) {
+                      if (op.type === "create_person") {
+                        const normalized = normalizePersonData(op.data);
+                        // Resolve parent references
+                        if (normalized.fatherId && tempIdMap.has(normalized.fatherId)) {
+                          normalized.fatherId = tempIdMap.get(normalized.fatherId);
+                        }
+                        if (normalized.motherId && tempIdMap.has(normalized.motherId)) {
+                          normalized.motherId = tempIdMap.get(normalized.motherId);
+                        }
+
+                        // Save before state to fetch generated UUID
+                        const beforePeople = sqliteDb.prepare("SELECT id FROM lineage_people WHERE tree_id = ?").all(tree.id) as { id: string }[];
+                        const beforeIds = new Set(beforePeople.map(p => p.id));
+
+                        lineageStore.createPerson({
+                          treeId: tree.id,
+                          ...normalized
+                        });
+
+                        const afterPeople = sqliteDb.prepare("SELECT id FROM lineage_people WHERE tree_id = ?").all(tree.id) as { id: string }[];
+                        const newlyCreated = afterPeople.find(p => !beforeIds.has(p.id));
+
+                        if (newlyCreated && op.tempId) {
+                          tempIdMap.set(op.tempId, newlyCreated.id);
+                        }
+                      }
+                    }
+                  })();
+                } catch (mutationErr) {
+                  console.error("[Telegram] Mutation error during conversational bootstrap of tree:", mutationErr);
+                }
+              }
+
+              // Update cached version of tree
+              const updatedTree = sqliteDb.prepare("SELECT * FROM lineage_trees WHERE id = ?").get(tree.id) as any;
+              telegramLinkCache.set(chatId, {
+                linkedProfileId: tree.id,
+                linkedEmail: createEmail,
+                linkedShareId: tree.id,
+                currentCredits,
+                linkedProfile: updatedTree,
+                telegramName,
+                userLang,
+                chatHistory,
+                timestamp: Date.now()
+              });
+
+              const treeLink = `https://barnia.in/vamshavali/v/${tree.id}`;
+              const setupSummary = payload.summary || `I have successfully initialized and generated your Vamshavali family tree under *"${createEmail}"*!`;
+              const updateText = `🌳 *Vamshavali Created & Linked!* 🌳\n\n${setupSummary}\n\n🔗 *Your Live Previews:* [View My Tree](${treeLink})`;
+              
+              await sendMessage(updateText, { parse_mode: "Markdown" });
+              isTreeUpdated = true;
+
+              // Generate voice confirmation
+              const speakText = `Family tree successfully created and connected to your Telegram chat!`;
+              const audioBuffer = await generateSpeech(speakText, apiKey);
+              if (audioBuffer) {
+                await sendTelegramVoice(botToken, chatId, audioBuffer);
+              }
+            }
+          } catch (createErr: any) {
+            console.error("[Telegram] Error in conversational isCreateAndLink webhook processing:", createErr);
+            await sendMessage(`❌ Sorry, I encountered an issue setting up your family tree: ${createErr.message || createErr}`);
+            isTreeUpdated = true;
+          }
+        } else if (payload && payload.isLink && (payload.shareId || payload.email)) {
           const searchArg = (payload.shareId || payload.email || "").trim();
           let matchedProf: any = null;
           if (adminDb) {
@@ -2572,6 +2761,26 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
         await sendTelegramVoice(botToken, chatId, audioBuffer);
       }
     }
+
+    // Save current conversational turn in multi-turn chatHistory
+    let storedModelOutput = replyText;
+    try {
+      if (replyText.startsWith("{")) {
+        const payload = parseGeminiJson(replyText);
+        storedModelOutput = payload.summary || payload.message || replyText;
+      }
+    } catch (e) {}
+
+    chatHistory.push({
+      role: "user",
+      parts: [ { text: unifiedPrompt } ]
+    });
+    chatHistory.push({
+      role: "model",
+      parts: [ { text: storedModelOutput } ]
+    });
+
+    await saveChatHistory(chatId, chatHistory, adminDb, telegramLinkCache);
 
   } catch (error: any) {
     console.error("[Telegram] Gemini Execution Error:", error.message);

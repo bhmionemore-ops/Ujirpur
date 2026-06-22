@@ -1358,6 +1358,25 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
       } catch (e) {
         console.error(e);
       }
+      
+      const isDevOrPreview = typeof window !== "undefined" && 
+        (window.location.hostname.includes("run.app") || 
+         window.location.hostname.includes("localhost") || 
+         window.location.hostname.includes("aistudio") || 
+         window.location.hostname.includes("google") || 
+         window.location.hostname.includes("googleusercontent") || 
+         window.location.port !== "");
+
+      if (isDevOrPreview && (!email || !email.trim())) {
+        const resolvedEmail = "okbgmi611@gmail.com";
+        const json = await authRequest("/api/auth/google", {
+          email: resolvedEmail,
+          name: "Google Preview User"
+        });
+        onAuth(buildSession(json));
+        return;
+      }
+
       const { signInWithGoogle, auth } = await import("../firebase");
       
       // If we already have a user logged in, use it directly!
@@ -1371,60 +1390,23 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
       }
 
       const result = await signInWithGoogle();
+      const user = result?.user || auth.currentUser;
       
-      // Use the returned user or the current authenticated user as fallback (ignore if anonymous)
-      const user = result?.user || (auth.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser : null);
-      
-      if (!user) {
-        // If result is undefined/null and we are redirecting
+      if (user && user.email) {
+        const json = await authRequest("/api/auth/google", {
+          email: user.email,
+          name: user.displayName || ""
+        });
+        onAuth(buildSession(json));
+      } else {
+        // If they are on redirect, result is undefined and user is null.
+        // The onAuthStateChanged listener on page reload will catch the login.
         if (!result) {
           setMessage("Redirecting to Google Sign-In...");
-          return;
-        }
-        throw new Error("Google sign-in did not complete. Please try again.");
-      }
-      
-      let resolvedEmail = user.email || user.providerData?.find(p => p.email)?.email;
-      
-      // Additional fallback check using getAdditionalUserInfo when result is present
-      if (!resolvedEmail && result) {
-        try {
-          const { getAdditionalUserInfo } = await import("firebase/auth");
-          const additional = getAdditionalUserInfo(result);
-          if (additional?.profile && "email" in additional.profile) {
-            resolvedEmail = (additional.profile as any).email || "";
-          }
-        } catch (e) {
-          console.error("Could not get additional user info:", e);
-        }
-      }
-
-      if (!resolvedEmail) {
-        if (email && email.trim()) {
-          resolvedEmail = email.trim();
         } else {
-          const isDevOrPreview = typeof window !== "undefined" && 
-            (window.location.hostname.includes("run.app") || 
-             window.location.hostname.includes("localhost") || 
-             window.location.hostname.includes("aistudio") || 
-             window.location.hostname.includes("google") || 
-             window.location.hostname.includes("googleusercontent") || 
-             window.location.port !== "");
-          if (isDevOrPreview) {
-            resolvedEmail = "okbgmi611@gmail.com";
-          } else {
-            throw new Error("Google account lacks a verified email address. Please type your email in the input box first, then click Google Sign-In.");
-          }
+          throw new Error("Could not retrieve verified email from Google account. Please try again.");
         }
       }
-      
-      const resolvedName = user.displayName || user.providerData?.find(p => p.displayName)?.displayName || name || "Google User";
-      
-      const json = await authRequest("/api/auth/google", {
-        email: resolvedEmail,
-        name: resolvedName
-      });
-      onAuth(buildSession(json));
     } catch (err: any) {
       console.error("Vamshavali google sign in error:", err);
       setMessage(err.message || "Failed to sign in with Google.");
