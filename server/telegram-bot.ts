@@ -407,17 +407,7 @@ function normalizeTreeData(data: any): any {
 
 async function transcribeVoice(audioBuffer: Buffer, geminiApiKey: string): Promise<string> {
   try {
-    const ai = new GoogleGenAI({
-      apiKey: geminiApiKey,
-      apiVersion: 'v1beta',
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
-
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry(geminiApiKey, {
       model: "gemini-3.5-flash",
       contents: [
         {
@@ -427,7 +417,12 @@ async function transcribeVoice(audioBuffer: Buffer, geminiApiKey: string): Promi
           }
         },
         { text: "Accurately transcribe other speech or instructions in the voice note. Return ONLY the final transcription transcript in Indian vernacular (Bengali, Hindi, or English). Be extremely faithful, do not summarize, and output nothing but the verified transcription. Return empty if no voice or message is present." }
-      ]
+      ],
+      config: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40
+      }
     });
 
     return (response.text || "").trim();
@@ -1051,6 +1046,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       let totalMembersCount = 0;
       let chartLines: string[] = [];
       let catalogMembers: any[] = [];
+      let kuldeviPhotoUrl: string | null = null;
+      let kuladevataPhotoUrl: string | null = null;
 
       const isFirestoreProfile = linkedProfile && Array.isArray(linkedProfile.members);
 
@@ -1062,6 +1059,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         gramadevata = linkedProfile.gramadevata || "N/A";
         kuladevi = linkedProfile.kuldevi || linkedProfile.kuladevi || "N/A";
         kuladevata = linkedProfile.kuldevta || linkedProfile.kuladevata || "N/A";
+        kuldeviPhotoUrl = linkedProfile.kuldeviPhoto || linkedProfile.kuladeviPhoto || null;
+        kuladevataPhotoUrl = linkedProfile.kuldevtaPhoto || linkedProfile.kuladevataPhoto || null;
 
         const roots = linkedProfile.members || [];
         const visited = new Set<string>();
@@ -1126,7 +1125,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
               gender: node.gender || (node.role && node.role.toLowerCase().includes("daughter") ? "female" : "male"),
               life_status: node.lifeStatus || "living",
               notes: node.notes || "",
-              partner: node.partner
+              partner: node.partner,
+              photoUrl: node.photo || node.photoUrl || null
             });
 
             const children = node.children || [];
@@ -1157,6 +1157,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         gramadevata = sqliteTree.gramadevata || "N/A";
         kuladevi = sqliteTree.kuladevi || "N/A";
         kuladevata = sqliteTree.kuladevata || "N/A";
+        kuldeviPhotoUrl = sqliteTree.kuldevi_photo || null;
+        kuladevataPhotoUrl = sqliteTree.kuladevata_photo || null;
 
         const people = sqliteDb.prepare("SELECT * FROM lineage_people WHERE tree_id = ?").all(linkedProfileId) as any[];
         const spouses = sqliteDb.prepare("SELECT * FROM lineage_spouses WHERE tree_id = ?").all(linkedProfileId) as any[];
@@ -1168,7 +1170,8 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
           date_of_birth: p.date_of_birth,
           gender: p.gender || "male",
           life_status: p.life_status || "living",
-          notes: p.notes || ""
+          notes: p.notes || "",
+          photoUrl: p.photo_url || null
         }));
 
         const personMap = new Map<string, any>(people.map(p => [p.id, p]));
@@ -1219,6 +1222,49 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
         }
       }
 
+      // Helper to fetch and convert any image url to base64 safely
+      async function getImageAsBase64(url: string | null | undefined): Promise<string | null> {
+        if (!url) return null;
+        try {
+          if (url.startsWith("data:")) return url;
+          let fetchUrl = url;
+          if (url.startsWith("/")) {
+            fetchUrl = `http://127.0.0.1:3000${url}`;
+          }
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5s fast timeout
+          const res = await fetch(fetchUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (!res.ok) return null;
+          const arrayBuffer = await res.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const contentType = res.headers.get("content-type") || "image/jpeg";
+          return `data:${contentType};base64,${buffer.toString("base64")}`;
+        } catch (err) {
+          console.warn(`[Telegram Bot PDF Image Fetch] Failed to fetch image ${url}:`, err);
+          return null;
+        }
+      }
+
+      // Pre-fetch Kuldevi and Kuladevata images in parallel
+      const [kuldeviB64, kuladevataB64] = await Promise.all([
+        getImageAsBase64(kuldeviPhotoUrl),
+        getImageAsBase64(kuladevataPhotoUrl)
+      ]);
+
+      // Pre-fetch unique member photos in parallel
+      const photoUrls = catalogMembers.map(p => p.photoUrl).filter(Boolean);
+      const uniquePhotoUrls = Array.from(new Set(photoUrls));
+      const b64Map = new Map<string, string>();
+      await Promise.all(
+        uniquePhotoUrls.map(async (url) => {
+          const b64 = await getImageAsBase64(url);
+          if (b64) {
+            b64Map.set(url, b64);
+          }
+        })
+      );
+
       // 2. Generate PDF with jsPDF
       const doc = new jsPDF({
         orientation: "portrait",
@@ -1248,9 +1294,33 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
       doc.text(`Family Surname: ${familySurname}`, 18, 54);
       doc.text(`Gramadevata: ${gramadevata}`, 18, 59);
 
-      doc.text(`Kuladevi: ${kuladevi}`, 110, 44);
-      doc.text(`Kuladevata: ${kuladevata}`, 110, 49);
-      doc.text(`Total Members: ${totalMembersCount}`, 110, 54);
+      doc.text(`Kuladevi: ${kuladevi}`, 100, 44);
+      doc.text(`Kuladevata: ${kuladevata}`, 100, 49);
+      doc.text(`Total Members: ${totalMembersCount}`, 100, 54);
+
+      // Draw Kuladevi and Kuladevata photos if available inside the metadata card
+      let drawX = 145;
+      if (kuldeviB64) {
+        try {
+          doc.addImage(kuldeviB64, "JPEG", drawX, 39.5, 22, 22);
+          doc.setDrawColor(11, 90, 67);
+          doc.setLineWidth(0.3);
+          doc.rect(drawX, 39.5, 22, 22, "D");
+          drawX += 24;
+        } catch (e) {
+          console.warn("[Telegram Bot PDF] Failed to add Kuladevi image:", e);
+        }
+      }
+      if (kuladevataB64) {
+        try {
+          doc.addImage(kuladevataB64, "JPEG", drawX, 39.5, 22, 22);
+          doc.setDrawColor(11, 90, 67);
+          doc.setLineWidth(0.3);
+          doc.rect(drawX, 39.5, 22, 22, "D");
+        } catch (e) {
+          console.warn("[Telegram Bot PDF] Failed to add Kuladevata image:", e);
+        }
+      }
 
       let curY = 75;
       doc.setFont("helvetica", "bold");
@@ -1285,14 +1355,30 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
 
         doc.setTextColor(55, 65, 81);
         for (const p of catalogMembers) {
-          if (pageY > 270) {
+          if (pageY > 260) {
             doc.addPage();
             pageY = 20;
           }
 
+          const memberB64 = p.photoUrl ? b64Map.get(p.photoUrl) : null;
+
           doc.setFont("helvetica", "bold");
           doc.setFontSize(9);
-          doc.text(`${p.display_name || "Unknown"} (${p.gender === "female" ? "Female" : "Male"})`, 15, pageY);
+
+          let textX = 15;
+          if (memberB64) {
+            try {
+              doc.addImage(memberB64, "JPEG", 15, pageY - 4, 12, 12);
+              doc.setDrawColor(209, 213, 219);
+              doc.setLineWidth(0.2);
+              doc.rect(15, pageY - 4, 12, 12, "D");
+              textX = 30;
+            } catch (imgErr) {
+              console.warn(`[Telegram Bot PDF] Failed to add member image for ${p.display_name}:`, imgErr);
+            }
+          }
+
+          doc.text(`${p.display_name || "Unknown"} (${p.gender === "female" ? "Female" : "Male"})`, textX, pageY);
 
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8);
@@ -1304,14 +1390,14 @@ export async function handleTelegramWebhook(req: any, res: any, lastPhotos: Map<
             if (p.partner.birthYear) details += ` (Yr: ${p.partner.birthYear})`;
           }
 
-          doc.text(details, 15, pageY + 4);
+          doc.text(details, textX, pageY + 4);
 
           if (p.notes) {
             doc.setFont("helvetica", "italic");
-            doc.text(`Notes: ${p.notes.substring(0, 100)}`, 15, pageY + 8);
-            pageY += 13;
+            doc.text(`Notes: ${p.notes.substring(0, 100)}`, textX, pageY + 8);
+            pageY += 14;
           } else {
-            pageY += 9;
+            pageY += 10;
           }
         }
       }
@@ -2538,7 +2624,7 @@ Format answers beautifully. Speak in Bengali, Hindi, or English based on the use
         if (payload && payload.isCreateAndLink) {
           try {
             const { authStore } = await import("./lineage-auth.js");
-            const createEmail = (payload.email || `${chatId}_telegram@barnia.in`).toLowerCase().trim();
+            const createEmail = (payload.email || linkedEmail || `${chatId}_telegram@barnia.in`).toLowerCase().trim();
             const treeName = payload.treeName || `${telegramName}'s Vamshavali`;
             const surname = payload.surname || telegramName.split(/\s+/).pop() || "Lineage";
             const accountHolderName = payload.accountHolderName || telegramName;

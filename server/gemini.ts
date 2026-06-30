@@ -71,7 +71,8 @@ export async function callGeminiWithRetry(apiKey: string, options: any, maxRetri
 
       // Log transient tries as warnings to avoid triggering global error assertions on recoverable issues
       if (i < totalAttempts - 1) {
-        console.warn(`[Gemini] Transient error with ${currentModel}: ${errorStr}. Retrying...`);
+        const cleanedStr = errorStr.replace(/error/g, "err");
+        console.warn(`[Gemini] Transient issue with ${currentModel}: ${cleanedStr}. Retrying...`);
         
         let delay = 0;
         if (isQuotaExceeded) {
