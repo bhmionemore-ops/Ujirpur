@@ -2057,13 +2057,15 @@ function FamilyTreeCanvas({
   spouses,
   selectedId,
   onSelect,
-  tree
+  tree,
+  canEdit
 }: {
   people: Person[];
   spouses: SpouseLink[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   tree?: LineageTree | null;
+  canEdit?: boolean;
 }) {
   const t = useVamshavaliTranslate();
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
@@ -2137,7 +2139,7 @@ function FamilyTreeCanvas({
     fit();
   }, [people.length]);
 
-  async function handleExport(format: "png" | "jpeg" | "pdf" | "print") {
+  async function handleExport(format: "png" | "jpeg" | "pdf" | "print" | "html") {
     if (!canvasRef.current) return;
     setExporting(true);
     setShowExportMenu(false);
@@ -2160,7 +2162,565 @@ function FamilyTreeCanvas({
         height: layout.canvasHeight
       };
 
-      if (format === "png") {
+      if (format === "html") {
+        const familyName = tree?.name || "My Family Vamshavali";
+        const gotraVal = tree?.gotra || "";
+        const pravaraVal = tree?.pravara || "";
+        const kuladeviVal = tree?.kuladevi || "";
+        const kuladevataVal = tree?.kuladevata || "";
+        const nativeVillageVal = tree?.nativeVillage || "";
+        const familyNumberVal = tree?.familyNumber || "";
+
+        const serializedNodes = layout.nodes.map(n => ({
+          id: n.person.id,
+          name: n.person.displayName,
+          gender: n.person.gender,
+          lifeStatus: n.person.lifeStatus,
+          maritalStatus: n.person.maritalStatus,
+          dateOfBirth: n.person.dateOfBirth,
+          dateOfDeath: n.person.dateOfDeath,
+          photoUrl: n.person.photoUrl,
+          notes: n.person.notes,
+          rashi: n.person.rashi,
+          gotra: n.person.gotra,
+          fatherId: n.person.fatherId,
+          motherId: n.person.motherId,
+          x: n.x,
+          y: n.y,
+          generation: n.generation
+        }));
+
+        const serializedParentLines = parentLines.map(line => ({
+          parentX: line.parent.x,
+          parentY: line.parent.y,
+          childX: line.child.x,
+          childY: line.child.y
+        }));
+
+        const serializedSpouseLines = spouseLines.map(line => ({
+          aX: line.a.x,
+          aY: line.a.y,
+          bX: line.b.x,
+          bY: line.b.y
+        }));
+
+        const nodeWidth = layout.nodeWidth;
+        const canvasWidth = layout.canvasWidth;
+        const canvasHeight = layout.canvasHeight;
+
+        const kuladeviImgUrl = tree?.kuldeviPhoto || "";
+        const kuladevataImgUrl = tree?.kuladevataPhoto || "";
+
+        const gotraSubtitle = gotraVal ? `${gotraVal} Gotra • ` : "";
+        const kuladeviBanner = kuladeviImgUrl ? `<img src="${kuladeviImgUrl}" class="w-14 h-14 rounded-full border-2 border-primary-600 object-cover shadow-md" onerror="this.style.display='none'" />` : "";
+        const kuladevataBanner = kuladevataImgUrl ? `<img src="${kuladevataImgUrl}" class="w-14 h-14 rounded-full border-2 border-primary-600 object-cover shadow-md" onerror="this.style.display='none'" />` : "";
+        const familyNumberBanner = familyNumberVal ? `<span class="text-[9px] font-bold tracking-wider text-stone-500 uppercase mt-0.5">${t("Family number")}: ${familyNumberVal}</span>` : "";
+
+        const gotraInfoSpan = gotraVal ? `<span><strong>${t("Gotra")}:</strong> ${gotraVal}</span>` : "";
+        const pravaraInfoSpan = pravaraVal ? `<span><strong>${t("Pravara")}:</strong> ${pravaraVal}</span>` : "";
+        const kuladeviInfoSpan = kuladeviVal ? `<span><strong>${t("Kuladevi")}:</strong> ${kuladeviVal}</span>` : "";
+        const kuladevataInfoSpan = kuladevataVal ? `<span><strong>${t("Kuladevata")}:</strong> ${kuladevataVal}</span>` : "";
+        const nativeVillageInfoSpan = nativeVillageVal ? `<span><strong>${t("Native Village")}:</strong> ${nativeVillageVal}</span>` : "";
+
+        const nodesHtml = serializedNodes.map(node => {
+          const initials = node.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+          const photoHtml = node.photoUrl ? `<img src="${node.photoUrl}" class="w-full h-full object-cover" onerror="this.parentNode.innerHTML='${initials}'" />` : initials;
+          const isDeceased = node.lifeStatus === 'deceased' ? 'deceased' : '';
+          return `
+            <div 
+              id="node-${node.id}" 
+              class="tree-node ${node.gender} ${isDeceased}" 
+              style="left: ${node.x}px; top: ${node.y}px;"
+              onclick="selectPerson('${node.id}')"
+            >
+              <div class="avatar">${photoHtml}</div>
+              <strong class="text-xs text-stone-900 leading-snug font-bold truncate w-full">${node.name}</strong>
+              <span class="text-[9px] text-stone-500 font-semibold truncate mt-0.5">${node.lifeStatus === 'deceased' ? 'Late ' : ''}${node.gender === 'female' ? 'Female' : 'Male'}</span>
+            </div>
+          `;
+        }).join('\n');
+
+        const parentLinesHtml = serializedParentLines.map((line, idx) => `
+          <path d="M ${line.parentX + nodeWidth / 2} ${line.parentY + 116} C ${line.parentX + nodeWidth / 2} ${line.parentY + 150}, ${line.childX + nodeWidth / 2} ${line.childY - 34}, ${line.childX + nodeWidth / 2} ${line.childY}" class="parent-line"></path>
+        `).join('\n');
+
+        const spouseLinesHtml = serializedSpouseLines.map((line, idx) => `
+          <path d="M ${line.aX + nodeWidth} ${line.aY + 58} C ${(line.aX + line.bX + nodeWidth) / 2} ${line.aY + 42}, ${(line.aX + line.bX + nodeWidth) / 2} ${line.bY + 72}, ${line.bX} ${line.bY + 58}" class="spouse-line"></path>
+        `).join('\n');
+
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${familyName} - Standalone Vamshavali</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9f6',
+              100: '#d1efe5',
+              600: '#0b5a43',
+              700: '#094835',
+              800: '#073a2b',
+              900: '#052a20',
+            },
+            accent: {
+              50: '#fdfbf7',
+              100: '#fbf7ed',
+              500: '#bba374',
+              600: '#a38a5b',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f5f3ee;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .tree-canvas-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .tree-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      cursor: grab;
+      background-color: #f5f3ee;
+      background-image: radial-gradient(#d3cbbe 1.5px, transparent 1.5px);
+      background-size: 28px 28px;
+    }
+    .tree-canvas:active {
+      cursor: grabbing;
+    }
+    .parent-line {
+      fill: none;
+      stroke: #0b5a43;
+      stroke-width: 2px;
+      stroke-dasharray: 4 2;
+      opacity: 0.55;
+    }
+    .spouse-line {
+      fill: none;
+      stroke: #bba374;
+      stroke-width: 2px;
+      stroke-dasharray: 5 3;
+      opacity: 0.8;
+    }
+    .tree-node {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: ${nodeWidth}px;
+      height: 116px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(28, 45, 38, 0.05);
+      transition: all 0.2s ease, border-color 0.15s ease;
+      font-family: inherit;
+      padding: 12px;
+      text-align: center;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+    }
+    .tree-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(11, 90, 67, 0.1);
+    }
+    .tree-node.selected {
+      border-color: #0b5a43;
+      box-shadow: 0 0 0 3.5px rgba(11, 90, 67, 0.15), 0 8px 24px rgba(11, 90, 67, 0.12);
+    }
+    .tree-node.male {
+      background: #fbfdff;
+      border-left: 4.5px solid #3b82f6;
+    }
+    .tree-node.female {
+      background: #fffbfe;
+      border-left: 4.5px solid #ec4899;
+    }
+    .tree-node.deceased {
+      background: #fafaf9;
+      opacity: 0.82;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f1ede4;
+      border: 1.5px solid #dcd7cb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .legend-dot.male { background-color: #3b82f6; }
+    .legend-dot.female { background-color: #ec4899; }
+    .legend-dot.deceased { background-color: #78716c; }
+    .legend-ring {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #bba374;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body class="overflow-hidden font-sans text-gray-800 antialiased">
+
+  <!-- Main Container -->
+  <div class="relative w-screen h-screen flex overflow-hidden">
+    
+    <!-- Top Header Overlay -->
+    <header class="absolute top-4 left-4 right-4 z-40 flex flex-wrap justify-between items-center gap-3 pointer-events-none">
+      <!-- Title Card -->
+      <div class="bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-stone-200 shadow-xl pointer-events-auto flex items-center gap-4">
+        <span class="text-3xl filter drop-shadow">📜</span>
+        <div>
+          <h1 class="font-serif text-lg md:text-xl font-extrabold text-primary-600 leading-tight">${familyName}</h1>
+          <p class="text-[10px] uppercase tracking-wider text-stone-500 font-bold mt-0.5">
+            ${gotraSubtitle} Standalone Vamshavali Map
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Search -->
+      <div class="relative pointer-events-auto w-full max-w-xs">
+        <div class="flex items-center bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-stone-200 shadow-xl">
+          <svg class="w-4.5 h-4.5 text-stone-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input type="text" id="search-input" placeholder="${t("Search family members")}..." class="w-full bg-transparent border-none outline-none text-xs font-semibold text-stone-700 placeholder-stone-400" />
+        </div>
+        <!-- Search Dropdown Results -->
+        <div id="search-results" class="absolute top-full mt-2 left-0 right-0 max-h-60 overflow-y-auto bg-white rounded-xl border border-stone-200 shadow-2xl hidden py-1"></div>
+      </div>
+    </header>
+
+    <!-- Canvas Section -->
+    <div class="tree-canvas-container flex-1" id="canvas-container">
+      <div class="tree-canvas" id="tree-canvas" style="width: ${canvasWidth}px; height: ${canvasHeight}px;">
+        
+        <!-- Heritage Crest Banner on Canvas -->
+        <div class="absolute top-8 left-0 w-full flex flex-col items-center justify-center text-center pointer-events-none">
+          <div class="flex items-center gap-5 justify-center mb-1.5">
+            ${kuladeviBanner}
+            <div class="flex flex-col items-center">
+              <h2 class="font-serif text-2xl font-bold text-primary-600 tracking-wide">${familyName}</h2>
+              ${familyNumberBanner}
+            </div>
+            ${kuladevataBanner}
+          </div>
+          
+          <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-primary-900/80 font-semibold max-w-lg mt-1">
+            ${gotraInfoSpan}
+            ${pravaraInfoSpan}
+            ${kuladeviInfoSpan}
+            ${kuladevataInfoSpan}
+            ${nativeVillageInfoSpan}
+          </div>
+          <div class="w-48 h-[1px] bg-gradient-to-r from-transparent via-primary-600/40 to-transparent mt-3"></div>
+        </div>
+
+        <!-- Connection Lines SVG -->
+        <svg class="absolute inset-0 pointer-events-none" width="${canvasWidth}" height="${canvasHeight}">
+          <!-- Parent Lines -->
+          ${parentLinesHtml}
+          <!-- Spouse Lines -->
+          ${spouseLinesHtml}
+        </svg>
+
+        <!-- Node buttons -->
+        <div id="nodes-layer">
+          ${nodesHtml}
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Floating Legend & Controls -->
+    <div class="absolute bottom-4 left-4 z-40 bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-stone-200 shadow-xl flex flex-col gap-2 pointer-events-auto">
+      <div class="flex items-center gap-3 text-[11px] font-semibold text-stone-600">
+        <div class="flex items-center gap-1"><span class="legend-dot male"></span><span>Male</span></div>
+        <div class="flex items-center gap-1"><span class="legend-dot female"></span><span>Female</span></div>
+        <div class="flex items-center gap-1"><span class="legend-dot deceased"></span><span>Deceased</span></div>
+        <div class="flex items-center gap-1"><span class="legend-ring"></span><span>Spouse</span></div>
+      </div>
+      <div class="h-[1px] bg-stone-100"></div>
+      <div class="flex items-center gap-3">
+        <button onclick="zoomOut()" class="p-2 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 text-stone-700 transition" title="Zoom Out">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
+        </button>
+        <span id="zoom-text" class="text-xs font-bold text-stone-600 min-w-[36px] text-center">100%</span>
+        <button onclick="zoomIn()" class="p-2 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 text-stone-700 transition" title="Zoom In">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+        </button>
+        <button onclick="fitTree()" class="p-2 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 text-stone-700 transition text-[11px] font-bold" title="Recenter">
+          Recenter
+        </button>
+      </div>
+    </div>
+
+    <!-- Relative/Details Side Drawer -->
+    <div id="details-drawer" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-white border-l border-stone-200 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+      <header class="bg-primary-600 text-white p-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👤</span>
+          <h3 class="font-bold text-sm uppercase tracking-wider">Member Details</h3>
+        </div>
+        <button onclick="closeDrawer()" class="p-1 hover:bg-primary-700 rounded-lg transition text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </header>
+
+      <!-- Drawer Content -->
+      <div id="drawer-body" class="flex-1 overflow-y-auto p-5 space-y-6"></div>
+    </div>
+
+  </div>
+
+  <!-- Embed Family Database JSON -->
+  <script>
+    const FAMILY_DATA = {
+      nodes: ${JSON.stringify(serializedNodes)},
+      canvasWidth: ${canvasWidth},
+      canvasHeight: ${canvasHeight},
+      nodeWidth: ${nodeWidth}
+    };
+
+    let scale = 1.0;
+    let offset = { x: 16, y: 16 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0, ox: 0, oy: 0 };
+    let selectedId = null;
+
+    const container = document.getElementById('canvas-container');
+    const canvas = document.getElementById('tree-canvas');
+    const zoomText = document.getElementById('zoom-text');
+
+    function updateTransform() {
+      canvas.style.transform = 'translate(' + offset.x + 'px, ' + offset.y + 'px) scale(' + scale + ')';
+      zoomText.textContent = Math.round(scale * 100) + '%';
+    }
+
+    container.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.tree-node') || e.target.closest('header') || e.target.closest('button') || e.target.closest('#details-drawer')) return;
+      isDragging = true;
+      dragStart = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
+      container.setPointerCapture(e.pointerId);
+    });
+
+    container.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      offset.x = dragStart.ox + e.clientX - dragStart.x;
+      offset.y = dragStart.oy + e.clientY - dragStart.y;
+      updateTransform();
+    });
+
+    container.addEventListener('pointerup', (e) => {
+      isDragging = false;
+      try { container.releasePointerCapture(e.pointerId); } catch(err){}
+    });
+
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = 1.08;
+      const mouseX = e.clientX - container.offsetLeft;
+      const mouseY = e.clientY - container.offsetTop;
+      
+      const canvasX = (mouseX - offset.x) / scale;
+      const canvasY = (mouseY - offset.y) / scale;
+
+      if (e.deltaY < 0) {
+        scale = Math.min(1.7, scale * zoomFactor);
+      } else {
+        scale = Math.max(0.18, scale / zoomFactor);
+      }
+
+      offset.x = mouseX - canvasX * scale;
+      offset.y = mouseY - canvasY * scale;
+
+      updateTransform();
+    }, { passive: false });
+
+    function fitTree() {
+      const box = container.getBoundingClientRect();
+      const nextScale = Math.min(1, Math.max(0.22, Math.min(box.width / FAMILY_DATA.canvasWidth, box.height / FAMILY_DATA.canvasHeight) * 0.92));
+      scale = nextScale;
+      offset = {
+        x: Math.max(16, (box.width - FAMILY_DATA.canvasWidth * nextScale) / 2),
+        y: Math.max(16, (box.height - FAMILY_DATA.canvasHeight * nextScale) / 2)
+      };
+      updateTransform();
+    }
+
+    function zoomIn() {
+      scale = Math.min(1.7, scale + 0.1);
+      updateTransform();
+    }
+
+    function zoomOut() {
+      scale = Math.max(0.18, scale - 0.1);
+      updateTransform();
+    }
+
+    window.addEventListener('load', () => {
+      fitTree();
+    });
+
+    window.addEventListener('resize', () => {
+      fitTree();
+    });
+
+    function selectPerson(id) {
+      if (selectedId) {
+        const prevNode = document.getElementById('node-' + selectedId);
+        if (prevNode) prevNode.classList.remove('selected');
+      }
+      
+      selectedId = id;
+      const currNode = document.getElementById('node-' + id);
+      if (currNode) currNode.classList.add('selected');
+
+      const person = FAMILY_DATA.nodes.find(p => p.id === id);
+      if (person) {
+        populateDrawer(person);
+        openDrawer();
+      }
+    }
+
+    function centerOnPerson(id) {
+      const person = FAMILY_DATA.nodes.find(p => p.id === id);
+      if (!person) return;
+      
+      const box = container.getBoundingClientRect();
+      const targetX = person.x + FAMILY_DATA.nodeWidth / 2;
+      const targetY = person.y + 58;
+
+      offset.x = box.width / 2 - targetX * scale;
+      offset.y = box.height / 2 - targetY * scale;
+
+      updateTransform();
+      selectPerson(id);
+    }
+
+    const drawer = document.getElementById('details-drawer');
+    function openDrawer() {
+      drawer.classList.remove('translate-x-full');
+    }
+
+    function closeDrawer() {
+      drawer.classList.add('translate-x-full');
+    }
+
+    function populateDrawer(person) {
+      const body = document.getElementById('drawer-body');
+      const initials = person.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml = person.photoUrl 
+        ? '<img src="' + person.photoUrl + '" class="w-16 h-16 rounded-full border border-stone-300 object-cover shadow" onerror="this.parentNode.innerHTML=\\'' + initials + '\\''" />' 
+        : '<div class="w-16 h-16 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center font-bold text-lg text-stone-500 shadow">' + initials + '</div>';
+
+      const father = FAMILY_DATA.nodes.find(p => p.id === person.fatherId);
+      const mother = FAMILY_DATA.nodes.find(p => p.id === person.motherId);
+      const children = FAMILY_DATA.nodes.filter(child => child.fatherId === person.id || child.motherId === person.id);
+
+      let relativesHtml = '';
+
+      if (father) {
+        relativesHtml += '<div class="p-2.5 bg-stone-50 rounded-xl hover:bg-stone-100 transition cursor-pointer flex items-center gap-3.5" onclick="centerOnPerson(\\'' + father.id + '\\')"><span class="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-md">Father</span><span class="text-sm font-semibold text-stone-800">' + father.name + '</span></div>';
+      }
+      if (mother) {
+        relativesHtml += '<div class="p-2.5 bg-stone-50 rounded-xl hover:bg-stone-100 transition cursor-pointer flex items-center gap-3.5" onclick="centerOnPerson(\\'' + mother.id + '\\')"><span class="text-xs font-bold px-2 py-1 bg-pink-100 text-pink-700 rounded-md">Mother</span><span class="text-sm font-semibold text-stone-800">' + mother.name + '</span></div>';
+      }
+
+      if (children.length > 0) {
+        relativesHtml += '<h4 class="text-xs font-bold text-stone-400 uppercase tracking-wider pt-2">Children (' + children.length + ')</h4>';
+        children.forEach(child => {
+          const typeLabel = child.gender === 'female' ? 'Daughter' : 'Son';
+          relativesHtml += '<div class="p-2.5 bg-stone-50 rounded-xl hover:bg-stone-100 transition cursor-pointer flex items-center gap-3.5" onclick="centerOnPerson(\\'' + child.id + '\\')"><span class="text-[10px] font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">' + typeLabel + '</span><span class="text-sm font-semibold text-stone-800">' + child.name + '</span></div>';
+        });
+      }
+
+      body.innerHTML = '<div class="flex items-center gap-4 border-b border-stone-100 pb-5">' + avatarHtml + '<div><h4 class="font-serif text-lg font-bold text-stone-900">' + person.name + '</h4><span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ' + (person.gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700') + ' mt-1 inline-block">' + (person.gender === 'female' ? 'Female' : 'Male') + ' • ' + person.lifeStatus.toUpperCase() + '</span></div></div><div class="space-y-4"><h4 class="text-xs font-bold text-stone-400 uppercase tracking-wider">Lineage Profile</h4><div class="grid grid-cols-2 gap-3.5 text-xs"><div class="bg-stone-50 p-3 rounded-xl border border-stone-200/60"><span class="block text-stone-400 font-bold mb-0.5">Gotra</span><strong class="text-stone-800 font-bold">' + (person.gotra || gotraVal || 'Not Specified') + '</strong></div><div class="bg-stone-50 p-3 rounded-xl border border-stone-200/60"><span class="block text-stone-400 font-bold mb-0.5">Rashi</span><strong class="text-stone-800 font-bold">' + (person.rashi || 'Not Specified') + '</strong></div><div class="bg-stone-50 p-3 rounded-xl border border-stone-200/60"><span class="block text-stone-400 font-bold mb-0.5">Birth Date</span><strong class="text-stone-800 font-bold">' + (person.dateOfBirth || 'Unknown') + '</strong></div><div class="bg-stone-50 p-3 rounded-xl border border-stone-200/60"><span class="block text-stone-400 font-bold mb-0.5">Life Status</span><strong class="text-stone-800 font-bold">' + person.lifeStatus.toUpperCase() + '</strong></div></div></div>' + (person.notes ? '<div class="space-y-2"><h4 class="text-xs font-bold text-stone-400 uppercase tracking-wider">Biography / Notes</h4><p class="text-xs text-stone-600 bg-stone-50 p-4 rounded-xl border border-stone-100 italic leading-relaxed whitespace-pre-line">' + person.notes + '</p></div>' : '') + '<div class="space-y-2 pt-2"><h4 class="text-xs font-bold text-stone-400 uppercase tracking-wider">Family Relatives</h4><div class="flex flex-col gap-2">' + (relativesHtml || '<p class="text-xs text-stone-400 italic">No direct ancestors or descendants mapped here.</p>') + '</div></div>';
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+
+    searchInput.addEventListener('input', (e) => {
+      const text = e.target.value.trim().toLowerCase();
+      if (!text) {
+        searchResults.classList.add('hidden');
+        return;
+      }
+
+      const matches = FAMILY_DATA.nodes.filter(p => p.name.toLowerCase().includes(text));
+      if (matches.length === 0) {
+        searchResults.innerHTML = '<div class="px-4 py-2 text-xs text-stone-400 italic">No matches found</div>';
+      } else {
+        searchResults.innerHTML = matches.map(p => {
+          return '<button onclick="centerOnPerson(\\'' + p.id + '\\'); hideSearchResults();" class="w-full text-left px-4 py-2 hover:bg-stone-50 text-xs font-semibold text-stone-700 flex justify-between items-center"><span>' + p.name + '</span><span class="text-[9px] uppercase tracking-wider bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded font-bold">' + p.gender + '</span></button>';
+        }).join('');
+      }
+      searchResults.classList.remove('hidden');
+    });
+
+    function hideSearchResults() {
+      searchResults.classList.add('hidden');
+      searchInput.value = '';
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add('hidden');
+      }
+    });
+  </script>
+
+</body>
+</html>`;
+
+        const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+        const link = document.createElement("a");
+        link.download = `${tree?.name || "vamshavali"}-standalone-website.html`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } else if (format === "png") {
         const dataUrl = await toPng(el, options);
         const link = document.createElement("a");
         link.download = `${tree?.name || "vamshavali"}-family-tree.png`;
@@ -2388,6 +2948,30 @@ function FamilyTreeCanvas({
                 >
                   <Printer size={14} style={{ color: "#1d4ed8" }} /> {t("Print Layout")}
                 </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      gap: "8px",
+                      width: "100%",
+                      minHeight: "32px",
+                      padding: "0 10px",
+                      border: "none",
+                      background: "transparent",
+                      textAlign: "left",
+                      color: "#0b5a43",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => handleExport("html")}
+                    className="export-menu-item"
+                  >
+                    <FileText size={14} style={{ color: "#0b5a43" }} /> {t("Standalone Website (HTML)")}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -4275,7 +4859,7 @@ function AppShell({
                 <span className="legend-ring" />{vt("Married")}
               </div>
             </header>
-            <FamilyTreeCanvas people={filteredPeople} spouses={spouses} selectedId={selectedId} onSelect={setSelectedId} tree={tree} />
+            <FamilyTreeCanvas people={filteredPeople} spouses={spouses} selectedId={selectedId} onSelect={setSelectedId} tree={tree} canEdit={canEdit} />
           </section>
         )}
         {view === "people" && (
