@@ -30,12 +30,16 @@ import {
   ZoomOut,
   Download,
   Printer,
-  Copy
+  Copy,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { toPng, toJpeg } from "html-to-image";
 import { jsPDF } from "jspdf";
 import "../styles-vamshavali.css";
 import { useLanguage } from "../LanguageContext";
+import { AuthModal } from "../components/AuthModal";
 
 type Gender = "male" | "female" | "other" | "unknown";
 type LifeStatus = "living" | "deceased" | "unknown";
@@ -663,89 +667,6 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Delete Tree": "গাছ মুছে ফেলুন",
     "Danger zone": "ঝুঁকিপূর্ণ এলাকা",
     "Permanently delete this entire family tree, all people, and all historical records. This action cannot be undone!": "স্থায়ীভাবে এই পুরো পরিবার গাছ, সমস্ত মানুষ এবং সব ঐতিহাসিক রেকর্ড মুছে ফেলুন। এই পদক্ষেপটি ফিরিয়ে নেওয়া সম্ভব নয়!",
-    "Type 'DELETE' to confirm": "নিশ্চিত করতে 'DELETE' লিখুন",
-    "Confirm permanent deletion": "স্থায়ী মুছে ফেলার বিষয়টি নিশ্চিত করুন",
-    "Import lineage records": "বংশাবলী রেকর্ড আমদানি করুন",
-    "AI scribe & CSV import": "AI লিপিকার এবং CSV আমদানি",
-    "Paste spreadsheet CSV or type a custom natural text listing to instantly populate or expand your family tree.": "স্প্রেডশীট CSV পেস্ট করুন বা আপনার সামাজিক পরিবার গাছটি তাৎক্ষণিকভাবে পূরণ বা প্রসারিত করতে একটি কাস্টম স্বাভাবিক পাঠ্য তালিকা টাইপ করুন।",
-    "CSV Spreadsheet Import": "স্প্রেডশীট CSV আমদানি",
-    "AI Lineage Bot Scribe": "এআই বংশাবলী লিপিকার",
-    "Paste raw comma-separated values (CSV)...": "কমা-বিভাজিত মান (CSV) পেস্ট করুন...",
-    "Preview CSV": "CSV প্রিভিউ করুন",
-    "Commit CSV to Tree": "গাছে CSV যুক্ত করুন",
-    "Type natural text describing the family layout...": "পারিবারিক কাঠামো বর্ণনা করে স্বাভাবিক পাঠ্য টাইপ করুন...",
-    "e.g., 'Aarav Sharma born 1970 married Ananya. They have two children Rohan born 1995 and Diya born 1998.'": "যেমন, 'আরভ শর্মা ১৯৭০ সালে জন্মগ্রহণ করেন এবং অনন্যাকে বিয়ে করেন। তাদের দুই সন্তান ১৯৯৫ সালে জন্মগ্রহণকারী রোহন এবং ১৯৯৮ সালে জন্মগ্রহণকারী দিয়া।'",
-    "Submit to Scribe": "লিপিকারে জমা দিন",
-    "Pending AI additions": "অপেক্ষমান এআই সংযোজন",
-    "The AI Bot proposed the following structural changes. Review and apply or dismiss them.": "এআই বট নিচের কাঠামোগत পরিবর্তনগুলির প্রস্তাব করেছে। সেগুলি পর্যালোচনা করে প্রযোগ করুন বা খারিজ করুন।",
-    "Add": "যুক্ত করুন",
-    "Link": "লিঙ্ক করুন",
-    "as wife of": "এর স্ত্রী হিসাবে",
-    "as husband of": "এর স্বামী হিসেবে",
-    "as child of": "এর সন্তান হিসাবে",
-    "Apply proposal": "প্রস্তাব প্রয়োগ করুন",
-    "Dismiss": "খারিজ করুন",
-    "No pending proposals": "কোনো অপেক্ষমান প্রস্তাব নেই",
-    "High-Res PNG": "উচ্চ-রেজোলিউশন PNG",
-    "High-Res JPEG": "উচ্চ-রেজোলিউশন JPEG",
-    "PDF Document": "PDF ডকুমেন্ট",
-    "Print Layout": "প্রিন্ট লেআউট",
-    "Fit tree": "ফিট ট্রি",
-    "Zoom out": "জুম আউট",
-    "Zoom in": "জুম ইন",
-    "Export or print family tree": "পরিবার গাছ এক্সপোর্ট বা প্রিন্ট করুন",
-    "Export Tree": "গাছ এক্সপোর্ট করুন",
-    "Failed to export family tree. Please try again.": "পরিবার গাছ এক্সপোর্ট করতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।",
-    "No family members yet": "এখনও কোনো পরিবারের সদস্য নেই",
-    "Add the account holder or import a CSV to begin the lineage map.": "বংশাবলী মানচিত্র শুরু করতে অ্যাকাউন্ট মালিককে যোগ করুন অথবা একটি CSV ইম্পোর্ট করুন।",
-    "Could Not Load Family Tree": "পারিবারিক গাছ লোড করা যায়নি",
-    "Retry": "পুনরায় চেষ্টা করুন",
-    "Log Out": "লগ আউট",
-    "Loading lineage...": "বংশাবলী লোড হচ্ছে...",
-    "Family tree not found.": "পারিবারিক গাছ পাওয়া যায়নি।",
-    "Generation {0}": "{0} নম্বর প্রজন্ম",
-    "Level {0} in the lineage": "বংশধারার {0} নম্বর স্তর",
-    "{0} people": "{0} জন মানুষ",
-    "{0} of {1} people": "{1} জনের মধ্যে {0} জন",
-    "Married to {0}": "{0}-এর সাথে বিবাহিত",
-    "{0} child": "{0}টি সন্তান",
-    "{0} children": "{0}টি সন্তান",
-    "{0} child linked": "{0}টি সন্তান সংযুক্ত",
-    "{0} children linked": "{0}টি সন্তান সংযুক্ত",
-    "Late {0}": "প্রয়াত {0}",
-    "Child of {0} and {1}": "{0} এবং {1}-এর সন্তান",
-    "Child of {0}": "{0}-এর সন্তান",
-    "Oldest known / parent link not recorded": "সবচেয়ে প্রাচীন পূর্বপুরুষ / পিতামাতার লিঙ্ক নথিভুক্ত নেই",
-    "Profile and security": "প্রোফাইল এবং নিরাপত্তা",
-    "Name": "নাম",
-    "Role on active tree": "সক্রিয় গাছের ভূমিকা",
-    "Family trees": "পারিবারিক গাছসমূহ",
-    "Public view link": "পাবলিক ভিউ লিঙ্ক",
-    "Share family tree": "পরিবার গাছ শেয়ার করুন",
-    "Anyone with this link can view this family tree in read-only mode without needing to sign in.": "যেকোনো ব্যক্তি এই লিঙ্কের মাধ্যমে কোনো সাইন ইন ছাড়াই শুধুমাত্র গাছটি দেখতে পারবেন।",
-    "Family tree share link / Profile ID link": "পারিবারিক গাছ শেয়ার লিঙ্ক",
-    "Copy link": "লিঙ্ক কপি করুন",
-    "Family access": "পারিবারিক অ্যাক্সেস",
-    "Invite family members": "পরিবারের সদস্যদের আমন্ত্রণ জানান",
-    "Your role for this tree is {0}. Only owners and admins can invite family members.": "এই গাছে আপনার ভূমিকা হচ্ছে {0}। শুধুমাত্র মালিক এবং অ্যাডমিনরা নতুন সদস্যদের আমন্ত্রণ জানাতে পারেন।",
-    "Email address": "ইমেল ঠিকানা",
-    "Viewer - read only": "ভিউয়ার - শুধুমাত্র দেখার অনুমতি",
-    "Contributor - can edit lineage": "অবদানকারী - বংশধারা সম্পাদনা করতে পারেন",
-    "Admin - can edit and invite": "অ্যাডমিন - সম্পাদনা এবং আমন্ত্রণ জানাতে পারেন",
-    "Create invite link": "আমন্ত্রণ লিঙ্ক তৈরি করুন",
-    "Invite link for family members": "পরিবারের সদস্যদের আমন্ত্রণ লিঙ্ক",
-    "Members": "সদস্যবৃন্দ",
-    "Invites": "আমন্ত্রণসমূহ",
-    "Password login": "পাসওয়ার্ড লগইন",
-    "Save password": "পাসওয়ার্ড সংরক্ষণ করুন",
-    "Minimum 8 characters": "সর্বনিম্ন ৮ টি অক্ষর",
-    "Tree allowance": "গাছ ভাতা",
-    "Create another tree": "আরেকটি গাছ তৈরি করুন",
-    "This account can create {0} family trees.": "এই অ্যাকাউন্টটি {0} টি পারিবারিক গাছ তৈরি করতে পারবে।",
-    "Account holder not recorded": "অ্যাকাউন্ট ধারক নথিভুক্ত নেই",
-    "Spreadsheet": "স্প্রেডশীট",
-    "CSV import": "CSV আমদানি",
-    "Preview": "প্রিভিউ",
     "{0} people detected": "{0} জন সদস্য সনাক্ত হয়েছে",
     "Commit import": "আমদানি সম্পন্ন করুন",
     "Telegram and voice": "টেলিগ্রাম এবং ভয়েস",
@@ -753,7 +674,7 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Extract": "উদ্ধার করুন",
     "Text": "টেক্সট",
     "Voice transcript": "ভয়েস প্রতিলিপি",
-    "{0} proposed people": "{0} জন প্রস্তাবিত সদস্য",
+    "{0} proposed people": "{0} জন প্রস্তাবित সদস্য",
     "Commit proposal": "প্রস্তাব সম্পন্ন করুন",
     "Read-only access. Ask the tree owner for edit permission.": "শুধুমাত্র দেখার অনুমতি। সম্পাদনার অনুমতির জন্য গাছের মালিককে জিজ্ঞাসা করুন।",
     "Select spouse": "স্ত্রী/স্বামী নির্বাচন করুন",
@@ -774,7 +695,7 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Preserve Your Roots, Grow Your Legacy.": "আপনার শিকড় সংরক্ষণ করুন, আপনার ঐতিহ্যকে সমৃদ্ধ করুন।",
     "A digital Vanshavali for family history, spiritual identity, and verified lineage records.": "পারিবারিক ইতিহাস, আধ্যাত্মিক পরিচয় এবং যাচাইকৃত বংশপরিচয়ের জন্য একটি ডিজিটাল বংশাবলী।",
     "Historical Identity": "ঐতিহাসিক পরিচয়",
-    "Keep Gotra, Kuladevata, village, and elder records together.": "গোত্র, কুলদেবতা, গ্রাম এবং প্রবীণদের রেকর্ড একসাথে রাখুন।",
+    "Keep Gotra, Kuladevata, village, and elder records together.": "গোত্র, কুলদেবতা, গ্রাম এবং प्रবীণদের রেকর্ড একসাথে রাখুন।",
     "Lineage Mapping": "বংশানুক্রমিক চিত্র",
     "Connect ancestors, spouses, children, and branches clearly.": "পূর্বপুরুষ, পত্নী, সন্তান এবং শাখা স্পষ্টভাবে সংযুক্ত করুন।",
     "Private Legacy": "ব্যক্তিগত উত্তরাধিকার",
@@ -788,7 +709,7 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Generate access code": "অ্যাক্সেস কোড জেনারেট করুন",
     "Verify and sign in": "যাচাই এবং সাইন ইন করুন",
     "Sign in with password": "পাসওয়ার্ড দিয়ে সাইন ইন করুন",
-    "Create account": "অ্যাকাউন্ট তৈরি করুন",
+    "Create account": "নতুন অ্যাকাউন্ট তৈরি করুন",
     "New to digital lineage?": "ডিজিটাল বংশাবলীতে নতুন?",
     "Use existing account": "বিদ্যমান অ্যাকাউন্ট ব্যবহার করুন",
     "Create your own account": "নতুন অ্যাকাউন্ট তৈরি করুন",
@@ -801,13 +722,13 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
   hi: {
     "Private family archive": "निजी पारिवारिक संग्रह",
     "Public family archive": "सार्वजनिक पारिवारिक संग्रह",
-    "Admin Log In": "एडमिन लॉग इन",
+    "Admin Log In": "व्यवस्थापक लॉग इन",
     "Sign out": "साइन आउट",
     "Overview": "अवलोकन",
     "Tree": "वृक्ष",
     "People": "लोग",
     "Family Details": "पारिवारिक विवरण",
-    "Import": "आयात",
+    "Import": "आयात करें",
     "Account": "खाता",
     "Family tree": "पारिवारिक वृक्ष",
     "Search family members": "परिवार के सदस्यों को खोजें",
@@ -844,44 +765,6 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Deceased": "दिवंगत",
     "Male": "पुरुष",
     "Female": "महिला",
-    "Other": "अन्य",
-    "Directory": "निर्देशिका",
-    "people": "लोग",
-    "of": "में से",
-    "Add new person": "नया सदस्य जोड़ें",
-    "Generation": "पीढ़ी",
-    "Oldest known ancestors and root records": "सबसे पुराने ज्ञात पूर्वज और मूल वंशावली रिकॉर्ड",
-    "Level": "स्तर",
-    "in the lineage": "वंशावली में",
-    "person": "व्यक्ति",
-    "Married to": "विवाहित",
-    "Spouse not linked": "जीवनसाथी लिंक नहीं है",
-    "child": "संतान",
-    "children": "संतान",
-    "linked": "संबंधित",
-    "Open": "खोलें",
-    "Edit": "संपादित करें",
-    "Delete": "हटाएं",
-    "No matching people": "कोई सदस्य नहीं मिला",
-    "Try another search or add a new family member.": "कोई अन्य खोज आज़माएं या नया पारिवारिक सदस्य जोड़ें।",
-    "Family record": "पारिवारिक रिकॉर्ड",
-    "Traditions and identity": "परंपराएं और पहचान",
-    "Save details": "विवरण सहेजें",
-    "Kuldevi/Kuladevata Deity Image": "कुलदेवी/कुलदेवता देवता की छवि",
-    "Kuladevi Deity Image": "कुलदेवी छवि",
-    "Kuladevata Deity Image": "कुलदेवता छवि",
-    "Lineage name": "वंशावली का नाम",
-    "Account holder": "खाता धारक",
-    "Kuldevi/Kuladevata Photo URL": "कुलदेवी/कुलदेवता फोटो URL",
-    "Kuladevi Photo URL": "कुलदेवी फोटो URL",
-    "Kuladevata Photo URL": "कुलदेवता फोटो URL",
-    "Upload Kuldevi/Kuladevata Image": "कुलदेवी/कुलदेवता चित्र अपलोड करें",
-    "Upload Kuldevi Image": "कुलदेवी चित्र अपलोड करें",
-    "Upload Kuladevata Image": "कुलदेवता चित्र अपलोड करें",
-    "Manual builder": "मैनुअल बिल्डर",
-    "Cancel": "रद्द करें",
-    "Save person": "सदस्य सहेजें",
-    "Full name": "पूरा नाम",
     "Gender": "लिंग",
     "Living status": "जीवित होने की स्थिति",
     "Marital status": "वैवाहिक स्थिति",
@@ -917,175 +800,10 @@ const vamshavaliDict: Record<"en" | "bn" | "hi", Record<string, string>> = {
     "Modify members and update details.": "सदस्यों को संशोधित करें और विवरण अपडेट करें।",
     "Access code and user properties.": "एक्सेस कोड और उपयोगकर्ता गुण।",
     "Password setup": "पासवर्ड सेटअप",
-    "Set a password for quicker future log-ins without access codes.": "भविष्य में एक्सेस कोड के बिना त्वरित लॉग-इन के लिए एक पासवर्ड सेट करें।",
-    "Current password": "वर्तमान पासवर्ड",
-    "New password": "नया पासवर्ड",
-    "Set password": "पासवर्ड सेट करें",
-    "Change password": "पासवर्ड बदलें",
-    "Access management": "पहुंच प्रबंधन",
-    "Invite new family members to view or edit this tree.": "इस वृक्ष को देखने या संपादित करने के लिए नए परिवार के सदस्यों को आमंत्रित करें।",
-    "Invite member": "सदस्य को आमंत्रित करें",
-    "Invite links": "आमंत्रण लिंक",
-    "Share the URL below with others to invite them as": "दूसरों को इस भूमिका में आमंत्रित करने के लिए नीचे दिया गया URL साझा करें:",
-    "Pending invites": "लंबित आमंत्रण",
-    "Active members": "सक्रिय सदस्य",
-    "Email": "ईमेल",
-    "Role": "भूमिका",
-    "Invited by": "आमंत्रित करने वाला",
-    "Actions": "कार्य",
-    "No active invites": "कोई सक्रिय आमंत्रण नहीं",
-    "No other members": "कोई अन्य सदस्य नहीं",
-    "Revoke": "रद्द करें",
-    "Admin link": "एडमिन लिंक",
-    "Share this exact link with other family curators. Anyone with this link can modify the entire family lineage, so keep it safe!": "अन्य पारिवारिक संरक्षकों के साथ ठीक यह लिंक साझा करें। इस लिंक वाले कोई भी व्यक्ति संपूर्ण परिवार वृक्ष को संशोधित कर सकता है, इसलिए इसे सुरक्षित रखें!",
-    "Language Preference": "भाषा प्राथमिकता",
-    "Default language option": "डिफ़ॉल्ट भाषा विकल्प",
-    "Set default language": "डिफ़ॉल्ट भाषा सेट करें",
-    "Save Preference": "प्राथमिकता सहेजें",
-    "Select role": "भूमिका चुनें",
-    "Owner": "मालिक (Owner)",
-    "Admin": "प्रशासक (Admin)",
-    "Editor": "संपादक (Editor)",
-    "Viewer": "दर्शक (Viewer)",
-    "Delete Tree": "वृक्ष हटाएं",
-    "Danger zone": "खतरा क्षेत्र",
-    "Permanently delete this entire family tree, all people, and all historical records. This action cannot be undone!": "इस संपूर्ण वंशावली वृक्ष, सभी लोगों और सभी ऐतिहासिक रिकॉर्ड को स्थायी रूप से हटा दें। यह कार्रवाई अपरिवर्तनीय है!",
-    "Type 'DELETE' to confirm": "पुष्टि करने के लिए 'DELETE' लिखें",
-    "Confirm permanent deletion": "स्थायी हटाए जाने की पुष्टि करें",
-    "Import lineage records": "वंशावली रिकॉर्ड आयात करें",
-    "AI scribe & CSV import": "एआई लेखक और सीएसवी आयात",
-    "Paste spreadsheet CSV or type a custom natural text listing to instantly populate or expand your family tree.": "स्प्रेडशीट सीएसवी पेस्ट करें या अपने पारिवारिक वृक्ष को तुरंत भरने या विस्तारित करने के लिए एक कस्टम प्राकृतिक पाठ सूची टाइप करें।",
-    "CSV Spreadsheet Import": "सीएसवी स्प्रेडशीट आयात",
-    "AI Lineage Bot Scribe": "एआई वंशावली लेखक",
-    "Paste raw comma-separated values (CSV)...": "अनफ़ॉर्मेटेड अल्पविराम-विभाजित मान (CSV) पेस्ट करें...",
-    "Preview CSV": "सीएसवी पूर्वावलोकन करें",
-    "Commit CSV to Tree": "वृक्ष में सीएसवी जोड़ें",
-    "Type natural text describing the family layout...": "पारिवारिक संरचना का वर्णन करते हुए प्राकृतिक पाठ टाइप करें...",
-    "e.g., 'Aarav Sharma born 1970 married Ananya. They have two children Rohan born 1995 and Diya born 1998.'": "जैसे, 'आरव शर्मा १९७० में पैदा हुए थे और उन्होंने अनन्या से शादी की। उनके दो बच्चे हैं रोहन (१९९५ में जन्म) और दीया (१९९८ में जन्म)।'",
-    "Submit to Scribe": "लेखक को भेजें",
-    "Pending AI additions": "लंबित एआई परिवर्धन",
-    "The AI Bot proposed the following structural changes. Review and apply or dismiss them.": "एआई बोट ने निम्नलिखित संरचनात्मक परिवर्तनों का प्रस्ताव रखा। उनकी समीक्षा करें और उन्हें लागू करें या खारिज करें।",
-    "Add": "जोड़ें",
-    "Link": "लिंक करें",
-    "as wife of": "की पत्नी के रूप में",
-    "as husband of": "के पति के रूप में",
-    "as child of": "की संतान के रूप में",
-    "Apply proposal": "प्रस्ताव लागू करें",
-    "Dismiss": "खारिज करें",
-    "No pending proposals": "कोई लंबित प्रस्ताव नहीं",
-    "High-Res PNG": "उच्च-रिज़ॉल्यूशन PNG",
-    "High-Res JPEG": "उच्च-रिज़ॉल्यूशन JPEG",
-    "PDF Document": "PDF दस्तावेज़",
-    "Print Layout": "प्रिंट लेआउट",
-    "Fit tree": "फिट ट्री",
-    "Zoom out": "ज़ूम आउट",
-    "Zoom in": "ज़ूम इन",
-    "Export or print family tree": "पारिवारिक वृक्ष निर्यात या प्रिंट करें",
-    "Export Tree": "वृक्ष निर्यात करें",
-    "Failed to export family tree. Please try again.": "पारिवारिक वृक्ष निर्यात करने में विफल। कृपया पुन: प्रयास करें।",
-    "No family members yet": "अभी तक परिवार का कोई सदस्य नहीं है",
-    "Add the account holder or import a CSV to begin the lineage map.": "वंशावली मानचित्र शुरू करने के लिए खाताधारक को जोड़ें या सीएसवी आयात करें।",
-    "Could Not Load Family Tree": "पारिवारिक वृक्ष लोड नहीं किया जा सका",
-    "Retry": "पुनः प्रयास करें",
-    "Log Out": "लॉग आउट",
-    "Loading lineage...": "वंशावली लोड हो रहा है...",
-    "Family tree not found.": "पारिवारिक वृक्ष नहीं मिला।",
-    "Generation {0}": "पीढ़ी {0}",
-    "Level {0} in the lineage": "वंशावली में स्तर {0}",
-    "{0} people": "{0} लोग",
-    "{0} of {1} people": "{1} में से {0} लोग",
-    "Married to {0}": "{0} के साथ विवाहित",
-    "{0} child": "{0} संतान",
-    "{0} children": "{0} संतानें",
-    "{0} child linked": "{0} संतान जुड़ी हुई है",
-    "{0} children linked": "{0} संतानें जुड़ी हुई हैं",
-    "Late {0}": "स्वर्गीय {0}",
-    "Child of {0} and {1}": "{0} और {1} की संतान",
-    "Child of {0}": "{0} की संतान",
-    "Oldest known / parent link not recorded": "सबसे पुराने ज्ञात पूर्वज / माता-पिता लिंक दर्ज नहीं",
-    "Profile and security": "प्रोफ़ाइल और सुरक्षा",
-    "Name": "नाम",
-    "Role on active tree": "सक्रिय वृक्ष पर भूमिका",
-    "Family trees": "पारिवारिक वृक्ष",
-    "Public view link": "सार्वजनिक दृश्य लिंक",
-    "Share family tree": "पारिवारिक वृक्ष साझा करें",
-    "Anyone with this link can view this family tree in read-only mode without needing to sign in.": "कोई भी इस लिंक के माध्यम से बिना लॉगिन किए इस परिवार वृक्ष को देख सकता है।",
-    "Family tree share link / Profile ID link": "पारिवारिक वृक्ष साझा लिंक",
-    "Copy link": "लिंक कॉपी करें",
-    "Family access": "पारिवारिक पहुंच",
-    "Invite family members": "परिवार के सदस्यों को आमंत्रित करें",
-    "Your role for this tree is {0}. Only owners and admins can invite family members.": "इस वृक्ष के लिए आपकी भूमिका {0} है। केवल मालिक और व्यवस्थापक ही परिवार के सदस्यों को आमंत्रित कर सकते हैं।",
-    "Email address": "ईमेल पता",
-    "Viewer - read only": "दर्शक - केवल पढ़ने के लिए",
-    "Contributor - can edit lineage": "योगदानकर्ता - वंशावली संपादित कर सकते हैं",
-    "Admin - can edit and invite": "व्यवस्थापक - संपादित और आमंत्रित कर सकते हैं",
-    "Create invite link": "आमंत्रण लिंक बनाएं",
-    "Invite link for family members": "परिवार के सदस्यों के लिए आमंत्रण लिंक",
-    "Members": "सदस्य",
-    "Invites": "आमंत्रण",
-    "Password login": "पासवर्ड लॉगिन",
-    "Save password": "पासवर्ड सहेजें",
-    "Minimum 8 characters": "न्यूनतम 8 वर्ण",
-    "Tree allowance": "वृक्ष भत्ता",
-    "Create another tree": "एक और वृक्ष बनाएं",
-    "This account can create {0} family trees.": "यह खाता {0} पारिवारिक वृक्ष बना सकता है।",
-    "Account holder not recorded": "खाताधारक दर्ज नहीं",
-    "Spreadsheet": "स्प्रेडशीट",
-    "CSV import": "सीएसवी आयात",
-    "Preview": "पूर्वावलोकन",
-    "{0} people detected": "{0} लोग पाए गए",
-    "Commit import": "आयात प्रतिबद्ध करें",
-    "Telegram and voice": "टेलीग्राम और आवाज",
-    "Reviewable intake": "समीक्षा योग्य सेवन",
-    "Extract": "निकालें",
-    "Text": "पाठ",
-    "Voice transcript": "आवाज प्रतिलेख",
-    "{0} proposed people": "{0} प्रस्तावित लोग",
-    "Commit proposal": "प्रस्ताव प्रतिबद्ध करें",
-    "Read-only access. Ask the tree owner for edit permission.": "केवल पढ़ने का अधिकार। संपादन अनुमति के लिए वृक्ष स्वामी से कहें।",
-    "Select spouse": "जीवनसाथी चुनें",
-    "Edit person": "सदस्य संपादित करें",
-    "Delete person": "सदस्य हटाएं",
-    "Family Number: {0}": "परिवार नंबर: {0}",
-    "Gotra:": "गोत्र:",
-    "Pravara:": "प्रवर:",
-    "Kuladevi:": "कुलदेवी:",
-    "Kuladevata:": "कुलदेवता:",
-    "DOB": "जन्म तिथि",
-    "DOD": "मृत्यु तिथि",
-    "Anniversary": "वर्षगांठ",
-    "Rashi": "राशि",
-    "Kuldevi/Kuladevata Deity": "कुलदेवी/कुलदेवता देवता",
-    "Back to Home": "होम पेज पर वापस जाएं",
-    "Barnali Telegram AI Bot": "बर्नाली टेलीग्राम एआई बोट",
-    "Preserve Your Roots, Grow Your Legacy.": "अपनी जड़ों को संजोएं, अपनी विरासत को बढ़ाएं।",
-    "A digital Vanshavali for family history, spiritual identity, and verified lineage records.": "पारिवारिक इतिहास, आध्यात्मिक पहचान और सत्यापित वंशावली के रिकॉर्ड के लिए एक डिजिटल वंशावली।",
-    "Historical Identity": "ऐतिहासिक पहचान",
-    "Keep Gotra, Kuladevata, village, and elder records together.": "गोत्र, कुलदेवता, गाँव और बुजुर्गों का रिकॉर्ड एक साथ रखें।",
-    "Lineage Mapping": "वंशावली चित्रण",
-    "Connect ancestors, spouses, children, and branches clearly.": "पूर्वजों, जीवनसाथी, बच्चों और शाखाओं को स्पष्ट रूप से जोड़ें।",
-    "Private Legacy": "व्यक्तिगत विरासत",
-    "Your family archive stays visible only to invited members.": "आपकी पारिवारिक वंशावली केवल आमंत्रित सदस्यों को ही दिखाई देती है।",
-    "Secure access": "सुरक्षित पहुंच",
-    "Sign in to view an existing lineage, or create a new account to begin a family record.": "मौजूदा वंशावली देखने के लिए साइन इन करें, या एक नया पारिवारिक रिकॉर्ड शुरू करने के लिए खाता बनाएं।",
-    "You have a family tree invite. Sign in or create an account with the invited email to accept it.": "आपके पास एक पारिवारिक वंशावली आमंत्रण प्राप्त है। इसे स्वीकार करने के लिए आमंत्रित ईमेल से साइन इन करें या नया खाता बनाएं।",
-    "Access code": "एक्सेस कोड",
-    "Password": "पासवर्ड",
-    "Account holder name": "खाताधारक का नाम",
-    "Generate access code": "एक्सेस कोड जेनरेट करें",
-    "Verify and sign in": "सत्यापित करें और साइन इन करें",
-    "Sign in with password": "पासवर्ड से साइन इन करें",
-    "Create account": "अकाउंट बनाएं",
-    "New to digital lineage?": "डिजिटल वंशावली में नए हैं?",
-    "Use existing account": "मौजूदा खाते का उपयोग करें",
-    "Create your own account": "नया खाता बनाएं",
-    "Privacy first: your data is only visible to people you invite.": "गोपनीयता सर्वोपरि: आपका डेटा केवल आपके आमंत्रित लोगों को दिखाई देता है।",
-    "Delete {0} from this lineage? Their spouse links will be removed and child parent references to them will be cleared.": "क्या आप {0} को इस वंशावली से हटाना चाहते हैं? उनके जीवनसाथी के संबंध हटा दिए जाएंगे और उनके बच्चों के माता-पिता के संदर्भ साफ कर दिए जाएंगे।",
-    "Working on {0}...": "{0} पर काम हो रहा है...",
-    "Edit family member": "पारिवारिक सदस्य को संपादित करें",
-    "Add family member": "पारिवारिक सदस्य जोड़ें"
+    "Set a password for quicker future log-ins without access codes.": "भविष्य में एक्सेस कोड के बिना त्वरित लॉगिन के लिए पासवर्ड सेट करें।"
   }
 };
+
 
 function useVamshavaliTranslate() {
   const { language } = useLanguage();
@@ -1247,6 +965,36 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
   const [codeRequested, setCodeRequested] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+
+  // Book 3D Navigation State
+  const [activeSheet, setActiveSheet] = React.useState(0);
+  const [bookScale, setBookScale] = React.useState(1);
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [isCoverHovered, setIsCoverHovered] = React.useState(false);
+
+  // Handle dynamic sizing of the book to fit screen perfectly
+  React.useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 1024); // Breakpoint for 3D book
+      if (width < 380) {
+        setBookScale(0.42);
+      } else if (width < 480) {
+        setBookScale(0.48);
+      } else if (width < 640) {
+        setBookScale(0.58);
+      } else if (width < 768) {
+        setBookScale(0.7);
+      } else if (width < 1024) {
+        setBookScale(0.85);
+      } else {
+        setBookScale(1);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   function buildSession(json: {
     token: string;
@@ -1453,9 +1201,205 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
   const { language, setLanguage } = useLanguage();
   const t = useVamshavaliTranslate();
 
+  const getSheetStyle = (sheetIndex: number) => {
+    let rotation = 'rotateY(0deg)';
+    let zIndex = 10;
+    let pointerEvents: 'auto' | 'none' = 'none';
+
+    if (sheetIndex === 0) {
+      rotation = activeSheet > 0 ? 'rotateY(-180deg)' : (isCoverHovered ? 'rotateY(-30deg)' : 'rotateY(0deg)');
+      zIndex = activeSheet > 0 ? 10 : 30;
+      pointerEvents = activeSheet === 0 ? 'auto' : 'none';
+    } else if (sheetIndex === 1) {
+      rotation = 'rotateY(0deg)';
+      zIndex = activeSheet > 0 ? 20 : 10;
+      pointerEvents = activeSheet === 1 ? 'auto' : 'none';
+    }
+
+    // Stacking offset to prevent Z-fighting
+    const zOffset = (1 - sheetIndex) * 0.5;
+    
+    // Visibility check
+    let isVisible = true;
+    if (activeSheet === 0) {
+      isVisible = (sheetIndex === 0);
+    } else {
+      isVisible = true;
+    }
+
+    return {
+      transform: `${rotation} translateZ(${zOffset}px)`,
+      zIndex,
+      pointerEvents,
+      display: isVisible ? 'block' : 'none',
+      WebkitFontSmoothing: 'antialiased' as const,
+      MozOsxFontSmoothing: 'grayscale' as const,
+      transformStyle: 'preserve-3d' as const,
+    };
+  };
+
   return (
-    <main className="auth-screen" style={{ position: "relative", paddingTop: "96px", display: "flex", flexDirection: "column", gap: "24px", minHeight: "100vh", justifyContent: "center", alignItems: "center" }}>
-      {/* Top Global Navigation Bar */}
+    <main className="auth-screen select-none" style={{ position: "relative", paddingTop: isMobile ? "96px" : "0", display: "flex", flexDirection: "column", gap: "24px", minHeight: "100vh", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+      <style>{`
+        /* Custom 3D Book Layout */
+        .book-container-3d {
+          position: relative;
+          width: 760px;
+          height: 520px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          perspective: 2000px;
+          transform-style: preserve-3d;
+        }
+
+        .book-wrapper {
+          position: absolute;
+          left: 380px;
+          width: 380px;
+          height: 520px;
+          transform-style: preserve-3d;
+          transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .book-spine-3d {
+          position: absolute;
+          top: 0;
+          left: 372px;
+          width: 16px;
+          height: 100%;
+          background: linear-gradient(to right, #05261c, #0b5a43, #05261c);
+          transform: rotateY(-90deg) translateZ(8px);
+          transform-origin: left center;
+          border-radius: 4px 0 0 4px;
+          box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+          z-index: 50;
+        }
+
+        .book-back-cover-left {
+          position: absolute;
+          top: -4px;
+          left: -388px;
+          width: 388px;
+          height: 528px;
+          background: linear-gradient(135deg, #05261c 0%, #073829 100%);
+          border-radius: 12px 0 0 12px;
+          box-shadow: -15px 15px 35px rgba(0,0,0,0.4);
+          transform: translateZ(-10px);
+          border-right: 10px solid #05261c;
+          border: 2px solid #8e734a;
+        }
+
+        .book-back-cover-right {
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          width: 388px;
+          height: 528px;
+          background: linear-gradient(135deg, #073829 0%, #05261c 100%);
+          border-radius: 0 12px 12px 0;
+          box-shadow: 15px 15px 35px rgba(0,0,0,0.4);
+          transform: translateZ(-10px);
+          border-left: 10px solid #05261c;
+          border: 2px solid #8e734a;
+        }
+
+        .book-sheet-3d {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          transform-origin: left center;
+          transform-style: preserve-3d;
+          transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .book-page-front {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          box-shadow: inset 4px 0 25px rgba(0,0,0,0.06), 1px 1px 2px rgba(0,0,0,0.05);
+          border-radius: 0 16px 16px 0;
+          overflow: hidden;
+          background: #fdfbf7;
+          border: 1px solid #e2ded5;
+          transform: translateZ(1px);
+        }
+
+        .book-page-back {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          box-shadow: inset -4px 0 25px rgba(0,0,0,0.06), -1px 1px 2px rgba(0,0,0,0.05);
+          border-radius: 16px 0 0 16px;
+          overflow: hidden;
+          background: #fdfbf7;
+          border: 1px solid #e2ded5;
+          transform: rotateY(180deg) translateZ(1px);
+        }
+
+        .book-cover-front-design {
+          background: linear-gradient(135deg, #0b5a43 0%, #05261c 100%) !important;
+          color: #f7f3eb;
+          border: 6px double #cfa86b !important;
+          box-shadow: inset 0 0 50px rgba(0,0,0,0.5) !important;
+          border-radius: 0 12px 12px 0;
+        }
+
+        .book-cover-back-design {
+          background: linear-gradient(135deg, #05261c 0%, #031b14 100%) !important;
+          border: 6px double #cfa86b !important;
+          box-shadow: inset 0 0 50px rgba(0,0,0,0.5) !important;
+          border-radius: 12px 0 0 12px;
+        }
+
+        .gutter-shading-left {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 30px;
+          height: 100%;
+          background: linear-gradient(to left, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0) 100%);
+          pointer-events: none;
+          z-index: 10;
+        }
+
+        .gutter-shading-right {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 30px;
+          height: 100%;
+          background: linear-gradient(to right, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0) 100%);
+          pointer-events: none;
+          z-index: 10;
+        }
+
+        .custom-book-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-book-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-book-scroll::-webkit-scrollbar-thumb {
+          background: #e2ded5;
+          border-radius: 2px;
+        }
+        .custom-book-scroll::-webkit-scrollbar-thumb:hover {
+          background: #c5a880;
+        }
+      `}</style>
+
+      {/* Top Global Navigation Bar (Common to both Mobile & Desktop) */}
       <div style={{
         position: "absolute",
         top: "20px",
@@ -1464,7 +1408,7 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        zIndex: 100,
+        zIndex: 110,
         flexWrap: "wrap",
         gap: "12px",
         padding: "12px 20px",
@@ -1534,143 +1478,507 @@ function AuthScreen({ onAuth }: { onAuth: (session: Session) => void }) {
         </div>
       </div>
 
-      <section className="auth-card" style={{ marginTop: "12px" }}>
-        <div className="auth-story">
-          <span className="small-rule" />
-          <h1 style={{ fontSize: "28px" }}>{t("Preserve Your Roots, Grow Your Legacy.")}</h1>
-          <p style={{ fontSize: "14px", marginTop: "12px", color: "#e2e8f0" }}>{t("A digital Vanshavali for family history, spiritual identity, and verified lineage records.")}</p>
-          
-          <div className="auth-feature" style={{ marginTop: "32px" }}>
-            <Landmark size={18} />
-            <div>
-              <strong>{t("Historical Identity")}</strong>
-              <span>{t("Keep Gotra, Kuladevata, village, and elder records together.")}</span>
+      {isMobile ? (
+        /* Mobile layout: clean 2D card stack matching standard theme */
+        <section className="auth-card" style={{ marginTop: "32px", width: "90%", maxWidth: "440px" }}>
+          <div className="auth-form" style={{ width: "100%", padding: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+              <div className="brand-logo-container" style={{ width: "40px", height: "40px", borderRadius: "10px" }}>
+                <img 
+                  src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                  alt="Barnia Logo" 
+                  className="brand-logo-img"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <span className="secure-pill"><ShieldCheck size={13} /> {t("Secure access")}</span>
             </div>
-          </div>
-          <div className="auth-feature">
-            <Users size={18} />
-            <div>
-              <strong>{t("Lineage Mapping")}</strong>
-              <span>{t("Connect ancestors, spouses, children, and branches clearly.")}</span>
+            <h2>{t("Digital Vanshavali")}</h2>
+            <p>{t("Sign in to view an existing lineage, or create a new account to begin a family record.")}</p>
+            
+            {pendingInvite && (
+              <p className="busy text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 mb-3 leading-normal">
+                {t("You have a family tree invite. Sign in or create an account with the invited email to accept it.")}
+              </p>
+            )}
+
+            <div className="segmented auth-tabs" style={{ marginBottom: "16px" }}>
+              <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={15} />{t("Access code")}</button>
+              <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={15} />{t("Password")}</button>
             </div>
-          </div>
-          <div className="auth-feature">
-            <ShieldCheck size={18} />
-            <div>
-              <strong>{t("Private Legacy")}</strong>
-              <span>{t("Your family archive stays visible only to invited members.")}</span>
-            </div>
-          </div>
-        </div>
-        <div className="auth-form">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <div className="brand-logo-container" style={{ width: "40px", height: "40px", borderRadius: "10px" }}>
-              <img 
-                src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
-                alt="Barnia Logo" 
-                className="brand-logo-img"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <span className="secure-pill"><ShieldCheck size={13} /> {t("Secure access")}</span>
-          </div>
-          <h2>{t("Digital Vanshavali")}</h2>
-          <p>{t("Sign in to view an existing lineage, or create a new account to begin a family record.")}</p>
-          {pendingInvite && <p className="busy">{t("You have a family tree invite. Sign in or create an account with the invited email to accept it.")}</p>}
-          <div className="segmented auth-tabs">
-            <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={15} />{t("Access code")}</button>
-            <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={15} />{t("Password")}</button>
-          </div>
-          <label>
-            {t("Email address")}
-            <div className="input-with-icon">
-              <Mail size={18} />
-              <input value={email} placeholder="name@family.com" onChange={(event) => setEmail(event.target.value)} />
-            </div>
-          </label>
-          {mode === "create" && (
+
             <label>
-              {t("Account holder name")}
+              {t("Email address")}
               <div className="input-with-icon">
-                <UserRound size={18} />
-                <input value={name} placeholder="e.g. Aarav Sharma" onChange={(event) => setName(event.target.value)} />
+                <Mail size={18} />
+                <input value={email} placeholder="name@family.com" onChange={(event) => setEmail(event.target.value)} />
               </div>
             </label>
-          )}
-          {(mode === "password" || mode === "create") && (
-            <label>
-              {t("Password")}
-              <div className="input-with-icon">
-                <KeyRound size={18} />
-                <input type="password" value={password} placeholder={t("Minimum 8 characters")} onChange={(event) => setPassword(event.target.value)} />
-              </div>
-            </label>
-          )}
-          {mode === "code" && (
-            <>
-              <button className="auth-primary" disabled={busy || !email.trim()} onClick={requestCode}>{t("Generate access code")} <span>{"->"}</span></button>
-              {(codeRequested || developmentCode) && (
-                <label>
-                  {t("Access code")}
-                  <div className="input-with-icon">
-                    <ShieldCheck size={18} />
-                    <input value={currentCode} placeholder="6 digit code" onChange={(event) => setCurrentCode(event.target.value)} />
-                  </div>
-                </label>
-              )}
-              <button disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}><Check size={16} />{t("Verify and sign in")}</button>
-            </>
-          )}
-          {mode === "password" && (
-            <button className="auth-primary" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>{t("Sign in with password")} <span>{"->"}</span></button>
-          )}
-          {mode === "create" && (
-            <button className="auth-primary" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>{t("Create account")} <span>{"->"}</span></button>
-          )}
-          {message && <p className={codeRequested ? "busy" : "error"}>{message}</p>}
-          
-          <div className="social-row" style={{ gridTemplateColumns: "1fr", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", padding: "16px 0", marginTop: "12px", marginBottom: "12px" }}>
-            <button 
-              type="button" 
-              onClick={handleGoogleSignIn} 
-              disabled={busy}
-              style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                gap: "10px", 
-                borderColor: "#64748b",
-                borderWidth: "1.5px",
-                background: "#ffffff",
-                color: "#1e293b",
-                fontWeight: "700",
-                fontSize: "13px",
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                minHeight: "48px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "all 0.15s ease"
+
+            {mode === "create" && (
+              <label>
+                {t("Account holder name")}
+                <div className="input-with-icon">
+                  <UserRound size={18} />
+                  <input value={name} placeholder="e.g. Aarav Sharma" onChange={(event) => setName(event.target.value)} />
+                </div>
+              </label>
+            )}
+
+            {(mode === "password" || mode === "create") && (
+              <label>
+                {t("Password")}
+                <div className="input-with-icon">
+                  <KeyRound size={18} />
+                  <input type="password" value={password} placeholder={t("Minimum 8 characters")} onChange={(event) => setPassword(event.target.value)} />
+                </div>
+              </label>
+            )}
+
+            {mode === "code" && (
+              <>
+                <button className="auth-primary" disabled={busy || !email.trim()} onClick={requestCode}>{t("Generate access code")} <span>{"->"}</span></button>
+                {(codeRequested || developmentCode) && (
+                  <label style={{ marginTop: "12px" }}>
+                    {t("Access code")}
+                    <div className="input-with-icon">
+                      <ShieldCheck size={18} />
+                      <input value={currentCode} placeholder="6 digit code" onChange={(event) => setCurrentCode(event.target.value)} />
+                    </div>
+                  </label>
+                )}
+                <button className="auth-primary" style={{ marginTop: "12px" }} disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}><Check size={16} />{t("Verify and sign in")}</button>
+              </>
+            )}
+
+            {mode === "password" && (
+              <button className="auth-primary" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>{t("Sign in with password")} <span>{"->"}</span></button>
+            )}
+
+            {mode === "create" && (
+              <button className="auth-primary" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>{t("Create account")} <span>{"->"}</span></button>
+            )}
+
+            {message && <p className={codeRequested ? "busy" : "error"} style={{ marginTop: "10px" }}>{message}</p>}
+
+            <div className="social-row" style={{ gridTemplateColumns: "1fr", borderTop: "1px solid #cbd5e1", borderBottom: "1px solid #cbd5e1", padding: "16px 0", marginTop: "16px", marginBottom: "16px" }}>
+              <button 
+                type="button" 
+                onClick={handleGoogleSignIn} 
+                disabled={busy}
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  gap: "10px", 
+                  borderColor: "#64748b",
+                  borderWidth: "1.5px",
+                  background: "#ffffff",
+                  color: "#1e293b",
+                  fontWeight: "700",
+                  fontSize: "13px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.8px",
+                  minHeight: "48px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  width: "100%"
+                }}
+              >
+                <img 
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                  alt="Google" 
+                  style={{ width: "18px", height: "18px" }} 
+                  referrerPolicy="no-referrer"
+                />
+                {t("Sign in with Google")}
+              </button>
+            </div>
+
+            <div className="new-account" style={{ textAlign: "center", fontSize: "13px" }}>
+              <span>{t("New to digital lineage?")}</span>
+              <button style={{ background: "none", border: "none", color: "#0b5a43", fontWeight: "bold", marginLeft: "6px", cursor: "pointer" }} onClick={() => setMode(mode === "create" ? "code" : "create")}>
+                {mode === "create" ? t("Use existing account") : t("Create your own account")}
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* Desktop Layout: Ultra premium 3D heritage book */
+        <div 
+          className="relative flex items-center justify-center" 
+          style={{ 
+            transform: `scale(${bookScale})`,
+            width: '900px',
+            height: '560px',
+            marginTop: "60px"
+          }}
+        >
+          {/* 3D Book Container */}
+          <div className="book-container-3d relative">
+            {/* Book Spine behind pages when open */}
+            {activeSheet === 1 && (
+              <div className="absolute left-[374px] w-3 h-[524px] bg-zinc-950/40 z-30 pointer-events-none" style={{ transform: 'translateZ(-2px)' }} />
+            )}
+
+            {/* Spine Side Wall */}
+            <div className="book-spine-3d" />
+
+            <div 
+              className="book-wrapper"
+              style={{ transform: activeSheet === 0 
+                ? (isCoverHovered 
+                    ? 'translateX(-140px) rotateY(-25deg) rotateX(5deg) scale(1.02)' 
+                    : 'translateX(-190px) rotateY(-12deg) rotateX(3deg)')
+                : 'translateX(0px) rotateY(0deg) rotateX(0deg)'
               }}
-              className="google-btn"
+              onMouseEnter={() => { if (activeSheet === 0) setIsCoverHovered(true); }}
+              onMouseLeave={() => setIsCoverHovered(false)}
             >
-              <img 
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-                alt="Google Logo" 
-                style={{ width: "18px", height: "18px" }} 
-                referrerPolicy="no-referrer"
-              />
-              {t("Sign in with Google")}
-            </button>
+              {/* Outer Left Book Cover (Visible when Open) */}
+              {activeSheet > 0 && (
+                <div className="book-back-cover-left" />
+              )}
+
+              {/* Outer Right Book Cover (Visible when Closed) */}
+              {activeSheet === 0 && (
+                <div className="book-back-cover-right" />
+              )}
+
+              {/* SHEET 0: Front Cover & Left Heritage spread */}
+              <div 
+                className="book-sheet-3d"
+                style={getSheetStyle(0)}
+              >
+                {/* Sheet 0 FRONT: Cover page */}
+                <div className="book-page-front book-cover-front-design flex flex-col justify-between p-8 text-center relative">
+                  <div className="absolute inset-4 border border-[#cfa86b]/40 rounded-lg pointer-events-none" />
+                  
+                  {/* Top emblem decoration */}
+                  <div className="mt-4">
+                    <span className="text-xs font-semibold tracking-[0.25em] text-[#cfa86b] uppercase block mb-1">
+                      {language === 'bn' ? 'ডিজিটাল বংশাবলী' : 'Digital Lineage'}
+                    </span>
+                    <div className="w-8 h-[1px] bg-[#cfa86b] mx-auto" />
+                  </div>
+
+                  {/* Center branding */}
+                  <div className="my-auto space-y-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-[#d4af37] to-[#aa771c] rounded-2xl flex items-center justify-center mx-auto shadow-xl border border-white/20 overflow-hidden">
+                      <img 
+                        src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                        alt="Barnia Logo" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-white font-serif mt-4">
+                      {language === 'bn' ? 'বংশাবলী লিপি' : 'VANSHAVALI'}
+                    </h1>
+                    <p className="text-xs font-semibold text-[#cfa86b] tracking-widest uppercase font-sans">
+                      {language === 'bn' ? 'পারিবারিক ঐতিহ্য ও ইতিহাস' : 'Family History & Heritage'}
+                    </p>
+                    <div className="w-24 h-[1px] bg-[#cfa86b]/30 mx-auto" />
+                  </div>
+
+                  {/* Trigger button */}
+                  <div className="mb-4 flex flex-col items-center gap-2">
+                    <button
+                      onClick={() => setActiveSheet(1)}
+                      className="w-48 flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#d4af37] to-[#aa771c] hover:from-[#e5be49] hover:to-[#bd8728] text-zinc-950 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-lg active:scale-95 animate-pulse cursor-pointer"
+                    >
+                      <BookOpen size={14} />
+                      {language === 'bn' ? 'খুলুন 📖' : 'Open Book 📖'}
+                    </button>
+                    <p className="text-[10px] text-[#cfa86b]/60 uppercase tracking-widest">
+                      {language === 'bn' ? 'পারিবারিক তথ্য খুঁজতে ট্যাপ করুন' : 'Click to explore lineage'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sheet 0 BACK: Left page of open book (Heritage info) */}
+                <div className="book-page-back flex flex-col justify-between p-8 relative">
+                  <div className="gutter-shading-left" />
+                  
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2.5 text-[#0b5a43] border-b border-[#0b5a43]/10 pb-3">
+                      <Users size={18} className="text-[#0b5a43]" />
+                      <span className="text-xs font-bold tracking-widest uppercase text-slate-500">
+                        {language === 'bn' ? 'আমাদের বংশের পরিচয়' : 'Family Heritage'}
+                      </span>
+                    </div>
+
+                    <h2 className="text-2xl font-serif font-bold text-slate-800 leading-tight">
+                      {t("Preserve Your Roots, Grow Your Legacy.")}
+                    </h2>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {t("A digital Vanshavali for family history, spiritual identity, and verified lineage records.")}
+                    </p>
+
+                    {/* Features checklist styled premium */}
+                    <div className="space-y-4 pt-2">
+                      <div className="flex gap-3">
+                        <div className="p-1.5 bg-[#0b5a43]/5 rounded-lg h-fit text-[#0b5a43]">
+                          <Landmark size={15} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">{t("Historical Identity")}</h4>
+                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">{t("Keep Gotra, Kuladevata, village, and elder records together.")}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="p-1.5 bg-[#0b5a43]/5 rounded-lg h-fit text-[#0b5a43]">
+                          <Users size={15} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">{t("Lineage Mapping")}</h4>
+                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">{t("Connect ancestors, spouses, children, and branches clearly.")}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="p-1.5 bg-[#0b5a43]/5 rounded-lg h-fit text-[#0b5a43]">
+                          <ShieldCheck size={15} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">{t("Private Legacy")}</h4>
+                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">{t("Your family archive stays visible only to invited members.")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span>{language === 'bn' ? 'পাতা ১' : 'Page 1'}</span>
+                    <span>Barnia Digital Hub</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SHEET 1: Right Heritage spread / Back Cover */}
+              <div 
+                className="book-sheet-3d"
+                style={getSheetStyle(1)}
+              >
+                {/* Sheet 1 FRONT: Right page of open book (Login Form) */}
+                <div className="book-page-front flex flex-col justify-between p-8 relative">
+                  <div className="gutter-shading-right" />
+
+                  <div className="custom-book-scroll overflow-y-auto pr-1 flex-1 flex flex-col justify-between" style={{ maxHeight: '460px' }}>
+                    <div>
+                      {/* Brand Header */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200">
+                            <img 
+                              src="https://i.postimg.cc/McBQ2pVg/barnia-logo-120x120.png" 
+                              alt="Logo" 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <span className="secure-pill inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-100 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                            <ShieldCheck size={11} /> {t("Secure access")}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#0b5a43] uppercase tracking-widest">
+                          {t("Digital Vanshavali")}
+                        </span>
+                      </div>
+
+                      {pendingInvite && (
+                        <p className="busy text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2 mb-3 leading-normal">
+                          {t("You have a family tree invite. Sign in or create an account with the invited email to accept it.")}
+                        </p>
+                      )}
+
+                      {/* Mode tabs */}
+                      <div className="segmented auth-tabs mb-4">
+                        <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}><Mail size={14} />{t("Access code")}</button>
+                        <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}><KeyRound size={14} />{t("Password")}</button>
+                      </div>
+
+                      {/* Main input form fields */}
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                            {t("Email address")}
+                          </label>
+                          <div className="input-with-icon">
+                            <Mail size={16} className="text-slate-400" />
+                            <input value={email} placeholder="name@family.com" onChange={(event) => setEmail(event.target.value)} />
+                          </div>
+                        </div>
+
+                        {mode === "create" && (
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                              {t("Account holder name")}
+                            </label>
+                            <div className="input-with-icon">
+                              <UserRound size={16} className="text-slate-400" />
+                              <input value={name} placeholder="e.g. Aarav Sharma" onChange={(event) => setName(event.target.value)} />
+                            </div>
+                          </div>
+                        )}
+
+                        {(mode === "password" || mode === "create") && (
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                              {t("Password")}
+                            </label>
+                            <div className="input-with-icon">
+                              <KeyRound size={16} className="text-slate-400" />
+                              <input type="password" value={password} placeholder={t("Minimum 8 characters")} onChange={(event) => setPassword(event.target.value)} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Submit Action Block */}
+                        <div className="pt-2">
+                          {mode === "code" && (
+                            <div className="space-y-2">
+                              <button className="auth-primary w-full" disabled={busy || !email.trim()} onClick={requestCode}>
+                                {t("Generate access code")} <span>{"->"}</span>
+                              </button>
+                              
+                              {(codeRequested || developmentCode) && (
+                                <div className="mt-2 animate-fadeIn">
+                                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                                    {t("Access code")}
+                                  </label>
+                                  <div className="input-with-icon">
+                                    <ShieldCheck size={16} className="text-slate-400" />
+                                    <input value={currentCode} placeholder="6 digit code" onChange={(event) => setCurrentCode(event.target.value)} />
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <button className="auth-primary w-full" style={{ marginTop: "8px" }} disabled={busy || !email.trim() || !currentCode.trim()} onClick={verifyCode}>
+                                <Check size={14} />{t("Verify and sign in")}
+                              </button>
+                            </div>
+                          )}
+
+                          {mode === "password" && (
+                            <button className="auth-primary w-full" disabled={busy || !email.trim() || !password} onClick={passwordLogin}>
+                              {t("Sign in with password")} <span>{"->"}</span>
+                            </button>
+                          )}
+
+                          {mode === "create" && (
+                            <button className="auth-primary w-full" disabled={busy || !email.trim() || !name.trim() || password.length < 8} onClick={createPasswordAccount}>
+                              {t("Create account")} <span>{"->"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {message && (
+                        <p className={`text-[11px] font-bold p-2 rounded-lg border mt-3 ${codeRequested ? 'text-blue-700 bg-blue-50 border-blue-100' : 'text-red-700 bg-red-50 border-red-100'}`}>
+                          {message}
+                        </p>
+                      )}
+
+                      {/* Google Sign In Block */}
+                      <div className="border-t border-slate-100 pt-3 mt-3">
+                        <button 
+                          type="button" 
+                          onClick={handleGoogleSignIn} 
+                          disabled={busy}
+                          style={{ 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center", 
+                            gap: "8px", 
+                            borderColor: "#64748b",
+                            borderWidth: "1.5px",
+                            background: "#ffffff",
+                            color: "#1e293b",
+                            fontWeight: "700",
+                            fontSize: "11px",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            minHeight: "40px",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                            width: "100%"
+                          }}
+                          className="google-btn shadow-sm hover:bg-slate-50"
+                        >
+                          <img 
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                            alt="Google" 
+                            style={{ width: "16px", height: "16px" }} 
+                            referrerPolicy="no-referrer"
+                          />
+                          {t("Sign in with Google")}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Footer switcher links */}
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <div className="new-account text-center text-xs flex flex-col gap-1 items-center justify-center">
+                        <span className="text-slate-400">{t("New to digital lineage?")}</span>
+                        <button 
+                          style={{ background: "none", border: "none", color: "#0b5a43", fontWeight: "bold", cursor: "pointer", fontSize: "11px" }} 
+                          onClick={() => setMode(mode === "create" ? "code" : "create")}
+                        >
+                          {mode === "create" ? t("Use existing account") : t("Create your own account")}
+                        </button>
+                      </div>
+                      <p className="text-[9px] text-center text-slate-400 mt-2">
+                        {t("Privacy first: your data is only visible to people you invite.")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                    <span>{language === 'bn' ? 'পাতা ২' : 'Page 2'}</span>
+                    <span>{language === 'bn' ? 'সুরক্ষিত পোর্টাল' : 'Secure Portal'}</span>
+                  </div>
+                </div>
+
+                {/* Sheet 1 BACK: Back Cover design */}
+                <div className="book-page-back book-cover-back-design flex flex-col justify-between p-8 text-center relative">
+                  <div className="absolute inset-4 border border-[#cfa86b]/40 rounded-lg pointer-events-none" />
+                  <div className="my-auto">
+                    <div className="w-12 h-12 border-2 border-[#cfa86b]/40 rounded-full flex items-center justify-center mx-auto opacity-40 mb-3">
+                      <span className="text-xs text-[#cfa86b]">B</span>
+                    </div>
+                    <div className="w-16 h-[1px] bg-[#cfa86b]/30 mx-auto" />
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
 
-          <div className="new-account">
-            <span>{t("New to digital lineage?")}</span>
-            <button onClick={() => setMode(mode === "create" ? "code" : "create")}><Plus size={15} /> {mode === "create" ? t("Use existing account") : t("Create your own account")}</button>
-          </div>
-          <small>{t("Privacy first: your data is only visible to people you invite.")}</small>
+          {/* 2D Navigation Arrows outside of 3D context for clickable precision */}
+          {activeSheet > 0 && (
+            <button
+              onClick={() => setActiveSheet(0)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 p-4 bg-zinc-900/85 hover:bg-zinc-800 text-white rounded-full transition-all duration-200 shadow-2xl border border-zinc-700 hover:scale-110 active:scale-95 z-[100] cursor-pointer flex items-center justify-center"
+              title={language === 'bn' ? 'আগের পাতা' : 'Previous Sheet'}
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+          {activeSheet < 1 && (
+            <button
+              onClick={() => setActiveSheet(1)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 p-4 bg-zinc-900/85 hover:bg-zinc-800 text-white rounded-full transition-all duration-200 shadow-2xl border border-zinc-700 hover:scale-110 active:scale-95 z-[100] cursor-pointer flex items-center justify-center"
+              title={language === 'bn' ? 'পরের পাতা' : 'Next Sheet'}
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
         </div>
-      </section>
+      )}
     </main>
   );
 }

@@ -321,8 +321,60 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       ? 'translateX(190px) rotateY(12deg) rotateX(3deg)' 
       : 'translateX(0px) rotateY(0deg) rotateX(0deg)';
 
+  // Helper to resolve sheet visibility and 3D Z-index stacking
+  const getSheetStyle = (sheetIndex: number) => {
+    let rotation = 'rotateY(0deg)';
+    let zIndex = 10;
+    let pointerEvents: 'auto' | 'none' = 'none';
+
+    if (sheetIndex === 0) {
+      rotation = activeSheet > 0 ? 'rotateY(-180deg)' : (isCoverHovered ? 'rotateY(-30deg)' : 'rotateY(0deg)');
+      zIndex = activeSheet > 0 ? 10 : 40;
+      pointerEvents = activeSheet === 0 || activeSheet === 1 ? 'auto' : 'none';
+    } else if (sheetIndex === 1) {
+      rotation = activeSheet > 1 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+      zIndex = activeSheet > 1 ? 20 : 30;
+      pointerEvents = activeSheet === 1 || activeSheet === 2 ? 'auto' : 'none';
+    } else if (sheetIndex === 2) {
+      rotation = activeSheet > 2 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+      zIndex = activeSheet > 2 ? 30 : 20;
+      pointerEvents = activeSheet === 2 || activeSheet === 3 ? 'auto' : 'none';
+    } else if (sheetIndex === 3) {
+      rotation = activeSheet > 3 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+      zIndex = activeSheet > 3 ? 40 : 10;
+      pointerEvents = activeSheet === 3 || activeSheet === 4 ? 'auto' : 'none';
+    }
+
+    // Stacking offset to prevent Z-fighting (physical 3D space separation)
+    const zOffset = (4 - sheetIndex) * 0.5;
+    
+    // Visibility check to prevent intersection clipping when closed, and Z-fighting when open
+    let isVisible = true;
+    if (activeSheet === 0) {
+      isVisible = (sheetIndex === 0);
+    } else if (activeSheet === 4) {
+      isVisible = (sheetIndex === 3);
+    } else {
+      // During page flips, only keep the active spread sheets visible
+      isVisible = (sheetIndex >= activeSheet - 1 && sheetIndex <= activeSheet);
+    }
+
+    return {
+      transform: `${rotation} translateZ(${zOffset}px)`,
+      zIndex,
+      pointerEvents,
+      display: isVisible ? 'block' : 'none',
+      WebkitFontSmoothing: 'antialiased' as const,
+      MozOsxFontSmoothing: 'grayscale' as const,
+      transformStyle: 'preserve-3d' as const,
+    };
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/65 backdrop-blur-md overflow-hidden select-none">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden select-none">
+      {/* Sibling Backdrop with high-opacity solid color to completely avoid Chromium's 3D text blur/downscaling bug */}
+      <div className="absolute inset-0 bg-zinc-950/90 z-0" onClick={onClose} />
+      
       <style>{`
         /* Custom 3D Book Layout */
         .book-container-3d {
@@ -337,7 +389,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         }
 
         .book-wrapper {
-          position: relative;
+          position: absolute;
+          left: 380px;
           width: 380px;
           height: 520px;
           transform-style: preserve-3d;
@@ -347,7 +400,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         .book-spine-3d {
           position: absolute;
           top: 0;
-          left: 0;
+          left: 372px;
           width: 16px;
           height: 100%;
           background: linear-gradient(to right, #05261c, #0b5a43, #05261c);
@@ -361,7 +414,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         .book-back-cover-left {
           position: absolute;
           top: -4px;
-          left: -6px;
+          left: -388px;
           width: 388px;
           height: 528px;
           background: linear-gradient(135deg, #05261c 0%, #073829 100%);
@@ -375,7 +428,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         .book-back-cover-right {
           position: absolute;
           top: -4px;
-          left: -2px;
+          left: -4px;
           width: 388px;
           height: 528px;
           background: linear-gradient(135deg, #073829 0%, #05261c 100%);
@@ -397,7 +450,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .book-page-front, .book-page-back {
+        .book-page-front {
           position: absolute;
           width: 100%;
           height: 100%;
@@ -410,12 +463,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           overflow: hidden;
           background: #fdfbf7;
           border: 1px solid #e2ded5;
+          transform: translateZ(1px);
         }
 
         .book-page-back {
-          transform: rotateY(180deg);
-          border-radius: 16px 0 0 16px;
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
           box-shadow: inset -4px 0 25px rgba(0,0,0,0.06), -1px 1px 2px rgba(0,0,0,0.05);
+          border-radius: 16px 0 0 16px;
+          overflow: hidden;
+          background: #fdfbf7;
+          border: 1px solid #e2ded5;
+          transform: rotateY(180deg) translateZ(1px);
         }
 
         .book-cover-front-design {
@@ -503,25 +567,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <X size={24} />
       </button>
 
-      {/* 3D Book Container */}
+      {/* 2D Outer Scaling Wrapper to contain the 3D book and its navigation buttons cleanly without 3D Z-fighting */}
       <div 
-        className="book-container-3d" 
-        style={{ transform: `scale(${bookScale})` }}
+        className="relative flex items-center justify-center z-10" 
+        style={{ 
+          transform: `scale(${bookScale})`,
+          width: '900px',
+          height: '560px',
+        }}
       >
-        {/* Book Spine (Behind Pages when Open) */}
-        {activeSheet > 0 && activeSheet < 4 && (
-          <div className="absolute left-[374px] w-3 h-[524px] bg-zinc-800/20 backdrop-blur-sm z-30 pointer-events-none" style={{ transform: 'translateZ(-2px)' }} />
-        )}
-
-        {/* Outer Left Book Cover (Visible when Open) */}
-        {activeSheet > 0 && (
-          <div className="book-back-cover-left" />
-        )}
-
-        {/* Outer Right Book Cover (Visible when Open/Closed) */}
-        {activeSheet < 4 && (
-          <div className="book-back-cover-right" />
-        )}
+        {/* 3D Book Container */}
+        <div className="book-container-3d relative">
+          {/* Book Spine (Behind Pages when Open) - No backdrop-blur to prevent Chromium text scaling blur */}
+          {activeSheet > 0 && activeSheet < 4 && (
+            <div className="absolute left-[374px] w-3 h-[524px] bg-zinc-950/40 z-30 pointer-events-none" style={{ transform: 'translateZ(-2px)' }} />
+          )}
 
         {/* Spine Side Wall */}
         <div className="book-spine-3d" />
@@ -532,14 +592,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           onMouseEnter={() => { if (activeSheet === 0) setIsCoverHovered(true); }}
           onMouseLeave={() => setIsCoverHovered(false)}
         >
+          {/* Outer Left Book Cover (Visible when Open) */}
+          {activeSheet > 0 && (
+            <div className="book-back-cover-left" />
+          )}
+
+          {/* Outer Right Book Cover (Visible when Open/Closed) */}
+          {activeSheet < 4 && (
+            <div className="book-back-cover-right" />
+          )}
+
           {/* SHEET 0 (Front Cover / Welcome Preface) */}
           <div 
             className="book-sheet-3d"
-            style={{ 
-              transform: activeSheet > 0 ? 'rotateY(-180deg)' : (isCoverHovered ? 'rotateY(-80deg)' : 'rotateY(0deg)'),
-              zIndex: activeSheet > 0 ? 10 : 40,
-              pointerEvents: activeSheet === 0 || activeSheet === 1 ? 'auto' : 'none'
-            }}
+            style={getSheetStyle(0)}
           >
             {/* Sheet 0 FRONT: Outer Cover */}
             <div className="book-page-front book-cover-front-design flex flex-col justify-between p-8 text-center relative">
@@ -612,12 +678,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
               {/* Content body */}
               <div className="my-auto space-y-4">
-                <p className="text-zinc-600 text-xs leading-relaxed">
+                <p className="text-zinc-900 text-[13px] md:text-sm font-semibold leading-relaxed">
                   {language === 'bn' 
                     ? 'বর্নিয়া ডিজিটাল হাবে আপনাকে স্বাগতম। এটি আমাদের ইন্টারঅ্যাক্টিভ হেরিটেজ পোর্টাল যেখানে প্রযুক্তি এবং ঐতিহ্য একসাথে মিলিত হয়েছে।' 
-                    : 'welcome to Barnia Degital Hub. This interactive portal bridges our ancestry records with powerful SaaS and AI features.'}
+                    : 'Welcome to Barnia Digital Hub. This interactive portal bridges our ancestry records with powerful SaaS and AI features.'}
                 </p>
-                <p className="text-zinc-600 text-xs leading-relaxed">
+                <p className="text-zinc-900 text-[13px] md:text-sm font-semibold leading-relaxed">
                   {language === 'bn'
                     ? 'আমাদের প্রাচীন পারিবারিক বংশলতিকা (বংশাবলী) অন্বেষণ করতে, বর্নিয়া বাজারের ব্যবসায়িক ফিচার ব্যবহার করতে এবং কৃত্রিম বুদ্ধিমত্তার সাথে চ্যাট করতে আজই লগইন করুন।'
                     : 'Sign in to access secure features including high-res lineage exports, member messaging, custom templates, and direct interactions with Barnali AI.'}
@@ -643,11 +709,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           {/* SHEET 1 (Technical Skills / What I Do) */}
           <div 
             className="book-sheet-3d"
-            style={{ 
-              transform: activeSheet > 1 ? 'rotateY(-180deg)' : 'rotateY(0deg)',
-              zIndex: activeSheet > 1 ? 20 : 30,
-              pointerEvents: activeSheet === 1 || activeSheet === 2 ? 'auto' : 'none'
-            }}
+            style={getSheetStyle(1)}
           >
             {/* Sheet 1 FRONT: Technical Skills */}
             <div className="book-page-front p-8 flex flex-col justify-between text-zinc-800 relative">
@@ -670,7 +732,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <div className="space-y-3">
                   {/* HTML & CSS */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-zinc-800 mb-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-950 mb-1">
                       <span>HTML & CSS</span>
                       <span className="text-[#0b5a43]">95%</span>
                     </div>
@@ -684,7 +746,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                   {/* JavaScript & React */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-zinc-800 mb-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-950 mb-1">
                       <span>JavaScript & React</span>
                       <span className="text-[#0b5a43]">80%</span>
                     </div>
@@ -698,7 +760,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                   {/* UI/UX Design (Figma) */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-zinc-800 mb-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-950 mb-1">
                       <span>UI/UX Design (Figma)</span>
                       <span className="text-[#0b5a43]">90%</span>
                     </div>
@@ -712,7 +774,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                   {/* 3D Animation */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-zinc-800 mb-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-950 mb-1">
                       <span>3D Animation</span>
                       <span className="text-[#0b5a43]">65%</span>
                     </div>
@@ -757,7 +819,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <span className="w-1.5 h-1.5 bg-[#0b5a43] rounded-full inline-block" />
                     Web Development
                   </h4>
-                  <p className="text-zinc-600 text-[11px] leading-relaxed">
+                  <p className="text-zinc-900 text-xs font-semibold leading-relaxed">
                     Building responsive, fast, and accessible websites using modern frameworks.
                   </p>
                 </div>
@@ -768,7 +830,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <span className="w-1.5 h-1.5 bg-[#0b5a43] rounded-full inline-block" />
                     Interface Design
                   </h4>
-                  <p className="text-zinc-600 text-[11px] leading-relaxed">
+                  <p className="text-zinc-900 text-xs font-semibold leading-relaxed">
                     Crafting intuitive layouts and visually stunning interfaces for web and mobile.
                   </p>
                 </div>
@@ -790,11 +852,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           {/* SHEET 2 (The Real Authentication Forms / Get In Touch Form) */}
           <div 
             className="book-sheet-3d"
-            style={{ 
-              transform: activeSheet > 2 ? 'rotateY(-180deg)' : 'rotateY(0deg)',
-              zIndex: activeSheet > 2 ? 30 : 20,
-              pointerEvents: activeSheet === 2 || activeSheet === 3 ? 'auto' : 'none'
-            }}
+            style={getSheetStyle(2)}
           >
             {/* Sheet 2 FRONT: Real Auth Portal Form */}
             <div className="book-page-front p-6 flex flex-col justify-between text-zinc-800 relative">
@@ -1159,11 +1217,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           {/* SHEET 3 (Hub Credits / Rear Cover Sheet) */}
           <div 
             className="book-sheet-3d"
-            style={{ 
-              transform: activeSheet > 3 ? 'rotateY(-180deg)' : 'rotateY(0deg)',
-              zIndex: activeSheet > 3 ? 40 : 10,
-              pointerEvents: activeSheet === 3 || activeSheet === 4 ? 'auto' : 'none'
-            }}
+            style={getSheetStyle(3)}
           >
             {/* Sheet 3 FRONT: Hub Summary & Quick Actions */}
             <div className="book-page-front p-8 flex flex-col justify-between text-zinc-800 relative">
@@ -1182,17 +1236,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Description */}
-              <div className="my-auto space-y-4 text-xs text-zinc-600 leading-relaxed">
+              <div className="my-auto space-y-4 text-[13px] text-zinc-900 font-semibold leading-relaxed">
                 <p>
                   {language === 'bn'
                     ? 'বর্নিয়া ডিজিটাল হাব হলো কমিউনিটি সংযোগ, বংশপরম্পরা এবং ডিজিটাল কমার্সের জন্য একটি সম্মিলিত প্ল্যাটফর্ম।'
                     : 'Barnia Digital Hub is a unified portal for modern creators, designed to preserve family trees while supporting local digital commerce.'}
                 </p>
                 <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-amber-800 font-bold text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-amber-950 font-bold text-xs uppercase tracking-wider">
                     <Zap size={11} /> {language === 'bn' ? 'দ্রুত তথ্য' : 'Quick facts'}
                   </div>
-                  <ul className="list-disc list-inside space-y-1 text-[10px] text-zinc-500 font-medium">
+                  <ul className="list-disc list-inside space-y-1 text-xs text-zinc-900 font-semibold">
                     <li>{language === 'bn' ? 'বংশাবলী লিনেজ এক্সপোর্ট সাপোর্ট' : 'Standalone offline HTML package output'}</li>
                     <li>{language === 'bn' ? '২৪/৭ বার্নালী কৃত্রিম বুদ্ধিমত্তা চ্যাট' : '24/7 AI Heritage Virtual Assistant'}</li>
                     <li>{language === 'bn' ? '১০০% ক্লাউড ডাটা সিকিউরিটি' : 'Secure real-time cloud data model'}</li>
@@ -1232,12 +1286,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
 
         </div>
+      </div>
 
-        {/* 3D Book Left / Right Navigation Arrow Buttons */}
+        {/* 2D Navigation Buttons positioned in normal 2D stacking context outside of the 3D book container */}
         {activeSheet > 0 && (
           <button
             onClick={() => setActiveSheet(prev => Math.max(0, prev - 1))}
-            className="absolute left-[-60px] top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 active:scale-90 text-white rounded-full transition-all duration-200 shadow-lg border border-white/20 hover:scale-105"
+            className="absolute left-0 top-1/2 -translate-y-1/2 p-4 bg-zinc-900/85 hover:bg-zinc-800 text-white rounded-full transition-all duration-200 shadow-2xl border border-zinc-700 hover:scale-110 active:scale-95 z-[100] cursor-pointer flex items-center justify-center"
             title={language === 'bn' ? 'আগের পাতা' : 'Previous Sheet'}
           >
             <ChevronLeft size={24} />
@@ -1247,7 +1302,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {activeSheet < 4 && (
           <button
             onClick={() => setActiveSheet(prev => Math.min(4, prev + 1))}
-            className="absolute right-[-60px] top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 active:scale-90 text-white rounded-full transition-all duration-200 shadow-lg border border-white/20 hover:scale-105"
+            className="absolute right-0 top-1/2 -translate-y-1/2 p-4 bg-zinc-900/85 hover:bg-zinc-800 text-white rounded-full transition-all duration-200 shadow-2xl border border-zinc-700 hover:scale-110 active:scale-95 z-[100] cursor-pointer flex items-center justify-center"
             title={language === 'bn' ? 'পরের পাতা' : 'Next Sheet'}
           >
             <ChevronRight size={24} />
