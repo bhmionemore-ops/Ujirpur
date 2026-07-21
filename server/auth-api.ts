@@ -93,8 +93,10 @@ export function setupAuthRoutes(app: express.Application, _db: any, _adminDb: an
         console.error(`[AuthAPI] Background send OTP email failed for ${email}:`, err);
       });
       
-      // Only allow sandbox/debug OTP bypass for verified developer/admin accounts to prevent unauthorized access to other accounts
-      const isDeveloper = (email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com");
+      // Only allow sandbox/debug OTP bypass for verified developer/admin accounts in non-production/sandbox environments to prevent public visibility
+      const host = req.headers.host || "";
+      const isProduction = process.env.NODE_ENV === "production" || host.includes("barnia.in");
+      const isDeveloper = !isProduction && (email === "okbgmi611@gmail.com" || email === "ujirpur.barnia6@gmail.com");
       res.json({ 
         success: true,
         ...(isDeveloper ? { debugOtp: otp } : {})
